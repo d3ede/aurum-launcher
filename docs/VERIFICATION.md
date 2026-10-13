@@ -1,175 +1,175 @@
-# Проверка Auren 0.1.0
+# Verification history — Auren 0.1.0 to Aurum 0.3.1
 
-## Дополнение: восстановление запущенной игры, 14 октября 2026
+These records describe checks performed for each update. Historical installer paths, sizes, and hashes refer to those specific builds; the public 0.3.1 artifact is recorded at the end.
 
-После закрытия/открытия Aurum статус игры восстанавливается по реальным Java-процессам и точному `--gameDir` существующей сборки. Повторный запуск и изменение работающей сборки блокируются; кнопка «Стоп» работает для восстановленного процесса. При самостоятельном выходе игры статус обновляется автоматически. Командные строки и токены не сохраняются. Windows-остановка проверяет время создания на том же HANDLE, который завершает, защищая от повторного использования PID.
+## Update: restoring running games — October 14, 2026
 
-- 46 обычных Rust-тестов прошли, включая проверку, что неверное время создания не завершает процесс; Clippy workspace/all targets `-D warnings` прошёл.
-- Три Java-теста явно запущены с `AURUM_PROCESS_TEST_JAVA=C:\Program Files\Java\jdk-25.0.2\bin\java.exe`: восстановление после создания нового Engine и точечная остановка без завершения посторонней Java; удаление завершившейся игры без ложного статуса при новом открытии; два процесса одной сборки. В обычном наборе они помечены ignored, поскольку требуют JDK; явный запуск `cargo test -p auren-core --test process_recovery -- --ignored` прошёл.
-- Production TypeScript/Vite build и четыре Playwright-теста основного интерфейса прошли.
-- `scripts/native-session-smoke.mjs` прошёл через настоящий WebView2/IPC: запуск собственного тестового Java-класса штатным игровым запуском, закрытие окна кнопкой «Закрыть Aurum», сохранность процесса, повторное открытие с «Запущена»/«Стоп», остановка через UI, второй запуск/закрытие/открытие и автоматическое исчезновение статуса после внешнего завершения тестового процесса. Реальная игровая сборка Minecraft в этом тесте не запускалась. Результат: `.test-data/native-session-1791932698089/result.json`; скриншот: `docs/screenshots/session-restored-native.png`. Пользовательские игры не останавливались.
+After Aurum closes and reopens, game status is restored from real Java processes whose exact `--gameDir` belongs to an existing instance. Relaunching or modifying a running instance is blocked; **Stop** works for restored processes. Status updates automatically when a game exits. Command lines and tokens are not persisted. On Windows, stopping checks process creation time on the same HANDLE used for termination, protecting against PID reuse.
 
-Исправленный Aurum открыт с обычными данными; четыре Java-процесса, существовавшие перед сменой окна, сохранились с теми же PID и временем запуска. Установщик: `target/skins-build/release/bundle/nsis/Aurum Launcher_0.3.1_x64-setup.exe`, 6 462 105 байт. SHA256: `85B015355B4919024916EEF990857A0F04EDEE2260D3490329237C20F02DBF60`.
+- 46 regular Rust tests passed, including a check that a mismatched creation time never terminates a process. Workspace/all-target Clippy with `-D warnings` passed.
+- Three Java tests were explicitly run with `AURUM_PROCESS_TEST_JAVA=C:\Program Files\Java\jdk-25.0.2\bin\java.exe`: restoration after a new Engine is created and targeted stopping without killing unrelated Java; removal of exited games without stale status after reopening; and two processes for one instance. They are normally ignored because they require a JDK. The explicit command `cargo test -p auren-core --test process_recovery -- --ignored` passed.
+- Production TypeScript/Vite build and four main-interface Playwright tests passed.
+- `scripts/native-session-smoke.mjs` passed using real WebView2/IPC: launching an owned Java fixture through normal game launch, closing through **Close Aurum**, preserving the game process, reopening with **Running**/**Stop**, stopping through the UI, then a second launch/close/reopen cycle and automatic status removal after external termination of the test process. No real Minecraft instance was launched in this test. Result: `.test-data/native-session-1791932698089/result.json`; screenshot: `docs/screenshots/session-restored-native.png`. User games were not stopped.
 
-## Дополнение: прогресс и скорость импорта, 14 октября 2026
+The corrected Aurum was opened with normal data. Four Java processes present before changing the window retained their PIDs and start times. Installer: `target/skins-build/release/bundle/nsis/Aurum Launcher_0.3.1_x64-setup.exe`, 6,462,105 bytes. SHA256: `85B015355B4919024916EEF990857A0F04EDEE2260D3490329237C20F02DBF60`.
 
-Карточка глобального прогресса скрыта, пока открыт диалог Modrinth: встроенный прогресс перенесён в постоянную нижнюю панель рядом с кнопкой остановки. Объём копирования отображается в десятичных MB, отдельно от процента; счётчики файлов других операций сохраняют свою единицу. Проверены светлая/тёмная темы и окно 960×680, включая реальную доступность кнопки и вызов отмены с правильным operation ID.
+## Update: import progress and speed — October 14, 2026
 
-Локальное копирование выполняется на одном blocking worker с переиспользуемым буфером 1 MiB и обновлениями прогресса раз в 150 мс. Убраны повторное создание родительских папок, переключения Tokio на каждой операции чтения/записи и принудительный `sync_all` каждого файла; используются обычные записи через системный файловый кеш. Исходники сохраняются, промежуточные данные публикуются только после проверки изменений исходника, отмена удаляет текущую промежуточную копию. При аварийном отключении питания копию можно повторить из оригинала.
+The global progress card is hidden while the Modrinth dialog is open. Import progress moved into a persistent footer next to **Stop**. Copied data is shown in decimal MB separately from percentage; file counters for other operations retain their units. Both themes and 960×680 layout were checked, including actual button accessibility and cancellation with the correct operation ID.
 
-На одном и том же синтетическом профиле (1000 JSON-конфигов и файл 128 MiB) время импорта сократилось с 4,527 до 0,373 секунды, события прогресса — с 1520 до 5. Измерение выполнено в локальном Windows temp-каталоге с файловым кешем; это не гарантирует такую же скорость для пользовательского диска или сборки размером 15 740 MB.
+Local copying uses one blocking worker, a reusable 1 MiB buffer, and progress updates every 150 ms. Repeated parent-directory creation, Tokio scheduling for every read/write, and forced `sync_all` for each file were removed in favor of ordinary writes through the OS file cache. Originals are preserved; staged data is committed only after checking for source changes. Cancellation removes the current partial copy. After a power failure, the copy can be retried from the original.
 
-12 Rust-тестов импорта и Clippy workspace/all targets `-D warnings` прошли. Четыре Playwright-теста импорта прошли. Настоящий WebView2/Rust IPC также перенёс две изолированные сборки с сохранностью оригиналов: `.test-data/native-modrinth-1791930263983/result.json`. Пользовательский импорт не прерывался. Скриншоты: `docs/screenshots/modrinth-progress-light.png`, `modrinth-progress-dark.png`.
+For the same synthetic instance (1,000 JSON configurations and a 128 MiB file), import time fell from 4.527 to 0.373 seconds, and progress events from 1,520 to 5. Measurements used a local Windows temporary directory with file caching; they do not guarantee the same speed on a user's drive or for a 15,740 MB instance.
 
-Установщик: `target/skins-build/release/bundle/nsis/Aurum Launcher_0.3.1_x64-setup.exe`, 6 435 544 байта. SHA256: `77D766D06ED2A9D8DF0394DA02E2895C4435C5F28B580EB97B8E5393B85E7E53`. Обновлённый EXE открыт с обычными пользовательскими данными только после подтверждения, что импорт завершён или остановлен.
+12 Rust import tests and workspace/all-target Clippy with `-D warnings` passed. Four import Playwright tests passed. Real WebView2/Rust IPC also copied two isolated instances while preserving originals: `.test-data/native-modrinth-1791930263983/result.json`. The user's import was not interrupted. Screenshots: `docs/screenshots/modrinth-progress-light.png` and `modrinth-progress-dark.png`.
 
-## Дополнение: библиотека скинов, Aurum 0.3.0
+Installer: `target/skins-build/release/bundle/nsis/Aurum Launcher_0.3.1_x64-setup.exe`, 6,435,544 bytes. SHA256: `77D766D06ED2A9D8DF0394DA02E2895C4435C5F28B580EB97B8E5393B85E7E53`. The updated executable was opened with normal user data only after confirming that the import had finished or stopped.
 
-14 октября 2026 добавлены отдельная вкладка «Скины и плащи», сохранённые образы, девять стандартных персонажей (18 текстур для двух типов рук), ручное вращение, плоскость вместо свечения и семь режимов анимации. Библиотека сохраняется отдельно в `skin-library.json`; старые PNG аккаунтов сохраняются.
+## Update: skin library — Aurum 0.3.0
 
-- Production TypeScript/Vite build и 6 Vitest-тестов прошли.
-- 40 Rust-тестов прошли, включая 7 новых проверок библиотеки: все 18 стандартных текстур, ограничения PNG, несколько сохранённых скинов/плащ, восстановление после перезапуска, редактирование/удаление, старые PNG и сохранность повреждённой библиотеки.
-- Clippy workspace/all targets с `-D warnings` прошёл.
-- Все 17 Playwright-тестов интерфейса прошли. Три проверки скинов повторно прошли после финальной правки размеров редактора. Проверены добавление нескольких скинов, смена рук/плаща, применение, перезагрузка, удаление, обе темы и размер 960×680. В неподвижном режиме кадры через 750 мс совпадают, ручное перетаскивание изменяет ракурс.
-- `scripts/native-skins-smoke.mjs` прошёл через настоящий WebView2 и Rust IPC без моков: сохранены два скина и локальный плащ, применён образ с тонкими руками, отредактировано имя, проверены PNG и JSON на диске, перезапуск и применение другого образа с обычными руками. Результат: `.test-data/native-skins-1791928140111/result.json`. Тестовый экземпляр использовал отдельный идентификатор и каталог данных; пользовательский лаунчер не останавливался.
-- Скриншоты: `docs/screenshots/skins-light.png`, `skins-dark.png`, `skins-native.png`, `skin-editor-light.png`, `skin-editor-dark.png`.
+On October 14, 2026, a dedicated **Skins & capes** tab added saved appearances, nine default characters (18 textures for both arm types), manual rotation, a ground plane instead of a glow effect, and seven animation modes. The library is stored separately in `skin-library.json`; existing account PNGs are preserved.
 
-Выбор принадлежащих Microsoft-аккаунту плащей и запрет применения произвольного локального плаща проверены через UI/моки. Настоящие авторизованные запросы изменения скина/плаща в Minecraft Services в этой проверке не выполнялись. Офлайн-скины и локальные плащи остаются предпросмотром лаунчера.
+- Production TypeScript/Vite build and 6 Vitest tests passed.
+- 40 Rust tests passed, including 7 new library checks: all 18 default textures, PNG limits, multiple saved skins/capes, persistence across restart, editing/deletion, legacy PNGs, and preservation of a corrupted library.
+- Workspace/all-target Clippy with `-D warnings` passed.
+- All 17 UI Playwright tests passed. The three skin checks passed again after the final editor-size adjustment. Coverage included adding multiple skins, changing arms/capes, applying, reloading, deleting, both themes, and 960×680 layout. In still mode, frames 750 ms apart matched; dragging changed the view.
+- `scripts/native-skins-smoke.mjs` passed with real WebView2 and Rust IPC without mocks: saving two skins and a local cape, applying a slim-arm appearance, editing its name, verifying PNG/JSON on disk, restarting, and applying another wide-arm appearance. Result: `.test-data/native-skins-1791928140111/result.json`. The test used a separate application identifier and data directory; the user's launcher was not stopped.
+- Screenshots: `docs/screenshots/skins-light.png`, `skins-dark.png`, `skins-native.png`, `skin-editor-light.png`, and `skin-editor-dark.png`.
 
-Windows x64 установщик: `target/skins-build/release/bundle/nsis/Aurum Launcher_0.3.0_x64-setup.exe`, 6 419 400 байт. SHA256: `BAE3929E754F5550C8934CB16D7DAC4093EB9BE21723A074AB50730B4C24D407`. Изолированная сборка позволяет не перезаписывать заблокированный EXE работающего лаунчера.
+Selecting Microsoft-owned capes and rejecting arbitrary local capes for application were checked through UI/mocks. Real authenticated skin/cape mutations in Minecraft Services were not performed. Offline skins and local capes remain launcher previews.
 
-## Дополнение: импорт Modrinth, Aurum 0.2.1
+Windows x64 installer: `target/skins-build/release/bundle/nsis/Aurum Launcher_0.3.0_x64-setup.exe`, 6,419,400 bytes. SHA256: `BAE3929E754F5550C8934CB16D7DAC4093EB9BE21723A074AB50730B4C24D407`. The isolated build avoids overwriting an executable locked by a running launcher.
 
-13 октября 2026 проверен импорт из legacy JSON, классической SQLite-схемы `profiles` и текущей схемы `instances`/`instance_content_sets`, включая JSONB и пользовательский каталог данных. Исходники Modrinth не копировались: использованы только имена и структура полей формата хранения.
+## Update: Modrinth import — Aurum 0.2.1
 
-- Production TypeScript/Vite build и 3 Vitest-теста прошли.
-- 28 Rust-тестов прошли, включая 9 новых тестов импорта: несколько профилей, миры/настройки/отключённые моды/нестандартные папки, неизменность исходной SQLite-базы, отмена, частичный успех, повреждённые метаданные, обход пути и открытый мир Windows.
-- Clippy `--workspace --all-targets -- -D warnings` прошёл.
-- Все 7 Playwright-проверок интерфейса прошли. Новое окно проверено в двух темах и при размере 960×680; заголовок и кнопки остаются видимыми, выбор сохраняется при фильтрации, повторный импорт после ошибки содержит только неудачные профили.
-- `scripts/native-modrinth-smoke.mjs` проверил реальный WebView2/IPC: автопоиск, выбор двух тестовых сборок, импорт, появление в библиотеке, файлы миров/настроек/отключённых модов и неизменность оригиналов. Использованы отдельный идентификатор тестового приложения и `.test-data/native-modrinth-1791924437433`, CDP 9233 закрыт после теста. Настоящие пользовательские сборки не импортировались; игровой запуск синтетических модов не выполнялся.
+On October 13, 2026, import was checked against legacy JSON, the classic SQLite `profiles` schema, and the current `instances`/`instance_content_sets` schema, including JSONB and a custom data directory. Modrinth source code was not copied; only storage-format field names and structure were used.
 
-Release-код скомпилирован; открытый обычный лаунчер блокировал замену `target/release/aurum.exe`. Из скомпилированного Cargo-артефакта собран отдельный NSIS-бандл штатной командой `tauri bundle` с `CARGO_TARGET_DIR=target/modrinth-package`. Установщик: `target/modrinth-package/release/bundle/nsis/Aurum Launcher_0.2.1_x64-setup.exe`, 5 637 802 байта. SHA256: `21797A75BBF71F8FFFDFACB546FAE543F6EE4B4B47DDFD9183555A1000987EA7`.
+- Production TypeScript/Vite build and 3 Vitest tests passed.
+- 28 Rust tests passed, including 9 new import tests: multiple profiles, worlds/settings/disabled mods/custom folders, unchanged source SQLite databases, cancellation, partial success, malformed metadata, path traversal, and an open world on Windows.
+- `clippy --workspace --all-targets -- -D warnings` passed.
+- All 7 UI Playwright checks passed. The dialog was checked in both themes and at 960×680; its title and buttons remained visible, selections survived filtering, and retries after errors included only failed profiles.
+- `scripts/native-modrinth-smoke.mjs` checked real WebView2/IPC: automatic discovery, selecting two test instances, import, library entries, world/settings/disabled-mod files, and unchanged originals. It used a separate test application identifier and `.test-data/native-modrinth-1791924437433`; CDP port 9233 was closed afterward. Real user instances were not imported, and synthetic mods were not launched in-game.
 
-Ниже сохранены результаты первоначальной версии 0.1.0.
+Release code compiled, but the normal open launcher prevented replacement of `target/release/aurum.exe`. A separate NSIS bundle was created from the compiled Cargo artifact using `tauri bundle` with `CARGO_TARGET_DIR=target/modrinth-package`. Installer: `target/modrinth-package/release/bundle/nsis/Aurum Launcher_0.2.1_x64-setup.exe`, 5,637,802 bytes. SHA256: `21797A75BBF71F8FFFDFACB546FAE543F6EE4B4B47DDFD9183555A1000987EA7`.
 
-Дата: 13 октября 2026. Среда: Windows x64, WebView2, Node.js 22.21, локальный Rust GNU 1.99 и LLVM-MinGW. Все реальные установки выполнялись в `.test-data/live`, отдельно от пользовательских данных. Использован офлайн-профиль AurenTest. Исходники независимые, сторонние лаунчеры не запускались и не копировались.
+## Original 0.1.0 verification environment
 
-## Автоматические проверки
+Date: October 13, 2026. Environment: Windows x64, WebView2, Node.js 22.21, local Rust GNU 1.99, and LLVM-MinGW. All real installations used `.test-data/live`, separate from user data, with the offline profile AurenTest. The implementation is independent; third-party launchers were neither run nor copied.
 
-| Проверка                                       | Результат                                                                                                   |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| TypeScript + production Vite build             | Успешно                                                                                                     |
-| Vitest                                         | 3 теста прошли: совместимость и ключи поиска                                                                |
-| Rust core                                      | 18 тестов прошли                                                                                            |
-| Clippy workspace / all targets / deny warnings | Без предупреждений                                                                                          |
-| Playwright Chromium                            | 3 теста прошли: навигация и сохранение темы, диалоги и фокус, окно 960×680 без горизонтального переполнения |
-| npm audit, включая dev dependencies            | 0 обнаруженных уязвимостей                                                                                  |
-| Windows Credential Manager                     | Реальная временная запись, чтение, удаление прошли; тестовый секрет удалён                                  |
+### Automated checks
 
-Rust-тесты покрывают изоляцию сборок и восстановимое удаление миров, offline UUID, управление локальным контентом, защиту от выхода за папку через архивы, rollback импорта, приоритет overrides в mrpack, контрольные суммы, повреждённую базу без её сброса, отмену, уникальность операций, копирование данных с сохранением исходника, Maven classifier/extension, наследование библиотек загрузчика, правила аргументов и редактирование токенов в логах. Это проверки поведения с временными файлами, а не подтверждение работоспособности внешних сервисов.
+| Check | Result |
+| --- | --- |
+| TypeScript + production Vite build | Passed |
+| Vitest | 3 tests passed: compatibility and search keys |
+| Rust core | 18 tests passed |
+| Clippy workspace / all targets / deny warnings | No warnings |
+| Playwright Chromium | 3 tests passed: navigation and theme persistence, dialogs and focus, 960×680 without horizontal overflow |
+| npm audit, including development dependencies | 0 detected vulnerabilities at the time of this check |
+| Windows Credential Manager | Real temporary write/read/delete passed; the test secret was removed |
 
-## Реальные установки и запуск Minecraft
+Rust tests cover instance isolation and recoverable world deletion, offline UUIDs, local content management, archive traversal protection, import rollback, mrpack override precedence, checksums, corrupted databases without reset, cancellation, unique operation IDs, data copying that preserves the source, Maven classifiers/extensions, loader-library inheritance, argument rules, and token redaction in logs. These verify behavior with temporary files, not availability of external services.
 
-`live_smoke` получает настоящие manifests, скачивает файлы, устанавливает загрузчик и Java, запускает Java-процесс и ждёт строки инициализации OpenAL / sound engine / texture atlas в игровом логе. После этого останавливает процесс. Это подтверждает запуск клиента до инициализации; создание мира и длительная игровая сессия не проверялись.
+### Real Minecraft installation and launch
 
-| Minecraft                                                 | Загрузчик                     | Java                                   | Результат                                                             |
-| --------------------------------------------------------- | ----------------------------- | -------------------------------------- | --------------------------------------------------------------------- |
-| 1.21.1                                                    | Vanilla                       | Temurin 21                             | Установка, инициализация и остановка прошли                           |
-| 1.21.1                                                    | Fabric 0.19.5 + Sodium 0.8.13 | Temurin 21                             | Установка настоящего совместимого проекта из Modrinth и запуск прошли |
-| 1.21.1                                                    | Forge 52.1.19                 | Temurin 21                             | Официальный installer, библиотеки и запуск прошли                     |
-| 1.21.1                                                    | NeoForge 21.1.259             | Temurin 21                             | Официальный installer, библиотеки и запуск прошли                     |
-| 1.21.1                                                    | Quilt 0.20.0-beta.9           | Temurin 21                             | Установка, инициализация и остановка прошли                           |
-| 26.3 — текущий release в Mojang manifest на дату проверки | Vanilla                       | Автоматически установленная Temurin 25 | Скачивание 5147 assets, инициализация и остановка прошли              |
+`live_smoke` retrieves actual manifests, downloads files, installs the loader and Java, starts a Java process, and waits for an OpenAL, sound-engine, or texture-atlas initialization line in the game log. It then stops the process. This confirms client startup through initialization; world creation and extended gameplay were not tested.
 
-Проверки выявили и помогли исправить потерю Forge client/universal classifier при наследовании библиотек и конфликт модулей NeoForge из-за имени клиентского JAR. Регрессионный тест сохраняет оба classifier; клиентский JAR публикуется с именем установленной версии. Quilt пишет предупреждение о недоступном telemetry beacon; офлайн-клиент пишет предупреждения об авторизации Realms. Они не препятствовали инициализации игры.
+| Minecraft | Loader | Java | Result |
+| --- | --- | --- | --- |
+| 1.21.1 | Vanilla | Temurin 21 | Installation, initialization, and stop passed |
+| 1.21.1 | Fabric 0.19.5 + Sodium 0.8.13 | Temurin 21 | Installation of a real compatible Modrinth project and launch passed |
+| 1.21.1 | Forge 52.1.19 | Temurin 21 | Official installer, libraries, and launch passed |
+| 1.21.1 | NeoForge 21.1.259 | Temurin 21 | Official installer, libraries, and launch passed |
+| 1.21.1 | Quilt 0.20.0-beta.9 | Temurin 21 | Installation, initialization, and stop passed |
+| 26.3 — the Mojang manifest's current release on the verification date | Vanilla | Automatically installed Temurin 25 | Downloading 5,147 assets, initialization, and stop passed |
 
-## Настоящее desktop-окно
+Checks exposed and helped fix loss of Forge client/universal classifiers during library inheritance and a NeoForge module conflict caused by the client JAR name. The regression test preserves both classifiers; the client JAR is published under the installed version's name. Quilt logs an unavailable telemetry-beacon warning, and the offline client logs Realms authentication warnings. Neither prevented initialization.
 
-`scripts/native-smoke.mjs` прошёл на итоговом `target/release/auren.exe`. Он управляет Tauri WebView2 через локальный CDP и вызывает настоящие Rust-команды. Подмена IPC и ответов API не используется. Проверены:
+### Real desktop window
 
-- загрузка состояния и офлайн-аккаунта;
-- реальный поиск Sodium в Modrinth и описание проекта;
-- создание сборки через UI;
-- установка и запуск Minecraft 1.21.1 через кнопку интерфейса;
-- остановка игрового процесса через UI;
-- 3D canvas и экран аккаунтов;
-- сохранение светлой и тёмной темы в настройках;
-- удаление тестовой сборки;
-- отсутствие JavaScript-ошибок в проверенном сценарии.
+`scripts/native-smoke.mjs` passed on the final `target/release/auren.exe`. It controls Tauri WebView2 through local CDP and invokes real Rust commands, without mocked IPC or API responses. Checks covered:
 
-Результат записывается в `.test-data/native-smoke-result.json`. Скриншоты в `screenshots/native-*.png` получены из настоящего окна с тестовыми профилями. Они не являются заранее заполненными пользовательскими данными. `screenshots/light.png`, `dark.png` и `settings.png` показывают честное browser preview без native backend.
+- State and offline-account loading.
+- Real Modrinth search for Sodium and project details.
+- Instance creation through the UI.
+- Minecraft 1.21.1 installation and launch through the interface.
+- Stopping the game process through the UI.
+- 3D canvas and the accounts screen.
+- Persistence of light/dark theme settings.
+- Deleting the test instance.
+- No JavaScript errors in the checked scenario.
 
-`scripts/native-content-smoke.mjs` также прошёл на release-приложении: установка настоящего Iris 1.8.8 с обязательной зависимостью Sodium в чистую сборку, обновление до последней совместимой версии, отключение/включение, удаление и отказ от установки Fabric-мода в Vanilla. Файлы действительно скачивались и проверялись по SHA1. Этот сценарий подтверждает управление контентом; запуск игры с Iris не проверялся. Результат находится в `.test-data/native-content-result.json`.
+Results are written to `.test-data/native-smoke-result.json`. `screenshots/native-*.png` were captured from the actual window using test profiles, not prefilled user data. `screenshots/light.png`, `dark.png`, and `settings.png` show browser preview without a native backend.
 
-Загрузка PNG-скина с моделью Alex и сохранение после перезапуска Engine проверены отдельным Rust-тестом. Повреждённый PNG и неправильные размеры отклоняются, ранее сохранённый скин сохраняется.
+`scripts/native-content-smoke.mjs` also passed on the release app: installing real Iris 1.8.8 with required Sodium in a clean instance, updating to the latest compatible version, disabling/enabling, removal, and rejecting a Fabric mod in Vanilla. Files were genuinely downloaded and SHA1-verified. This confirms content management; gameplay with Iris was not tested. Result: `.test-data/native-content-result.json`.
 
-## Release-артефакты
+A separate Rust test verified uploading a PNG skin with the Alex model and retaining it after an Engine restart. Corrupted PNGs and invalid dimensions are rejected while preserving the previously saved skin.
 
-Production Rust/Tauri build и генерация NSIS завершились успешно. Итоговый установщик: `target/release/bundle/nsis/Auren_0.1.0_x64-setup.exe` (около 4.05 MiB).
+### Release artifacts
+
+Production Rust/Tauri build and NSIS generation succeeded. Installer: `target/release/bundle/nsis/Auren_0.1.0_x64-setup.exe` (approximately 4.05 MiB).
 
 SHA256: `EAEDA8549612E0065B7DBC3DC3208D2F36E6ED90A2EA8CAE3A736BC806F0F6D6`.
 
-После исправления стартовой позиции release пересобран и запущен. Геометрия настоящего окна проверена через Win32: отклонение центра от рабочей области монитора — 0 px по X и 3.5 px по Y (рамка окна). `center: true` применяется при каждом создании окна, независимо от позиции предыдущего запуска.
+After the initial window-position fix, the release was rebuilt and launched. Win32 checks measured a center offset from the monitor's work area of 0 px horizontally and 3.5 px vertically (window frame). `center: true` applies on every window creation regardless of its previous position.
 
-Release EXE запущен с обычным системным PATH, без каталогов Rust/MinGW. Второй экземпляр завершился, первый продолжил работать; приложение не допускает конкурентных native-процессов. После тестов приложение и локальный CDP закрыты. Для запуска EXE без установщика сохраняйте рядом `WebView2Loader.dll`.
+The release executable ran with the normal system PATH, without Rust/MinGW directories. A second instance exited while the first continued; concurrent native instances are not permitted. The app and local CDP were closed after testing. Keep `WebView2Loader.dll` alongside the executable when distributing without an installer.
 
-## Что требует дальнейшей проверки
+### Remaining verification
 
-Microsoft device flow, refresh, проверка entitlements и загрузка скина реализованы, но полный успешный сценарий требует собственного зарегистрированного OAuth Client ID с доступом Minecraft Services и аккаунта владельца игры. Эти credentials не предоставлены, чужие client ID не использовались. Windows vault проверен отдельно; это не подтверждение Microsoft-входа.
+At this stage, Microsoft device flow, refresh, entitlement checks, and skin upload were implemented, but a complete successful flow required a registered OAuth Client ID with Minecraft Services access and an account owning the game. Those credentials were not supplied, and another application's Client ID was not used. The Windows vault check was separate and did not confirm Microsoft sign-in. Subsequent OAuth updates are recorded below.
 
-CurseForge использует официальный API и защищённо хранимый API-ключ. Успешные запросы, установка и зависимости с реальным ключом не проверены: ключ не предоставлен. Отсутствующий download URL обрабатывается как ограничение распространения, без угадывания URL.
+CurseForge uses its official API and stores its key in the OS credential vault. Requests, installation, and dependencies with a real key were not verified because no key was supplied. A missing download URL is handled as a distribution restriction; URLs are not guessed.
 
-Не проверены macOS/Linux, все исторические версии Minecraft и загрузчиков, реальные сторонние mrpack/CurseForge-модпаки целиком, большой набор конфликтующих модов, длительная игра и multiplayer. Импорт mrpack и безопасность ZIP проверены временными локальными архивами. Локальный офлайн-скин используется только для превью; автоматического применения его в Vanilla нет.
+Not verified: macOS/Linux, every historical Minecraft/loader version, complete real third-party mrpack/CurseForge modpacks, large sets of conflicting mods, extended gameplay, and multiplayer. mrpack import and ZIP safety used temporary local archives. Offline skins are previews only and are not automatically applied in Vanilla.
 
-Релиз не имеет цифровой подписи издателя. Генерация NSIS-пакета не является проверкой установки/удаления на чистой Windows: этот сценарий требует отдельной машины. Бандл 3D-превью загружается при открытии аккаунтов и даёт предупреждение Vite о размере chunk >500 kB; основное приложение отделено от Three.js.
+The release has no publisher signature. Generating an NSIS package does not verify installation/removal on a clean Windows machine; that requires a separate machine. The 3D preview bundle loads when opening accounts and produces Vite's chunk-size warning above 500 kB; the main app is separated from Three.js.
 
-## Воспроизведение
+### Reproduction
 
-Основные команды приведены в README. Дополнительно:
+Main commands are in the README. Additional checks:
 
 ```powershell
 ./scripts/cargo.ps1 -CargoArguments @('run','-p','auren-core','--example','live_smoke','--','vanilla','latest')
 ./scripts/cargo.ps1 -CargoArguments @('run','-p','auren-core','--example','vault_smoke')
 ```
 
-Реальные smoke-тесты, использующие `.test-data/live`, следует выполнять последовательно: standalone core-пример не разделяет блокировку native-приложения. Обычный Auren разрешает один экземпляр приложения. В обычном запуске CDP отключён. Тестовый запуск и локальный порт следует закрыть после проверки.
+Run real smoke tests using `.test-data/live` sequentially: the standalone core example does not share the native application's instance lock. Normal Auren permits one application instance. CDP is disabled during normal launch; close the test app and local port afterward.
 
+## Microsoft sign-in — October 14, 2026
 
-## Microsoft-вход, 2026-10-14
+Device Code Flow was replaced with Authorization Code and PKCE, using an automatic localhost return from the system browser. The owner's Client ID was embedded in the build; player configuration fields and manual code entry were removed. The interface shares the home pattern and displays phases, cancellation, errors, retry, and successful connection.
 
-Device Code Flow заменён на Authorization Code с PKCE и автоматическим возвратом из системного браузера через localhost. Предоставленный владельцем Client ID встроен в сборку; поля настройки и ручного ввода кода удалены. Интерфейс использует общий узор с главной, показывает этапы, отмену, ошибку, повторный вход и успешное подключение.
+Checks passed: 4 OAuth tests (the independent RFC 7636 PKCE vector, state/path/ambiguous-parameter validation, a real local HTTP callback rejecting unrelated sessions, cancellation and timeout), 19 existing core tests, 9 import tests, 3 frontend tests, `cargo check --workspace`, and `clippy --workspace --all-targets -- -D warnings`. Six Playwright tests cover success with automatic account selection, denial/cancellation, a fresh retry session, browser errors, no Client ID in settings, and the full dialog at 960×680 in both themes. Screenshots: `docs/screenshots/microsoft-*.png`.
 
-Проверено: 4 OAuth-теста (независимый вектор PKCE из RFC 7636, проверка состояния/пути/неоднозначных параметров, настоящий локальный HTTP callback с отклонением чужой сессии, отмена и таймаут), 19 существующих тестов ядра и 9 тестов импорта, 3 frontend-теста, `cargo check --workspace` и `clippy --workspace --all-targets -- -D warnings`. Шесть тестов Playwright проверяют успех с автоматическим выбором аккаунта, отказ и отмену, новую сессию при повторе, ошибку браузера, отсутствие Client ID в настройках и весь диалог при 960×680 в светлой/тёмной темах. Скриншоты находятся в `docs/screenshots/microsoft-*.png`.
+Automated checks do not confirm real Microsoft sign-in or the registered application's Minecraft Services access. Entra needs a native `http://localhost` redirect, and an owner of Minecraft Java needs to sign in. See [MICROSOFT-LOGIN.md](MICROSOFT-LOGIN.md).
 
-Успешный реальный вход в Microsoft и доступ зарегистрированного приложения к Minecraft Services не подтверждены автоматическими тестами. Требуются настройка native redirect `http://localhost` в Entra и вход владельца Minecraft Java. Полный гайд: [MICROSOFT-LOGIN.md](MICROSOFT-LOGIN.md).
+## Embedded Microsoft window — October 14, 2026
 
+Sign-in now opens in an owned WebView2 window inside Aurum. The `http://localhost` native redirect and PKCE remain. A valid response closes the window; closing it manually cancels sign-in. Launcher RPC, external windows, and downloads are blocked for this remote window. Only Microsoft identity hosts and the current-port callback are allowed.
 
-## Встроенное окно Microsoft, 2026-10-14
+Allowed/spoofed-address unit checks, six UI scenarios, TypeScript, `cargo check`, and Clippy passed. A real isolated Tauri/WebView2 smoke confirmed creation, focus restoration, close/cancellation, and no added accounts. Credentials were not entered; complete Microsoft/Minecraft sign-in remains a separate manual check.
 
-Вход теперь открывается в owned-окне WebView2 внутри Aurum. Native redirect `http://localhost` и PKCE сохраняются. Окно закрывается после валидного ответа; закрытие пользователем отменяет вход. Для remote-окна запрещены launcher RPC, внешние окна и загрузки; разрешены только Microsoft identity hosts и callback текущего порта.
+## Installation on creation and instance folders — October 14, 2026
 
-Проверены unit-тест допустимых/поддельных адресов, шесть UI-сценариев, TypeScript, `cargo check` и clippy. Настоящий изолированный Tauri/WebView2 smoke подтвердил создание окна, возврат фокуса, закрытие, отмену и отсутствие добавленных аккаунтов. Учётные данные не вводились; успешный Microsoft/Minecraft-вход остаётся отдельной ручной проверкой.
+Creating an instance through the UI now immediately installs Minecraft, the selected loader, and suitable Java. The instance is saved before downloading and remains available after an error or cancellation. **Folder** works during installation. The native command first creates a missing directory and normalizes its path for File Explorer. The import menu's Modrinth logo uses `currentColor` and the active theme.
 
-## Установка при создании и папка сборки, 2026-10-14
+Checks passed: 21 core tests, TypeScript, Clippy, five UI creation/error/cancellation/theme scenarios, and three Modrinth import scenarios. The isolated `scripts/native-profile-creation-smoke.mjs` on real WebView2 confirmed recreating an old empty instance's folder, opening a path containing spaces and Cyrillic, automatic UI-triggered installation, opening the folder during download, and retaining the instance after cancellation without launching the game. The full download was intentionally cancelled; the existing installer was unchanged for that check.
 
-Создание через интерфейс теперь сразу вызывает установку Minecraft, выбранного загрузчика и подходящей Java. Сборка сохраняется до загрузки и остаётся доступной после ошибки или отмены; «Папка» работает во время установки. Native-команда сначала создаёт отсутствующий каталог и нормализует путь для Проводника. Логотип Modrinth в меню импорта использует `currentColor` и цвета текущей темы.
+## Public build 0.3.1 — October 14, 2026
 
-Проверены 21 тест ядра, TypeScript и clippy; пять UI-сценариев создания/ошибки/отмены/обеих тем и три сценария импорта Modrinth. Изолированный `scripts/native-profile-creation-smoke.mjs` на настоящем WebView2 подтвердил восстановление папки старой пустой сборки, открытие каталога с пробелами и кириллицей, автоматический старт установки через UI, открытие папки во время загрузки и сохранение сборки после отмены без запуска игры. Полная загрузка в этом smoke намеренно отменяется; существующий установщик не изменён.
+Before publication, the current source was built into the production application and NSIS installer with `scripts/desktop.ps1 -Mode build`. Checks passed:
 
-## Публичная сборка 0.3.1, 2026-10-14
-
-Перед публикацией исходники актуальной версии собраны в production-приложение и NSIS-установщик через `scripts/desktop.ps1 -Mode build`. Проверки завершились успешно:
-
-- TypeScript и Vite production build.
-- 6 frontend-тестов Vitest и 26 UI-сценариев Playwright.
-- 50 Rust-тестов workspace, включая 3 сценария восстановления процессов с `AURUM_PROCESS_TEST_JAVA` и `--include-ignored`. Java-фикстуры изолированы от пользовательских сборок.
+- TypeScript and Vite production build.
+- 6 frontend Vitest tests and 26 UI Playwright scenarios.
+- 50 Rust workspace tests, including 3 process-restoration scenarios with `AURUM_PROCESS_TEST_JAVA` and `--include-ignored`. Java fixtures were isolated from user instances.
 - `clippy --workspace --all-targets -- -D warnings`.
-- Ссылки README, исключение локальных инструкций/данных/сборок из индекса Git и проверка истории на распространённые форматы приватных ключей и токенов.
+- README links, exclusion of local instructions/data/build output from Git's index, and a history check for common private-key and token formats.
 
-Артефакт релиза `v0.3.1`: `Aurum-Launcher_x64-setup.exe`, **6 462 111 байт** (6.16 MiB). SHA256:
+Release `v0.3.1` artifact: `Aurum-Launcher_x64-setup.exe`, **6,462,111 bytes** (6.16 MiB). SHA256:
 
 ```text
 03c8e98dbfb29227b340c67428c91de583e2957a1db5722879d9677865e6fcf3
 ```
 
-Установщик и `SHA256SUMS.txt` публикуются в GitHub Releases, не в дереве исходников. Цифровая подпись издателя отсутствует. Эта проверка сборки не подтверждает установку/удаление на чистой Windows или полный успешный Microsoft/Minecraft-вход.
+The installer and `SHA256SUMS.txt` are published in GitHub Releases, separate from the source tree. There is no publisher signature. Successful build verification does not confirm clean-Windows installation/removal or complete Microsoft/Minecraft sign-in.

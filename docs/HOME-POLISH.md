@@ -1,13 +1,13 @@
-# Главная страница: Aurum 0.3.1
+# Home screen: Aurum 0.3.1
 
-В карточках популярных проектов две строки описания теперь отображаются целиком. Раньше высота была 27 px при межстрочном интервале 21 px: начало второй строки выглядело как обрезки. Высота `3em` соответствует двум полным строкам; длинные описания завершаются многоточием.
+Popular-project cards now display two complete lines of description. Previously, the text area was 27 px high with a 21 px line height, leaving only fragments of the second line visible. A height of `3em` fits both lines; longer descriptions end with an ellipsis.
 
-На главной слева от «Новая сборка» добавлена зелёная кнопка «Импортировать». Доступны те же три способа, что в библиотеке: Modrinth App, `.mrpack`/ZIP, существующая папка игры. Главная и библиотека используют общий `ImportProfileButton`, включая блокировку при текущей операции, закрытие меню снаружи и по Escape. Цвета настроены отдельно для светлой и тёмной тем.
+A green **Import** button was added to the home screen, to the left of **New instance**. It offers the same three options as the library: Modrinth App, `.mrpack`/ZIP, and an existing game folder. Home and library share `ImportProfileButton`, including operation locking, outside-click dismissal, and Escape handling. Colors are configured separately for light and dark themes.
 
-Проверка собранного интерфейса: четыре длинных описания, ровно 42 px под две строки, отсутствие пересечения со счётчиком загрузок, обе темы, расположение/цвет кнопки и открытие диалогов Modrinth/папки. На минимальной ширине 960 px горизонтального переполнения нет. Существующие три сценария импорта Modrinth прошли.
+The built interface was checked with four long descriptions, exactly 42 px for two lines, no overlap with download counts, both themes, button placement/colors, and the Modrinth/folder dialogs. There is no horizontal overflow at the minimum width of 960 px. The existing three Modrinth import scenarios passed.
 
-Проверка реального WebView2 и Rust IPC также прошла: четыре проекта с Modrinth, две полные строки, правильное расположение кнопки и открытие обоих диалогов. Ошибок JavaScript нет. После проверки открыт обычный лаунчер с пользовательскими данными, окно отцентрировано.
+Real WebView2 and Rust IPC checks also passed: four projects from Modrinth, two complete description lines, correct button placement, and both dialogs opening. No JavaScript errors occurred. After verification, the normal launcher was opened with user data and its window centered.
 
-![Исправленные карточки и кнопка в тёмной теме](screenshots/home-polish-dark.png)
+![Corrected cards and import button in the dark theme](screenshots/home-polish-dark.png)
 
-![Карточки в desktop-приложении](screenshots/home-descriptions-native.png)
+![Project cards in the desktop app](screenshots/home-descriptions-native.png)

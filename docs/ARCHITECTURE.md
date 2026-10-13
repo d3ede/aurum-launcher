@@ -4,7 +4,7 @@ The native application permits one running instance using Tauri's [Single Instan
 
 Independent implementation. No third-party launcher code or artwork is used.
 
-`src/`: Russian React UI, typed IPC, theme tokens, catalog, profiles, accounts, settings.
+`src/`: localized React UI, typed IPC, theme tokens, catalog, profiles, accounts, settings.
 `crates/auren-core/`: platform-independent service library. Persistence, verified transfers, Minecraft metadata, loader installers, Java runtime, process supervision, OAuth, OS credential vault, catalog adapters and archive import.
 `src-tauri/`: small native bridge. Dialogs return paths to Rust; the webview has no general filesystem or shell permissions.
 

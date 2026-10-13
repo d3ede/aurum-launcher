@@ -1,42 +1,42 @@
 # Aurum Launcher 0.2.0
 
-Обновление от 13 октября 2026 года. Полное имя приложения — Aurum Launcher, короткое имя в интерфейсе — Aurum.
+Update dated October 13, 2026. The full product name is Aurum Launcher; the short interface name is Aurum.
 
-## Изменения
+## Changes
 
-- Локальный Inter Variable, основной текст 15 px, более плотные подписи и контрастный второстепенный текст.
-- Общая панель приложения с собственными кнопками окна вместо системного заголовка над отдельной веб-страницей. Центрирование при каждом запуске сохраняется.
-- Удалены маркетинговые заголовки, девизы, декоративный блок в боковой панели и бесполезные бейджи. Главная содержит быстрый запуск, сборки и реальные популярные проекты.
-- Блочный SVG-пейзаж заменён спокойным абстрактным узором из контурных линий.
-- Сборка открывается отдельным экраном. Поиск по установленным файлам, типы контента, действия обновления/отключения/удаления и отдельная кнопка «Найти проекты».
-- Создание сборки с готовыми параметрами занимает два клика. Значок выбирается из четырёх вариантов или загружается как PNG/JPEG/WebP. Файл нормализуется в PNG 128×128 и сохраняется внутри данных сборки, поэтому исходное изображение можно переместить.
-- В каталоге есть источник, тип, версия игры, загрузчик, категория и сортировка. Категории и версии берутся из официальных API. При переходе из сборки выбираются совместимые параметры. Проект добавляется прямо из результата поиска одной кнопкой с обязательными зависимостями.
-- Для Vanilla показано объяснение необходимости загрузчика для модов и переход к ресурспакам.
+- Bundled Inter Variable, 15 px body text, tighter labels, and more legible secondary text.
+- A shared application toolbar with custom window controls replaces the system title bar above a separate web page. Centering on every launch is retained.
+- Marketing headlines, slogans, a decorative sidebar panel, and redundant badges were removed. Home contains quick launch, instances, and actual popular projects.
+- The block-style SVG landscape was replaced with a quiet abstract contour-line pattern.
+- Instances open on a dedicated screen with installed-file search, content types, update/disable/remove actions, and a separate **Find projects** button.
+- An instance with default settings can be created in two clicks. Choose one of four icons or upload PNG/JPEG/WebP. The image is normalized to 128×128 PNG and saved with instance data, so the original image can be moved.
+- Catalog filters include source, content type, game version, loader, category, and sorting. Categories and versions come from official APIs. Opening the catalog from an instance selects compatible filters. Search results offer one-click installation with required dependencies.
+- Vanilla instances explain that mods need a loader and offer a route to resource packs.
 
-## Совместимость данных
+## Data compatibility
 
-Системный идентификатор `app.auren.launcher` и сервис Credential Manager сохранены намеренно. Существующие пути, настройки, аккаунты и сборки не требуют переноса. Новое поле `icon` необязательно при чтении старого JSON. `AURUM_DATA_DIR` имеет приоритет; `AUREN_DATA_DIR` поддерживается как прежнее имя. Каталог исходников и имя внутреннего crate `auren-core` не менялись.
+The `app.auren.launcher` system identifier and Credential Manager service are intentionally preserved. Existing paths, settings, accounts, and instances require no migration. The new `icon` field is optional when reading older JSON. `AURUM_DATA_DIR` takes precedence; `AUREN_DATA_DIR` remains supported. The source directory and internal `auren-core` crate name did not change.
 
-## Проверено
+## Verified
 
-- Production TypeScript/Vite и Tauri/NSIS-сборка Windows x64.
-- Clippy всего workspace и всех targets с `-D warnings`.
-- 19 Rust-тестов, включая нормализацию и сохранение значка, отказ при повреждённом изображении и чтение старой сборки без нового поля.
-- 3 Vitest-теста и 3 браузерных Playwright-проверки: навигация, темы, фокус диалога, честное недоступное состояние игровых функций в браузере, размеры 960×680.
-- Реальный release WebView2 и IPC на изолированных `.test-data`: разворачивание/восстановление и закрытие окна; создание сборки без ввода имени; выбор значка; сохранение пользовательского PNG; отдельный экран сборки; перенос типа ресурспака и версии/загрузчика в каталог; официальные категории и сортировка; добавление Sodium в Fabric 1.21.1 одной кнопкой; отсутствие горизонтального переполнения каталога при 960 px.
-- Установка и запуск Minecraft 1.21.1 из нового UI, остановка процесса, 3D-превью, обе темы, удаление тестовой сборки.
-- Реальные Iris/Sodium: обязательная зависимость, обновление версии, отключение, удаление и отказ в несовместимой Vanilla-сборке.
-- Два последовательных запуска: главный HWND видим и отвечает; фактическая внешняя рамка `[312,101,1608,930]` центрирована в рабочей области `[0,0,1920,1032]` с погрешностью не более одного пикселя. Проверка `scripts/verify-window.ps1` ждёт главное окно, исключая служебное single-instance окно. Центрирование выполняется после создания рамки до показа интерфейса.
+- Production TypeScript/Vite and Windows x64 Tauri/NSIS builds.
+- Clippy for the whole workspace and all targets with `-D warnings`.
+- 19 Rust tests, including icon normalization/persistence, rejection of corrupted images, and loading older instances without the new field.
+- 3 Vitest tests and 3 browser Playwright checks: navigation, themes, dialog focus, explicit unavailability of game features in browser preview, and 960×680 layout.
+- Real release WebView2 and IPC with isolated `.test-data/`: maximize/restore/close, creating an instance without typing a name, choosing an icon, saving a custom PNG, the dedicated instance screen, carrying resource-pack type and game/loader filters into the catalog, official categories and sorting, one-click Sodium installation in Fabric 1.21.1, and no horizontal catalog overflow at 960 px.
+- Installing and launching Minecraft 1.21.1 from the new UI, stopping its process, 3D previews, both themes, and deleting the test instance.
+- Real Iris/Sodium: required dependency, version update, disabling, removal, and rejection in an incompatible Vanilla instance.
+- Two consecutive launches: the main HWND was visible and responsive. The actual outer frame `[312,101,1608,930]` was centered in work area `[0,0,1920,1032]` within one pixel. `scripts/verify-window.ps1` waits for the main window and excludes the auxiliary single-instance window. Centering occurs after frame creation and before showing the interface.
 
-Команды: `scripts/native-redesign.mjs`, `scripts/native-smoke.mjs`, `scripts/native-content-smoke.mjs`. CDP используется только в тестовом экземпляре с локальным портом 9227. Обычный запуск включает встроенный интерфейс и пользовательскую папку данных без CDP.
+Commands: `scripts/native-redesign.mjs`, `scripts/native-smoke.mjs`, and `scripts/native-content-smoke.mjs`. CDP is enabled only for the test instance on local port 9227. Normal launch uses the embedded interface and the user's data directory without CDP.
 
-Скриншоты: [главная](screenshots/native-light.png), [тёмная тема](screenshots/native-dark.png), [каталог](screenshots/native-catalog.png), [экран сборки](screenshots/native-instance.png). Имена тестовых аккаунтов и сборок относятся только к изолированной проверке.
+Screenshots: [home](screenshots/native-light.png), [dark theme](screenshots/native-dark.png), [catalog](screenshots/native-catalog.png), and [instance screen](screenshots/native-instance.png). Test account and instance names belong only to isolated verification.
 
-Предыдущие проверки всех пяти загрузчиков и ограничения Microsoft/CurseForge описаны в [VERIFICATION.md](VERIFICATION.md). Полный вход Microsoft и работа CurseForge с настоящим ключом не подтверждались в этом обновлении. Нативный диалог выбора файла подключён к нормализации значка; автоматическая проверка тестирует нормализацию и IPC-сохранение изображения, но не управление системным диалогом.
+Earlier checks of all five loaders and Microsoft/CurseForge limitations are in [VERIFICATION.md](VERIFICATION.md). Complete Microsoft sign-in and CurseForge with a real API key were not confirmed in this update. The native file picker is connected to icon normalization; automated checks cover normalization and IPC persistence, not control of the system dialog.
 
-## Артефакты
+## Artifacts
 
-- `target/release/aurum.exe` и `WebView2Loader.dll` для запуска без установки.
+- `target/release/aurum.exe` and `WebView2Loader.dll` for running without installation.
 - `target/release/bundle/nsis/Aurum Launcher_0.2.0_x64-setup.exe`.
 
-SHA256 установщика: `825B81F57ABF3E8148FF8DE66849FB6377A4E488D974C18EE31AE734D608C526`.
+Installer SHA256: `825B81F57ABF3E8148FF8DE66849FB6377A4E488D974C18EE31AE734D608C526`.

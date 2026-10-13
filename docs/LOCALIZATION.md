@@ -1,31 +1,31 @@
-# Aurum 0.3.0: локализация
+# Aurum 0.3.0: localization
 
-В настройках доступен 41 язык: русский, английский, украинский, испанский, немецкий, французский, итальянский, португальский, польский, чешский, словацкий, венгерский, румынский, болгарский, нидерландский, шведский, норвежский букмол, датский, финский, эстонский, латышский, литовский, греческий, турецкий, хорватский, словенский, сербский, каталанский, исландский, ирландский, казахский, арабский, иврит, китайский упрощённый/традиционный, японский, корейский, хинди, индонезийский, вьетнамский, тайский.
+Settings offer 41 languages: Russian, English, Ukrainian, Spanish, German, French, Italian, Portuguese, Polish, Czech, Slovak, Hungarian, Romanian, Bulgarian, Dutch, Swedish, Norwegian Bokmål, Danish, Finnish, Estonian, Latvian, Lithuanian, Greek, Turkish, Croatian, Slovenian, Serbian, Catalan, Icelandic, Irish, Kazakh, Arabic, Hebrew, Simplified and Traditional Chinese, Japanese, Korean, Hindi, Indonesian, Vietnamese, and Thai.
 
-Панель выбора показывает родное и локализованное название, ищет также по английскому названию и коду. Клавиатура, поиск без учёта диакритики, сохранение выбора, немедленное переключение и пример чисел/дат. Новая установка следует языку системы; старые настройки без поля `language` сохраняют русский интерфейс. Региональные варианты сопоставляются с языками, китайские письменности различаются. Настройки записываются через существующий IPC в базу приложения; localStorage хранит копию для первоначального отображения.
+The picker shows native and localized names, and also searches by English name and language code. It supports keyboard navigation, accent-insensitive search, saved preferences, instant switching, and number/date previews. New installations follow the system language; old settings without a `language` field retain Russian. Regional variants are mapped to supported languages, with Chinese writing systems distinguished. Settings are persisted through the existing IPC database; localStorage keeps a copy for the initial render.
 
-## Реализация
+## Implementation
 
-- `src/locales/registry.ts`: языки, родные названия, направление текста.
-- `src/locales/messages/*.json`: локальные текстовые пакеты; английский служит запасным переводом. Остальные пакеты импортируются при выборе языка, без внешнего сервиса или сети.
-- `src/lib/i18n.ts`: React-подписка на изменение пакета, подстановка переменных, Intl для названий, чисел и форм множественного числа.
-- `src/components/LanguagePicker.tsx` и `src/i18n.css`: выбор языка, RTL и системные шрифты для других письменностей.
-- Интерфейс переводит известные сообщения лаунчера, включая шаблоны сообщений Rust. Имена сборок, пути, названия проектов, описания сторонних авторов и исходные логи Minecraft сохраняются.
+- `src/locales/registry.ts`: languages, native names, and text direction.
+- `src/locales/messages/*.json`: local message packs, with English as the fallback. Other packs load on language selection without an external service or network connection.
+- `src/lib/i18n.ts`: React subscriptions to message-pack changes, variable interpolation, and Intl for names, numbers, and plural forms.
+- `src/components/LanguagePicker.tsx` and `src/i18n.css`: language selection, RTL, and system fonts for other writing systems.
+- The interface translates known launcher messages, including Rust message templates. Instance names, paths, project titles, third-party descriptions, and original Minecraft logs retain their original text.
 
-Основные элементы навигации и выбора языков вычитаны вручную. Остальные словари подготовлены машинным переводом с последующими исправлениями терминов и проверкой переменных. Полная лингвистическая вычитка всех языков носителями ещё не проведена. Перевод описаний модов в эту версию не входит.
+Core navigation and language-selection labels were reviewed manually. Other dictionaries were prepared using machine translation, followed by terminology corrections and placeholder checks. Complete review by native speakers has not been performed for every language. Translating mod descriptions is outside this version's scope.
 
-Подготовка словарей использовала локальную NLLB-модель и CTranslate2 только как инструмент разработки. Модель, Python, CUDA и временные пакеты удалены из workspace после подготовки; в приложение они не входят. Источники: [NLLB](https://huggingface.co/facebook/nllb-200-distilled-600M), [CTranslate2](https://github.com/OpenNMT/CTranslate2/blob/master/docs/guides/transformers.md). Конвертированный пакет: `JustFrederik/nllb-200-distilled-600M-ct2-int8`, revision `302d78f00e6fdb50a1064059df7c392b735e9d05`. Скрипты подготовки находятся в `scripts/prepare-translations.py`, ручные исправления — `scripts/locale-overrides.cjs` и `scripts/curate-locales.cjs`; они не нужны для обычной сборки или запуска.
+Dictionary preparation used a local NLLB model and CTranslate2 as development tools only. The model, Python, CUDA, and temporary packages were removed from the workspace afterward; they are not included in the application. References: [NLLB](https://huggingface.co/facebook/nllb-200-distilled-600M) and [CTranslate2](https://github.com/OpenNMT/CTranslate2/blob/master/docs/guides/transformers.md). Converted package: `JustFrederik/nllb-200-distilled-600M-ct2-int8`, revision `302d78f00e6fdb50a1064059df7c392b735e9d05`. Preparation scripts are in `scripts/prepare-translations.py`; manual corrections are in `scripts/locale-overrides.cjs` and `scripts/curate-locales.cjs`. These tools are not required for a normal build or launch.
 
-## Размер и проверка (14 октября 2026)
+## Size and verification — October 14, 2026
 
-Установщик 0.3.0: **6 317 494 байта (6,32 МБ / 6,02 МиБ)**. Предыдущий установщик 0.2.1: 5 876 074 байта. Вся обновлённая сборка увеличилась на **441 420 байт (0,44 МБ)**. Это сравнение установщиков, а не размер чистого текста; другие текущие изменения приложения также включены.
+The 0.3.0 installer was **6,317,494 bytes (6.32 MB / 6.02 MiB)**. The preceding 0.2.1 installer was 5,876,074 bytes. The complete updated build grew by **441,420 bytes (0.44 MB)**. This compares installer sizes, not text-only size; other application changes are also included.
 
-SHA256 `Aurum Launcher_0.3.0_x64-setup.exe`:
+SHA256 of `Aurum Launcher_0.3.0_x64-setup.exe`:
 
 `89448103A6A35C36566A1D62C3FEE2DCAF195CA58253E706C8279C187B55E6EB`
 
-Проверены полный набор ключей всех 41 словарей и совпадение переменных, системные/региональные варианты, числа и формы слов. Browser E2E проверяет мгновенное переключение RU→ES→UK→AR→ET→JA, сохранение при обновлении, RTL на минимальном размере окна и отсутствие внешних запросов при переключении. `scripts/native-localization-smoke.mjs` переключает **все 41 языка в реальном WebView2 через интерфейс**, проверяет IPC-сохранение и направление текста, затем перезапускает процесс и подтверждает сохранённый испанский. Ошибок JavaScript не обнаружено.
+Checks covered complete key sets and matching placeholders in all 41 dictionaries, system/regional variants, number formatting, and plural forms. Browser E2E checks instant switching RU→ES→UK→AR→ET→JA, persistence on reload, RTL at the minimum window size, and the absence of external requests during language changes. `scripts/native-localization-smoke.mjs` switches **all 41 languages through the real WebView2 interface**, verifies IPC persistence and text direction, then restarts the process and confirms the saved Spanish preference. No JavaScript errors were found.
 
-Игровые проверки и ограничения остаются описаны в `VERIFICATION.md`, `UI-POLISH.md` и `MICROSOFT-LOGIN.md`. Повторный запуск Minecraft для изменения текстового интерфейса не требовался.
+Game checks and their limitations remain documented in [VERIFICATION.md](VERIFICATION.md), [UI-POLISH.md](UI-POLISH.md), and [MICROSOFT-LOGIN.md](MICROSOFT-LOGIN.md). Changing interface text did not require another Minecraft launch.
 
-![Выбор языка в desktop-приложении](screenshots/languages-native.png)
+![Language selection in the desktop app](screenshots/languages-native.png)
