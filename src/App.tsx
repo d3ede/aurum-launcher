@@ -136,7 +136,14 @@ function Shell({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
-            <kbd>↵</kbd>
+            <button
+              type="submit"
+              className="search-submit"
+              aria-label="Запустить поиск"
+              title="Найти проекты (Enter)"
+            >
+              <span aria-hidden="true">↵</span>
+            </button>
           </form>
           <button
             className="icon-button theme-toggle"

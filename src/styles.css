@@ -350,7 +350,7 @@ kbd {
   padding: 1px 4px;
   border-radius: 3px;
 }
-.header-search kbd {
+.header-search .search-submit {
   display: grid;
   place-items: center;
   width: 26px;
@@ -363,6 +363,16 @@ kbd {
   font-size: 14px;
   line-height: 1;
   color: var(--muted);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.header-search .search-submit:hover {
+  color: var(--accent-ink);
+  border-color: var(--gold);
+  background: var(--gold-soft);
+}
+.header-search .search-submit:active {
+  transform: scale(0.94);
 }
 .topbar-divider {
   height: 25px;
