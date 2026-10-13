@@ -457,6 +457,12 @@ fn main() {
             }))?;
             app.manage(engine);
             app.manage(Relocation(std::sync::atomic::AtomicBool::new(false)));
+            // Creation-time centering uses the requested client size. Center again
+            // after Windows has applied the actual resize frame, then show once.
+            if let Some(window) = app.get_webview_window("main") {
+                window.center()?;
+                window.show()?;
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![rpc])
