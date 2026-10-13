@@ -49,7 +49,9 @@ An independent Windows launcher with a warm light theme and a graphite dark them
 
 The installer includes the complete launcher and its interface. Minecraft, Java, loaders, and mods are downloaded separately as you set up instances. Players do not need Node.js or Rust.
 
-The build is currently **unsigned**, so Windows may display a SmartScreen warning. Automatic launcher updates are not implemented yet; download new versions from [Releases](https://github.com/d3ede/aurum-launcher/releases).
+The installer does not yet have an **Authenticode publisher certificate**, so Windows may display a SmartScreen warning. Starting with **0.3.2**, Aurum checks GitHub Releases automatically and offers **Update and restart** inside the launcher. Update packages are verified with a separate cryptographic signature before installation. See [launcher updates](docs/UPDATES.md).
+
+**Already using 0.3.1?** Install 0.3.2 once from Releases to enable future in-app updates.
 
 Each release includes `SHA256SUMS.txt` alongside the installer. Check a downloaded file in PowerShell:
 
@@ -87,7 +89,8 @@ Aurum is under active development. The verified target runtime is **Windows x64*
 | **CurseForge** | An official API key is required. Requests with a real key have not been verified yet; author restrictions on third-party downloads are respected. |
 | **Installer** | The NSIS package builds successfully. Installation and removal on a clean Windows machine still need separate verification. |
 | **Other platforms** | macOS/Linux builds have not been verified. Automatic Java downloads currently target Windows. |
-| **Not yet implemented** | Automatic launcher updates and modpack export. |
+| **Launcher updates** | Automatic checks, signed downloads, and in-app installation through GitHub Releases. Finish running games and launcher tasks before installing. |
+| **Not yet implemented** | Modpack export. |
 
 See **[VERIFICATION.md](docs/VERIFICATION.md)** for test results and their limits. Local profiles do not bypass authentication on official servers.
 
@@ -158,6 +161,7 @@ The Rust crate name `auren-core` and identifier `app.auren.launcher` are retaine
 - [Microsoft sign-in setup and verification](docs/MICROSOFT-LOGIN.md)
 - [Localization and 41 languages](docs/LOCALIZATION.md)
 - [Verification and known limitations](docs/VERIFICATION.md)
+- [Launcher updates and release publishing](docs/UPDATES.md)
 - [Issues and suggestions](https://github.com/d3ede/aurum-launcher/issues) — include your Aurum version, Windows version, and steps to reproduce. Do not include passwords or tokens.
 
 ## License

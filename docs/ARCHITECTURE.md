@@ -22,7 +22,13 @@ Public specifications used: Tauri 2 configuration and commands (https://v2.tauri
 
 Original project code, documentation, and artwork, except where separately identified, are licensed under [PolyForm Noncommercial License 1.0.0](../LICENSE); preserve the required notice in [NOTICE](../NOTICE) when distributing copies. Dependency and downloaded-content licenses remain applicable, and Mojang/Microsoft assets are excluded from the project license. User skins stay local for offline accounts. A Minecraft account token is required for authenticated multiplayer; offline identities do not bypass server authentication.
 
-## Skin library
+## Launcher updates
+
+The local main window uses the official Tauri updater plugin with a fixed GitHub Releases `latest.json` endpoint. Production desktop builds check ten seconds after startup and every six hours; browser previews and development builds do not issue background requests. A shared update provider retains and closes native resources, prevents concurrent checks/installations, and holds the application's operation lock during download and installation. Running games block installation. Downloads must resolve after native signature verification before `install()` is called; failed or consumed resources are discarded before retries. The Windows installer restarts the launcher in passive mode. Versions are read from package metadata rather than hard-coded in the interface.
+
+The signing public key is embedded in configuration. The private key remains outside Git and is stored as a repository Actions secret. Release automation builds version tags, prepares a manifest using a version-specific installer URL, and publishes a complete draft with signatures and checksums. The remote Microsoft window has no updater permissions. See [UPDATES.md](UPDATES.md).
+
+## Skin library implementation
 
 `skins.rs` persists saved skins, local capes and per-account selections atomically in `<data>/skin-library.json`, independently of the existing profile database. Textures are normalized PNG data URIs: uploads are limited to 1 MB, skins to 64×64/64×32 and capes to 64×32, with dimensions checked before decoding. Library mutations share the engine lock; malformed libraries are reported and preserved. Existing account PNGs in `skins/` remain readable. Deleting a library item removes references without removing an account's applied texture.
 

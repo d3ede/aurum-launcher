@@ -1,5 +1,7 @@
 import { t, formatDecimal } from "../lib/i18n";
 import { LanguagePicker } from "../components/LanguagePicker";
+import { LauncherUpdateSettings } from "../components/LauncherUpdate";
+import { APP_VERSION } from "../lib/version";
 import { useState } from "react";
 import {
   Sun,
@@ -59,6 +61,7 @@ export function Settings() {
         }}
       >
         <LanguagePicker onChange={(language) => set("language", language)} />
+        <LauncherUpdateSettings />
         <section className="settings-section">
           <div className="settings-title">
             <span>
@@ -392,9 +395,7 @@ export function Settings() {
         </div>
       </form>
       <p className="page-footnote">
-        {t(
-          "Aurum 0.3.1 · PolyForm Noncommercial 1.0.0",
-        )}
+        Aurum {APP_VERSION} · PolyForm Noncommercial 1.0.0
       </p>
     </>
   );

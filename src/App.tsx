@@ -37,6 +37,9 @@ const Skins = lazy(() =>
   import("./screens/Skins").then((module) => ({ default: module.Skins })),
 );
 import { Settings } from "./screens/Settings";
+import { UpdateProvider } from "./updater";
+import { LauncherUpdateBanner } from "./components/LauncherUpdate";
+import { APP_VERSION } from "./lib/version";
 const navigation = [
   ["home", HomeIcon],
   ["profiles", Layers3],
@@ -203,7 +206,7 @@ function Shell({
         <div className="sidebar-bottom">
           <div className="sidebar-version">
             <span>
-              Aurum <b>0.3.1</b>
+              Aurum <b>{APP_VERSION}</b>
             </span>
             <button
               aria-label={t("Настройки Aurum")}
@@ -215,6 +218,7 @@ function Shell({
         </div>
       </aside>
       <div className="main-shell">
+        <LauncherUpdateBanner />
         <div className="content-scroll">
           <main className="page-content" key={route}>
             {!native && (
@@ -382,7 +386,9 @@ export default function App() {
   const [creating, setCreating] = useState(false);
   return (
     <Provider onCreate={() => setCreating(true)}>
-      <Shell creating={creating} setCreating={setCreating} />
+      <UpdateProvider>
+        <Shell creating={creating} setCreating={setCreating} />
+      </UpdateProvider>
     </Provider>
   );
 }

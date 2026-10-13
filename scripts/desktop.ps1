@@ -1,4 +1,4 @@
-param([ValidateSet('dev','build')][string]$Mode = 'dev',[switch]$DebugBuild,[switch]$NoBundle)
+param([ValidateSet('dev','build')][string]$Mode = 'dev',[switch]$DebugBuild,[switch]$NoBundle,[string]$Config)
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $env:CARGO_HOME = Join-Path $projectRoot '.tools\cargo'
 $env:RUSTUP_HOME = Join-Path $projectRoot '.tools\rustup'
@@ -19,6 +19,7 @@ Set-Location -LiteralPath $projectRoot
 $tauriArguments=@('run','tauri','--',$Mode)
 if ($DebugBuild) { $tauriArguments += '--debug' }
 if ($NoBundle) { $tauriArguments += '--no-bundle' }
+if ($Config) { $tauriArguments += @('--config',$Config) }
 & npm.cmd @tauriArguments
 $desktopExitCode=$LASTEXITCODE
 if ($Mode -eq 'build' -and $desktopExitCode -eq 0) {

@@ -1,0 +1,85 @@
+name: Windows release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to build
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+      - uses: Swatinem/rust-cache@49a0bdc70d2e1b713ca9e2869b211fcce03d3c1c # v2
+      - name: Validate release inputs
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if (-not $env:TAURI_SIGNING_PRIVATE_KEY) { throw 'Set the TAURI_SIGNING_PRIVATE_KEY repository secret before publishing.' }
+          $releaseVersion = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($env:RELEASE_TAG -ne "v$releaseVersion") { throw 'Release tag must match package.json.' }
+          if ((git rev-parse HEAD) -ne (git rev-list -n 1 $env:RELEASE_TAG)) { throw 'Checkout must match the release tag.' }
+      - run: npm ci
+      - name: Check frontend and native code
+        run: |
+          npm run build
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          npm test
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          cargo test --workspace --locked
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Check UI
+        run: |
+          npx playwright install chromium
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          npm run test:ui
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Build signed installer
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        run: npm run tauri build
+      - name: Prepare signed update manifest and checksums
+        run: node scripts/prepare-release.mjs
+      - name: Upload and publish release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $existingRelease = gh release view $env:RELEASE_TAG --json isDraft 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            if (-not ($existingRelease | ConvertFrom-Json).isDraft) { throw 'Refusing to replace an already published release.' }
+          } else {
+            gh release create $env:RELEASE_TAG --verify-tag --draft --title "Aurum Launcher $version" --notes-file "docs/releases/$($env:RELEASE_TAG).md"
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
+          gh release upload $env:RELEASE_TAG target/publish/Aurum-Launcher_x64-setup.exe target/publish/Aurum-Launcher_x64-setup.exe.sig target/publish/latest.json target/publish/SHA256SUMS.txt --clobber
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          gh release edit $env:RELEASE_TAG --draft=false --latest
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }

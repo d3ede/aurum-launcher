@@ -6,6 +6,7 @@ import { microsoftEnglish, microsoftRussian } from "../locales/microsoft-login";
 import { skinEnglish, skinRussian } from "../locales/skins";
 import { profileCreationEnglish, profileCreationRussian } from "../locales/profile-creation";
 import { profileIconEnglish, profileIconRussian } from "../locales/profile-icons";
+import { updaterEnglish, updaterRussian } from "../locales/updater";
 import { languages, resolveLanguage } from "../locales/registry";
 type Dictionary = Record<string, string>;
 const english: Dictionary = {
@@ -14,6 +15,7 @@ const english: Dictionary = {
   ...skinEnglish,
   ...profileCreationEnglish,
   ...profileIconEnglish,
+  ...updaterEnglish,
 };
 const russian: Dictionary = {
   ...russianMessages,
@@ -21,6 +23,7 @@ const russian: Dictionary = {
   ...skinRussian,
   ...profileCreationRussian,
   ...profileIconRussian,
+  ...updaterRussian,
 };
 const bundles = import.meta.glob<{ default: Dictionary }>([
   "../locales/messages/*.json",

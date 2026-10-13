@@ -173,3 +173,21 @@ Release `v0.3.1` artifact: `Aurum-Launcher_x64-setup.exe`, **6,462,111 bytes** (
 ```
 
 The installer and `SHA256SUMS.txt` are published in GitHub Releases, separate from the source tree. There is no publisher signature. Successful build verification does not confirm clean-Windows installation/removal or complete Microsoft/Minecraft sign-in.
+
+## Signed launcher updates — Aurum 0.3.2, October 14, 2026
+
+The official Tauri updater is configured for GitHub Releases. Production clients check at startup and every six hours; Settings offers manual checks. Updates use a download-then-install sequence so failed native signature verification cannot start the installer. Running games and current operations block installation, and failed resources are discarded before retries.
+
+Checks passed:
+
+- Production TypeScript/Vite build and a local signed Windows NSIS build.
+- 11 Vitest tests, including release-version consistency, signature-version binding, missing signatures, ambiguous installer selection, immutable manifest URLs, and checksums.
+- All 30 Playwright UI checks. Four updater scenarios cover postponement, progress, restart options, network/signature failures and retry, current-version results, running-game blocking, and both themes at 960×680.
+- All 50 Rust workspace tests, including the three isolated Java process-recovery fixtures, and workspace/all-target Clippy with `-D warnings`.
+- `scripts/native-updater-smoke.mjs` through real WebView2 and native updater commands: ignoring the current version, downloading a valid signed installer, rejecting a modified installer, rejecting a manifest version that differs from the signed version, and observing the automatic startup check. The diagnostic client used a separate identifier, a test version of 0.3.1, an owned data directory, and a loopback manifest. It did **not** execute the installer or modify user game data. The diagnostic HTTP configuration stays in ignored `.test-data/`; production uses HTTPS.
+
+The release workflow builds version tags, signs installers using a repository Actions secret, generates `latest.json`, and uploads all assets to a draft before publishing. Private signing material is excluded from Git. See [UPDATES.md](UPDATES.md) for publication and key-backup requirements.
+
+Windows installer execution and clean-machine installation/removal remain separate checks. Updater signatures do not provide an Authenticode publisher certificate. Version 0.3.1 requires a one-time manual installation of 0.3.2 to enable future updates.
+
+![Updater banner in a diagnostic desktop instance](screenshots/updater-native.png)
