@@ -80,7 +80,7 @@ try {
     })
     .click();
   await page.getByRole("button", { name: "Изменить значок сборки" }).click();
-  await page.getByRole("button", { name: "Значок 3", exact: true }).click();
+  await page.getByRole("button", { name: "Горы", exact: true }).click();
   await page.getByRole("button", { name: "Сохранить", exact: true }).click();
   await page.waitForFunction(async (id) => {
     const s = await window.__TAURI_INTERNALS__.invoke("rpc", {

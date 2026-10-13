@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 import { Play, Square, ChevronRight } from "lucide-react";
 import { useApp } from "../context";
 import type { Profile } from "../types";
@@ -11,14 +12,18 @@ export function ProfileCard({
   profile: Profile;
   onOpen: () => void;
 }) {
-  const { data, busy, play, run } = useApp();
+  const { data, busy, play, run, progress } = useApp();
   const running = data.running.includes(profile.id);
+  const installing =
+    progress?.profileId === profile.id &&
+    !profile.installedVersion &&
+    !["complete", "error"].includes(progress.phase);
   return (
     <article className="instance-card">
       <button
         className="instance-card-open"
         onClick={onOpen}
-        aria-label={`Открыть ${profile.name}`}
+        aria-label={t("Открыть {{v1}}", { v1: profile.name })}
       >
         <ProfileIcon profile={profile} />
         <div>
@@ -32,13 +37,15 @@ export function ProfileCard({
       <div className="instance-card-footer">
         <span>
           {running
-            ? "Запущена"
-            : profile.installedVersion
-              ? "Установлена"
-              : "Готова к установке"}
+            ? t("Запущена")
+            : installing
+              ? t("Устанавливается")
+              : profile.installedVersion
+                ? t("Установлена")
+                : t("Готова к установке")}
         </span>
         <button
-          className="button primary"
+          className={`button ${running ? "stop" : "primary"}`}
           disabled={busy}
           onClick={() =>
             running
@@ -47,7 +54,7 @@ export function ProfileCard({
           }
         >
           {running ? <Square size={16} /> : <Play size={16} />}
-          {running ? "Стоп" : "Играть"}
+          {running ? t("Стоп") : t("Играть")}
         </button>
       </div>
     </article>

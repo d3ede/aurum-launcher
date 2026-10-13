@@ -20,78 +20,45 @@ pub fn delete_secret(id: &str) -> Result<()> {
 }
 #[derive(Serialize, Deserialize)]
 struct Credentials {
+    #[serde(default)]
+    client_id: String,
     refresh_token: String,
     access_token: String,
     expires_at: u64,
     xuid: String,
 }
 impl Engine {
-    pub async fn login_microsoft(&self, task: &Task) -> Result<()> {
-        let client_id = self.db.lock().await.settings.microsoft_client_id.clone();
-        if client_id.is_empty() {
-            bail!("Укажите Client ID зарегистрированного Microsoft приложения в настройках. Нужны public client flow, personal Microsoft accounts и доступ Minecraft Services")
-        }
-        let device: Value = self
-            .http
-            .post("https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode")
-            .form(&[
-                ("client_id", client_id.as_str()),
-                ("scope", "XboxLive.signin offline_access"),
-            ])
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?;
-        task.progress(
-            "auth-code",
-            json!({"code":device["user_code"],"url":device["verification_uri"]}).to_string(),
-            0,
-            0,
-        );
-        let code = device["device_code"]
-            .as_str()
-            .context("Microsoft не вернул device_code")?;
-        let mut interval = device["interval"].as_u64().unwrap_or(5);
-        let deadline = crate::now() + device["expires_in"].as_u64().unwrap_or(900);
-        let oauth = loop {
-            task.check()?;
-            if crate::now() > deadline {
-                bail!("Код авторизации истёк; повторите вход")
-            }
-            for _ in 0..interval * 4 {
-                task.check()?;
-                tokio::time::sleep(std::time::Duration::from_millis(250)).await;
-            }
-            let reply: Value = self
-                .http
-                .post("https://login.microsoftonline.com/consumers/oauth2/v2.0/token")
+    pub async fn login_microsoft(
+        &self,
+        task: &Task,
+        open: impl FnOnce(&str) -> Result<()>,
+    ) -> Result<Account> {
+        use crate::microsoft_oauth::{self, cancellable, Login};
+        use std::time::Duration;
+        task.progress("auth-opening", "Открываем Microsoft", 0, 0);
+        let client = microsoft_oauth::client_id()?;
+        let login = Login::begin(client).await?;
+        task.check()?;
+        open(&login.authorize_uri)?;
+        task.progress("auth-waiting", "Подтвердите вход в окне Microsoft", 0, 0);
+        let code = login.wait(task).await?;
+        task.progress("auth-exchange", "Подключаем ваш аккаунт", 0, 0);
+        let oauth = cancellable(task, Duration::from_secs(90), async {
+            let reply = self.http.post(microsoft_oauth::TOKEN_ENDPOINT)
                 .form(&[
-                    ("client_id", client_id.as_str()),
-                    ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
-                    ("device_code", code),
-                ])
-                .send()
-                .await?
-                .json()
-                .await?;
-            match reply["error"].as_str() {
-                Some("authorization_pending") => continue,
-                Some("slow_down") => {
-                    interval += 5;
-                    continue;
-                }
-                Some(_) => bail!(
-                    "Microsoft OAuth: {}",
-                    reply["error_description"]
-                        .as_str()
-                        .unwrap_or("Вход отклонён")
-                ),
-                None => break reply,
+                    ("client_id", client), ("grant_type", "authorization_code"),
+                    ("code", code.as_str()), ("code_verifier", login.verifier.as_str()),
+                    ("redirect_uri", login.redirect_uri.as_str()), ("scope", microsoft_oauth::SCOPE),
+                ]).send().await.context("Не удалось связаться с Microsoft. Проверьте интернет и повторите вход")?;
+            if !reply.status().is_success() {
+                bail!("Microsoft не завершил вход. Попробуйте снова; если ошибка повторяется, приложение Aurum требует проверки регистрации")
             }
-        };
-        task.progress("auth", "Проверяем Xbox Live и владение Minecraft", 0, 0);
-        let (credentials, profile) = self.exchange(&oauth).await?;
+            Ok(reply.json::<Value>().await?)
+        }).await?;
+        task.progress("auth-profile", "Проверяем Minecraft Java", 0, 0);
+        let (mut credentials, profile) =
+            cancellable(task, Duration::from_secs(180), self.exchange(&oauth)).await?;
+        credentials.client_id = client.into();
         task.check()?;
         let uuid = profile["id"]
             .as_str()
@@ -112,11 +79,11 @@ impl Engine {
         let mut db = self.db.lock().await;
         let mut next = db.clone();
         next.accounts.retain(|a| a.id != uuid);
-        next.accounts.push(account);
+        next.accounts.push(account.clone());
         next.selected_account = Some(uuid);
         persist(&self.root, &next).await?;
         *db = next;
-        Ok(())
+        Ok(account)
     }
     async fn exchange(&self, oauth: &Value) -> Result<(Credentials, Value)> {
         let msa = oauth["access_token"]
@@ -141,7 +108,7 @@ impl Engine {
             .send()
             .await?
             .error_for_status()
-            .context("Minecraft Services отклонил приложение; проверьте его разрешения")?
+            .context("Minecraft Services не разрешил вход для этой сборки Aurum. Разработчику нужно проверить доступ приложения")?
             .json()
             .await?;
         let access = mc["access_token"].as_str().context("Нет Minecraft token")?;
@@ -176,6 +143,7 @@ impl Engine {
             .await?;
         Ok((
             Credentials {
+                client_id: String::new(),
                 refresh_token: oauth["refresh_token"]
                     .as_str()
                     .context("Нет refresh token")?
@@ -195,7 +163,12 @@ impl Engine {
         if credentials.expires_at > crate::now() + 120 {
             return Ok(credentials.access_token);
         }
-        let client = self.db.lock().await.settings.microsoft_client_id.clone();
+        // Remember the issuing app so later builds can refresh existing sessions.
+        let client = if credentials.client_id.is_empty() {
+            crate::microsoft_oauth::client_id()?.to_string()
+        } else {
+            credentials.client_id.clone()
+        };
         let oauth: Value = self
             .http
             .post("https://login.microsoftonline.com/consumers/oauth2/v2.0/token")
@@ -211,13 +184,22 @@ impl Engine {
             .context("Сессия истекла; войдите в Microsoft снова")?
             .json()
             .await?;
-        let (credentials, _) = self.exchange(&oauth).await?;
+        let (mut credentials, _) = self.exchange(&oauth).await?;
+        credentials.client_id = client;
         set_secret(id, &serde_json::to_string(&credentials)?)?;
         Ok(credentials.access_token)
     }
     pub fn xuid(&self, id: &str) -> Result<String> {
         let credentials: Credentials = serde_json::from_str(&secret(id)?)?;
         Ok(credentials.xuid)
+    }
+    pub fn account_client_id(&self, id: &str) -> Result<String> {
+        let credentials: Credentials = serde_json::from_str(&secret(id)?)?;
+        if credentials.client_id.is_empty() {
+            Ok(crate::microsoft_oauth::client_id()?.to_string())
+        } else {
+            Ok(credentials.client_id)
+        }
     }
     pub async fn set_skin(&self, id: &str, path: &std::path::Path, model: &str) -> Result<()> {
         if !["steve", "alex"].contains(&model) {

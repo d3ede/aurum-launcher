@@ -1,11 +1,15 @@
 pub mod auth;
 pub mod catalog;
 pub mod content;
+pub mod microsoft_oauth;
 pub mod migration;
 pub mod minecraft;
 pub mod model;
+pub mod modrinth_import;
 pub mod net;
 pub mod packs;
+mod processes;
+pub mod skins;
 pub mod store;
 
 use anyhow::{bail, Context, Result};
@@ -28,6 +32,7 @@ pub struct Engine {
     pub busy: Arc<Mutex<()>>,
     pub operations: Arc<Mutex<HashMap<String, Arc<AtomicBool>>>>,
     pub running: Arc<Mutex<HashMap<String, Arc<AtomicBool>>>>,
+    pub(crate) recovered: Arc<Mutex<HashMap<String, Vec<processes::RecoveredProcess>>>>,
     pub emit: Arc<dyn Fn(Event) + Send + Sync>,
 }
 pub struct Task {
@@ -69,17 +74,21 @@ impl Engine {
             .timeout(std::time::Duration::from_secs(180))
             .https_only(true)
             .build()?;
-        Ok(Self {
+        let engine = Self {
             root,
             http,
             db: Arc::new(Mutex::new(db)),
             busy: Arc::new(Mutex::new(())),
             operations: Arc::new(Mutex::new(HashMap::new())),
             running: Arc::new(Mutex::new(HashMap::new())),
+            recovered: Arc::new(Mutex::new(HashMap::new())),
             emit: Arc::new(emit),
-        })
+        };
+        engine.recover_running().await?;
+        Ok(engine)
     }
     pub async fn snapshot(&self) -> Snapshot {
+        self.refresh_recovered().await;
         Snapshot {
             database: self.db.lock().await.clone(),
             data_dir: self.root.to_string_lossy().into(),
@@ -138,6 +147,7 @@ impl Engine {
         Ok(())
     }
     pub async fn ensure_idle(&self, id: &str) -> Result<()> {
+        self.refresh_recovered().await;
         if self.running.lock().await.contains_key(id) {
             bail!("Сначала остановите игру")
         }

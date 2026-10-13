@@ -23,6 +23,13 @@ impl Loader {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ProfileIconStyle {
+    pub symbol: String,
+    pub color: String,
+    pub background: String,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Profile {
     pub id: String,
     pub name: String,
@@ -36,6 +43,8 @@ pub struct Profile {
     pub cover: u8,
     #[serde(default)]
     pub icon: Option<String>,
+    #[serde(default)]
+    pub icon_style: Option<ProfileIconStyle>,
     #[serde(default)]
     pub content: Vec<Content>,
 }
@@ -64,11 +73,12 @@ pub struct Account {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
+    #[serde(default = "legacy_language")]
+    pub language: String,
     pub theme: String,
     pub java_path: String,
     pub ram_mb: u32,
     pub jvm_args: String,
-    pub microsoft_client_id: String,
     pub resolution_width: u32,
     pub resolution_height: u32,
     pub show_snapshots: bool,
@@ -76,16 +86,19 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            language: "system".into(),
             theme: "light".into(),
             java_path: String::new(),
             ram_mb: 4096,
             jvm_args: String::new(),
-            microsoft_client_id: String::new(),
             resolution_width: 1280,
             resolution_height: 720,
             show_snapshots: false,
         }
     }
+}
+fn legacy_language() -> String {
+    "ru".into()
 }
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

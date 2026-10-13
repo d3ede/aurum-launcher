@@ -152,16 +152,14 @@ svg {
   width: 43px;
   height: 43px;
   flex-shrink: 0;
-  background: var(--gold-soft);
-  color: var(--text);
-  border-radius: 14px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--gold-border);
 }
-.brand-mark svg {
-  width: 38px;
-  height: 38px;
+.brand-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .brand-mark.small {
   width: 30px;
@@ -557,6 +555,15 @@ kbd {
   background: var(--danger);
   color: white;
 }
+.button.stop {
+  background: #c94242;
+  border-color: #c94242;
+  color: #fff;
+}
+.button.stop:hover:not(:disabled) {
+  background: #b33838;
+  border-color: #b33838;
+}
 .text-button {
   display: inline-flex;
   align-items: center;
@@ -851,7 +858,7 @@ kbd {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   margin-top: 4px;
-  height: 27px;
+  height: 3em;
 }
 .recommended-project small {
   display: flex;
@@ -2145,7 +2152,8 @@ kbd {
   overflow: hidden;
   overflow-wrap: anywhere;
 }
-.operation-panel progress {
+.operation-panel progress,
+.import-live progress {
   appearance: none;
   height: 5px;
   width: 100%;
@@ -2155,10 +2163,12 @@ kbd {
   overflow: hidden;
   margin-top: 15px;
 }
-.operation-panel progress::-webkit-progress-bar {
+.operation-panel progress::-webkit-progress-bar,
+.import-live progress::-webkit-progress-bar {
   background: var(--input-soft);
 }
-.operation-panel progress::-webkit-progress-value {
+.operation-panel progress::-webkit-progress-value,
+.import-live progress::-webkit-progress-value {
   background: var(--gold);
   border-radius: 3px;
 }
@@ -2184,25 +2194,6 @@ kbd {
   background: var(--gold);
   border-radius: 3px;
   animation: progress 1.6s ease-in-out infinite;
-}
-.auth-code {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  margin-top: 20px;
-}
-.auth-code code {
-  font-size: 26px;
-  letter-spacing: 5px;
-  font-weight: bold;
-  color: var(--accent-ink);
-  padding: 12px;
-  background: var(--gold-soft);
-  border-radius: 9px;
-}
-.auth-code .button {
-  width: 100%;
 }
 [data-theme="dark"] .hero-wash {
   background: linear-gradient(

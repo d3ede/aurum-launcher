@@ -4,6 +4,8 @@ import App from "./App";
 import "./styles.css";
 import "@fontsource-variable/inter";
 import "./redesign.css";
+import "./i18n.css";
+import "./skins.css";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />

@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 import { useEffect, useState } from "react";
 import {
   Search,
@@ -112,8 +113,8 @@ export function ProjectDialog({
         return true;
       },
       project.kind === "modpack"
-        ? "Модпак импортирован как новая сборка"
-        : "Проект и необходимые зависимости установлены",
+        ? t("Модпак импортирован как новая сборка")
+        : t("Проект и необходимые зависимости установлены"),
     );
     if (ok) onClose();
   };
@@ -127,9 +128,10 @@ export function ProjectDialog({
       <div className="project-detail-head">
         <ProjectIcon project={project} />
         <div>
-          <b>{project.author || "Проект сообщества"}</b>
+          <b>{project.author || t("Проект сообщества")}</b>
           <p>
-            <Download size={14} /> {formatNumber(project.downloads)} загрузок ·{" "}
+            <Download size={14} /> {formatNumber(project.downloads)}
+            {t(" загрузок \u00B7")}{" "}
             {project.source === "modrinth" ? "Modrinth" : "CurseForge"}
           </p>
         </div>
@@ -147,11 +149,12 @@ export function ProjectDialog({
             )
           }
         >
-          <ExternalLink size={16} /> Страница проекта
+          <ExternalLink size={16} />
+          {t(" Страница проекта")}
         </button>
       </div>
       {loading ? (
-        <Loading label="Получаем проект и совместимые версии…" />
+        <Loading label={t("Получаем проект и совместимые версии\u2026")} />
       ) : error ? (
         <ErrorBox error={error} retry={() => setRetry((v) => v + 1)} />
       ) : (
@@ -160,13 +163,13 @@ export function ProjectDialog({
             <div className="project-install">
               <div className="form-grid">
                 {project.kind !== "modpack" && (
-                  <Field label="Установить в сборку">
+                  <Field label={t("Установить в сборку")}>
                     <Select
                       value={profileId}
-                      aria-label="Установить в сборку"
+                      aria-label={t("Установить в сборку")}
                       onValueChange={setProfileId}
                       options={[
-                        { value: "", label: "Выберите сборку" },
+                        { value: "", label: t("Выберите сборку") },
                         ...data.profiles.map((p) => ({
                           value: p.id,
                           label: `${p.name} · ${p.minecraft} / ${ru.loaders[p.loader]}`,
@@ -175,17 +178,17 @@ export function ProjectDialog({
                     />
                   </Field>
                 )}
-                <Field label="Версия проекта">
+                <Field label={t("Версия проекта")}>
                   <Select
                     value={versionId}
-                    aria-label="Версия проекта"
+                    aria-label={t("Версия проекта")}
                     onValueChange={setVersionId}
                     options={[
                       {
                         value: "",
                         label: detail.versions.length
-                          ? "Выберите версию"
-                          : "Совместимых версий нет",
+                          ? t("Выберите версию")
+                          : t("Совместимых версий нет"),
                       },
                       ...detail.versions.map((v) => ({
                         value: v.id,
@@ -202,22 +205,28 @@ export function ProjectDialog({
               >
                 <PackagePlus size={16} />{" "}
                 {project.kind === "modpack"
-                  ? "Создать сборку из модпака"
-                  : "Установить с зависимостями"}
+                  ? t("Создать сборку из модпака")
+                  : t("Установить с зависимостями")}
               </button>
               {project.kind !== "modpack" && !profile && (
-                <small>Сначала создайте игровую сборку.</small>
+                <small>{t("Сначала создайте игровую сборку.")}</small>
               )}
               {selected && !canInstall && profile && (
-                <small>Версия не подходит для выбранной сборки.</small>
+                <small>{t("Версия не подходит для выбранной сборки.")}</small>
               )}
             </div>
             <div className="tabs">
               {(
                 [
-                  ["description", "Описание"],
-                  ["gallery", `Галерея · ${detail.gallery.length}`],
-                  ["versions", `Версии · ${detail.versions.length}`],
+                  ["description", t("Описание")],
+                  [
+                    "gallery",
+                    t("Галерея \u00B7 {{v1}}", { v1: detail.gallery.length }),
+                  ],
+                  [
+                    "versions",
+                    t("Версии \u00B7 {{v1}}", { v1: detail.versions.length }),
+                  ],
                 ] as const
               ).map(([id, label]) => (
                 <button
@@ -260,13 +269,13 @@ export function ProjectDialog({
                   detail.gallery.map((src) => (
                     <img
                       src={src}
-                      alt={`Скриншот ${project.title}`}
+                      alt={t("Скриншот {{v1}}", { v1: project.title })}
                       key={src}
                       loading="lazy"
                     />
                   ))
                 ) : (
-                  <p>Автор не добавил скриншоты.</p>
+                  <p>{t("Автор не добавил скриншоты.")}</p>
                 )}
               </div>
             )}

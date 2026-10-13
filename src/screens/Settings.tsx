@@ -1,3 +1,5 @@
+import { t, formatDecimal } from "../lib/i18n";
+import { LanguagePicker } from "../components/LanguagePicker";
 import { useState } from "react";
 import {
   Sun,
@@ -37,14 +39,14 @@ export function Settings() {
             ? "dark"
             : "light"
           : theme;
-      notify("Тема сохранена");
+      notify(t("Тема сохранена"));
     }
   };
   return (
     <>
       <div className="page-heading">
-        <h1>Настройки</h1>
-        <p>Java, память, интерфейс и интеграции.</p>
+        <h1>{t("Настройки")}</h1>
+        <p>{t("Java, память, интерфейс и интеграции.")}</p>
       </div>
       <form
         className="settings-form"
@@ -52,26 +54,27 @@ export function Settings() {
           e.preventDefault();
           void run(
             () => rpc("saveSettings", { settings: draft }),
-            "Настройки сохранены",
+            t("Настройки сохранены"),
           );
         }}
       >
+        <LanguagePicker onChange={(language) => set("language", language)} />
         <section className="settings-section">
           <div className="settings-title">
             <span>
               <Sun size={21} />
             </span>
             <div>
-              <h2>Внешний вид</h2>
-              <p>Светлая, тёмная или вместе с системой</p>
+              <h2>{t("Внешний вид")}</h2>
+              <p>{t("Светлая, тёмная или вместе с системой")}</p>
             </div>
           </div>
           <div className="theme-options">
             {(
               [
-                ["light", "Тёплый свет", Sun],
-                ["dark", "Тихий вечер", Moon],
-                ["system", "Как в системе", Monitor],
+                ["light", t("Тёплый свет"), Sun],
+                ["dark", t("Тихий вечер"), Moon],
+                ["system", t("Системная тема"), Monitor],
               ] as const
             ).map(([id, label, Icon]) => (
               <button
@@ -104,13 +107,17 @@ export function Settings() {
               <Cpu size={21} />
             </span>
             <div>
-              <h2>Память и запуск</h2>
-              <p>Общие параметры для всех сборок</p>
+              <h2>{t("Память и запуск")}</h2>
+              <p>{t("Общие параметры для всех сборок")}</p>
             </div>
           </div>
           <Field
-            label={`Оперативная память · ${(draft.ramMb / 1024).toFixed(1)} ГБ`}
-            hint="Оставьте достаточно памяти для операционной системы. Для каждой сборки можно задать отдельное значение."
+            label={t("Оперативная память \u00B7 {{v1}} ГБ", {
+              v1: formatDecimal(draft.ramMb / 1024),
+            })}
+            hint={t(
+              "Оставьте достаточно памяти для операционной системы. Для каждой сборки можно задать отдельное значение.",
+            )}
           >
             <input
               type="range"
@@ -121,13 +128,13 @@ export function Settings() {
               onChange={(e) => set("ramMb", Number(e.target.value))}
             />
             <div className="range-labels">
-              <span>1 ГБ</span>
-              <span>8 ГБ</span>
-              <span>16 ГБ</span>
+              <span>{t("1 ГБ")}</span>
+              <span>{t("8 ГБ")}</span>
+              <span>{t("16 ГБ")}</span>
             </div>
           </Field>
           <div className="form-grid">
-            <Field label="Ширина окна игры">
+            <Field label={t("Ширина окна игры")}>
               <input
                 required
                 type="number"
@@ -137,7 +144,7 @@ export function Settings() {
                 onChange={(e) => set("resolutionWidth", Number(e.target.value))}
               />
             </Field>
-            <Field label="Высота окна игры">
+            <Field label={t("Высота окна игры")}>
               <input
                 required
                 type="number"
@@ -151,8 +158,10 @@ export function Settings() {
             </Field>
           </div>
           <Field
-            label="Дополнительные JVM-аргументы"
-            hint="Память и classpath Aurum задаёт сам. Оставьте поле пустым, если дополнительные параметры не нужны."
+            label={t("Дополнительные JVM-аргументы")}
+            hint={t(
+              "Память и classpath Aurum задаёт сам. Оставьте поле пустым, если дополнительные параметры не нужны.",
+            )}
           >
             <input
               value={draft.jvmArgs}
@@ -168,18 +177,20 @@ export function Settings() {
             </span>
             <div>
               <h2>Java</h2>
-              <p>Подходящий runtime устанавливается автоматически</p>
+              <p>{t("Подходящий runtime устанавливается автоматически")}</p>
             </div>
           </div>
           <Field
-            label="Собственная Java (необязательно)"
-            hint="Пустое поле — автоматическая установка Eclipse Temurin. Для новых версий игры требуется новая Java."
+            label={t("Собственная Java (необязательно)")}
+            hint={t(
+              "Пустое поле \u2014 автоматическая установка Eclipse Temurin. Для новых версий игры требуется новая Java.",
+            )}
           >
             <div className="input-action">
               <input
                 value={draft.javaPath}
                 onChange={(e) => set("javaPath", e.target.value)}
-                placeholder="Автоматический выбор Java"
+                placeholder={t("Автоматический выбор Java")}
               />
               <button
                 type="button"
@@ -190,7 +201,8 @@ export function Settings() {
                   if (path) set("javaPath", path);
                 }}
               >
-                <FolderOpen size={16} /> Обзор
+                <FolderOpen size={16} />
+                {t(" Обзор")}
               </button>
             </div>
           </Field>
@@ -202,10 +214,13 @@ export function Settings() {
               const version = await run(() =>
                 rpc("checkJava", { path: draft.javaPath }),
               );
-              if (version) setJavaStatus(`Java ${version} — доступна`);
+              if (version)
+                setJavaStatus(
+                  t("Java {{v1}} \u2014 доступна", { v1: version }),
+                );
             }}
           >
-            Проверить Java
+            {t("Проверить Java")}
           </button>
           {javaStatus && (
             <span className="inline-status">
@@ -220,18 +235,21 @@ export function Settings() {
               <FolderOpen size={21} />
             </span>
             <div>
-              <h2>Файлы и версии</h2>
-              <p>Миры и настройки хранятся отдельно для каждой сборки</p>
+              <h2>{t("Файлы и версии")}</h2>
+              <p>{t("Миры и настройки хранятся отдельно для каждой сборки")}</p>
             </div>
           </div>
           <div className="data-path">
-            <code>{data.dataDir || "Путь доступен в desktop-приложении"}</code>
+            <code>
+              {data.dataDir || t("Путь доступен в desktop-приложении")}
+            </code>
             <button
               type="button"
               className="button secondary"
               onClick={() => void run(() => rpc("openFolder", {}))}
             >
-              <FolderOpen size={16} /> Открыть
+              <FolderOpen size={16} />
+              {t(" Открыть")}
             </button>
           </div>
           <div className="field">
@@ -246,15 +264,17 @@ export function Settings() {
                 if (path) setNewPath(path);
               }}
             >
-              Изменить папку данных
+              {t("Изменить папку данных")}
             </button>
             <small>
-              Данные будут скопированы в пустую папку. Исходная папка
-              сохранится. После копирования нужен перезапуск.
+              {t(
+                "Данные будут скопированы в пустую папку. Исходная папка сохранится. После копирования нужен перезапуск.",
+              )}
             </small>
             {newPath && (
               <div className="dialog-note">
-                Новая папка: {newPath}
+                {t("Новая папка: ")}
+                {newPath}
                 <br />
                 <button
                   type="button"
@@ -265,7 +285,7 @@ export function Settings() {
                     )
                   }
                 >
-                  Перезапустить Aurum
+                  {t("Перезапустить Aurum")}
                 </button>
               </div>
             )}
@@ -277,8 +297,10 @@ export function Settings() {
               onChange={(e) => set("showSnapshots", e.target.checked)}
             />
             <div>
-              <b>Показывать снапшоты Minecraft</b>
-              <small>Экспериментальные версии могут быть нестабильны.</small>
+              <b>{t("Показывать снапшоты Minecraft")}</b>
+              <small>
+                {t("Экспериментальные версии могут быть нестабильны.")}
+              </small>
             </div>
           </label>
         </section>
@@ -288,36 +310,17 @@ export function Settings() {
               <KeyRound size={21} />
             </span>
             <div>
-              <h2>Интеграции</h2>
-              <p>Секреты хранятся в хранилище учётных данных ОС</p>
+              <h2>{t("Интеграции")}</h2>
+              <p>{t("Секреты хранятся в хранилище учётных данных ОС")}</p>
             </div>
           </div>
           <Field
-            label="Microsoft OAuth Client ID"
-            hint="Client ID вашего зарегистрированного public client приложения для личных Microsoft-аккаунтов. Также требуется разрешение Minecraft Services API."
-          >
-            <input
-              value={draft.microsoftClientId}
-              onChange={(e) => set("microsoftClientId", e.target.value.trim())}
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-            />
-          </Field>
-          <button
-            type="button"
-            className="text-button"
-            onClick={() =>
-              void run(() =>
-                rpc("openUrl", {
-                  url: "https://learn.microsoft.com/entra/identity-platform/v2-oauth2-device-code",
-                }),
-              )
-            }
-          >
-            Настройка Microsoft OAuth <ExternalLink size={14} />
-          </button>
-          <Field
-            label={`CurseForge API-ключ${data.curseforgeConfigured ? " · подключён" : ""}`}
-            hint="Официальный ключ для стороннего приложения. Значение не сохраняется в конфигурации и не возвращается интерфейсу."
+            label={t("CurseForge API-ключ{{v1}}", {
+              v1: data.curseforgeConfigured ? t(" \u00B7 подключён") : "",
+            })}
+            hint={t(
+              "Официальный ключ для стороннего приложения. Значение не сохраняется в конфигурации и не возвращается интерфейсу.",
+            )}
           >
             <div className="input-action">
               <input
@@ -327,8 +330,8 @@ export function Settings() {
                 onChange={(e) => setKey(e.target.value)}
                 placeholder={
                   data.curseforgeConfigured
-                    ? "Ключ сохранён в хранилище ОС"
-                    : "Вставьте API-ключ"
+                    ? t("Ключ сохранён в хранилище ОС")
+                    : t("Вставьте API-ключ")
                 }
               />
               <button
@@ -339,11 +342,11 @@ export function Settings() {
                   const ok = await run(async () => {
                     await rpc("setCurseforgeKey", { key });
                     return true;
-                  }, "Ключ сохранён");
+                  }, t("Ключ сохранён"));
                   if (ok) setKey("");
                 }}
               >
-                Сохранить ключ
+                {t("Сохранить ключ")}
               </button>
             </div>
           </Field>
@@ -359,7 +362,8 @@ export function Settings() {
                 )
               }
             >
-              Получить ключ <ExternalLink size={14} />
+              {t("Получить ключ ")}
+              <ExternalLink size={14} />
             </button>
             {data.curseforgeConfigured && (
               <button
@@ -368,26 +372,29 @@ export function Settings() {
                 onClick={() =>
                   void run(
                     () => rpc("setCurseforgeKey", { key: "" }),
-                    "CurseForge отключён",
+                    t("CurseForge отключён"),
                   )
                 }
               >
-                Удалить ключ
+                {t("Удалить ключ")}
               </button>
             )}
           </div>
         </section>
         <div className="settings-save">
           <span>
-            Изменения параметров применятся при следующем запуске игры.
+            {t("Изменения параметров применятся при следующем запуске игры.")}
           </span>
           <button className="button primary" disabled={busy}>
-            <Save size={16} /> Сохранить настройки
+            <Save size={16} />
+            {t(" Сохранить настройки")}
           </button>
         </div>
       </form>
       <p className="page-footnote">
-        Aurum 0.2.1 · Независимый проект. Окончательная лицензия ещё не выбрана.
+        {t(
+          "Aurum 0.3.1 · PolyForm Noncommercial 1.0.0",
+        )}
       </p>
     </>
   );

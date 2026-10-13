@@ -1,17 +1,13 @@
+import { t } from "../lib/i18n";
 import { useState } from "react";
-import {
-  Plus,
-  Download,
-  Search,
-  FolderOpen,
-  ArrowDownWideNarrow,
-} from "lucide-react";
+import { Plus, Search, FolderOpen, ArrowDownWideNarrow } from "lucide-react";
 import { useApp } from "../context";
 import { Select } from "../components/Select";
-import { rpc } from "../lib/api";
+
 import type { Profile } from "../types";
 import { ProfileCard } from "../components/ProfileCard";
 import { EmptyState } from "../components/ui";
+import { ImportProfileButton } from "../components/ImportProfileButton";
 export function Profiles({
   onProfile,
   onFolderImport,
@@ -19,7 +15,7 @@ export function Profiles({
   onProfile: (p: Profile) => void;
   onFolderImport: () => void;
 }) {
-  const { data, create, operation, busy } = useApp();
+  const { data, create, busy } = useApp();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("recent");
   const profiles = data.profiles
@@ -34,24 +30,16 @@ export function Profiles({
       <div className="page-heading">
         <div className="heading-row">
           <div>
-            <h1>Мои сборки</h1>
-            <p>Моды, миры и настройки каждой сборки хранятся отдельно.</p>
+            <h1>{t("Мои сборки")}</h1>
+            <p>
+              {t("Моды, миры и настройки каждой сборки хранятся отдельно.")}
+            </p>
           </div>
           <div className="button-row">
-            <button
-              className="button secondary"
-              disabled={busy}
-              onClick={() =>
-                void operation(
-                  (id) => rpc("importPack", { operationId: id }),
-                  "Сборка импортирована",
-                )
-              }
-            >
-              <Download size={16} /> Импорт .mrpack / ZIP
-            </button>
+            <ImportProfileButton onFolderImport={onFolderImport} />
             <button className="button primary" onClick={create}>
-              <Plus size={17} /> Новая сборка
+              <Plus size={17} />
+              {t(" Новая сборка")}
             </button>
           </div>
         </div>
@@ -62,8 +50,8 @@ export function Profiles({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Найти свою сборку"
-            aria-label="Поиск сборок"
+            placeholder={t("Найти свою сборку")}
+            aria-label={t("Поиск сборок")}
           />
         </div>
         <div className="select-icon">
@@ -71,10 +59,10 @@ export function Profiles({
           <Select
             value={sort}
             onValueChange={setSort}
-            aria-label="Сортировка сборок"
+            aria-label={t("Сортировка сборок")}
             options={[
-              { value: "recent", label: "Сначала недавние" },
-              { value: "name", label: "По названию" },
+              { value: "recent", label: t("Сначала недавние") },
+              { value: "name", label: t("По названию") },
             ]}
           />
         </div>
@@ -83,7 +71,8 @@ export function Profiles({
           disabled={busy}
           onClick={onFolderImport}
         >
-          <FolderOpen size={16} /> Импорт папки игры
+          <FolderOpen size={16} />
+          {t(" Импорт папки игры")}
         </button>
       </div>
       {profiles.length ? (
@@ -95,21 +84,25 @@ export function Profiles({
       ) : (
         <EmptyState
           icon={<FolderOpen size={34} />}
-          title={query ? "Сборка не найдена" : "Нет сборок"}
+          title={query ? t("Сборка не найдена") : t("Нет сборок")}
           text={
             query
-              ? "Попробуйте другое название."
-              : "Создайте новую сборку или импортируйте модпак. Игра и загрузчик установятся перед первым запуском."
+              ? t("Попробуйте другое название.")
+              : t(
+                  "Создайте новую сборку — Minecraft установится сразу. Или импортируйте готовую сборку.",
+                )
           }
         >
           <button className="button primary" onClick={create}>
-            <Plus size={16} /> Создать сборку
+            <Plus size={16} />
+            {t(" Создать сборку")}
           </button>
         </EmptyState>
       )}
       <p className="page-footnote">
-        Удалённые сборки сохраняются в корзине Aurum. Открыть её можно из папки
-        данных в настройках.
+        {t(
+          "Удалённые сборки сохраняются в корзине Aurum. Открыть её можно из папки данных в настройках.",
+        )}
       </p>
     </>
   );

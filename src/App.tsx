@@ -1,16 +1,17 @@
+import { t, tMessage } from "./lib/i18n";
 import { lazy, Suspense, useEffect, useState } from "react";
 import {
   Home as HomeIcon,
   Layers3,
   Compass,
   UserRound,
+  Shirt,
   Settings2,
   Search,
   Moon,
   Sun,
   Activity,
   ChevronRight,
-  ArrowUpRight,
   X,
   Download,
   LoaderCircle,
@@ -18,9 +19,11 @@ import {
 } from "lucide-react";
 import { Provider, useApp } from "./context";
 import { native, rpc } from "./lib/api";
+import { progressAmount } from "./lib/progress";
 import { WindowControls } from "./components/WindowControls";
 import { ru } from "./lib/i18n";
 import type { Profile, Project, Route, CatalogTarget, Kind } from "./types";
+import { MicrosoftLogin } from "./components/MicrosoftLogin";
 import { Logo, Modal } from "./components/ui";
 import { CreateProfile, ProfileDialog } from "./components/ProfileDialog";
 import { Home } from "./screens/Home";
@@ -30,13 +33,16 @@ import { Catalog } from "./screens/CatalogBrowser";
 const Accounts = lazy(() =>
   import("./screens/Accounts").then((module) => ({ default: module.Accounts })),
 );
+const Skins = lazy(() =>
+  import("./screens/Skins").then((module) => ({ default: module.Skins })),
+);
 import { Settings } from "./screens/Settings";
-
 const navigation = [
   ["home", HomeIcon],
   ["profiles", Layers3],
   ["catalog", Compass],
   ["accounts", UserRound],
+  ["skins", Shirt],
   ["settings", Settings2],
 ] as const;
 function Shell({
@@ -99,21 +105,13 @@ function Shell({
     setQuery("");
     nav("catalog");
   };
-  let auth: { code: string; url: string } | null = null;
-  if (progress?.phase === "auth-code") {
-    try {
-      auth = JSON.parse(progress.message);
-    } catch {
-      /* malformed auth event remains visible as text */
-    }
-  }
   return (
     <div className="app-shell">
       <header className="titlebar" data-tauri-drag-region>
         <button
           className="titlebar-brand"
           onClick={() => nav("home")}
-          aria-label="Aurum — главная"
+          aria-label={t("Aurum \u2014 главная")}
         >
           <Logo small />
           <b>Aurum</b>
@@ -131,23 +129,23 @@ function Shell({
           >
             <Search size={17} />
             <input
-              aria-label="Быстрый поиск в каталоге"
-              placeholder="Поиск проектов"
+              aria-label={t("Быстрый поиск в каталоге")}
+              placeholder={t("Поиск проектов")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
             <button
               type="submit"
               className="search-submit"
-              aria-label="Запустить поиск"
-              title="Найти проекты (Enter)"
+              aria-label={t("Запустить поиск")}
+              title={t("Найти проекты (Enter)")}
             >
               <span aria-hidden="true">↵</span>
             </button>
           </form>
           <button
             className="icon-button theme-toggle"
-            aria-label="Переключить тему"
+            aria-label={t("Переключить тему")}
             onClick={toggleTheme}
           >
             <Sun size={19} className="sun-icon" />
@@ -155,7 +153,7 @@ function Shell({
           </button>
           <button
             className="icon-button"
-            aria-label="Журнал операций"
+            aria-label={t("Журнал операций")}
             onClick={() => setActivity(true)}
           >
             <Activity size={19} />
@@ -167,7 +165,7 @@ function Shell({
               <UserRound size={18} />
             </div>
             <span>
-              <b>{account?.name || "Ваш профиль"}</b>
+              <b>{account?.name || t("Ваш профиль")}</b>
               <small>
                 <i
                   className={`status-dot ${account?.kind === "microsoft" ? "online" : ""}`}
@@ -175,8 +173,8 @@ function Shell({
                 {account
                   ? account.kind === "microsoft"
                     ? "Microsoft"
-                    : "Локальный"
-                  : "Добавить аккаунт"}
+                    : t("Локальный")
+                  : t("Добавить аккаунт")}
               </small>
             </span>
             <ChevronRight size={15} />
@@ -205,10 +203,10 @@ function Shell({
         <div className="sidebar-bottom">
           <div className="sidebar-version">
             <span>
-              Aurum <b>0.2.1</b>
+              Aurum <b>0.3.1</b>
             </span>
             <button
-              aria-label="Настройки Aurum"
+              aria-label={t("Настройки Aurum")}
               onClick={() => nav("settings")}
             >
               <Settings2 size={16} />
@@ -223,8 +221,9 @@ function Shell({
               <div className="preview-notice">
                 <Monitor size={15} />
                 <span>
-                  Просмотр интерфейса в браузере. Игровые функции доступны в
-                  desktop-приложении Aurum.
+                  {t(
+                    "Просмотр интерфейса в браузере. Игровые функции доступны в desktop-приложении Aurum.",
+                  )}
                 </span>
               </div>
             )}
@@ -241,7 +240,7 @@ function Shell({
             ) : (
               <>
                 {route === "home" && (
-                  <Home onProfile={openProfile} onProject={setProject} />
+                  <Home onProfile={openProfile} onProject={setProject} onFolderImport={() => setImporting(true)} />
                 )}{" "}
                 {route === "profiles" && (
                   <Profiles
@@ -261,12 +260,23 @@ function Shell({
                 {route === "accounts" && (
                   <Suspense
                     fallback={
-                      <div className="loading">Открываем аккаунты…</div>
+                      <div className="loading">
+                        {t("Открываем аккаунты\u2026")}
+                      </div>
                     }
                   >
                     <Accounts />
                   </Suspense>
                 )}{" "}
+                {route === "skins" && (
+                  <Suspense
+                    fallback={
+                      <div className="loading">{t("Открываем скины…")}</div>
+                    }
+                  >
+                    <Skins />
+                  </Suspense>
+                )}
                 {route === "settings" && <Settings />}
               </>
             )}
@@ -276,13 +286,14 @@ function Shell({
           <span>
             <i className={`status-dot ${native ? "online" : ""}`} />
             {data.running.length
-              ? `Игра запущена · ${data.running.length}`
+              ? t("Игра запущена \u00B7 {{v1}}", { v1: data.running.length })
               : native
-                ? "Готов"
-                : "Просмотр интерфейса"}
+                ? t("Готов")
+                : t("Просмотр интерфейса")}
           </span>
           <button onClick={() => setActivity(true)}>
-            <Activity size={13} /> Журнал
+            <Activity size={13} />
+            {t(" Журнал")}
           </button>
         </footer>
       </div>
@@ -307,8 +318,8 @@ function Shell({
       )}{" "}
       {activity && (
         <Modal
-          title="Журнал операций"
-          subtitle="События установки и запуска в этой сессии"
+          title={t("Журнал операций")}
+          subtitle={t("События установки и запуска в этой сессии")}
           wide
           onClose={() => setActivity(false)}
         >
@@ -320,28 +331,24 @@ function Shell({
                     {"\n"}
                   </span>
                 ))
-              : "События появятся после установки или запуска Minecraft."}
+              : t("События появятся после установки или запуска Minecraft.")}
           </pre>
         </Modal>
       )}
+      <MicrosoftLogin />
       {progress && (
-        <section
-          className={`operation-panel ${auth ? "auth-panel" : ""}`}
-          aria-live="polite"
-        >
+        <section className="operation-panel" aria-live="polite">
           <div className="operation-header">
             <div className="operation-symbol">
               <Download size={19} />
             </div>
             <div>
-              <b>{ru.phases[progress.phase] || "Операция Aurum"}</b>
-              <small>
-                {auth ? "Подтвердите вход в браузере" : progress.message}
-              </small>
+              <b>{ru.phases[progress.phase] || t("Операция Aurum")}</b>
+              <small>{tMessage(progress.message)}</small>
             </div>
             <button
               className="icon-button"
-              aria-label="Отменить операцию"
+              aria-label={t("Отменить операцию")}
               onClick={() =>
                 void rpc("cancel", { operationId: progress.id }).catch((e) =>
                   notify(e.message, true),
@@ -351,26 +358,12 @@ function Shell({
               <X size={17} />
             </button>
           </div>
-          {auth ? (
-            <div className="auth-code">
-              <code>{auth.code}</code>
-              <button
-                className="button primary"
-                onClick={() =>
-                  void rpc("openUrl", { url: auth!.url }).catch((e) =>
-                    notify(e.message, true),
-                  )
-                }
-              >
-                Открыть Microsoft <ArrowUpRight size={16} />
-              </button>
-            </div>
-          ) : progress.total > 0 ? (
+          {progress.total > 0 ? (
             <>
               <progress max={progress.total} value={progress.done} />
               <div className="progress-meta">
                 <span>
-                  {progress.done} / {progress.total}
+                  {progressAmount(progress)}
                 </span>
                 <span>
                   {Math.round((progress.done / progress.total) * 100)}%

@@ -1,4 +1,10 @@
 import { test, expect } from "@playwright/test";
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem("aurum:language"))
+      localStorage.setItem("aurum:language", "ru");
+  });
+});
 test("honest browser state, navigation and persistent appearance", async ({
   page,
 }) => {
@@ -168,19 +174,19 @@ test("styled menus support keyboard, dismissal and nested dialogs", async ({
   await expect(dialog).toHaveCount(0);
   await page.setViewportSize({ width: 1280, height: 820 });
   await page
-    .getByRole("button", { name: "Аккаунты и скины", exact: true })
+    .getByRole("button", { name: "Скины и плащи", exact: true })
     .click();
   await page.locator('.skin-stage canvas[data-ready="true"]').waitFor();
-  await page.getByRole("button", { name: "Остановить вращение" }).click();
+  await page.getByRole("button", { name: "Сбросить ракурс" }).click();
   await page.screenshot({
     path: "docs/screenshots/steve.png",
     animations: "disabled",
   });
   await page
-    .getByRole("button", { name: "Alex · тонкие руки", exact: true })
+    .getByRole("button", { name: "Выбрать скин Alex", exact: true })
     .click();
   await page
-    .locator('canvas[aria-label="3D-превью модели Alex"][data-ready="true"]')
+    .locator('canvas[aria-label="Предпросмотр скина"][data-ready="true"]')
     .waitFor();
   await page.screenshot({
     path: "docs/screenshots/alex.png",

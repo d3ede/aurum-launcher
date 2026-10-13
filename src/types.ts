@@ -1,5 +1,10 @@
 export type Loader = "vanilla" | "fabric" | "forge" | "neoforge" | "quilt";
 export type Kind = "mod" | "modpack" | "shader" | "resourcepack";
+export interface ProfileIconStyle {
+  symbol: string;
+  color: string;
+  background: string;
+}
 export interface Content {
   id: string;
   source: string;
@@ -22,6 +27,7 @@ export interface Profile {
   lastPlayed: number | null;
   cover: number;
   icon?: string | null;
+  iconStyle?: ProfileIconStyle | null;
   content: Content[];
 }
 export interface Account {
@@ -32,12 +38,59 @@ export interface Account {
   skinModel: "steve" | "alex";
   hasSkin: boolean;
 }
+export interface SavedSkin {
+  id: string;
+  name: string;
+  model: "steve" | "alex";
+  texture: string;
+  capeId: string | null;
+}
+export interface SavedCape {
+  id: string;
+  name: string;
+  texture: string;
+  active?: boolean;
+}
+export interface SkinLibrary {
+  skins: SavedSkin[];
+  capes: SavedCape[];
+  selections: Record<string, { skinId: string; capeId: string | null }>;
+}
+export interface AccountAppearance {
+  texture: string;
+  model: "steve" | "alex";
+  capes: SavedCape[];
+}
+export interface ModrinthProfile {
+  id: string;
+  name: string;
+  path: string;
+  minecraft: string;
+  loader: Loader;
+  loaderVersion: string | null;
+  icon: string | null;
+  mods: number;
+  worlds: number;
+  issue: string | null;
+  warnings: string[];
+}
+export interface ModrinthScan {
+  profiles: ModrinthProfile[];
+  directories: string[];
+  warnings: string[];
+}
+export interface ModrinthImportResult {
+  imported: Profile[];
+  importedSources: string[];
+  failed: { name: string; message: string }[];
+  cancelled: boolean;
+}
 export interface Settings {
+  language: string;
   theme: "light" | "dark" | "system";
   javaPath: string;
   ramMb: number;
   jvmArgs: string;
-  microsoftClientId: string;
   resolutionWidth: number;
   resolutionHeight: number;
   showSnapshots: boolean;
@@ -100,4 +153,5 @@ export interface MinecraftManifest {
   latest: { release: string; snapshot: string };
   versions: { id: string; type: string }[];
 }
-export type Route = "home" | "profiles" | "catalog" | "accounts" | "settings";
+export type Route =
+  "home" | "profiles" | "catalog" | "accounts" | "skins" | "settings";

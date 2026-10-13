@@ -1,6 +1,6 @@
+import { t } from "../lib/i18n";
 import * as Dropdown from "@radix-ui/react-select";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
-
 export interface SelectOption {
   value: string;
   label: string;
@@ -10,7 +10,7 @@ export function Select({
   value,
   onValueChange,
   options,
-  placeholder = "Выберите…",
+  placeholder = t("Выберите\u2026"),
   disabled,
   id,
   className = "",

@@ -1,74 +1,169 @@
+<div align="center">
+
+<img src="src/assets/branding/aurum-gold.svg" width="88" height="88" alt="Логотип Aurum">
+
 # Aurum Launcher
 
-Независимый desktop Minecraft-лаунчер на **Tauri 2 · Rust · React · TypeScript · Vite**. Светлая кремовая и тёмная графитовая темы, русский интерфейс, изолированные игровые сборки. Собственная графика и реализация; исходники и ассеты других лаунчеров не используются. Для стандартного 3D-превью используются оригинальные текстуры Steve/Alex из Minecraft (Mojang/Microsoft); происхождение описано в `src/assets/skins/README.md`. Окончательная лицензия пока не выбрана.
+**Minecraft Java, ваши сборки и любимые моды — в одном месте.**
 
-## Запуск
+Независимый лаунчер для Windows с тёплой светлой и графитовой тёмной темами.
 
-Установщик Windows x64: **[Aurum Launcher_0.2.1_x64-setup.exe](<target/release/bundle/nsis/Aurum Launcher_0.2.1_x64-setup.exe>)**. Запуск без установки: **[target/release/aurum.exe](target/release/aurum.exe)**. Интерфейс встроен; Vite для запуска не нужен. Требуется Microsoft Edge WebView2 Runtime; установщик проверяет его наличие. Сборка не подписана сертификатом издателя.
+[![Release](https://img.shields.io/github/v/release/d3ede/aurum-launcher?color=d4aa43&label=release)](https://github.com/d3ede/aurum-launcher/releases/latest)
+[![Windows x64](https://img.shields.io/badge/Windows-x64-677e75)](https://github.com/d3ede/aurum-launcher/releases/latest)
+[![Tauri 2](https://img.shields.io/badge/Tauri-2-24c8db)](https://v2.tauri.app/)
+[![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-8a7861)](LICENSE)
+
+**[Скачать для Windows](https://github.com/d3ede/aurum-launcher/releases/latest/download/Aurum-Launcher_x64-setup.exe)** · [Все релизы](https://github.com/d3ede/aurum-launcher/releases) · [Сообщить об ошибке](https://github.com/d3ede/aurum-launcher/issues)
+
+</div>
+
+---
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/home-polish-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/home-polish-light.png">
+  <img src="docs/screenshots/home-polish-light.png" alt="Главная Aurum Launcher: создание сборки, импорт и каталог проектов" width="1280">
+</picture>
+
+*Пример интерфейса с демонстрационными данными. [Больше скриншотов](docs/screenshots).*
+
+## Что умеет Aurum
+
+| | Возможности |
+| --- | --- |
+| **Сборки** | Отдельные профили Minecraft с собственными модами, мирами, настройками и значками. Установка игры и подходящей Java при создании сборки. |
+| **Загрузчики** | Vanilla, Fabric, Forge, NeoForge и Quilt; выбор совместимой версии загрузчика. |
+| **Моды и контент** | Каталог Modrinth: моды, модпаки, ресурспаки и шейдеры. Установка обязательных зависимостей, обновление, отключение и удаление. Поддержка API CurseForge с вашим ключом. |
+| **Импорт** | Сборки из Modrinth App, файлы `.mrpack`, CurseForge ZIP и существующие папки игры. Импорт из Modrinth сохраняет исходную сборку. |
+| **Аккаунты** | Вход через Microsoft в отдельном окне, защищённое хранение токенов в хранилище ОС и локальные офлайн-профили. |
+| **Скины и плащи** | Библиотека PNG-скинов, девять стандартных персонажей, широкие и тонкие руки, 3D-превью и анимации. Применение скина и доступных плащей для Microsoft-аккаунта. |
+| **Интерфейс** | 41 язык, поиск языка, поддержка RTL, светлая и тёмная темы, настройки памяти, Java и расположения игровых данных. |
+
+## Скачать и установить
+
+1. Скачайте **[Aurum-Launcher_x64-setup.exe](https://github.com/d3ede/aurum-launcher/releases/latest/download/Aurum-Launcher_x64-setup.exe)** из последнего релиза.
+2. Запустите установщик и следуйте его шагам.
+3. Откройте Aurum, добавьте аккаунт и создайте первую сборку.
+
+**Требования:** Windows 10/11 x64, интернет для загрузки игры и Microsoft Edge WebView2 Runtime. Если WebView2 отсутствует, установщик скачает его автоматически.
+
+В установщик входят сам лаунчер и его интерфейс. Minecraft, Java, загрузчики и моды скачиваются отдельно по мере создания сборок. Node.js и Rust игрокам устанавливать не нужно.
+
+Сборка пока **не подписана цифровым сертификатом издателя**: Windows может показать предупреждение SmartScreen. Автообновление самого лаунчера пока не реализовано; новые версии скачиваются из [Releases](https://github.com/d3ede/aurum-launcher/releases).
+
+В каждом релизе рядом с установщиком находится `SHA256SUMS.txt`. Проверить скачанный файл можно в PowerShell:
 
 ```powershell
-cd auren
-npm ci
-# Если Rust уже настроен в системе:
-npm run tauri dev
-npm run tauri build
-# Локальный toolchain, подготовленный в этом workspace:
-./scripts/desktop.ps1 -Mode dev
-./scripts/desktop.ps1 -Mode build
+Get-FileHash .\Aurum-Launcher_x64-setup.exe -Algorithm SHA256
 ```
 
-Node.js 22.12+; актуальный stable Rust (1.90+) и Visual Studio C++ Build Tools с Windows SDK для стандартной Windows MSVC-сборки. Локальные инструменты этого workspace находятся в `.tools/`, исключены из Git и не меняют системный PATH. `scripts/cargo.ps1` и `scripts/desktop.ps1` настраивают их только на время процесса. При переносе release EXE без установщика сохраняйте рядом `WebView2Loader.dll`.
+## Первая сборка
 
-## Первый запуск
+1. В **«Аккаунты и скины»** войдите через Microsoft или добавьте локальный профиль.
+2. Нажмите **«Новая сборка»**, выберите Minecraft, загрузчик и его версию. Aurum начнёт установку игровых файлов и Java.
+3. Откройте сборку и нажмите **«Найти проекты»** — каталог подберёт контент для её версии игры и загрузчика.
+4. После установки запустите игру. Память, JVM и размер игрового окна можно изменить в настройках сборки.
 
-1. В разделе «Аккаунты и скины» добавьте локальный профиль или настройте Microsoft-вход.
-2. Создайте сборку: выберите Minecraft, Vanilla/Fabric/Forge/NeoForge/Quilt и совместимую версию загрузчика.
-3. Нажмите «Установить и играть». Aurum загрузит проверенные игровые файлы, библиотеки, assets и Eclipse Temurin Java.
-4. Внутри сборки нажмите «Найти проекты»: каталог автоматически выберет её версию игры, загрузчик и тип контента. Совместимый проект добавляется одной кнопкой. Можно добавить локальные JAR/ZIP-файлы. Моды устанавливаются с обязательными зависимостями, доступными в API.
+Уже играете через Modrinth App? Нажмите **«Импортировать → Из Modrinth»** на главной или в библиотеке и выберите сборки. Aurum скопирует миры, моды, конфиги и ресурспаки; аккаунты нужно добавить отдельно.
 
-Игровые данные хранятся в системной папке приложения. В настройках можно открыть её или скопировать данные в новую пустую папку с последующим перезапуском. Исходные данные при смене пути сохраняются. Переменная `AURUM_DATA_DIR` (также поддерживается прежняя `AUREN_DATA_DIR`) задаёт отдельный каталог для портативного запуска или тестирования. Сборки из тестов находятся только в `.test-data/` и не появляются при обычном запуске.
+<details>
+<summary><strong>Скины, языки и хранение данных</strong></summary>
 
-Переименование Auren → Aurum сохраняет системный идентификатор `app.auren.launcher`, расположение данных и записи Credential Manager. Старые сборки, аккаунты и настройки открываются без импорта. Имя папки исходников `auren` оставлено для совместимости локальных путей.
+- В **«Скины и плащи»** можно сохранять несколько образов и выбирать их для каждого аккаунта. Стандартные текстуры принадлежат Mojang/Microsoft; [источники ассетов](src/assets/skins/README.md).
+- Локальный офлайн-скин используется для предпросмотра в лаунчере. Vanilla не применяет его в игре, и другие игроки его не увидят. Загруженные локальные плащи также используются только в предпросмотре.
+- В **«Настройки → Язык интерфейса»** язык переключается сразу и сохраняется. При новой установке используется язык системы.
+- Игровые данные хранятся в системной папке приложения. В настройках её можно открыть или скопировать данные в новую пустую папку; исходные файлы сохраняются.
+- Для отдельного каталога данных можно задать `AURUM_DATA_DIR`. Прежняя переменная `AUREN_DATA_DIR` также поддерживается.
 
-## Что реализовано
+</details>
 
-- Создание сборки в два клика с готовыми параметрами; свои PNG/JPEG/WebP-значки, переименование, настройки, восстановимое удаление, установка, запуск и остановка.
-- Единая панель окна, центрирование при каждом запуске, локальный шрифт Inter, практичные светлая и тёмная темы.
-- Mojang manifests, SHA1/SHA256, библиотеки, native-файлы, assets, Java, JVM/game arguments, отмена загрузок и ошибки процессов.
-- Fabric/Quilt Meta API; официальные Forge/NeoForge installer JAR с обработкой процессоров.
-- Modrinth: поиск, фильтры, описания, скриншоты, версии, установка, обязательные зависимости, обновление, отключение и удаление контента.
-- CurseForge: официальный API, поиск/файлы/зависимости/модпаки. Интеграция требует API-ключ и соблюдает отсутствие download URL.
-- Импорт `.mrpack`, CurseForge ZIP с `manifest.json` и папок игры. Проверка путей и отказ от символических ссылок в архивах.
-- Microsoft device OAuth → Xbox Live → XSTS → Minecraft Services → проверка entitlements и Java-профиля; refresh и защищённое хранение токенов в хранилище ОС.
-- Локальные офлайн-аккаунты с корректным offline UUID. Загрузка PNG, выбор Steve/Alex, интерактивное 3D-превью. Для Microsoft скин отправляется в Minecraft Services.
-- Настройки памяти, JVM, Java, размеров игрового окна, снапшотов, темы и расположения данных.
+## Статус проекта
 
-## Credentials и ограничения
+Aurum находится в активной разработке. Проверенный целевой runtime — **Windows x64**. Установка и запуск пяти загрузчиков проверялись на Minecraft 1.21.1; совместимость со всеми историческими версиями не заявляется.
 
-Microsoft: нужен **собственный Client ID** зарегистрированного public client приложения с personal Microsoft accounts, device flow, `XboxLive.signin offline_access` и разрешением Minecraft Services. Client ID задаётся в настройках. Без регистрации/разрешения сервис может вернуть 400/403; Aurum не использует чужой client ID. Полный вход и загрузка скина в Microsoft требуют реального аккаунта и не подтверждены без этих данных.
+| Область | Текущий статус |
+| --- | --- |
+| **Microsoft** | OAuth с PKCE, окно входа и хранение токенов реализованы. Полный успешный вход с реальным аккаунтом и доступ приложения к Minecraft Services ещё требуют ручной проверки. |
+| **CurseForge** | Нужен официальный API-ключ. Работа с реальным ключом пока не проверена; ограничения авторов на сторонние загрузки учитываются. |
+| **Установщик** | NSIS-пакет собирается. Установка и удаление на чистой Windows требуют отдельной проверки. |
+| **Другие платформы** | macOS/Linux пока не прошли сборку и проверку; автоматическая загрузка Java сейчас рассчитана на Windows. |
+| **Пока отсутствует** | Автообновление лаунчера и экспорт модпаков. |
 
-CurseForge: нужен официальный API-ключ для стороннего приложения. Он сохраняется в Credential Manager, не в JSON. Авторы могут запретить сторонние загрузки; Aurum показывает ограничение и позволяет добавить скачанный пользователем файл. Запросы с реальным ключом пока не проверены.
+Подробные результаты и границы проверок: **[VERIFICATION.md](docs/VERIFICATION.md)**. Локальные профили не обходят авторизацию официальных серверов.
 
-Локальные аккаунты предназначены для допустимой офлайн-игры. Они не обходят авторизацию официальных серверов. Офлайн-скин сохраняется локально **для превью лаунчера**; Vanilla не применяет такой скин в игре и другие игроки его не увидят.
+## Разработка
 
-Проверенный целевой runtime — **Windows x64**. Автоустановка Java сейчас использует Windows ZIP; на macOS/Linux следует указать собственную Java, и эти платформы пока не прошли сборку/проверку. Проверены загрузчики на Minecraft 1.21.1; совместимость со всей историей Minecraft/Forge не заявляется. Версии до assetIndex отклоняются с явной ошибкой.
+**Стек:** Tauri 2 · Rust · React 19 · TypeScript · Vite.
 
-API-зависимости разрешаются в доступном объёме: required устанавливаются, optional/embedded не навязываются. Локальные неизвестные JAR-файлы не могут быть полностью проверены по данным удалённых API. Импортированные файлы без идентификаторов проектов управляются как локальный контент. Политика `.mrpack` допускает документированные CDN Modrinth/Forge и GitHub; другие домены отклоняются явно. Экспорт модпаков, автообновление самого лаунчера и полный редактор миров не входят в эту версию.
+Для стандартной Windows-сборки нужны Node.js 22.12+, stable Rust 1.90+ и Visual Studio C++ Build Tools с Windows SDK.
 
-## Проверки
+```powershell
+git clone https://github.com/d3ede/aurum-launcher.git
+cd aurum-launcher
+npm ci
+
+# Запуск desktop-приложения в режиме разработки
+npm run tauri dev
+
+# Сборка установщика
+npm run tauri build
+```
+
+Результат сборки: `target/release/bundle/nsis/*-setup.exe`. Интерфейс встроен в release-приложение; сервер Vite ему не нужен. При переносе EXE без установщика сохраняйте рядом `WebView2Loader.dll`, если она присутствует в выходной папке.
+
+Публичный Microsoft Client ID находится в `config/microsoft-client-id.txt`; для собственного приложения следуйте [инструкции настройки Microsoft](docs/MICROSOFT-LOGIN.md). Пароли, токены и client secret в исходниках не хранятся.
+
+<details>
+<summary><strong>Проверки и локальный toolchain</strong></summary>
 
 ```powershell
 npm run build
 npm test
-$env:PLAYWRIGHT_BROWSERS_PATH = Join-Path (Get-Location) '.tools/browsers'
+npx playwright install chromium
 npm run test:ui
-./scripts/cargo.ps1 -CargoArguments @('test','-p','auren-core')
-./scripts/cargo.ps1 -CargoArguments @('clippy','--workspace','--all-targets','--','-D','warnings')
-./scripts/cargo.ps1 -CargoArguments @('run','-p','auren-core','--example','live_smoke','--','fabric')
+cargo test --workspace
+cargo clippy --workspace --all-targets -- -D warnings
 ```
 
-`live_smoke` действительно скачивает Minecraft/Java/загрузчик, запускает игру до инициализации графики/звука и останавливает процесс. Режимы: vanilla, fabric, forge, neoforge, quilt. Fabric также проверяет реальный Modrinth-проект Sodium. `vault_smoke` проверяет запись/чтение/удаление временного секрета в OS vault.
+В исходном рабочем каталоге доступен изолированный toolchain в `.tools/`. Он не входит в репозиторий и не меняет системный PATH. Если такой toolchain уже подготовлен:
 
-`scripts/native-smoke.mjs` проверяет реальный Tauri WebView2 и IPC через **локальный** CDP-порт 9227: каталог, создание профиля, установка/запуск из UI, остановка, темы, 3D-превью, удаление. Для этой проверки приложение запускают с `AURUM_DATA_DIR` в `.test-data/` и `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9227 --remote-debugging-address=127.0.0.1`. Обычный запуск не включает этот порт.
+```powershell
+./scripts/desktop.ps1 -Mode dev
+./scripts/desktop.ps1 -Mode build
+./scripts/cargo.ps1 -CargoArguments @('test', '--workspace')
+./scripts/cargo.ps1 -CargoArguments @('clippy', '--workspace', '--all-targets', '--', '-D', 'warnings')
+```
 
-Обновление интерфейса 0.2.1: [docs/UI-POLISH.md](docs/UI-POLISH.md). Обновление Aurum 0.2.0 и его проверки: [docs/REDESIGN.md](docs/REDESIGN.md). Проверки игровой основы 0.1.0: [docs/VERIFICATION.md](docs/VERIFICATION.md). Архитектура: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Native smoke-сценарии работают с настоящим Tauri/WebView2 и отдельными данными в `.test-data/`. Подробности — в [отчёте проверок](docs/VERIFICATION.md).
+
+</details>
+
+### Устройство репозитория
+
+```text
+src/                 React-интерфейс, компоненты и локализация
+src-tauri/           Tauri-приложение и desktop-команды
+crates/auren-core/   Установка игры, загрузчики, аккаунты и данные
+config/              Публичная конфигурация приложения
+tests/               Frontend- и UI-проверки
+scripts/             Инструменты сборки и smoke-проверки
+docs/                Архитектура, инструкции и скриншоты
+```
+
+Имя Rust-ядра `auren-core` и идентификатор `app.auren.launcher` сохранены для совместимости с ранними версиями Auren.
+
+## Документация и обратная связь
+
+- [Архитектура](docs/ARCHITECTURE.md)
+- [Microsoft: настройка и проверка входа](docs/MICROSOFT-LOGIN.md)
+- [Локализация и 41 язык](docs/LOCALIZATION.md)
+- [Проверки и известные ограничения](docs/VERIFICATION.md)
+- [Ошибки и предложения](https://github.com/d3ede/aurum-launcher/issues) — приложите версию Aurum, Windows и шаги воспроизведения. Не прикладывайте пароли или токены.
+
+## Лицензия
+
+Оригинальный код, документация и графика доступны по **[PolyForm Noncommercial 1.0.0](LICENSE)**: некоммерческое использование, изменение и распространение разрешены на условиях полного текста лицензии. При распространении сохраняйте [NOTICE](NOTICE).
+
+Это **source-available** проект; лицензия не является open source по определению OSI. Коммерческие разрешения требуют отдельного соглашения с правообладателем: [d3ede](https://github.com/d3ede). Правообладатель сохраняет право коммерциализировать собственную версию.
+
+Сторонние библиотеки, шрифты и ассеты сохраняют свои лицензии. Контент Minecraft и Mojang/Microsoft не перелицензируется лицензией Aurum. Aurum — независимый проект, не официальный продукт Mojang или Microsoft.

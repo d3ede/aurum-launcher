@@ -22,6 +22,10 @@
   --danger: #b96454;
   --danger-soft: #fff2ec;
   --danger-border: #e9c8bc;
+  --import-bg: #e8f0e9;
+  --import-ink: #34674b;
+  --import-border: #b5cebd;
+  --import-hover: #dce9df;
   --shadow: 0 3px 7px #4f482c03;
   --hero-border: #e5d9b9;
   color-scheme: light;
@@ -50,6 +54,10 @@
   --danger: #dc9686;
   --danger-soft: #342925;
   --danger-border: #624237;
+  --import-bg: #253a31;
+  --import-ink: #c2e2d0;
+  --import-border: #426b55;
+  --import-hover: #304b3d;
   --shadow: 0 3px 7px #0000000a;
   --hero-border: #484b36;
   color-scheme: dark;

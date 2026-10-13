@@ -625,6 +625,7 @@ impl Engine {
         }
     }
     pub async fn launch(&self, id: &str) -> Result<()> {
+        self.refresh_recovered().await;
         let _guard = self
             .busy
             .try_lock()
@@ -734,7 +735,14 @@ impl Engine {
                 },
             ),
             ("user_properties".into(), "{}".into()),
-            ("clientid".into(), settings.microsoft_client_id.clone()),
+            (
+                "clientid".into(),
+                if account.kind == "microsoft" {
+                    self.account_client_id(&account.id)?
+                } else {
+                    String::new()
+                },
+            ),
             (
                 "auth_xuid".into(),
                 if account.kind == "microsoft" {
@@ -835,7 +843,7 @@ impl Engine {
             .current_dir(&instance)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .kill_on_drop(true);
+            .kill_on_drop(false);
         hide(&mut command);
         // No shell interpolation, no printed token-bearing command line.
         let mut child = command.spawn().context("Не удалось запустить Java")?;
@@ -911,6 +919,7 @@ impl Engine {
         Ok(())
     }
     pub async fn stop(&self, id: &str) -> Result<()> {
+        if self.stop_recovered(id).await? { return Ok(()) }
         self.running
             .lock()
             .await

@@ -114,6 +114,29 @@ fn cancellation_is_explicit() {
 }
 
 #[tokio::test]
+async fn language_settings_preserve_legacy_russian_and_persist_selection() {
+    let mut old = serde_json::to_value(Settings::default()).unwrap();
+    old.as_object_mut().unwrap().remove("language");
+    assert_eq!(
+        serde_json::from_value::<Settings>(old).unwrap().language,
+        "ru"
+    );
+    assert_eq!(Settings::default().language, "system");
+    let dir = tempfile::tempdir().unwrap();
+    let engine = Engine::new(dir.path().into(), |_| {}).await.unwrap();
+    let mut settings = Settings {
+        language: "es".into(),
+        ..Settings::default()
+    };
+    engine.save_settings(settings.clone()).await.unwrap();
+    let restored = Engine::new(dir.path().into(), |_| {}).await.unwrap();
+    assert_eq!(restored.snapshot().await.database.settings.language, "es");
+    settings.language = "invalid-language".into();
+    assert!(engine.save_settings(settings).await.is_err());
+    assert_eq!(engine.snapshot().await.database.settings.language, "es");
+}
+
+#[tokio::test]
 async fn custom_profile_icon_is_normalized_persisted_and_old_profiles_load() {
     use auren_core::store::{prepare_profile_icon, validate_profile_icon};
     use base64::Engine as _;
@@ -266,6 +289,32 @@ async fn hashes_are_checked() {
     assert!(!auren_core::net::verify(file.path(), Some(("sha1", "bad")))
         .await
         .unwrap());
+}
+
+#[tokio::test]
+async fn opening_a_legacy_empty_profile_recreates_its_directory() {
+    let dir = tempfile::tempdir().unwrap();
+    let engine = Engine::new(dir.path().into(), |_| {}).await.unwrap();
+    let profile = engine
+        .create_profile("Empty".into(), "1.21.1".into(), Loader::Vanilla, None, 0)
+        .await
+        .unwrap();
+    let folder = engine.instance(&profile.id).unwrap();
+    assert!(folder.starts_with(dir.path()));
+    // Simulate an older metadata-only instance (or an empty folder removed in Explorer).
+    std::fs::remove_dir(&folder).unwrap();
+    assert_eq!(engine.profile_directory(&profile.id).await.unwrap(), folder);
+    assert!(folder.is_dir());
+    assert!(engine
+        .profile(&profile.id)
+        .await
+        .unwrap()
+        .installed_version
+        .is_none());
+    let missing = uuid::Uuid::new_v4().to_string();
+    assert!(engine.profile_directory(&missing).await.is_err());
+    assert!(!engine.instance(&missing).unwrap().exists());
+    assert!(engine.profile_directory("../outside").await.is_err());
 }
 #[tokio::test]
 async fn corrupted_database_is_never_reset() {

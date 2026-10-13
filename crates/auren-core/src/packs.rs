@@ -138,7 +138,7 @@ impl Engine {
             let mut total=0u64;
             for prefix in overrides { for i in 0..zip.len() {task.check()?;let mut f=zip.by_index(i)?;let name=f.name().to_string();let Some(relative)=name.strip_prefix(&prefix)else{continue};if relative.is_empty() || f.is_dir(){continue}validate_pack_path(relative)?;total+=f.size();if total>1_000_000_000{bail!("Слишком большой архив")};if f.unix_mode().is_some_and(|m|m&0o170000==0o120000){bail!("Архив содержит символическую ссылку")};let path=crate::safe_join(&stage,relative)?;std::fs::create_dir_all(path.parent().unwrap())?;std::io::copy(&mut f,&mut std::fs::File::create(path)?)?; } }
             task.check()?;let instance=self.instance(&id)?;tokio::fs::create_dir_all(instance.parent().unwrap()).await?;tokio::fs::rename(&stage,&instance).await?;
-            let p=Profile{id:id.clone(),name,minecraft:mc,loader,loader_version:lv,installed_version:None,ram_mb:None,jvm_args:String::new(),last_played:None,cover:0,icon:None,content:vec![]};
+            let p=Profile{id:id.clone(),name,minecraft:mc,loader,loader_version:lv,installed_version:None,ram_mb:None,jvm_args:String::new(),last_played:None,cover:0,icon:None,icon_style:None,content:vec![]};
             let mut db=self.db.lock().await;let mut next=db.clone();next.profiles.push(p);if let Err(e)=persist(&self.root,&next).await{let _=tokio::fs::rename(instance,&stage).await;return Err(e)}*db=next;Ok(())
         }.await;
         let _ = tokio::fs::remove_dir_all(self.root.join("staging").join(&task.id)).await;
@@ -260,6 +260,7 @@ impl Engine {
             tokio::fs::rename(&stage, &instance).await?;
             let p = Profile {
                 icon: None,
+                icon_style: None,
                 id: id.clone(),
                 name,
                 minecraft: mc,

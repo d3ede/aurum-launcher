@@ -20,4 +20,11 @@ $tauriArguments=@('run','tauri','--',$Mode)
 if ($DebugBuild) { $tauriArguments += '--debug' }
 if ($NoBundle) { $tauriArguments += '--no-bundle' }
 & npm.cmd @tauriArguments
-exit $LASTEXITCODE
+$desktopExitCode=$LASTEXITCODE
+if ($Mode -eq 'build' -and $desktopExitCode -eq 0) {
+  $desktopTarget=if ($env:CARGO_TARGET_DIR) { [IO.Path]::GetFullPath($env:CARGO_TARGET_DIR,$projectRoot) } else { Join-Path $projectRoot 'target' }
+  $desktopProfile=if ($DebugBuild) { 'debug' } else { 'release' }
+  $desktopExe=Join-Path $desktopTarget ($desktopProfile+'\aurum.exe')
+  if (Test-Path -LiteralPath $desktopExe) { & (Join-Path $PSScriptRoot 'refresh-icon.ps1') -ExecutablePath $desktopExe }
+}
+exit $desktopExitCode

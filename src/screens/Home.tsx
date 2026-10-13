@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 import {
   Plus,
   ArrowRight,
@@ -14,12 +15,16 @@ import type { Profile, Project } from "../types";
 import { ProfileCard } from "../components/ProfileCard";
 import { ProfileIcon } from "../components/ProfileIcon";
 import { ErrorBox, Loading } from "../components/ui";
+import { TerrainPattern } from "../components/TerrainPattern";
+import { ImportProfileButton } from "../components/ImportProfileButton";
 export function Home({
   onProfile,
   onProject,
+  onFolderImport,
 }: {
   onProfile: (p: Profile) => void;
   onProject: (p: Project) => void;
+  onFolderImport: () => void;
 }) {
   const { data, navigate, create, play, run, busy } = useApp();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -64,43 +69,29 @@ export function Home({
   return (
     <>
       <div className="page-heading heading-row">
-        <h1>Главная</h1>
-        <button className="button secondary" onClick={create}>
-          <Plus size={18} /> Новая сборка
-        </button>
+        <h1>{t("Главная")}</h1>
+        <div className="button-row">
+          <ImportProfileButton onFolderImport={onFolderImport} />
+          <button className="button secondary" onClick={create}>
+            <Plus size={18} />
+            {t(" Новая сборка")}
+          </button>
+        </div>
       </div>
       <section className="quick-launch">
-        <svg
-          className="terrain-pattern"
-          viewBox="0 0 1000 220"
-          preserveAspectRatio="xMidYMid slice"
-          aria-hidden="true"
-        >
-          {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-            <path
-              key={i}
-              d={`M ${370 + i * 18} -30 C ${240 + i * 35} 90, ${770 - i * 12} 5, ${610 + i * 33} 140 S ${830 + i * 25} 240, 1080 ${130 + i * 20}`}
-            />
-          ))}
-          {[0, 1, 2, 3].map((i) => (
-            <path
-              key={`b${i}`}
-              d={`M ${770 + i * 25} -40 Q ${640 + i * 20} 90 ${910 + i * 18} 120 T 1100 280`}
-            />
-          ))}
-        </svg>
+        <TerrainPattern />
         {last ? (
           <>
             <ProfileIcon profile={last} size={76} />
             <div className="quick-launch-info">
-              <span>Быстрый запуск</span>
+              <span>{t("Быстрый запуск")}</span>
               <button onClick={() => onProfile(last)}>{last.name}</button>
               <p>
                 Minecraft {last.minecraft} · {ru.loaders[last.loader]}
               </p>
             </div>
             <button
-              className="button primary"
+              className={`button ${running ? "stop" : "primary"}`}
               disabled={busy}
               onClick={() =>
                 running
@@ -109,17 +100,18 @@ export function Home({
               }
             >
               {running ? <Square size={18} /> : <Play size={18} />}
-              {running ? "Остановить" : "Играть"}
+              {running ? t("Остановить") : t("Играть")}
             </button>
           </>
         ) : (
           <>
             <div className="quick-launch-info">
-              <h2>Создайте первую сборку</h2>
-              <p>Выберите версию Minecraft и загрузчик.</p>
+              <h2>{t("Создайте первую сборку")}</h2>
+              <p>{t("Выберите версию Minecraft и загрузчик.")}</p>
             </div>
             <button className="button primary" onClick={create}>
-              <Plus size={18} /> Создать сборку
+              <Plus size={18} />
+              {t(" Создать сборку")}
             </button>
           </>
         )}
@@ -127,12 +119,13 @@ export function Home({
       {recent.length > 0 && (
         <section className="section">
           <div className="section-heading">
-            <h2>Недавние сборки</h2>
+            <h2>{t("Недавние сборки")}</h2>
             <button
               className="text-button"
               onClick={() => navigate("profiles")}
             >
-              Все сборки <ArrowRight size={18} />
+              {t("Все сборки ")}
+              <ArrowRight size={18} />
             </button>
           </div>
           <div className="profile-grid">
@@ -144,13 +137,14 @@ export function Home({
       )}
       <section className="section recommendations">
         <div className="section-heading">
-          <h2>Популярное в Modrinth</h2>
+          <h2>{t("Популярное в Modrinth")}</h2>
           <button className="text-button" onClick={() => navigate("catalog")}>
-            Найти проекты <ArrowRight size={18} />
+            {t("Найти проекты ")}
+            <ArrowRight size={18} />
           </button>
         </div>
         {loading ? (
-          <Loading label="Получаем проекты…" />
+          <Loading label={t("Получаем проекты\u2026")} />
         ) : error ? (
           <ErrorBox error={error} retry={() => setRetry((v) => v + 1)} />
         ) : projects.length ? (
@@ -182,8 +176,8 @@ export function Home({
             <Compass size={26} />
             <p>
               {native
-                ? "Проекты не найдены"
-                : "Каталог доступен в desktop-приложении"}
+                ? t("Проекты не найдены")
+                : t("Каталог доступен в desktop-приложении")}
             </p>
           </div>
         )}

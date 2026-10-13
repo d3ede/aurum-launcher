@@ -1,14 +1,54 @@
+# Local agent instructions and assistant state (never publish)
+AGENTS.md
+AGENTS.override.md
+.agents/
+.codex/
+
+# Dependencies and Rust/Tauri build output
 node_modules/
 dist/
 target/
+src-tauri/gen/
+*.tsbuildinfo
+
+# Local toolchains and game/test data
 .tools/
 .test-data/
+.release-local/
+
+# Environment variables and private credentials
 .env
 .env.*
 !.env.example
-*.log
-*.tmp
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
+
+# Test reports and coverage
 test-results/
 playwright-report/
-src-tauri/gen/
-*.tsbuildinfo
+playwright/.cache/
+coverage/
+
+# Logs, temporary files and editor/OS state
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Unused logo experiments; approved aurum-gold.svg stays tracked
+src/assets/branding/aurum-au-*
+
+# Installers belong in GitHub Releases
+*.exe
+*.msi
+*.msix

@@ -1,4 +1,214 @@
 /* Aurum desktop layout and readable typography. Fonts are bundled locally. */
+
+.modal.microsoft-dialog {
+  width: min(560px, calc(100vw - 40px));
+  padding: 0;
+  overflow: auto;
+}
+.microsoft-dialog .modal-head {
+  padding: 18px 26px;
+  margin: 0;
+  border-bottom: 1px solid var(--border);
+}
+.microsoft-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 24px 32px;
+  background: linear-gradient(115deg, var(--surface), var(--gold-soft));
+  border-bottom: 1px solid var(--gold-border);
+}
+.microsoft-hero > :not(svg) {
+  position: relative;
+}
+.microsoft-hero .terrain-pattern {
+  width: 170%;
+  left: -40%;
+  opacity: 0.18;
+}
+.microsoft-emblem {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 16px;
+  border: 1px solid var(--gold-border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 6px 20px #00000008;
+}
+.microsoft-emblem .microsoft-logo {
+  width: 26px;
+  height: 26px;
+  gap: 3px;
+}
+.microsoft-emblem.is-success {
+  color: var(--accent-ink);
+}
+.microsoft-eyebrow {
+  display: block;
+  color: var(--accent-ink);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 1.25px;
+}
+.microsoft-hero h3 {
+  margin: 10px 0 10px;
+  font-size: 26px;
+  font-weight: 720;
+  letter-spacing: -0.8px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.microsoft-hero p {
+  color: var(--secondary);
+  max-width: 420px;
+  font-size: 14px;
+  line-height: 1.65;
+}
+.microsoft-body {
+  padding: 20px 32px;
+}
+.microsoft-status {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.microsoft-status-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  color: var(--accent-ink);
+  background: var(--gold-soft);
+  border-radius: 11px;
+}
+.microsoft-status b {
+  display: block;
+  font-size: 15px;
+  padding-top: 2px;
+}
+.microsoft-status p {
+  margin-top: 5px;
+  color: var(--secondary);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.microsoft-steps {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 0;
+  margin: 16px 0 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
+}
+.microsoft-steps li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.microsoft-steps li > span {
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  background: var(--input-soft);
+  font-size: 11px;
+}
+.microsoft-steps .current,
+.microsoft-steps .done {
+  color: var(--accent-ink);
+}
+.microsoft-steps .current > span,
+.microsoft-steps .done > span {
+  background: var(--gold-soft);
+}
+.microsoft-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+.microsoft-actions > .primary {
+  flex: 1;
+}
+.microsoft-actions > .button {
+  min-height: 44px;
+  font-size: 13px;
+}
+.microsoft-privacy {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 16px;
+}
+.microsoft-privacy svg {
+  flex-shrink: 0;
+}
+.microsoft-browser-error {
+  font-size: 13px;
+  color: var(--text);
+  margin-top: 14px;
+}
+.microsoft-account-card {
+  position: relative;
+  overflow: hidden;
+  padding: 22px;
+  margin-bottom: 18px;
+  border: 1px solid var(--gold-border);
+  border-radius: 14px;
+  background: linear-gradient(110deg, var(--surface), var(--gold-soft));
+}
+.microsoft-account-card > :not(svg) {
+  position: relative;
+}
+.microsoft-account-card h3 {
+  font-size: 20px;
+  letter-spacing: -0.5px;
+  margin: 0 0 8px;
+}
+.microsoft-account-card p {
+  max-width: 380px;
+  font-size: 14px;
+  color: var(--secondary);
+  line-height: 1.65;
+}
+@media (max-width: 600px) {
+  .microsoft-hero,
+  .microsoft-body {
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+  .microsoft-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .microsoft-steps {
+    gap: 5px;
+  }
+  .microsoft-steps li {
+    font-size: 10px;
+    gap: 5px;
+  }
+  .microsoft-privacy {
+    align-items: flex-start;
+    text-align: center;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .microsoft-dialog .spin {
+    animation: none;
+  }
+}
 :root {
   --bg: #f8f7f2;
   --surface: #fffefb;
@@ -98,11 +308,6 @@ svg {
 .brand-mark.small {
   width: 32px;
   height: 32px;
-  border-radius: 10px;
-}
-.brand-mark.small svg {
-  width: 28px;
-  height: 28px;
 }
 .window-title {
   display: none;
@@ -497,37 +702,121 @@ textarea {
   background: #4c3b32;
   color: #e5b99a;
 }
-.icon-picker {
+.icon-editor {
+  width: 100%;
+  max-width: 520px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+.icon-editor-heading {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 16px;
+  margin-bottom: 16px;
 }
-.icon-presets {
+.icon-editor-preview {
   display: flex;
-  gap: 7px;
-  margin-bottom: 8px;
+  flex-shrink: 0;
 }
-.icon-presets button {
-  position: relative;
-  padding: 3px;
-  background: none;
-  border: 2px solid transparent;
-  border-radius: 10px;
+.icon-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
 }
-.icon-presets button.selected {
+.icon-symbols {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.icon-symbols button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 40px;
+  padding: 0;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  color: var(--secondary);
+  background: var(--bg);
+}
+.icon-symbols button:hover:not(:disabled) {
+  color: var(--text);
   border-color: var(--gold);
 }
-.icon-presets button > svg {
-  position: absolute;
-  bottom: -3px;
-  right: -3px;
-  background: var(--gold);
-  color: #302b1c;
-  border-radius: 50%;
-  padding: 1px;
+.icon-symbols button.selected {
+  color: var(--accent-ink);
+  border: 2px solid var(--gold);
+  background: var(--gold-soft);
 }
-.icon-presets .profile-icon {
-  border-radius: 6px;
+.icon-editor-colors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.icon-color-control {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.icon-color-control legend {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  padding: 0;
+}
+.icon-color-control:disabled {
+  opacity: 0.45;
+}
+.icon-color-swatches {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.icon-color-swatches button {
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 24px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+}
+.icon-color-swatches button.selected {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.icon-custom-color {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.icon-custom-color input[type="color"] {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  padding: 3px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.icon-custom-color input[type="text"] {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  padding: 5px 8px;
+  font-size: 12px;
+  direction: ltr;
+}
+.icon-editor-hint {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+@media (max-width: 600px) {
+  .icon-editor-colors { grid-template-columns: 1fr; }
 }
 .instance-back {
   margin-bottom: 20px;
@@ -1126,6 +1415,330 @@ input[type="range"] {
 .pagination {
   margin-top: 22px;
   font-size: 14px;
+}
+.library-import-menu {
+  position: relative;
+}
+.button.import-button {
+  background: var(--import-bg);
+  color: var(--import-ink);
+  border: 1px solid var(--import-border);
+}
+.button.import-button:hover:not(:disabled) {
+  background: var(--import-hover);
+}
+.import-button > svg:last-child {
+  transition: transform 0.18s ease;
+}
+.import-button[aria-expanded="true"] > svg:last-child {
+  transform: rotate(180deg);
+}
+.modal.modrinth-import-modal {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modrinth-import-modal .modal-head {
+  flex-shrink: 0;
+  margin-bottom: 18px;
+}
+.modrinth-import-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 2px;
+}
+.modrinth-import-modal .modal-actions {
+  flex-shrink: 0;
+  margin-top: 16px;
+}
+.app-shell:has(.modrinth-import-modal) .operation-panel {
+  display: none;
+}
+.library-import-options {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 12;
+  width: 285px;
+  padding: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 12px 32px #0002;
+}
+.library-import-options button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  text-align: start;
+  padding: 12px;
+  border-radius: 8px;
+  color: var(--secondary);
+}
+.library-import-options button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.library-import-options button:focus-visible {
+  background: var(--hover);
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+.library-import-options b {
+  display: block;
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 550;
+}
+.library-import-options small {
+  display: block;
+  font-size: 12px;
+  margin-top: 4px;
+  color: var(--muted);
+}
+.modrinth-transfer {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--gold-border);
+  border-radius: 12px;
+  background: var(--gold-soft);
+}
+.transfer-symbol {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--accent-ink);
+}
+.modrinth-transfer > div {
+  flex: 1;
+}
+.modrinth-transfer b {
+  font-weight: 550;
+  font-size: 15px;
+}
+.modrinth-transfer p {
+  font-size: 13px;
+  line-height: 1.6;
+  margin-top: 4px;
+  color: var(--secondary);
+}
+.modrinth-transfer > svg {
+  color: var(--accent-ink);
+  flex-shrink: 0;
+}
+.import-source-toolbar,
+.import-selection-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 20px 0 14px;
+  font-size: 13px;
+  color: var(--secondary);
+}
+.import-source-toolbar > div {
+  display: flex;
+  gap: 16px;
+}
+.import-source-toolbar .text-button,
+.import-selection-toolbar .text-button {
+  font-size: 13px;
+  white-space: nowrap;
+}
+.import-selection-toolbar {
+  margin-top: 0;
+}
+.import-selection-toolbar .input-icon {
+  flex: 1;
+}
+.modrinth-profile-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(310px, 31vh);
+  overflow-y: auto;
+  padding: 2px;
+}
+.modrinth-profile-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.modrinth-profile-row:hover {
+  border-color: var(--border-strong);
+}
+.modrinth-profile-row.selected {
+  border-color: var(--gold);
+  background: var(--hover);
+}
+.modrinth-profile-row.unavailable {
+  cursor: default;
+  opacity: 0.7;
+}
+.modrinth-profile-row .profile-icon,
+.modrinth-profile-row input {
+  flex-shrink: 0;
+}
+.import-profile-description {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+}
+.import-profile-description > b {
+  font-size: 14px;
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+.import-profile-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 12px;
+  color: var(--secondary);
+}
+.import-profile-description small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.import-selected-mark {
+  flex-shrink: 0;
+  color: var(--accent-ink);
+}
+.import-warning,
+.import-profile-description .import-warning {
+  color: var(--danger);
+  overflow-wrap: anywhere;
+}
+.import-locations {
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.import-locations summary {
+  cursor: pointer;
+}
+.import-locations p {
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+.modrinth-empty {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 32px 24px;
+  text-align: center;
+  border: 1px dashed var(--border-strong);
+  border-radius: 12px;
+}
+.modrinth-empty > svg {
+  color: var(--accent-ink);
+}
+.modrinth-empty b {
+  font-size: 15px;
+  font-weight: 550;
+}
+.modrinth-empty p {
+  max-width: 420px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--secondary);
+}
+.import-empty-search {
+  text-align: center;
+  padding: 24px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.import-preservation {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 20px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--secondary);
+}
+.import-preservation svg {
+  color: var(--accent-ink);
+  flex-shrink: 0;
+}
+.import-modal-actions {
+  flex-wrap: wrap;
+}
+.import-modal-actions > span {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+.import-result {
+  margin-top: 18px;
+  padding: 15px;
+  background: var(--hover);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 13px;
+}
+.import-result b {
+  font-weight: 550;
+}
+.import-result p {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 8px;
+  line-height: 1.6;
+}
+.import-result svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.import-live {
+  flex-basis: 100%;
+  min-width: 0;
+}
+.import-live .loading {
+  min-height: 0;
+  padding: 12px 0;
+  justify-content: flex-start;
+}
+.import-live .loading span {
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.import-live progress {
+  width: 100%;
+  accent-color: var(--gold);
+}
+@media (max-width: 1000px) {
+  .import-source-toolbar {
+    flex-wrap: wrap;
+  }
+  .import-modal-actions > span {
+    flex-basis: 100%;
+  }
 }
 .credentials-note p,
 .offline-info p,

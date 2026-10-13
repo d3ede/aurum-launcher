@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 import { useEffect, useState } from "react";
 import {
   Plus,
@@ -16,6 +17,7 @@ import {
   Compass,
   Search,
   ArrowLeft,
+  LoaderCircle,
 } from "lucide-react";
 import { Modal, Field, Loading, ErrorBox, EmptyState } from "./ui";
 import { ProfileIcon, IconPicker } from "./ProfileIcon";
@@ -33,7 +35,7 @@ export function CreateProfile({
   folderImport?: boolean;
   onCreated?: (profile: Profile) => void;
 }) {
-  const { data, run, operation, busy } = useApp();
+  const { data, operation, busy, refresh } = useApp();
   const [name, setName] = useState("");
   const [mc, setMc] = useState("");
   const [loader, setLoader] = useState<Loader>("vanilla");
@@ -42,6 +44,7 @@ export function CreateProfile({
   const [loaders, setLoaders] = useState<string[]>([]);
   const [cover, setCover] = useState(0);
   const [icon, setIcon] = useState<string | null>(null);
+  const [iconStyle, setIconStyle] = useState<Profile["iconStyle"]>(null);
   const [loading, setLoading] = useState(true);
   const [loaderLoading, setLoaderLoading] = useState(false);
   const [error, setError] = useState("");
@@ -99,41 +102,46 @@ export function CreateProfile({
     };
   }, [mc, loader]);
   const submit = async () => {
-    const result = folderImport
-      ? await operation(
-          (operationId) =>
-            rpc("importFolder", {
-              name: name.trim() || `Minecraft ${mc}`,
-              minecraft: mc,
-              loader,
-              loaderVersion: lv || null,
-              operationId,
-            }),
-          "Папка игры импортирована",
-        )
-      : await run(
-          () =>
-            rpc("createProfile", {
-              name: name.trim() || `Minecraft ${mc}`,
-              minecraft: mc,
-              loader,
-              loaderVersion: lv || null,
-              cover,
-              icon,
-            }),
-          "Сборка создана",
-        );
-    if (result) {
-      onClose();
-      if (typeof result !== "string") onCreated?.(result);
+    if (folderImport) {
+      const result = await operation(
+        (operationId) =>
+          rpc("importFolder", {
+            name: name.trim() || `Minecraft ${mc}`,
+            minecraft: mc,
+            loader,
+            loaderVersion: lv || null,
+            operationId,
+          }),
+        t("Папка игры импортирована"),
+      );
+      if (result) onClose();
+      return;
     }
+    await operation(async (operationId) => {
+      const created = await rpc("createProfile", {
+        name: name.trim() || `Minecraft ${mc}`,
+        minecraft: mc,
+        loader,
+        loaderVersion: lv || null,
+        cover,
+        icon,
+        iconStyle,
+      });
+      // Keep the created instance visible and recoverable if installation fails or is cancelled.
+      onClose();
+      onCreated?.(created);
+      await refresh().catch(() => {});
+      await rpc("install", { id: created.id, operationId });
+    }, t("Minecraft установлен"));
   };
   return (
     <Modal
-      title={folderImport ? "Импорт папки игры" : "Новая сборка"}
+      title={folderImport ? t("Импорт папки игры") : t("Новая сборка")}
       subtitle={
         folderImport
-          ? "Будут скопированы миры, моды и настройки. Исходная папка сохранится."
+          ? t(
+              "Будут скопированы миры, моды и настройки. Исходная папка сохранится.",
+            )
           : undefined
       }
       onClose={onClose}
@@ -144,7 +152,7 @@ export function CreateProfile({
           void submit();
         }}
       >
-        <Field label="Название сборки">
+        <Field label={t("Название сборки")}>
           <input
             autoFocus
             maxLength={120}
@@ -154,22 +162,22 @@ export function CreateProfile({
           />
         </Field>
         {loading ? (
-          <Loading label="Получаем версии Minecraft…" />
+          <Loading label={t("Получаем версии Minecraft\u2026")} />
         ) : (
           <>
             <div className="form-grid">
-              <Field label="Версия Minecraft">
+              <Field label={t("Версия Minecraft")}>
                 <Select
                   value={mc}
                   onValueChange={setMc}
-                  aria-label="Версия Minecraft"
+                  aria-label={t("Версия Minecraft")}
                   options={versions.map((v) => ({ value: v, label: v }))}
                 />
               </Field>
-              <Field label="Загрузчик">
+              <Field label={t("Загрузчик")}>
                 <Select
                   value={loader}
-                  aria-label="Загрузчик"
+                  aria-label={t("Загрузчик")}
                   onValueChange={(v) => setLoader(v as Loader)}
                   options={Object.entries(ru.loaders).map(([value, label]) => ({
                     value,
@@ -180,24 +188,26 @@ export function CreateProfile({
             </div>
             {loader !== "vanilla" && (
               <Field
-                label={`Версия ${ru.loaders[loader]}`}
+                label={t("Версия {{v1}}", { v1: ru.loaders[loader] })}
                 hint={
                   !loaderLoading && !loaders.length
-                    ? "Для этой версии игры нет совместимого загрузчика. Выберите другую версию Minecraft."
+                    ? t(
+                        "Для этой версии игры нет совместимого загрузчика. Выберите другую версию Minecraft.",
+                      )
                     : undefined
                 }
               >
                 <Select
                   value={lv}
-                  aria-label={`Версия ${ru.loaders[loader]}`}
+                  aria-label={t("Версия {{v1}}", { v1: ru.loaders[loader] })}
                   onValueChange={setLv}
                   disabled={loaderLoading || !loaders.length}
                   options={[
                     {
                       value: "",
                       label: loaderLoading
-                        ? "Проверяем совместимость…"
-                        : "Выберите версию",
+                        ? t("Проверяем совместимость\u2026")
+                        : t("Выберите версию"),
                     },
                     ...loaders.map((v) => ({ value: v, label: v })),
                   ]}
@@ -208,12 +218,13 @@ export function CreateProfile({
         )}
         {!folderImport && (
           <div className="field">
-            <span>Значок сборки</span>
+            <span>{t("Значок сборки")}</span>
             <IconPicker
-              value={{ cover, icon }}
+              value={{ cover, icon, iconStyle }}
               onChange={(value) => {
                 setCover(value.cover);
                 setIcon(value.icon || null);
+                setIconStyle(value.iconStyle || null);
               }}
             />
           </div>
@@ -223,12 +234,14 @@ export function CreateProfile({
         )}
         <div className="dialog-note">
           {folderImport
-            ? "Выберите папку .minecraft или папку игры из другого лаунчера."
-            : "Minecraft и подходящая Java загрузятся при первом запуске. Для официальных серверов нужен Microsoft-аккаунт."}
+            ? t("Выберите папку .minecraft или папку игры из другого лаунчера.")
+            : t(
+                "Minecraft и подходящая Java установятся сразу после создания сборки.",
+              )}
         </div>
         <div className="modal-actions">
           <button type="button" className="button secondary" onClick={onClose}>
-            Отмена
+            {t("Отмена")}
           </button>
           <button
             className="button primary"
@@ -241,7 +254,7 @@ export function CreateProfile({
             }
           >
             {folderImport ? <FolderOpen size={16} /> : <Plus size={16} />}{" "}
-            {folderImport ? "Выбрать папку" : "Создать сборку"}
+            {folderImport ? t("Выбрать папку") : t("Создать сборку")}
           </button>
         </div>
       </form>
@@ -257,7 +270,8 @@ export function ProfileDialog({
   onFindProjects: (profile: Profile, kind: Kind) => void;
   onClose: () => void;
 }) {
-  const { data, busy, run, operation, play, navigate } = useApp();
+  const { data, busy, run, operation, play, navigate, progress, notify } =
+    useApp();
   const profile = data.profiles.find((p) => p.id === initial.id) || initial;
   const [draft, setDraft] = useState(profile);
   const [tab, setTab] = useState<"content" | "settings" | "logs">("content");
@@ -270,6 +284,10 @@ export function ProfileDialog({
   const [confirm, setConfirm] = useState(false);
   const [revision, setRevision] = useState(0);
   const running = data.running.includes(profile.id);
+  const installing =
+    progress?.profileId === profile.id &&
+    !profile.installedVersion &&
+    !["complete", "error"].includes(progress.phase);
   const { logs } = useApp();
   const visible = content.filter(
     (c) =>
@@ -314,19 +332,20 @@ export function ProfileDialog({
   const manage = async (c: Content, action: "toggle" | "remove") => {
     await run(
       () => rpc("manageContent", { id: profile.id, contentId: c.id, action }),
-      action === "remove" ? "Файл перемещён в корзину" : undefined,
+      action === "remove" ? t("Файл перемещён в корзину") : undefined,
     );
     setRevision((v) => v + 1);
   };
   return (
     <section className="instance-page">
       <button className="text-button instance-back" onClick={onClose}>
-        <ArrowLeft size={18} /> Все сборки
+        <ArrowLeft size={18} />
+        {t(" Все сборки")}
       </button>
       <div className="instance-heading">
         <button
           className="instance-icon-edit"
-          aria-label="Изменить значок сборки"
+          aria-label={t("Изменить значок сборки")}
           onClick={() => setTab("settings")}
         >
           <ProfileIcon profile={profile} size={72} />
@@ -340,7 +359,7 @@ export function ProfileDialog({
         </div>
         <div className="profile-dialog-actions">
           <button
-            className="button primary"
+            className={`button ${running ? "stop" : "primary"}`}
             disabled={busy}
             onClick={() =>
               running
@@ -348,20 +367,31 @@ export function ProfileDialog({
                 : void play(profile)
             }
           >
-            {running ? <Square size={16} /> : <Play size={16} />}{" "}
+            {installing ? (
+              <LoaderCircle size={16} className="spin" />
+            ) : running ? (
+              <Square size={16} />
+            ) : (
+              <Play size={16} />
+            )}{" "}
             {running
-              ? "Остановить"
-              : profile.installedVersion
-                ? "Играть"
-                : "Установить и играть"}
+              ? t("Остановить")
+              : installing
+                ? t("Устанавливаем…")
+                : profile.installedVersion
+                  ? t("Играть")
+                  : t("Установить и играть")}
           </button>
           <button
             className="button secondary"
             onClick={() =>
-              void run(() => rpc("openFolder", { id: profile.id }))
+              void rpc("openFolder", { id: profile.id }).catch((e) =>
+                notify(e.message, true),
+              )
             }
           >
-            <FolderOpen size={16} /> Папка
+            <FolderOpen size={16} />
+            {t(" Папка")}
           </button>
           <button
             className="button secondary"
@@ -370,20 +400,21 @@ export function ProfileDialog({
               void operation(
                 (operationId) =>
                   rpc("install", { id: profile.id, operationId }),
-                "Установка проверена",
+                t("Установка проверена"),
               )
             }
           >
-            <RefreshCw size={15} /> Проверить установку
+            <RefreshCw size={15} />
+            {t(" Проверить установку")}
           </button>
         </div>
       </div>
       <div className="tabs">
         {(
           [
-            ["content", "Контент", Puzzle],
-            ["settings", "Параметры", Settings2],
-            ["logs", "Журнал", Terminal],
+            ["content", t("Контент"), Puzzle],
+            ["settings", t("Параметры"), Settings2],
+            ["logs", t("Журнал"), Terminal],
           ] as const
         ).map(([id, label, Icon]) => (
           <button
@@ -402,14 +433,15 @@ export function ProfileDialog({
             <div className="input-icon">
               <Search size={18} />
               <input
-                aria-label="Поиск в сборке"
-                placeholder="Поиск в сборке"
+                aria-label={t("Поиск в сборке")}
+                placeholder={t("Поиск в сборке")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
             <button className="button primary" onClick={find}>
-              <Compass size={18} /> Найти проекты
+              <Compass size={18} />
+              {t(" Найти проекты")}
             </button>
           </div>
           <div className="content-toolbar">
@@ -420,7 +452,7 @@ export function ProfileDialog({
                   className={kind === k ? "active" : ""}
                   onClick={() => setKind(k)}
                 >
-                  {k === "all" ? "Всё" : ru.kinds[k]}
+                  {k === "all" ? t("Всё") : ru.kinds[k]}
                 </button>
               ))}
             </div>
@@ -437,7 +469,8 @@ export function ProfileDialog({
                 setRevision((v) => v + 1);
               }}
             >
-              <FileInput size={15} /> Добавить файл
+              <FileInput size={15} />
+              {t(" Добавить файл")}
             </button>
           </div>
           {loading ? (
@@ -445,8 +478,8 @@ export function ProfileDialog({
           ) : visible.length ? (
             <div className="content-list">
               <div className="content-table-heading">
-                <span>Проект / файл</span>
-                <span>Действия</span>
+                <span>{t("Проект / файл")}</span>
+                <span>{t("Действия")}</span>
               </div>
               {visible.map((c) => (
                 <div
@@ -458,13 +491,13 @@ export function ProfileDialog({
                     <b>{c.name}</b>
                     <small title={c.filename}>
                       {c.filename} ·{" "}
-                      {c.source === "local" ? "Локальный файл" : c.source}
+                      {c.source === "local" ? t("Локальный файл") : c.source}
                     </small>
                   </div>
                   {c.source !== "local" && (
                     <button
                       className="icon-button"
-                      aria-label={`Обновить ${c.name}`}
+                      aria-label={t("Обновить {{v1}}", { v1: c.name })}
                       disabled={busy || running}
                       onClick={async () => {
                         await operation(
@@ -474,7 +507,7 @@ export function ProfileDialog({
                               contentId: c.id,
                               operationId,
                             }),
-                          "Контент обновлён",
+                          t("Контент обновлён"),
                         );
                         setRevision((v) => v + 1);
                       }}
@@ -484,7 +517,7 @@ export function ProfileDialog({
                   )}
                   <button
                     className="icon-button"
-                    aria-label={`${c.enabled ? "Отключить" : "Включить"} ${c.name}`}
+                    aria-label={`${c.enabled ? t("Отключить") : t("Включить")} ${c.name}`}
                     disabled={busy || running}
                     onClick={() => void manage(c, "toggle")}
                   >
@@ -496,7 +529,7 @@ export function ProfileDialog({
                   </button>
                   <button
                     className="icon-button danger"
-                    aria-label={`Удалить ${c.name}`}
+                    aria-label={t("Удалить {{v1}}", { v1: c.name })}
                     disabled={busy || running}
                     onClick={() => void manage(c, "remove")}
                   >
@@ -509,12 +542,14 @@ export function ProfileDialog({
             <EmptyState
               icon={<Puzzle size={27} />}
               title={
-                search ? "Ничего не найдено" : "Нет установленных проектов"
+                search
+                  ? t("Ничего не найдено")
+                  : t("Нет установленных проектов")
               }
               text={
                 search
-                  ? "Измените поисковый запрос."
-                  : "Добавьте моды, шейдеры или ресурспаки."
+                  ? t("Измените поисковый запрос.")
+                  : t("Добавьте моды, шейдеры или ресурспаки.")
               }
             />
           )}
@@ -526,18 +561,18 @@ export function ProfileDialog({
             e.preventDefault();
             void run(
               () => rpc("updateProfile", { profile: draft }),
-              "Параметры сохранены",
+              t("Параметры сохранены"),
             );
           }}
         >
           <div className="field">
-            <span>Значок сборки</span>
+            <span>{t("Значок сборки")}</span>
             <IconPicker
               value={draft}
               onChange={(value) => setDraft({ ...draft, ...value })}
             />
           </div>
-          <Field label="Название">
+          <Field label={t("Название")}>
             <input
               value={draft.name}
               required
@@ -546,8 +581,8 @@ export function ProfileDialog({
             />
           </Field>
           <Field
-            label="Память, МБ"
-            hint="Оставьте пустым, чтобы использовать общие настройки"
+            label={t("Память, МБ")}
+            hint={t("Оставьте пустым, чтобы использовать общие настройки")}
           >
             <input
               type="number"
@@ -563,7 +598,7 @@ export function ProfileDialog({
               }
             />
           </Field>
-          <Field label="Дополнительные JVM-аргументы">
+          <Field label={t("Дополнительные JVM-аргументы")}>
             <input
               value={draft.jvmArgs}
               onChange={(e) => setDraft({ ...draft, jvmArgs: e.target.value })}
@@ -577,10 +612,11 @@ export function ProfileDialog({
               disabled={busy || running}
               onClick={() => setConfirm(true)}
             >
-              <Trash2 size={15} /> Удалить сборку
+              <Trash2 size={15} />
+              {t(" Удалить сборку")}
             </button>
             <button className="button primary" disabled={busy || running}>
-              Сохранить
+              {t("Сохранить")}
             </button>
           </div>
         </form>
@@ -588,12 +624,13 @@ export function ProfileDialog({
       {tab === "logs" && (
         <>
           <div className="log-toolbar">
-            <span>Журнал Minecraft</span>
+            <span>{t("Журнал Minecraft")}</span>
             <button
               className="text-button"
               onClick={() => setRevision((v) => v + 1)}
             >
-              <RefreshCw size={14} /> Обновить
+              <RefreshCw size={14} />
+              {t(" Обновить")}
             </button>
           </div>
           <pre className="game-log">
@@ -612,14 +649,17 @@ export function ProfileDialog({
       {error && <ErrorBox error={error} />}{" "}
       {confirm && (
         <div className="inline-confirm" role="alert">
-          <b>Удалить «{profile.name}»?</b>
-          <p>Папка сборки с мирами будет перемещена в корзину Aurum.</p>
+          <b>
+            {t("Удалить \u00AB")}
+            {profile.name}»?
+          </b>
+          <p>{t("Папка сборки с мирами будет перемещена в корзину Aurum.")}</p>
           <div className="button-row">
             <button
               className="button secondary"
               onClick={() => setConfirm(false)}
             >
-              Отмена
+              {t("Отмена")}
             </button>
             <button
               className="button destructive"
@@ -627,11 +667,11 @@ export function ProfileDialog({
                 const ok = await run(async () => {
                   await rpc("deleteProfile", { id: profile.id });
                   return true;
-                }, "Сборка перемещена в корзину");
+                }, t("Сборка перемещена в корзину"));
                 if (ok) onClose();
               }}
             >
-              Удалить сборку
+              {t("Удалить сборку")}
             </button>
           </div>
         </div>

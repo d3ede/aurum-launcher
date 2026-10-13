@@ -13,6 +13,15 @@ pub async fn persist(root: &std::path::Path, db: &Database) -> Result<()> {
     Ok(())
 }
 impl Engine {
+    pub async fn profile_directory(&self, id: &str) -> Result<std::path::PathBuf> {
+        self.profile(id).await?;
+        let directory = self.instance(id)?;
+        tokio::fs::create_dir_all(&directory)
+            .await
+            .context("Не удалось создать папку сборки")?;
+        Ok(directory)
+    }
+
     pub async fn create_profile(
         &self,
         name: String,
@@ -42,6 +51,7 @@ impl Engine {
             last_played: None,
             cover: cover % 4,
             icon: None,
+            icon_style: None,
             content: vec![],
         };
         tokio::fs::create_dir_all(self.instance(&p.id)?).await?;
@@ -66,6 +76,11 @@ impl Engine {
             .as_deref()
             .map(validate_profile_icon)
             .transpose()?;
+        let icon_style = profile
+            .icon_style
+            .as_ref()
+            .map(validate_profile_icon_style)
+            .transpose()?;
         let mut db = self.db.lock().await;
         let mut next = db.clone();
         let old = next
@@ -79,6 +94,7 @@ impl Engine {
         old.jvm_args = profile.jvm_args;
         old.cover = profile.cover % 4;
         old.icon = icon;
+        old.icon_style = icon_style;
         persist(&self.root, &next).await?;
         *db = next;
         Ok(())
@@ -101,6 +117,53 @@ impl Engine {
         Ok(())
     }
     pub async fn save_settings(&self, settings: Settings) -> Result<()> {
+        if !matches!(
+            settings.language.as_str(),
+            "system"
+                | "ru"
+                | "en"
+                | "uk"
+                | "es"
+                | "de"
+                | "fr"
+                | "it"
+                | "pt"
+                | "pl"
+                | "cs"
+                | "sk"
+                | "hu"
+                | "ro"
+                | "bg"
+                | "nl"
+                | "sv"
+                | "nb"
+                | "da"
+                | "fi"
+                | "et"
+                | "lv"
+                | "lt"
+                | "el"
+                | "tr"
+                | "hr"
+                | "sl"
+                | "sr"
+                | "ca"
+                | "is"
+                | "ga"
+                | "kk"
+                | "ar"
+                | "he"
+                | "zh-Hans"
+                | "zh-Hant"
+                | "ja"
+                | "ko"
+                | "hi"
+                | "id"
+                | "vi"
+                | "th"
+        ) {
+            bail!("Unsupported interface language")
+        }
         if !(512..=65536).contains(&settings.ram_mb)
             || !(320..=7680).contains(&settings.resolution_width)
             || !(240..=4320).contains(&settings.resolution_height)
@@ -195,6 +258,25 @@ fn encode_profile_icon(image: &image::DynamicImage) -> Result<String> {
         base64::engine::general_purpose::STANDARD.encode(bytes.into_inner())
     ))
 }
+pub fn validate_profile_icon_style(value: &ProfileIconStyle) -> Result<ProfileIconStyle> {
+    if !matches!(value.symbol.as_str(), "box" | "trees" | "mountain" | "compass" |
+        "pickaxe" | "sword" | "flame" | "snowflake" | "moon" | "sun" |
+        "star" | "heart" | "gem" | "ghost" | "rocket" | "gamepad") {
+        bail!("Неизвестный символ значка")
+    }
+    for color in [&value.color, &value.background] {
+        if color.len() != 7 || !color.starts_with('#') ||
+            !color.as_bytes()[1..].iter().all(u8::is_ascii_hexdigit) {
+            bail!("Цвет значка должен быть в формате #RRGGBB")
+        }
+    }
+    Ok(ProfileIconStyle {
+        symbol: value.symbol.clone(),
+        color: value.color.to_ascii_uppercase(),
+        background: value.background.to_ascii_uppercase(),
+    })
+}
+
 pub fn validate_profile_icon(value: &str) -> Result<String> {
     use base64::Engine as _;
     let encoded = value

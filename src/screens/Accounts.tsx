@@ -1,103 +1,71 @@
+import { t } from "../lib/i18n";
 import { useEffect, useState } from "react";
 import {
   UserRound,
   Plus,
   Check,
   Trash2,
-  Upload,
-  ShieldCheck,
+  Shirt,
   Monitor,
-  ExternalLink,
+  ArrowRight,
 } from "lucide-react";
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
 import { EmptyState, Field, Modal } from "../components/ui";
-import { SkinPreview } from "../components/SkinPreview";
+import { TerrainPattern } from "../components/TerrainPattern";
 export function Accounts() {
-  const { data, run, operation, busy, navigate } = useApp();
+  const { data, run, startMicrosoftLogin, busy, navigate } = useApp();
   const [offline, setOffline] = useState(false);
   const [name, setName] = useState("");
   const [selected, setSelected] = useState(
     data.selectedAccount || data.accounts[0]?.id || "",
   );
-  const [bytes, setBytes] = useState<number[]>([]);
-  const [model, setModel] = useState<"steve" | "alex">("steve");
   const [confirm, setConfirm] = useState(false);
-  const [skinError, setSkinError] = useState("");
   const account = data.accounts.find((a) => a.id === selected);
   useEffect(() => {
     if (!data.accounts.some((a) => a.id === selected))
       setSelected(data.selectedAccount || data.accounts[0]?.id || "");
   }, [data.accounts, selected, data.selectedAccount]);
-  useEffect(() => {
-    setBytes([]);
-    setSkinError("");
-    if (!account) return;
-    let live = true;
-    setModel(account.skinModel);
-    rpc("skin", { id: account.id })
-      .then((b) => {
-        if (live) {
-          setBytes(b);
-          setSkinError("");
-        }
-      })
-      .catch((e) => {
-        if (live) setSkinError(e.message);
-      });
-    return () => {
-      live = false;
-    };
-  }, [account]);
-  const login = () =>
-    void operation(
-      (operationId) => rpc("loginMicrosoft", { operationId }),
-      "Microsoft-аккаунт добавлен",
-    );
   return (
     <>
       <div className="page-heading">
-        <h1>Аккаунты и скины</h1>
-        <p>Выберите аккаунт для игры и настройте скин.</p>
+        <h1>{t("Аккаунты и скины")}</h1>
+        <p>{t("Выберите аккаунт для игры и настройте скин.")}</p>
       </div>
       <div className="accounts-layout">
         <section>
+          <div className="microsoft-account-card">
+            <TerrainPattern />
+            <h3>{t("Ваш Minecraft начинается здесь")}</h3>
+            <p>
+              {t(
+                "Войдите с Microsoft — и ваши скины, серверы и миры будут под рукой. Всё остальное Aurum сделает сам.",
+              )}
+            </p>
+          </div>
           <div className="account-add">
-            <button className="button primary" disabled={busy} onClick={login}>
+            <button
+              className="button primary"
+              disabled={busy}
+              onClick={() => void startMicrosoftLogin()}
+            >
               <span className="microsoft-logo">
                 <i />
                 <i />
                 <i />
                 <i />
               </span>{" "}
-              Войти с Microsoft
+              {t("Войти с Microsoft")}
             </button>
             <button
               className="button secondary"
               disabled={busy}
               onClick={() => setOffline(true)}
             >
-              <Plus size={16} /> Локальный профиль
+              <Plus size={16} />
+              {t(" Локальный профиль")}
             </button>
           </div>
-          {!data.settings.microsoftClientId && (
-            <div className="credentials-note">
-              <ShieldCheck size={19} />
-              <div>
-                <b>Настройте Microsoft-вход</b>
-                <p>
-                  Нужен Client ID вашего OAuth-приложения и разрешение Minecraft
-                  Services.
-                </p>
-                <button
-                  className="text-button"
-                  onClick={() => navigate("settings")}
-                >
-                  Открыть настройки <ExternalLink size={14} />
-                </button>
-              </div>
-            </div>
-          )}
           {data.accounts.length ? (
             <div className="account-list">
               {data.accounts.map((a) => (
@@ -114,12 +82,13 @@ export function Accounts() {
                     <small>
                       {a.kind === "microsoft"
                         ? "Microsoft · Minecraft Java"
-                        : "Локальный офлайн-профиль"}
+                        : t("Локальный офлайн-профиль")}
                     </small>
                   </div>
                   {data.selectedAccount === a.id && (
                     <span className="account-active">
-                      <Check size={13} /> Активен
+                      <Check size={13} />
+                      {t(" Активен")}
                     </span>
                   )}
                 </button>
@@ -128,8 +97,10 @@ export function Accounts() {
           ) : (
             <EmptyState
               icon={<UserRound size={30} />}
-              title="Нет аккаунтов"
-              text="Добавьте Microsoft-аккаунт или локальный профиль для допустимых офлайн-сценариев."
+              title={t("Нет аккаунтов")}
+              text={t(
+                "Добавьте Microsoft-аккаунт или локальный профиль для допустимых офлайн-сценариев.",
+              )}
             />
           )}
           {account && (
@@ -140,15 +111,16 @@ export function Accounts() {
                 onClick={() =>
                   void run(
                     () => rpc("selectAccount", { id: account.id }),
-                    "Аккаунт выбран",
+                    t("Аккаунт выбран"),
                   )
                 }
               >
-                <Check size={16} /> Использовать для игры
+                <Check size={16} />
+                {t(" Использовать для игры")}
               </button>
               <button
                 className="icon-button danger"
-                aria-label="Удалить аккаунт"
+                aria-label={t("Удалить аккаунт")}
                 disabled={busy}
                 onClick={() => setConfirm(true)}
               >
@@ -159,65 +131,43 @@ export function Accounts() {
           <div className="offline-info">
             <Monitor size={19} />
             <div>
-              <b>Об офлайн-профилях</b>
+              <b>{t("Об офлайн-профилях")}</b>
               <p>
-                Они подходят для локальной игры и серверов, допускающих
-                офлайн-вход. Официальные серверы требуют Microsoft-аккаунт с
-                Minecraft.
+                {t(
+                  "Они подходят для локальной игры и серверов, допускающих офлайн-вход. Официальные серверы требуют Microsoft-аккаунт с Minecraft.",
+                )}
               </p>
             </div>
           </div>
         </section>
-        <section className="skin-panel">
+        <section className="skin-panel accounts-wardrobe-link">
           <div className="section-heading">
             <div>
-              <h2>Ваш образ</h2>
-              <p>{account ? account.name : "Предпросмотр модели"}</p>
+              <h2>{t("Скины и плащи")}</h2>
+              <p>{t("Отдельная библиотека ваших образов")}</p>
             </div>
-            <span className="quiet-pill">3D</span>
+            <Shirt size={24} />
           </div>
-          <SkinPreview bytes={bytes} model={model} />
-          <div className="model-switch">
-            {(["steve", "alex"] as const).map((v) => (
-              <button
-                key={v}
-                className={model === v ? "active" : ""}
-                onClick={() => setModel(v)}
-              >
-                {v === "steve" ? "Steve · обычные руки" : "Alex · тонкие руки"}
-              </button>
-            ))}
-          </div>
+          <p>
+            {t(
+              "Стандартные персонажи, сохранённые скины, анимации и настройки плащей — в разделе образов.",
+            )}
+          </p>
           <button
             className="button secondary full-width"
-            disabled={busy || !account}
-            onClick={() => {
-              if (account)
-                void run(
-                  () => rpc("setSkin", { id: account.id, model }),
-                  "Скин загружен",
-                );
-            }}
+            onClick={() => navigate("skins")}
           >
-            <Upload size={16} /> Загрузить PNG-скин
+            {t("Открыть скины")}
+            <ArrowRight size={16} />
           </button>
-          <p className="skin-hint">
-            64×64 или 64×32 · до 1 МБ
-            {account?.kind === "microsoft"
-              ? " · Скин отправляется в ваш Minecraft-профиль."
-              : null}
-          </p>
-          {skinError && (
-            <p role="alert" className="danger">
-              {skinError}
-            </p>
-          )}
         </section>
       </div>
       {offline && (
         <Modal
-          title="Локальный профиль"
-          subtitle="Для игры без Microsoft-авторизации в допустимых офлайн-сценариях."
+          title={t("Локальный профиль")}
+          subtitle={t(
+            "Для игры без Microsoft-авторизации в допустимых офлайн-сценариях.",
+          )}
           onClose={() => setOffline(false)}
         >
           <form
@@ -225,7 +175,7 @@ export function Accounts() {
               e.preventDefault();
               void run(
                 () => rpc("addOffline", { name }),
-                "Локальный профиль добавлен",
+                t("Локальный профиль добавлен"),
               ).then((a) => {
                 if (a) {
                   setSelected(a.id);
@@ -236,8 +186,8 @@ export function Accounts() {
             }}
           >
             <Field
-              label="Ник игрока"
-              hint="3–16 латинских букв, цифр или символов _"
+              label={t("Ник игрока")}
+              hint={t("3\u201316 латинских букв, цифр или символов _")}
             >
               <input
                 required
@@ -246,7 +196,7 @@ export function Accounts() {
                 pattern="[A-Za-z0-9_]{3,16}"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ваш ник"
+                placeholder={t("Ваш ник")}
               />
             </Field>
             <div className="modal-actions">
@@ -255,10 +205,11 @@ export function Accounts() {
                 className="button secondary"
                 onClick={() => setOffline(false)}
               >
-                Отмена
+                {t("Отмена")}
               </button>
               <button className="button primary" disabled={busy}>
-                <Plus size={16} /> Добавить профиль
+                <Plus size={16} />
+                {t(" Добавить профиль")}
               </button>
             </div>
           </form>
@@ -266,8 +217,10 @@ export function Accounts() {
       )}
       {confirm && account && (
         <Modal
-          title={`Удалить ${account.name}?`}
-          subtitle="Будут удалены данные входа. Игровые сборки и миры сохранятся."
+          title={t("Удалить {{v1}}?", { v1: account.name })}
+          subtitle={t(
+            "Будут удалены данные входа. Игровые сборки и миры сохранятся.",
+          )}
           onClose={() => setConfirm(false)}
         >
           <div className="modal-actions">
@@ -275,7 +228,7 @@ export function Accounts() {
               className="button secondary"
               onClick={() => setConfirm(false)}
             >
-              Отмена
+              {t("Отмена")}
             </button>
             <button
               className="button destructive"
@@ -284,11 +237,11 @@ export function Accounts() {
                 const ok = await run(async () => {
                   await rpc("deleteAccount", { id: account.id });
                   return true;
-                }, "Аккаунт удалён");
+                }, t("Аккаунт удалён"));
                 if (ok) setConfirm(false);
               }}
             >
-              Удалить аккаунт
+              {t("Удалить аккаунт")}
             </button>
           </div>
         </Modal>

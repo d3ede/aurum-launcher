@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod microsoft_window;
 use auren_core::Engine;
 use serde_json::{json, Value};
 use tauri::{Emitter, Manager};
@@ -18,7 +19,12 @@ async fn rpc(
     payload: Value,
     state: tauri::State<'_, Engine>,
     app: tauri::AppHandle,
+    webview: tauri::WebviewWindow,
 ) -> Result<Value, String> {
+    // Remote Microsoft content cannot invoke launcher commands.
+    if webview.label() != "main" {
+        return Err("Команда доступна только в главном окне Aurum".into());
+    }
     let e = state.inner().clone();
     if app
         .state::<Relocation>()
@@ -82,6 +88,32 @@ async fn rpc(
             Ok(json!(path.to_string_lossy()))
         }
         "snapshot" => Ok(json!(e.snapshot().await)),
+        "scanModrinth" => {
+            let extra: Vec<std::path::PathBuf> = param(&payload, "directories")?;
+            let mut roots = auren_core::modrinth_import::default_directories();
+            roots.extend(extra);
+            Ok(json!(tauri::async_runtime::spawn_blocking(move || {
+                auren_core::modrinth_import::scan(&roots)
+            })
+            .await
+            .map_err(err)?))
+        }
+        "chooseModrinthDirectory" => {
+            let handle = app.clone();
+            let path = tauri::async_runtime::spawn_blocking(move || {
+                handle
+                    .dialog()
+                    .file()
+                    .set_title("Выберите папку данных Modrinth или папку profiles")
+                    .blocking_pick_folder()
+            })
+            .await
+            .map_err(err)?;
+            Ok(json!(path
+                .map(|p| p.into_path().map(|p| p.to_string_lossy().into_owned()))
+                .transpose()
+                .map_err(err)?))
+        }
         "catalogCategories" => e
             .catalog_categories(
                 &param::<String>(&payload, "source")?,
@@ -104,6 +136,11 @@ async fn rpc(
                 .map(|icon| json!(icon))
         }
         "createProfile" => {
+            let icon_style = serde_json::from_value::<Option<auren_core::model::ProfileIconStyle>>(
+                payload.get("iconStyle").cloned().unwrap_or(Value::Null),
+            ).map_err(err)?.as_ref()
+                .map(auren_core::store::validate_profile_icon_style)
+                .transpose().map_err(err)?;
             let icon = payload["icon"]
                 .as_str()
                 .map(auren_core::store::validate_profile_icon)
@@ -119,8 +156,9 @@ async fn rpc(
                 )
                 .await
                 .map_err(err)?;
-            if let Some(icon) = icon {
-                profile.icon = Some(icon);
+            if icon.is_some() || icon_style.is_some() {
+                profile.icon = icon;
+                profile.icon_style = icon_style;
                 e.update_profile(profile.clone()).await.map_err(err)?;
             }
             Ok(json!(profile))
@@ -167,6 +205,77 @@ async fn rpc(
                 .await
                 .map_err(err)?;
             Ok(Value::Null)
+        }
+        "skinLibrary" => Ok(json!(e.skin_library().await.map_err(err)?)),
+        "accountAppearance" => Ok(json!(e
+            .account_appearance(&param::<String>(&payload, "id")?)
+            .await
+            .map_err(err)?)),
+        "defaultSkinTexture" => Ok(json!(auren_core::skins::default_texture(
+            &param::<String>(&payload, "id")?,
+            &param::<String>(&payload, "model")?
+        )
+        .map_err(err)?)),
+        "chooseSkinTexture" => {
+            let path = choose_file(&app, "PNG texture", &["png"]).await?;
+            let Some(path) = path else {
+                return Ok(Value::Null);
+            };
+            if std::fs::metadata(&path).map_err(err)?.len() > 1_000_000 {
+                return Err("PNG должен быть меньше 1 МБ".into());
+            }
+            let bytes = std::fs::read(&path).map_err(err)?;
+            let normalized = auren_core::skins::validate_texture(
+                &bytes,
+                payload["cape"].as_bool().unwrap_or(false),
+            )
+            .map_err(err)?;
+            Ok(
+                json!({"name":path.file_stem().unwrap_or_default().to_string_lossy(),"bytes":normalized}),
+            )
+        }
+        "saveLibrarySkin" | "saveLibraryCape" | "deleteLibraryItem" | "applyLibrarySkin" => {
+            let _guard = e
+                .busy
+                .try_lock()
+                .map_err(|_| "Дождитесь завершения текущей операции".to_string())?;
+            match action.as_str() {
+                "saveLibrarySkin" => Ok(json!(e
+                    .save_library_skin(
+                        payload["id"].as_str().map(String::from),
+                        param(&payload, "name")?,
+                        param(&payload, "model")?,
+                        param(&payload, "bytes")?,
+                        payload["capeId"].as_str().map(String::from)
+                    )
+                    .await
+                    .map_err(err)?)),
+                "saveLibraryCape" => Ok(json!(e
+                    .save_library_cape(param(&payload, "name")?, param(&payload, "bytes")?)
+                    .await
+                    .map_err(err)?)),
+                "deleteLibraryItem" => {
+                    e.delete_library_item(
+                        &param::<String>(&payload, "id")?,
+                        payload["cape"].as_bool().unwrap_or(false),
+                    )
+                    .await
+                    .map_err(err)?;
+                    Ok(Value::Null)
+                }
+                "applyLibrarySkin" => {
+                    e.apply_library_skin(
+                        &param::<String>(&payload, "accountId")?,
+                        &param::<String>(&payload, "skinId")?,
+                        &param::<String>(&payload, "model")?,
+                        payload["capeId"].as_str().map(String::from),
+                    )
+                    .await
+                    .map_err(err)?;
+                    Ok(Value::Null)
+                }
+                _ => unreachable!(),
+            }
         }
         "skin" => Ok(json!(e
             .skin(&param::<String>(&payload, "id")?)
@@ -260,13 +369,18 @@ async fn rpc(
                 .map_err(err)?;
             Ok(Value::Null)
         }
+        "reopenMicrosoft" => {
+            microsoft_window::focus(&app, &param::<String>(&payload, "operationId")?)?;
+            Ok(Value::Null)
+        }
         "openFolder" => {
             let path = if let Some(id) = payload["id"].as_str() {
-                e.profile(id).await.map_err(err)?;
-                e.instance(id).map_err(err)?
+                e.profile_directory(id).await.map_err(err)?
             } else {
                 e.root.clone()
             };
+            // Explorer expects a native absolute path; avoid verbatim prefixes and mixed separators.
+            let path = dunce::canonicalize(path).map_err(err)?;
             app.opener()
                 .open_path(path.to_string_lossy().as_ref(), None::<&str>)
                 .map_err(err)?;
@@ -302,7 +416,7 @@ async fn rpc(
             Ok(json!(String::from_utf8_lossy(&bytes)))
         }
         "install" | "installContent" | "updateContent" | "importPack" | "downloadPack"
-        | "importFolder" | "loginMicrosoft" => {
+        | "importFolder" | "importModrinth" | "loginMicrosoft" => {
             let _guard = e
                 .busy
                 .try_lock()
@@ -316,6 +430,20 @@ async fn rpc(
                 .map_err(err)?;
             let result: Result<Value, anyhow::Error> = async {
                 match action.as_str() {
+                    "importModrinth" => {
+                        let extra: Vec<std::path::PathBuf> =
+                            param(&payload, "directories").map_err(anyhow::Error::msg)?;
+                        let mut roots = auren_core::modrinth_import::default_directories();
+                        roots.extend(extra);
+                        Ok(json!(
+                            e.import_modrinth(
+                                roots,
+                                param(&payload, "selected").map_err(anyhow::Error::msg)?,
+                                &task
+                            )
+                            .await?
+                        ))
+                    }
                     "install" => {
                         e.install(payload["id"].as_str().unwrap_or(""), &task)
                             .await?;
@@ -342,8 +470,13 @@ async fn rpc(
                         Ok(Value::Null)
                     }
                     "loginMicrosoft" => {
-                        e.login_microsoft(&task).await?;
-                        Ok(Value::Null)
+                        let result = e
+                            .login_microsoft(&task, |url| {
+                                microsoft_window::open(&app, &e, &task.id, url)
+                            })
+                            .await;
+                        microsoft_window::finish(&app, &task.id);
+                        Ok(json!(result?))
                     }
                     "importPack" => {
                         if let Some(path) =
@@ -432,6 +565,7 @@ async fn choose_file(
 }
 fn main() {
     tauri::Builder::default()
+        .manage(microsoft_window::MicrosoftWindow::default())
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.unminimize();
@@ -453,6 +587,9 @@ fn main() {
                 app.path().app_data_dir()?
             };
             let engine = tauri::async_runtime::block_on(Engine::new(root, move |event| {
+                if event.phase == "auth-exchange" {
+                    microsoft_window::finish(&handle, &event.id);
+                }
                 let _ = handle.emit("auren:event", event);
             }))?;
             app.manage(engine);

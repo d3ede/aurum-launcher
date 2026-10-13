@@ -1,3 +1,4 @@
+import { t, formatCount } from "../lib/i18n";
 import { useEffect, useState } from "react";
 import {
   Search,
@@ -85,9 +86,12 @@ export function Catalog({
   );
   const [sort, setSort] = useState("downloads");
   const [category, setCategory] = useState("");
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>(
-    [],
-  );
+  const [categories, setCategories] = useState<
+    {
+      id: string;
+      name: string;
+    }[]
+  >([]);
   const [versions, setVersions] = useState<string[]>([]);
   const [offset, setOffset] = useState(0);
   const [results, setResults] = useState<Project[]>([]);
@@ -205,24 +209,27 @@ export function Catalog({
   ]);
   const add = (project: Project) => {
     if (!profile) return;
-    void operation(async (operationId) => {
-      const detail = await rpc("project", {
-        source: project.source,
-        id: project.id,
-        minecraft: profile.minecraft,
-        ...(kind === "mod" ? { loader: profile.loader } : {}),
-      });
-      const version = detail.versions[0];
-      if (!version)
-        throw new Error("Для этой сборки нет совместимой версии проекта");
-      await rpc("installContent", {
-        id: profile.id,
-        source: project.source,
-        projectId: project.id,
-        versionId: version.id,
-        operationId,
-      });
-    }, `${project.title} добавлен в ${profile.name}`);
+    void operation(
+      async (operationId) => {
+        const detail = await rpc("project", {
+          source: project.source,
+          id: project.id,
+          minecraft: profile.minecraft,
+          ...(kind === "mod" ? { loader: profile.loader } : {}),
+        });
+        const version = detail.versions[0];
+        if (!version)
+          throw new Error(t("Для этой сборки нет совместимой версии проекта"));
+        await rpc("installContent", {
+          id: profile.id,
+          source: project.source,
+          projectId: project.id,
+          versionId: version.id,
+          operationId,
+        });
+      },
+      t("{{v1}} добавлен в {{v2}}", { v1: project.title, v2: profile.name }),
+    );
   };
   const reset = () => {
     setQuery("");
@@ -234,24 +241,24 @@ export function Catalog({
   return (
     <>
       <div className="page-heading">
-        <h1>Каталог проектов</h1>
+        <h1>{t("Каталог проектов")}</h1>
       </div>
       <div className="catalog-context">
-        <label htmlFor="catalog-target">Установить в</label>
+        <label htmlFor="catalog-target">{t("Установить в")}</label>
         <Select
           id="catalog-target"
-          aria-label="Установить в"
+          aria-label={t("Установить в")}
           value={target.profileId}
           onValueChange={(profileId) => setTarget({ ...target, profileId })}
           options={[
-            { value: "", label: "Без привязки к сборке" },
+            { value: "", label: t("Без привязки к сборке") },
             ...data.profiles.map((p) => ({
               value: p.id,
               label: `${p.name} · ${p.minecraft} · ${ru.loaders[p.loader]}`,
             })),
           ]}
         />
-        {bound && <span>Только совместимые проекты</span>}
+        {bound && <span>{t("Только совместимые проекты")}</span>}
       </div>
       <div className="catalog-workspace">
         <section className="catalog-results">
@@ -259,15 +266,15 @@ export function Catalog({
             <div className="input-icon">
               <Search size={19} />
               <input
-                aria-label="Поиск проектов"
-                placeholder="Поиск модов, сборок и ресурспаков"
+                aria-label={t("Поиск проектов")}
+                placeholder={t("Поиск модов, сборок и ресурспаков")}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
               {query && (
                 <button
                   className="icon-button"
-                  aria-label="Очистить поиск"
+                  aria-label={t("Очистить поиск")}
                   onClick={() => setQuery("")}
                 >
                   <X size={16} />
@@ -275,54 +282,58 @@ export function Catalog({
               )}
             </div>
             <Select
-              aria-label="Сортировка проектов"
+              aria-label={t("Сортировка проектов")}
               value={sort}
               onValueChange={setSort}
               options={[
-                { value: "downloads", label: "По загрузкам" },
+                { value: "downloads", label: t("По загрузкам") },
                 ...(source === "modrinth"
-                  ? [{ value: "relevance", label: "По соответствию" }]
+                  ? [{ value: "relevance", label: t("По соответствию") }]
                   : []),
-                { value: "updated", label: "Недавно обновлённые" },
-                { value: "newest", label: "Новые проекты" },
+                { value: "updated", label: t("Недавно обновлённые") },
+                { value: "newest", label: t("Новые проекты") },
               ]}
             />
           </div>
           {!native ? (
             <EmptyState
               icon={<Compass size={30} />}
-              title="Каталог ждёт в desktop-приложении"
-              text="Поиск и установка доступны в Aurum."
+              title={t("Каталог ждёт в desktop-приложении")}
+              text={t("Поиск и установка доступны в Aurum.")}
             />
           ) : source === "curseforge" && !data.curseforgeConfigured ? (
             <EmptyState
               icon={<Compass size={30} />}
-              title="Подключите CurseForge"
-              text="Добавьте API-ключ в настройках интеграций."
+              title={t("Подключите CurseForge")}
+              text={t("Добавьте API-ключ в настройках интеграций.")}
             />
           ) : needsLoader ? (
             <EmptyState
               icon={<Compass size={30} />}
-              title="Для модов нужен загрузчик"
-              text="Создайте сборку с Fabric, Forge, NeoForge или Quilt. В Vanilla можно добавить ресурспаки."
+              title={t("Для модов нужен загрузчик")}
+              text={t(
+                "Создайте сборку с Fabric, Forge, NeoForge или Quilt. В Vanilla можно добавить ресурспаки.",
+              )}
             >
               <button
                 className="button secondary"
                 onClick={() => setTarget({ ...target, kind: "resourcepack" })}
               >
-                Найти ресурспаки
+                {t("Найти ресурспаки")}
               </button>
             </EmptyState>
           ) : loading ? (
             <Loading
-              label={`Поиск в ${source === "modrinth" ? "Modrinth" : "CurseForge"}…`}
+              label={t("Поиск в {{v1}}\u2026", {
+                v1: source === "modrinth" ? "Modrinth" : "CurseForge",
+              })}
             />
           ) : error ? (
             <ErrorBox error={error} retry={() => setRetry((v) => v + 1)} />
           ) : results.length ? (
             <>
               <div className="result-summary">
-                <span>{formatNumber(total)} проектов</span>
+                <span>{formatCount(total)}</span>
               </div>
               <div className="catalog-result-list">
                 {results.map((project) => {
@@ -357,7 +368,7 @@ export function Catalog({
                           onClick={() => add(project)}
                         >
                           {installed ? <Check size={16} /> : <Plus size={16} />}
-                          {installed ? "Добавлено" : "Добавить"}
+                          {installed ? t("Добавлено") : t("Добавить")}
                         </button>
                       )}
                     </article>
@@ -370,7 +381,8 @@ export function Catalog({
                   disabled={!offset}
                   onClick={() => setOffset((v) => Math.max(0, v - 24))}
                 >
-                  <ChevronLeft size={17} /> Назад
+                  <ChevronLeft size={17} />
+                  {t(" Назад")}
                 </button>
                 <span>{Math.floor(offset / 24) + 1}</span>
                 <button
@@ -378,27 +390,31 @@ export function Catalog({
                   disabled={offset + 24 >= total}
                   onClick={() => setOffset((v) => v + 24)}
                 >
-                  Далее <ChevronRight size={17} />
+                  {t("Далее ")}
+                  <ChevronRight size={17} />
                 </button>
               </div>
             </>
           ) : (
             <EmptyState
               icon={<Search size={30} />}
-              title="Ничего не найдено"
-              text="Измените запрос или фильтры."
+              title={t("Ничего не найдено")}
+              text={t("Измените запрос или фильтры.")}
             />
           )}
         </section>
-        <aside className="catalog-filter-panel" aria-label="Фильтры проектов">
+        <aside
+          className="catalog-filter-panel"
+          aria-label={t("Фильтры проектов")}
+        >
           <div className="filter-heading">
-            <b>Фильтры</b>
+            <b>{t("Фильтры")}</b>
             <button className="text-button" onClick={reset}>
-              Сбросить
+              {t("Сбросить")}
             </button>
           </div>
           <fieldset>
-            <legend>Источник</legend>
+            <legend>{t("Источник")}</legend>
             <div className="source-switch">
               <button
                 className={source === "modrinth" ? "active" : ""}
@@ -418,7 +434,7 @@ export function Catalog({
             </div>
           </fieldset>
           <fieldset>
-            <legend>Тип проекта</legend>
+            <legend>{t("Тип проекта")}</legend>
             <div className="filter-options">
               {Object.entries(ru.kinds).map(([value, label]) => (
                 <button
@@ -436,14 +452,14 @@ export function Catalog({
             </div>
           </fieldset>
           <fieldset>
-            <legend>Версия Minecraft</legend>
+            <legend>{t("Версия Minecraft")}</legend>
             <Select
-              aria-label="Фильтр версии Minecraft"
+              aria-label={t("Фильтр версии Minecraft")}
               value={effectiveMc}
               disabled={bound}
               onValueChange={setMc}
               options={[
-                { value: "", label: "Все версии" },
+                { value: "", label: t("Все версии") },
                 ...[...new Set([effectiveMc, ...versions])]
                   .filter(Boolean)
                   .map((v) => ({ value: v, label: v })),
@@ -452,14 +468,14 @@ export function Catalog({
           </fieldset>
           {kind === "mod" && (
             <fieldset>
-              <legend>Загрузчик</legend>
+              <legend>{t("Загрузчик")}</legend>
               <Select
-                aria-label="Фильтр загрузчика"
+                aria-label={t("Фильтр загрузчика")}
                 value={effectiveLoader}
                 disabled={bound}
                 onValueChange={setLoader}
                 options={[
-                  { value: "", label: "Все загрузчики" },
+                  { value: "", label: t("Все загрузчики") },
                   ...Object.entries(ru.loaders)
                     .filter(([value]) => value !== "vanilla" || bound)
                     .map(([value, label]) => ({ value, label })),
@@ -468,17 +484,17 @@ export function Catalog({
             </fieldset>
           )}
           <fieldset>
-            <legend>Категория</legend>
+            <legend>{t("Категория")}</legend>
             <Select
-              aria-label="Категория проекта"
+              aria-label={t("Категория проекта")}
               value={category}
               disabled={!categories.length}
               onValueChange={setCategory}
               options={[
-                { value: "", label: "Все категории" },
+                { value: "", label: t("Все категории") },
                 ...categories.map((c) => ({
                   value: c.id,
-                  label: categoryNames[c.name] || c.name,
+                  label: t(categoryNames[c.name] || c.name),
                 })),
               ]}
             />
@@ -490,7 +506,7 @@ export function Catalog({
                 className="text-button"
                 onClick={() => setRetry((v) => v + 1)}
               >
-                Повторить
+                {t("Повторить")}
               </button>
             </div>
           )}

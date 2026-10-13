@@ -1,0 +1,16 @@
+Required Notice: Copyright (c) 2026 d3ede (https://github.com/d3ede)
+
+Aurum Launcher
+https://github.com/d3ede/aurum-launcher
+
+Except where separately identified, the original project code, documentation,
+and artwork are offered under the PolyForm Noncommercial License 1.0.0.
+See LICENSE for the complete terms.
+
+Third-party dependencies, fonts, and assets retain their respective licenses
+and notices. Minecraft textures and other Mojang/Microsoft content are not
+licensed under this project's PolyForm license. See src/assets/skins/README.md
+for the provenance of bundled default Minecraft skins.
+
+Commercial permissions beyond this license require a separate agreement with
+the relevant copyright holder. Contact d3ede through the project repository.

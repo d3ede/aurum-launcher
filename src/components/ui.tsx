@@ -1,23 +1,11 @@
+import { t, tMessage } from "../lib/i18n";
 import { useEffect, useRef, type ReactNode } from "react";
 import { X, AlertCircle, LoaderCircle, ArrowUpRight } from "lucide-react";
+import aurumLogo from "../assets/branding/aurum-gold.svg";
 export function Logo({ small = false }: { small?: boolean }) {
   return (
     <div className={`brand-mark ${small ? "small" : ""}`}>
-      <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
-        <path
-          d="M11 29 20 10 29 29M15 23h10"
-          stroke="currentColor"
-          strokeWidth="2.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M31 10h4m-2-2v4"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        />
-      </svg>
+      <img src={aurumLogo} alt="" aria-hidden="true" />
     </div>
   );
 }
@@ -27,12 +15,16 @@ export function Modal({
   children,
   onClose,
   wide = false,
+  className = "",
+  closeDisabled = false,
 }: {
   title: string;
   subtitle?: string;
   children: ReactNode;
   onClose: () => void;
   wide?: boolean;
+  className?: string;
+  closeDisabled?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
@@ -85,7 +77,7 @@ export function Modal({
     >
       <div
         ref={ref}
-        className={`modal ${wide ? "wide" : ""}`}
+        className={`modal ${wide ? "wide" : ""} ${className}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -97,7 +89,8 @@ export function Modal({
           </div>
           <button
             className="icon-button"
-            aria-label="Закрыть диалог"
+            aria-label={t("Закрыть диалог")}
+            disabled={closeDisabled}
             onClick={onClose}
           >
             <X size={20} />
@@ -119,18 +112,19 @@ export function ErrorBox({
     <div className="error-box" role="alert">
       <AlertCircle size={20} />
       <div>
-        <b>Не удалось выполнить действие</b>
-        <p>{error}</p>
+        <b>{t("Не удалось выполнить действие")}</b>
+        <p>{tMessage(error)}</p>
         {retry && (
           <button className="text-button" onClick={retry}>
-            Попробовать снова <ArrowUpRight size={14} />
+            {t("Попробовать снова ")}
+            <ArrowUpRight size={14} />
           </button>
         )}
       </div>
     </div>
   );
 }
-export function Loading({ label = "Загрузка…" }: { label?: string }) {
+export function Loading({ label = t("Загрузка\u2026") }: { label?: string }) {
   return (
     <div className="loading">
       <LoaderCircle size={22} className="spin" />

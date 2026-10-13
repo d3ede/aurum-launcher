@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Minus, Square, Copy, X } from "lucide-react";
@@ -40,14 +41,14 @@ export function WindowControls({
     <div className="window-controls">
       <button
         disabled={!native}
-        aria-label="Свернуть окно"
+        aria-label={t("Свернуть окно")}
         onClick={() => action("minimize")}
       >
         <Minus size={18} />
       </button>
       <button
         disabled={!native}
-        aria-label={maximized ? "Восстановить окно" : "Развернуть окно"}
+        aria-label={maximized ? t("Восстановить окно") : t("Развернуть окно")}
         onClick={() => action("toggleMaximize")}
       >
         {maximized ? <Copy size={16} /> : <Square size={16} />}
@@ -55,7 +56,7 @@ export function WindowControls({
       <button
         disabled={!native}
         className="window-close"
-        aria-label="Закрыть Aurum"
+        aria-label={t("Закрыть Aurum")}
         onClick={() => action("close")}
       >
         <X size={20} />
