@@ -5,7 +5,7 @@
   "identifier": "app.auren.launcher",
   "build": { "beforeDevCommand": "npm run dev", "devUrl": "http://127.0.0.1:1420", "beforeBuildCommand": "npm run build", "frontendDist": "../dist" },
   "app": {
-    "windows": [{ "label": "main", "title": "Auren", "width": 1280, "height": 820, "minWidth": 960, "minHeight": 680, "resizable": true, "decorations": true }],
+    "windows": [{ "label": "main", "title": "Auren", "center": true, "width": 1280, "height": 820, "minWidth": 960, "minHeight": 680, "resizable": true, "decorations": true }],
     "security": { "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none'; base-uri 'self'" }
   },
   "bundle": { "active": true, "targets": ["nsis"], "icon": ["icons/icon.ico", "icons/icon.png"] }
