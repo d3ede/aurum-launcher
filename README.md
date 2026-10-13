@@ -1,0 +1,71 @@
+# Auren
+
+Независимый desktop Minecraft-лаунчер на **Tauri 2 · Rust · React · TypeScript · Vite**. Светлая кремовая и тёмная графитовая темы, русский интерфейс, изолированные игровые сборки. Собственная графика и реализация; исходники и ассеты других лаунчеров не используются. Окончательная лицензия пока не выбрана.
+
+## Запуск
+
+Установщик Windows x64: **[Auren_0.1.0_x64-setup.exe](target/release/bundle/nsis/Auren_0.1.0_x64-setup.exe)**. Запуск без установки: **[target/release/auren.exe](target/release/auren.exe)**. Интерфейс встроен; Vite для запуска не нужен. Требуется Microsoft Edge WebView2 Runtime; установщик проверяет его наличие. Сборка не подписана сертификатом издателя.
+
+```powershell
+cd auren
+npm ci
+# Если Rust уже настроен в системе:
+npm run tauri dev
+npm run tauri build
+# Локальный toolchain, подготовленный в этом workspace:
+./scripts/desktop.ps1 -Mode dev
+./scripts/desktop.ps1 -Mode build
+```
+
+Node.js 22.12+; актуальный stable Rust (1.90+) и Visual Studio C++ Build Tools с Windows SDK для стандартной Windows MSVC-сборки. Локальные инструменты этого workspace находятся в `.tools/`, исключены из Git и не меняют системный PATH. `scripts/cargo.ps1` и `scripts/desktop.ps1` настраивают их только на время процесса. При переносе release EXE без установщика сохраняйте рядом `WebView2Loader.dll`.
+
+## Первый запуск
+
+1. В разделе «Аккаунты и скины» добавьте локальный профиль или настройте Microsoft-вход.
+2. Создайте сборку: выберите Minecraft, Vanilla/Fabric/Forge/NeoForge/Quilt и совместимую версию загрузчика.
+3. Нажмите «Установить и играть». Auren загрузит проверенные игровые файлы, библиотеки, assets и Eclipse Temurin Java.
+4. Добавляйте проекты через каталог или локальные JAR/ZIP-файлы. Моды устанавливаются с обязательными зависимостями, доступными в API.
+
+Игровые данные хранятся в системной папке приложения. В настройках можно открыть её или скопировать данные в новую пустую папку с последующим перезапуском. Исходные данные при смене пути сохраняются. Переменная `AUREN_DATA_DIR` задаёт отдельный каталог для портативного запуска или тестирования. Сборки из тестов находятся только в `.test-data/` и не появляются при обычном запуске.
+
+## Что реализовано
+
+- Создание, переименование, настройки, восстановимое удаление, установка, запуск и остановка изолированных сборок.
+- Mojang manifests, SHA1/SHA256, библиотеки, native-файлы, assets, Java, JVM/game arguments, отмена загрузок и ошибки процессов.
+- Fabric/Quilt Meta API; официальные Forge/NeoForge installer JAR с обработкой процессоров.
+- Modrinth: поиск, фильтры, описания, скриншоты, версии, установка, обязательные зависимости, обновление, отключение и удаление контента.
+- CurseForge: официальный API, поиск/файлы/зависимости/модпаки. Интеграция требует API-ключ и соблюдает отсутствие download URL.
+- Импорт `.mrpack`, CurseForge ZIP с `manifest.json` и папок игры. Проверка путей и отказ от символических ссылок в архивах.
+- Microsoft device OAuth → Xbox Live → XSTS → Minecraft Services → проверка entitlements и Java-профиля; refresh и защищённое хранение токенов в хранилище ОС.
+- Локальные офлайн-аккаунты с корректным offline UUID. Загрузка PNG, выбор Steve/Alex, интерактивное 3D-превью. Для Microsoft скин отправляется в Minecraft Services.
+- Настройки памяти, JVM, Java, размеров игрового окна, снапшотов, темы и расположения данных.
+
+## Credentials и ограничения
+
+Microsoft: нужен **собственный Client ID** зарегистрированного public client приложения с personal Microsoft accounts, device flow, `XboxLive.signin offline_access` и разрешением Minecraft Services. Client ID задаётся в настройках. Без регистрации/разрешения сервис может вернуть 400/403; Auren не использует чужой client ID. Полный вход и загрузка скина в Microsoft требуют реального аккаунта и не подтверждены без этих данных.
+
+CurseForge: нужен официальный API-ключ для стороннего приложения. Он сохраняется в Credential Manager, не в JSON. Авторы могут запретить сторонние загрузки; Auren показывает ограничение и позволяет добавить скачанный пользователем файл. Запросы с реальным ключом пока не проверены.
+
+Локальные аккаунты предназначены для допустимой офлайн-игры. Они не обходят авторизацию официальных серверов. Офлайн-скин сохраняется локально **для превью лаунчера**; Vanilla не применяет такой скин в игре и другие игроки его не увидят.
+
+Проверенный целевой runtime — **Windows x64**. Автоустановка Java сейчас использует Windows ZIP; на macOS/Linux следует указать собственную Java, и эти платформы пока не прошли сборку/проверку. Проверены загрузчики на Minecraft 1.21.1; совместимость со всей историей Minecraft/Forge не заявляется. Версии до assetIndex отклоняются с явной ошибкой.
+
+API-зависимости разрешаются в доступном объёме: required устанавливаются, optional/embedded не навязываются. Локальные неизвестные JAR-файлы не могут быть полностью проверены по данным удалённых API. Импортированные файлы без идентификаторов проектов управляются как локальный контент. Политика `.mrpack` допускает документированные CDN Modrinth/Forge и GitHub; другие домены отклоняются явно. Экспорт модпаков, автообновление самого лаунчера и полный редактор миров не входят в эту версию.
+
+## Проверки
+
+```powershell
+npm run build
+npm test
+$env:PLAYWRIGHT_BROWSERS_PATH = Join-Path (Get-Location) '.tools/browsers'
+npm run test:ui
+./scripts/cargo.ps1 -CargoArguments @('test','-p','auren-core')
+./scripts/cargo.ps1 -CargoArguments @('clippy','--workspace','--all-targets','--','-D','warnings')
+./scripts/cargo.ps1 -CargoArguments @('run','-p','auren-core','--example','live_smoke','--','fabric')
+```
+
+`live_smoke` действительно скачивает Minecraft/Java/загрузчик, запускает игру до инициализации графики/звука и останавливает процесс. Режимы: vanilla, fabric, forge, neoforge, quilt. Fabric также проверяет реальный Modrinth-проект Sodium. `vault_smoke` проверяет запись/чтение/удаление временного секрета в OS vault.
+
+`scripts/native-smoke.mjs` проверяет реальный Tauri WebView2 и IPC через **локальный** CDP-порт 9227: каталог, создание профиля, установка/запуск из UI, остановка, темы, 3D-превью, удаление. Для этой проверки приложение запускают с `AUREN_DATA_DIR` в `.test-data/` и `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9227 --remote-debugging-address=127.0.0.1`. Обычный запуск не включает этот порт.
+
+Детальные результаты: [docs/VERIFICATION.md](docs/VERIFICATION.md). Архитектура: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).

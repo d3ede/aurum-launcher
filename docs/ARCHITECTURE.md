@@ -1,5 +1,7 @@
 # Auren architecture
 
+The native application permits one running instance using Tauri's [Single Instance plugin](https://v2.tauri.app/plugin/single-instance/), so separate windows cannot overwrite the same in-memory database. Standalone core examples are developer utilities and must run sequentially against a shared test root. Data relocation copies into a separate empty directory, retains the source, and selects the destination only after successful completion and restart.
+
 Independent implementation. No third-party launcher code or artwork is used.
 
 `src/`: Russian React UI, typed IPC, theme tokens, catalog, profiles, accounts, settings.
