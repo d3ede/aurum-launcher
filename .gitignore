@@ -1,0 +1,13 @@
+node_modules/
+dist/
+target/
+.tools/
+.test-data/
+.env
+.env.*
+!.env.example
+*.log
+*.tmp
+test-results/
+playwright-report/
+src-tauri/gen/
