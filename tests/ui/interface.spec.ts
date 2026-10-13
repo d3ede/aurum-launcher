@@ -5,10 +5,8 @@ test("honest browser state, navigation and persistent appearance", async ({
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: "Хороший день для нового мира." }),
-  ).toBeVisible();
-  await expect(page.getByText("Место для вашей первой сборки")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Главная" })).toBeVisible();
+  await expect(page.getByText("Создайте первую сборку")).toBeVisible();
   await page.screenshot({
     path: "docs/screenshots/light.png",
     fullPage: true,
@@ -34,7 +32,7 @@ test("honest browser state, navigation and persistent appearance", async ({
     .getByRole("button", { name: "Аккаунты и скины", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Кто отправится в приключение?" }),
+    page.getByRole("heading", { name: "Нет аккаунтов" }),
   ).toBeVisible();
   await page
     .getByRole("button", { name: "Локальный профиль", exact: true })

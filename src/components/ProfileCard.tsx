@@ -1,9 +1,9 @@
-import { Play, Square, ArrowUpRight, Package, Check } from "lucide-react";
+import { Play, Square, ChevronRight } from "lucide-react";
 import { useApp } from "../context";
 import type { Profile } from "../types";
 import { ru } from "../lib/i18n";
 import { rpc } from "../lib/api";
-import { Landscape } from "./Landscape";
+import { ProfileIcon } from "./ProfileIcon";
 export function ProfileCard({
   profile,
   onOpen,
@@ -14,36 +14,31 @@ export function ProfileCard({
   const { data, busy, play, run } = useApp();
   const running = data.running.includes(profile.id);
   return (
-    <article className="profile-card">
+    <article className="instance-card">
       <button
-        className="profile-cover"
+        className="instance-card-open"
         onClick={onOpen}
         aria-label={`Открыть ${profile.name}`}
       >
-        <Landscape variant={profile.cover} />
-        <span className="cover-badge">{ru.loaders[profile.loader]}</span>
-        <span className="cover-arrow">
-          <ArrowUpRight size={16} />
-        </span>
+        <ProfileIcon profile={profile} />
+        <div>
+          <h3>{profile.name}</h3>
+          <p>
+            {ru.loaders[profile.loader]} · {profile.minecraft}
+          </p>
+        </div>
+        <ChevronRight size={18} />
       </button>
-      <div className="profile-info">
-        <button className="profile-name" onClick={onOpen}>
-          {profile.name}
-        </button>
-        <p>
-          Minecraft {profile.minecraft} <span>·</span>{" "}
-          {profile.installedVersion ? (
-            <>
-              <Check size={12} /> Установлена
-            </>
-          ) : (
-            <>
-              <Package size={12} /> Не установлена
-            </>
-          )}
-        </p>
+      <div className="instance-card-footer">
+        <span>
+          {running
+            ? "Запущена"
+            : profile.installedVersion
+              ? "Установлена"
+              : "Готова к установке"}
+        </span>
         <button
-          className={`button ${running ? "secondary" : "play"}`}
+          className="button primary"
           disabled={busy}
           onClick={() =>
             running
@@ -51,12 +46,8 @@ export function ProfileCard({
               : void play(profile)
           }
         >
-          {running ? <Square size={15} /> : <Play size={15} />}{" "}
-          {running
-            ? "Остановить"
-            : profile.installedVersion
-              ? "Играть"
-              : "Установить и играть"}
+          {running ? <Square size={16} /> : <Play size={16} />}
+          {running ? "Стоп" : "Играть"}
         </button>
       </div>
     </article>

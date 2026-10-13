@@ -31,13 +31,10 @@ export function Profiles({
   return (
     <>
       <div className="page-heading">
-        <div className="eyebrow">ВАША КОЛЛЕКЦИЯ</div>
         <div className="heading-row">
           <div>
-            <h1>
-              Мои сборки<span className="heading-dot">.</span>
-            </h1>
-            <p>Каждый профиль — отдельный мир, настройки и моды.</p>
+            <h1>Мои сборки</h1>
+            <p>Моды, миры и настройки каждой сборки хранятся отдельно.</p>
           </div>
           <div className="button-row">
             <button
@@ -96,7 +93,7 @@ export function Profiles({
       ) : (
         <EmptyState
           icon={<FolderOpen size={34} />}
-          title={query ? "Сборка не найдена" : "Здесь будут ваши миры"}
+          title={query ? "Сборка не найдена" : "Нет сборок"}
           text={
             query
               ? "Попробуйте другое название."
@@ -109,7 +106,7 @@ export function Profiles({
         </EmptyState>
       )}
       <p className="page-footnote">
-        Удалённые сборки сохраняются в корзине Auren. Открыть её можно из папки
+        Удалённые сборки сохраняются в корзине Aurum. Открыть её можно из папки
         данных в настройках.
       </p>
     </>

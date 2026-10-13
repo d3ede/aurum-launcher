@@ -163,7 +163,7 @@ export function Provider({
   if (fatal)
     return (
       <div className="boot-error">
-        <h1>Auren</h1>
+        <h1>Aurum</h1>
         <p role="alert">{fatal}</p>
         <button
           className="button primary"
@@ -183,7 +183,7 @@ export function Provider({
   if (!loaded)
     return (
       <div className="boot-error">
-        <h1>Auren</h1>
+        <h1>Aurum</h1>
         <p>Открываем ваши миры…</p>
       </div>
     );

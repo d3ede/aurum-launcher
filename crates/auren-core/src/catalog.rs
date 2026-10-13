@@ -23,7 +23,17 @@ impl Engine {
             bail!("Неизвестный тип проекта")
         }
         if query.source == "modrinth" {
+            let sort = match query.sort.as_str() {
+                "" | "downloads" => "downloads",
+                "relevance" => "relevance",
+                "updated" => "updated",
+                "newest" => "newest",
+                _ => bail!("Неизвестная сортировка"),
+            };
             let mut facets = vec![vec![format!("project_type:{}", query.kind)]];
+            if let Some(category) = query.category.filter(|v| !v.is_empty()) {
+                facets.push(vec![format!("categories:{category}")]);
+            }
             if let Some(v) = query.minecraft.filter(|v| !v.is_empty()) {
                 facets.push(vec![format!("versions:{v}")]);
             }
@@ -38,7 +48,7 @@ impl Engine {
                     ("facets", serde_json::to_string(&facets)?),
                     ("limit", "24".into()),
                     ("offset", query.offset.to_string()),
-                    ("index", "downloads".into()),
+                    ("index", sort.into()),
                 ])
                 .send()
                 .await?
@@ -55,6 +65,13 @@ impl Engine {
                     .collect(),
             })
         } else if query.source == "curseforge" {
+            let sort = match query.sort.as_str() {
+                "" | "downloads" => "6",
+                "relevance" => "2",
+                "updated" => "3",
+                "newest" => "11",
+                _ => bail!("Неизвестная сортировка"),
+            };
             let class = class_id(&query.kind)?;
             let mut url = reqwest::Url::parse(&format!("{CURSEFORGE}/mods/search"))?;
             {
@@ -64,10 +81,13 @@ impl Engine {
                     .append_pair("searchFilter", &query.query)
                     .append_pair("pageSize", "24")
                     .append_pair("index", &query.offset.to_string())
-                    .append_pair("sortField", "6")
+                    .append_pair("sortField", sort)
                     .append_pair("sortOrder", "desc");
                 if let Some(mc) = query.minecraft {
                     p.append_pair("gameVersion", &mc);
+                }
+                if let Some(category) = query.category.filter(|v| !v.is_empty()) {
+                    p.append_pair("categoryId", &category.parse::<u64>()?.to_string());
                 }
                 if let Some(loader) = query.loader {
                     if let Some(n) = loader_id(&loader) {
@@ -98,6 +118,34 @@ impl Engine {
         } else {
             bail!("Неизвестный источник")
         }
+    }
+    pub async fn catalog_categories(&self, source: &str, kind: &str) -> Result<Value> {
+        let mut categories: Vec<Value> = if source == "modrinth" {
+            let raw = self.json(&format!("{MODRINTH}/tag/category")).await?;
+            raw.as_array()
+                .context("Нет категорий")?
+                .iter()
+                .filter(|v| v["project_type"] == kind && v["header"] != "loaders")
+                .map(|v| json!({"id":v["name"],"name":v["name"]}))
+                .collect()
+        } else if source == "curseforge" {
+            let raw = self
+                .cf(&format!(
+                    "/categories?gameId=432&classId={}",
+                    class_id(kind)?
+                ))
+                .await?;
+            raw["data"]
+                .as_array()
+                .context("Нет категорий")?
+                .iter()
+                .map(|v| json!({"id":v["id"].to_string(),"name":v["name"]}))
+                .collect()
+        } else {
+            bail!("Неизвестный источник")
+        };
+        categories.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
+        Ok(json!(categories))
     }
     pub async fn project_detail(
         &self,

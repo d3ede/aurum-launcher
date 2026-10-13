@@ -766,8 +766,8 @@ impl Engine {
                 text(&meta["assetIndex"], "id")?.into(),
             ),
             ("natives_directory".into(), natives.to_string_lossy().into()),
-            ("launcher_name".into(), "Auren".into()),
-            ("launcher_version".into(), "0.1.0".into()),
+            ("launcher_name".into(), "Aurum".into()),
+            ("launcher_version".into(), "0.2.0".into()),
             ("classpath".into(), classpath.clone()),
             (
                 "classpath_separator".into(),

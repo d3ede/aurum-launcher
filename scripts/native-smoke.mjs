@@ -7,7 +7,7 @@ const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
 await page.waitForFunction(() => !!window.__TAURI_INTERNALS__);
 await page.getByRole("button", { name: "Главная", exact: true }).click();
-await page.getByRole("heading", { name: /Привет, AurenTest/ }).waitFor();
+await page.getByRole("heading", { name: "Главная", exact: true }).waitFor();
 const rpc = (action, payload = {}) =>
   page.evaluate(
     async ({ action, payload }) =>
@@ -46,7 +46,9 @@ const p = (await rpc("snapshot")).profiles.find(
   (p) => p.name === "Desktop smoke",
 );
 assert(p);
-await page.getByRole("button", { name: "Открыть Desktop smoke" }).click();
+await page
+  .getByRole("heading", { name: "Desktop smoke", exact: true })
+  .waitFor();
 await page
   .getByRole("button", { name: "Установить и играть", exact: true })
   .last()

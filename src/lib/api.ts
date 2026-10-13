@@ -27,10 +27,16 @@ interface Contract {
       loader: Loader;
       loaderVersion: string | null;
       cover: number;
+      icon?: string | null;
     },
     Profile,
   ];
   updateProfile: [{ profile: Profile }, void];
+  chooseProfileIcon: [Empty, string | null];
+  catalogCategories: [
+    { source: string; kind: string },
+    { id: string; name: string }[],
+  ];
   deleteProfile: [{ id: string }, void];
   saveSettings: [{ settings: Settings }, void];
   setCurseforgeKey: [{ key: string }, void];
@@ -100,7 +106,7 @@ export async function rpc<K extends keyof Contract>(
 ): Promise<Contract[K][1]> {
   if (!native)
     throw new Error(
-      "Эта функция доступна в desktop-приложении Auren. Запустите npm run tauri dev.",
+      "Эта функция доступна в desktop-приложении Aurum. Запустите npm run tauri dev.",
     );
   try {
     return await invoke<Contract[K][1]>("rpc", { action, payload });

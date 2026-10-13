@@ -1,21 +1,18 @@
 import {
   Plus,
   ArrowRight,
-  FolderOpen,
   Compass,
-  Sprout,
-  Sparkles,
-  ShieldCheck,
-  UserRound,
   Download,
+  Play,
+  Square,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useApp } from "../context";
 import { native, rpc } from "../lib/api";
-import { formatNumber } from "../lib/i18n";
+import { formatNumber, ru } from "../lib/i18n";
 import type { Profile, Project } from "../types";
-import { Landscape } from "../components/Landscape";
 import { ProfileCard } from "../components/ProfileCard";
+import { ProfileIcon } from "../components/ProfileIcon";
 import { ErrorBox, Loading } from "../components/ui";
 export function Home({
   onProfile,
@@ -24,12 +21,11 @@ export function Home({
   onProfile: (p: Profile) => void;
   onProject: (p: Project) => void;
 }) {
-  const { data, navigate, create } = useApp();
+  const { data, navigate, create, play, run, busy } = useApp();
   const [projects, setProjects] = useState<Project[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(native);
   const [retry, setRetry] = useState(0);
-  const account = data.accounts.find((a) => a.id === data.selectedAccount);
   useEffect(() => {
     if (!native) return;
     let live = true;
@@ -63,182 +59,135 @@ export function Home({
   const recent = [...data.profiles]
     .sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0))
     .slice(0, 3);
+  const last = recent[0];
+  const running = last && data.running.includes(last.id);
   return (
     <>
-      <div className="page-heading">
-        <div>
-          <div className="eyebrow">ВАШЕ МЕСТО ДЛЯ MINECRAFT</div>
-          <h1>
-            {account
-              ? `Привет, ${account.name}`
-              : "Хороший день для нового мира"}
-            <span className="heading-dot">.</span>
-          </h1>
-        </div>
-        <span className="quiet-pill">
-          <Sprout size={15} /> Всё начинается с идеи
-        </span>
+      <div className="page-heading heading-row">
+        <h1>Главная</h1>
+        <button className="button secondary" onClick={create}>
+          <Plus size={18} /> Новая сборка
+        </button>
       </div>
-      <section className="hero">
-        <Landscape hero />
-        <div className="hero-wash" />
-        <div className="hero-content">
-          <span className="hero-tag">
-            <Sparkles size={14} /> Меньше настроек. Больше приключений.
-          </span>
-          <h2>
-            Твои миры.
-            <br />
-            <span>Твои правила.</span>
-          </h2>
-          <p>
-            Собери свой Minecraft: от уютного выживания
-            <br className="desktop-break" /> до приключений с любимыми модами.
-          </p>
-          <button className="button primary" onClick={create}>
-            <Plus size={17} /> Создать сборку <ArrowRight size={17} />
-          </button>
-        </div>
-        <div className="hero-caption">
-          <span className="caption-line" /> Ещё один мир ждёт тебя
-        </div>
+      <section className="quick-launch">
+        <svg
+          className="terrain-pattern"
+          viewBox="0 0 1000 220"
+          preserveAspectRatio="xMidYMid slice"
+          aria-hidden="true"
+        >
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+            <path
+              key={i}
+              d={`M ${370 + i * 18} -30 C ${240 + i * 35} 90, ${770 - i * 12} 5, ${610 + i * 33} 140 S ${830 + i * 25} 240, 1080 ${130 + i * 20}`}
+            />
+          ))}
+          {[0, 1, 2, 3].map((i) => (
+            <path
+              key={`b${i}`}
+              d={`M ${770 + i * 25} -40 Q ${640 + i * 20} 90 ${910 + i * 18} 120 T 1100 280`}
+            />
+          ))}
+        </svg>
+        {last ? (
+          <>
+            <ProfileIcon profile={last} size={76} />
+            <div className="quick-launch-info">
+              <span>Быстрый запуск</span>
+              <button onClick={() => onProfile(last)}>{last.name}</button>
+              <p>
+                Minecraft {last.minecraft} · {ru.loaders[last.loader]}
+              </p>
+            </div>
+            <button
+              className="button primary"
+              disabled={busy}
+              onClick={() =>
+                running
+                  ? void run(() => rpc("stop", { id: last.id }))
+                  : void play(last)
+              }
+            >
+              {running ? <Square size={18} /> : <Play size={18} />}
+              {running ? "Остановить" : "Играть"}
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="quick-launch-info">
+              <h2>Создайте первую сборку</h2>
+              <p>Выберите версию Minecraft и загрузчик.</p>
+            </div>
+            <button className="button primary" onClick={create}>
+              <Plus size={18} /> Создать сборку
+            </button>
+          </>
+        )}
       </section>
-      <section className="section">
-        <div className="section-heading">
-          <div>
-            <h2>
-              Мои сборки <span className="count">{data.profiles.length}</span>
-            </h2>
-            <p>Маленькие миры, большие истории</p>
+      {recent.length > 0 && (
+        <section className="section">
+          <div className="section-heading">
+            <h2>Недавние сборки</h2>
+            <button
+              className="text-button"
+              onClick={() => navigate("profiles")}
+            >
+              Все сборки <ArrowRight size={18} />
+            </button>
           </div>
-          <button className="text-button" onClick={() => navigate("profiles")}>
-            Все сборки <ArrowRight size={16} />
-          </button>
-        </div>
-        {recent.length ? (
           <div className="profile-grid">
             {recent.map((p) => (
               <ProfileCard key={p.id} profile={p} onOpen={() => onProfile(p)} />
             ))}
           </div>
+        </section>
+      )}
+      <section className="section recommendations">
+        <div className="section-heading">
+          <h2>Популярное в Modrinth</h2>
+          <button className="text-button" onClick={() => navigate("catalog")}>
+            Найти проекты <ArrowRight size={18} />
+          </button>
+        </div>
+        {loading ? (
+          <Loading label="Получаем проекты…" />
+        ) : error ? (
+          <ErrorBox error={error} retry={() => setRetry((v) => v + 1)} />
+        ) : projects.length ? (
+          <div className="recommended-list">
+            {projects.map((p) => (
+              <button
+                className="recommended-project"
+                key={p.id}
+                onClick={() => onProject(p)}
+              >
+                {p.icon ? (
+                  <img src={p.icon} alt="" loading="lazy" />
+                ) : (
+                  <Compass size={28} />
+                )}
+                <div>
+                  <b>{p.title}</b>
+                  <p>{p.description}</p>
+                  <small>
+                    <Download size={14} /> {formatNumber(p.downloads)}
+                  </small>
+                </div>
+                <ArrowRight size={18} />
+              </button>
+            ))}
+          </div>
         ) : (
-          <div className="first-profile">
-            <div className="first-profile-icon">
-              <FolderOpen size={31} />
-            </div>
-            <div>
-              <h3>Место для вашей первой сборки</h3>
-              <p>
-                Выберите версию игры и загрузчик. Остальное Auren возьмёт на
-                себя.
-              </p>
-            </div>
-            <button className="button secondary" onClick={create}>
-              <Plus size={16} /> Создать сборку
-            </button>
+          <div className="catalog-placeholder">
+            <Compass size={26} />
+            <p>
+              {native
+                ? "Проекты не найдены"
+                : "Каталог доступен в desktop-приложении"}
+            </p>
           </div>
         )}
       </section>
-      <div className="home-bottom">
-        <section className="section recommendations">
-          <div className="section-heading">
-            <div>
-              <h2>Откройте что-то новое</h2>
-              <p>Популярные проекты из Modrinth</p>
-            </div>
-            <button className="text-button" onClick={() => navigate("catalog")}>
-              Каталог <ArrowRight size={16} />
-            </button>
-          </div>
-          {loading ? (
-            <Loading label="Получаем рекомендации Modrinth…" />
-          ) : error ? (
-            <ErrorBox error={error} retry={() => setRetry((v) => v + 1)} />
-          ) : projects.length ? (
-            <div className="recommended-list">
-              {projects.map((p) => (
-                <button
-                  className="recommended-project"
-                  key={p.id}
-                  onClick={() => onProject(p)}
-                >
-                  {p.icon ? (
-                    <img src={p.icon} alt="" loading="lazy" />
-                  ) : (
-                    <div className="project-placeholder">
-                      <Compass size={22} />
-                    </div>
-                  )}
-                  <div>
-                    <b>{p.title}</b>
-                    <p>{p.description}</p>
-                    <small>
-                      <Download size={12} /> {formatNumber(p.downloads)}{" "}
-                      <span>· Modrinth</span>
-                    </small>
-                  </div>
-                  <ArrowRight size={17} />
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="catalog-placeholder">
-              <Compass size={26} />
-              <p>
-                {native
-                  ? "Пока нет рекомендаций"
-                  : "Каталог подключается в desktop-приложении"}
-              </p>
-              <button
-                className="text-button"
-                onClick={() => navigate("catalog")}
-              >
-                Открыть каталог <ArrowRight size={15} />
-              </button>
-            </div>
-          )}
-        </section>
-        <aside className="getting-started">
-          <span className="eyebrow">НАЧНИТЕ С ПРОСТОГО</span>
-          <h2>
-            Всё готово
-            <br />к вашим идеям.
-          </h2>
-          <button onClick={create}>
-            <span>
-              <FolderOpen size={18} />
-            </span>
-            <div>
-              <b>Соберите свой мир</b>
-              <small>Vanilla или любимый загрузчик</small>
-            </div>
-            <ArrowRight size={16} />
-          </button>
-          <button onClick={() => navigate("accounts")}>
-            <span>
-              <UserRound size={18} />
-            </span>
-            <div>
-              <b>Добавьте аккаунт</b>
-              <small>Microsoft или локальный профиль</small>
-            </div>
-            <ArrowRight size={16} />
-          </button>
-          <button onClick={() => navigate("settings")}>
-            <span>
-              <ShieldCheck size={18} />
-            </span>
-            <div>
-              <b>Настройте под себя</b>
-              <small>Память, Java и внешний вид</small>
-            </div>
-            <ArrowRight size={16} />
-          </button>
-          <div className="aside-note">
-            <span className="status-dot" /> Каждый мир — отдельная папка
-          </div>
-        </aside>
-      </div>
     </>
   );
 }

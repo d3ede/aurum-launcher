@@ -21,6 +21,7 @@ export interface Profile {
   jvmArgs: string;
   lastPlayed: number | null;
   cover: number;
+  icon?: string | null;
   content: Content[];
 }
 export interface Account {
@@ -88,6 +89,12 @@ export interface SearchQuery {
   minecraft: string | null;
   loader: string | null;
   offset: number;
+  sort?: string;
+  category?: string | null;
+}
+export interface CatalogTarget {
+  profileId: string;
+  kind: Kind;
 }
 export interface MinecraftManifest {
   latest: { release: string; snapshot: string };

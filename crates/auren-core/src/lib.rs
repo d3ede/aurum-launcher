@@ -64,7 +64,7 @@ impl Engine {
             Database::default()
         };
         let http = reqwest::Client::builder()
-            .user_agent("Auren/0.1.0 (independent desktop Minecraft launcher)")
+            .user_agent("Aurum/0.2.0 (independent desktop Minecraft launcher)")
             .connect_timeout(std::time::Duration::from_secs(20))
             .timeout(std::time::Duration::from_secs(180))
             .https_only(true)

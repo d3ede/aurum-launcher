@@ -112,6 +112,43 @@ fn cancellation_is_explicit() {
     t.cancel.store(true, Ordering::Relaxed);
     assert!(t.check().is_err());
 }
+
+#[tokio::test]
+async fn custom_profile_icon_is_normalized_persisted_and_old_profiles_load() {
+    use auren_core::store::{prepare_profile_icon, validate_profile_icon};
+    use base64::Engine as _;
+    let dir = tempfile::tempdir().unwrap();
+    let image_path = dir.path().join("wide.png");
+    image::RgbaImage::from_pixel(320, 180, image::Rgba([34, 120, 75, 255]))
+        .save(&image_path)
+        .unwrap();
+    let icon = prepare_profile_icon(&image_path).unwrap();
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(icon.strip_prefix("data:image/png;base64,").unwrap())
+        .unwrap();
+    let decoded = image::load_from_memory(&bytes).unwrap();
+    assert_eq!((decoded.width(), decoded.height()), (128, 128));
+    assert!(validate_profile_icon("https://example.com/icon.png").is_err());
+    assert!(validate_profile_icon("data:image/png;base64,broken").is_err());
+    let engine = Engine::new(dir.path().join("data"), |_| {}).await.unwrap();
+    let mut profile = engine
+        .create_profile("Icon".into(), "1.21.1".into(), Loader::Vanilla, None, 0)
+        .await
+        .unwrap();
+    let id = profile.id.clone();
+    profile.icon = Some(icon.clone());
+    engine.update_profile(profile.clone()).await.unwrap();
+    let restored = Engine::new(engine.root.clone(), |_| {}).await.unwrap();
+    assert_eq!(restored.profile(&id).await.unwrap().icon, Some(icon));
+    profile.icon = Some("data:image/png;base64,broken".into());
+    assert!(engine.update_profile(profile).await.is_err());
+    let mut old = serde_json::to_value(restored.profile(&id).await.unwrap()).unwrap();
+    old.as_object_mut().unwrap().remove("icon");
+    assert!(serde_json::from_value::<Profile>(old)
+        .unwrap()
+        .icon
+        .is_none());
+}
 #[tokio::test]
 async fn profile_persistence_and_world_recovery() {
     let dir = tempfile::tempdir().unwrap();

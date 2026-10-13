@@ -27,7 +27,7 @@ async fn rpc(
         && !["snapshot", "restart", "openFolder", "logs"].contains(&action.as_str())
     {
         return Err(
-            "Данные скопированы. Перезапустите Auren, чтобы использовать новую папку".into(),
+            "Данные скопированы. Перезапустите Aurum, чтобы использовать новую папку".into(),
         );
     }
     match action.as_str() {
@@ -50,7 +50,7 @@ async fn rpc(
                 handle
                     .dialog()
                     .file()
-                    .set_title("Выберите пустую папку для данных Auren")
+                    .set_title("Выберите пустую папку для данных Aurum")
                     .blocking_pick_folder()
             })
             .await
@@ -82,6 +82,13 @@ async fn rpc(
             Ok(json!(path.to_string_lossy()))
         }
         "snapshot" => Ok(json!(e.snapshot().await)),
+        "catalogCategories" => e
+            .catalog_categories(
+                &param::<String>(&payload, "source")?,
+                &param::<String>(&payload, "kind")?,
+            )
+            .await
+            .map_err(err),
         "versions" => e.minecraft_versions().await.map_err(err),
         "loaders" => Ok(json!(e
             .loader_versions(
@@ -90,16 +97,34 @@ async fn rpc(
             )
             .await
             .map_err(err)?)),
-        "createProfile" => Ok(json!(e
-            .create_profile(
-                param(&payload, "name")?,
-                param(&payload, "minecraft")?,
-                param(&payload, "loader")?,
-                payload["loaderVersion"].as_str().map(String::from),
-                payload["cover"].as_u64().unwrap_or(0) as u8
-            )
-            .await
-            .map_err(err)?)),
+        "chooseProfileIcon" => {
+            let path = choose_file(&app, "Значок сборки", &["png", "jpg", "jpeg", "webp"]).await?;
+            path.map(|path| auren_core::store::prepare_profile_icon(&path).map_err(err))
+                .transpose()
+                .map(|icon| json!(icon))
+        }
+        "createProfile" => {
+            let icon = payload["icon"]
+                .as_str()
+                .map(auren_core::store::validate_profile_icon)
+                .transpose()
+                .map_err(err)?;
+            let mut profile = e
+                .create_profile(
+                    param(&payload, "name")?,
+                    param(&payload, "minecraft")?,
+                    param(&payload, "loader")?,
+                    payload["loaderVersion"].as_str().map(String::from),
+                    payload["cover"].as_u64().unwrap_or(0) as u8,
+                )
+                .await
+                .map_err(err)?;
+            if let Some(icon) = icon {
+                profile.icon = Some(icon);
+                e.update_profile(profile.clone()).await.map_err(err)?;
+            }
+            Ok(json!(profile))
+        }
         "updateProfile" => {
             e.update_profile(param(&payload, "profile")?)
                 .await
@@ -418,7 +443,9 @@ fn main() {
         .setup(|app| {
             let handle = app.handle().clone();
             let location = app.path().app_config_dir()?.join("data-location.json");
-            let root = if let Some(path) = std::env::var_os("AUREN_DATA_DIR") {
+            let root = if let Some(path) =
+                std::env::var_os("AURUM_DATA_DIR").or_else(|| std::env::var_os("AUREN_DATA_DIR"))
+            {
                 std::path::PathBuf::from(path)
             } else if location.exists() {
                 serde_json::from_slice(&std::fs::read(location)?)?
@@ -434,5 +461,5 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![rpc])
         .run(tauri::generate_context!())
-        .expect("Unable to start Auren");
+        .expect("Unable to start Aurum");
 }

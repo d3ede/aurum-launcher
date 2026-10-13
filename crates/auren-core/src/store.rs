@@ -41,6 +41,7 @@ impl Engine {
             jvm_args: String::new(),
             last_played: None,
             cover: cover % 4,
+            icon: None,
             content: vec![],
         };
         tokio::fs::create_dir_all(self.instance(&p.id)?).await?;
@@ -60,6 +61,11 @@ impl Engine {
             }
         }
         validate_jvm(&profile.jvm_args)?;
+        let icon = profile
+            .icon
+            .as_deref()
+            .map(validate_profile_icon)
+            .transpose()?;
         let mut db = self.db.lock().await;
         let mut next = db.clone();
         let old = next
@@ -72,6 +78,7 @@ impl Engine {
         old.ram_mb = profile.ram_mb;
         old.jvm_args = profile.jvm_args;
         old.cover = profile.cover % 4;
+        old.icon = icon;
         persist(&self.root, &next).await?;
         *db = next;
         Ok(())
@@ -164,6 +171,47 @@ impl Engine {
         let _ = crate::auth::delete_secret(&id);
         Ok(())
     }
+}
+pub fn prepare_profile_icon(path: &std::path::Path) -> Result<String> {
+    if std::fs::metadata(path)?.len() > 8_000_000 {
+        bail!("Значок должен быть меньше 8 МБ")
+    }
+    let mut reader = image::ImageReader::open(path)?.with_guessed_format()?;
+    let mut limits = image::Limits::default();
+    limits.max_image_width = Some(4096);
+    limits.max_image_height = Some(4096);
+    limits.max_alloc = Some(64_000_000);
+    reader.limits(limits);
+    let image = reader.decode().context("Выберите PNG, JPEG или WebP")?;
+    encode_profile_icon(&image)
+}
+fn encode_profile_icon(image: &image::DynamicImage) -> Result<String> {
+    use base64::Engine as _;
+    let resized = image.resize_to_fill(128, 128, image::imageops::FilterType::Lanczos3);
+    let mut bytes = std::io::Cursor::new(Vec::new());
+    resized.write_to(&mut bytes, image::ImageFormat::Png)?;
+    Ok(format!(
+        "data:image/png;base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(bytes.into_inner())
+    ))
+}
+pub fn validate_profile_icon(value: &str) -> Result<String> {
+    use base64::Engine as _;
+    let encoded = value
+        .strip_prefix("data:image/png;base64,")
+        .context("Неверный формат значка")?;
+    if encoded.len() > 100_000 {
+        bail!("Значок слишком большой")
+    }
+    let bytes = base64::engine::general_purpose::STANDARD.decode(encoded)?;
+    let mut reader =
+        image::ImageReader::with_format(std::io::Cursor::new(bytes), image::ImageFormat::Png);
+    let mut limits = image::Limits::default();
+    limits.max_image_width = Some(128);
+    limits.max_image_height = Some(128);
+    limits.max_alloc = Some(1_000_000);
+    reader.limits(limits);
+    encode_profile_icon(&reader.decode()?)
 }
 pub fn validate_name(s: &str) -> Result<()> {
     if s.trim().is_empty() || s.len() > 120 {

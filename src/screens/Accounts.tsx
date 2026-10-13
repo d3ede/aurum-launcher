@@ -55,11 +55,8 @@ export function Accounts() {
   return (
     <>
       <div className="page-heading">
-        <div className="eyebrow">ВАШ ПЕРСОНАЖ, ВАША ИСТОРИЯ</div>
-        <h1>
-          Аккаунты и скины<span className="heading-dot">.</span>
-        </h1>
-        <p>Переключайтесь между профилями и создавайте свой образ.</p>
+        <h1>Аккаунты и скины</h1>
+        <p>Выберите аккаунт для игры и настройте скин.</p>
       </div>
       <div className="accounts-layout">
         <section>
@@ -129,7 +126,7 @@ export function Accounts() {
           ) : (
             <EmptyState
               icon={<UserRound size={30} />}
-              title="Кто отправится в приключение?"
+              title="Нет аккаунтов"
               text="Добавьте Microsoft-аккаунт или локальный профиль для допустимых офлайн-сценариев."
             />
           )}
@@ -164,7 +161,7 @@ export function Accounts() {
               <p>
                 Они подходят для локальной игры и серверов, допускающих
                 офлайн-вход. Официальные серверы требуют Microsoft-аккаунт с
-                Minecraft. Локальный скин используется только в превью Auren:
+                Minecraft. Локальный скин используется только в превью Aurum:
                 игра без дополнительных модов его не применяет.
               </p>
             </div>

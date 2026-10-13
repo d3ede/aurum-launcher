@@ -68,6 +68,8 @@ async fn main() -> Result<()> {
                 minecraft: Some(mc.into()),
                 loader: Some("fabric".into()),
                 offset: 0,
+                sort: String::new(),
+                category: None,
             })
             .await?;
         assert!(!result.projects.is_empty());

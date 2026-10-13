@@ -43,11 +43,8 @@ export function Settings() {
   return (
     <>
       <div className="page-heading">
-        <div className="eyebrow">КАК ВАМ УДОБНО</div>
-        <h1>
-          Настройки<span className="heading-dot">.</span>
-        </h1>
-        <p>Немного деталей — и Auren становится вашим.</p>
+        <h1>Настройки</h1>
+        <p>Java, память, интерфейс и интеграции.</p>
       </div>
       <form
         className="settings-form"
@@ -155,7 +152,7 @@ export function Settings() {
           </div>
           <Field
             label="Дополнительные JVM-аргументы"
-            hint="Память и classpath Auren задаёт сам. Оставьте поле пустым, если дополнительные параметры не нужны."
+            hint="Память и classpath Aurum задаёт сам. Оставьте поле пустым, если дополнительные параметры не нужны."
           >
             <input
               value={draft.jvmArgs}
@@ -268,7 +265,7 @@ export function Settings() {
                     )
                   }
                 >
-                  Перезапустить Auren
+                  Перезапустить Aurum
                 </button>
               </div>
             )}
@@ -390,7 +387,7 @@ export function Settings() {
         </div>
       </form>
       <p className="page-footnote">
-        Auren 0.1.0 · Независимый проект. Окончательная лицензия ещё не выбрана.
+        Aurum 0.2.0 · Независимый проект. Окончательная лицензия ещё не выбрана.
       </p>
     </>
   );

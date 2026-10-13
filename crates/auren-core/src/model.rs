@@ -35,6 +35,8 @@ pub struct Profile {
     pub last_played: Option<u64>,
     pub cover: u8,
     #[serde(default)]
+    pub icon: Option<String>,
+    #[serde(default)]
     pub content: Vec<Content>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -140,6 +142,10 @@ pub struct Search {
     pub minecraft: Option<String>,
     pub loader: Option<String>,
     pub offset: u32,
+    #[serde(default)]
+    pub sort: String,
+    #[serde(default)]
+    pub category: Option<String>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

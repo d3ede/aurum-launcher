@@ -15,7 +15,7 @@ impl Engine {
             bail!("Новая папка должна находиться отдельно от текущей")
         }
         if std::fs::read_dir(&target)?.next().is_some() {
-            bail!("Выберите пустую папку для данных Auren")
+            bail!("Выберите пустую папку для данных Aurum")
         }
         let entries: Vec<_> = walkdir::WalkDir::new(&source)
             .follow_links(false)

@@ -18,13 +18,15 @@ import {
 } from "lucide-react";
 import { Provider, useApp } from "./context";
 import { native, rpc } from "./lib/api";
+import { WindowControls } from "./components/WindowControls";
 import { ru } from "./lib/i18n";
-import type { Profile, Project, Route } from "./types";
+import type { Profile, Project, Route, CatalogTarget, Kind } from "./types";
 import { Logo, Modal } from "./components/ui";
 import { CreateProfile, ProfileDialog } from "./components/ProfileDialog";
 import { Home } from "./screens/Home";
 import { Profiles } from "./screens/Profiles";
-import { Catalog, ProjectDialog } from "./screens/Catalog";
+import { ProjectDialog } from "./screens/Catalog";
+import { Catalog } from "./screens/CatalogBrowser";
 const Accounts = lazy(() =>
   import("./screens/Accounts").then((module) => ({ default: module.Accounts })),
 );
@@ -47,10 +49,21 @@ function Shell({
   const { data, route, navigate, run, progress, logs, notify } = useApp();
   const [query, setQuery] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [catalogTarget, setCatalogTarget] = useState<CatalogTarget>({
+    profileId: "",
+    kind: "mod",
+  });
   const [project, setProject] = useState<Project | null>(null);
   const [importing, setImporting] = useState(false);
   const [activity, setActivity] = useState(false);
   const account = data.accounts.find((a) => a.id === data.selectedAccount);
+  useEffect(() => {
+    if (route !== "profiles") setProfile(null);
+  }, [route]);
+  const openProfile = (p: Profile) => {
+    navigate("profiles");
+    setProfile(p);
+  };
   useEffect(() => {
     const media = matchMedia("(prefers-color-scheme: dark)");
     const update = () => {
@@ -77,8 +90,14 @@ function Shell({
     }
   };
   const nav = (r: Route) => {
+    setProfile(null);
     navigate(r);
     document.querySelector(".content-scroll")?.scrollTo(0, 0);
+  };
+  const findProjects = (p: Profile, kind: Kind) => {
+    setCatalogTarget({ profileId: p.id, kind });
+    setQuery("");
+    nav("catalog");
   };
   let auth: { code: string; url: string } | null = null;
   if (progress?.phase === "auth-code") {
@@ -90,19 +109,75 @@ function Shell({
   }
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <header className="titlebar" data-tauri-drag-region>
         <button
-          className="brand"
+          className="titlebar-brand"
           onClick={() => nav("home")}
-          aria-label="Auren — главная"
+          aria-label="Aurum — главная"
         >
-          <Logo />
-          <div>
-            <b>Auren</b>
-            <small>Твои миры рядом</small>
-          </div>
+          <Logo small />
+          <b>Aurum</b>
         </button>
-        <div className="nav-label">ПРОСТРАНСТВО</div>
+        <div className="window-title" data-tauri-drag-region>
+          {profile?.name || ru.routes[route]}
+        </div>
+        <div className="topbar-actions">
+          <form
+            className="header-search"
+            onSubmit={(e) => {
+              e.preventDefault();
+              nav("catalog");
+            }}
+          >
+            <Search size={17} />
+            <input
+              aria-label="Быстрый поиск в каталоге"
+              placeholder="Поиск проектов"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <kbd>↵</kbd>
+          </form>
+          <button
+            className="icon-button theme-toggle"
+            aria-label="Переключить тему"
+            onClick={toggleTheme}
+          >
+            <Sun size={19} className="sun-icon" />
+            <Moon size={19} className="moon-icon" />
+          </button>
+          <button
+            className="icon-button"
+            aria-label="Журнал операций"
+            onClick={() => setActivity(true)}
+          >
+            <Activity size={19} />
+            {data.running.length > 0 && <i className="activity-dot" />}
+          </button>
+          <span className="topbar-divider" />
+          <button className="user-button" onClick={() => nav("accounts")}>
+            <div className="mini-avatar">
+              <UserRound size={18} />
+            </div>
+            <span>
+              <b>{account?.name || "Ваш профиль"}</b>
+              <small>
+                <i
+                  className={`status-dot ${account?.kind === "microsoft" ? "online" : ""}`}
+                />
+                {account
+                  ? account.kind === "microsoft"
+                    ? "Microsoft"
+                    : "Локальный"
+                  : "Добавить аккаунт"}
+              </small>
+            </span>
+            <ChevronRight size={15} />
+          </button>
+        </div>
+        <WindowControls onError={notify} />
+      </header>
+      <aside className="sidebar">
         <nav>
           {navigation.map(([id, Icon]) => (
             <button
@@ -121,28 +196,12 @@ function Shell({
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-illustration">
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
-          <h3>
-            Каждый мир
-            <br />
-            начинается с тебя.
-          </h3>
-          <p>
-            Исследуй. Создавай.
-            <br />
-            Играй по-своему.
-          </p>
           <div className="sidebar-version">
             <span>
-              Auren <b>0.1.0</b>
+              Aurum <b>0.2.0</b>
             </span>
             <button
-              aria-label="Настройки Auren"
+              aria-label="Настройки Aurum"
               onClick={() => nav("settings")}
             >
               <Settings2 size={16} />
@@ -151,65 +210,6 @@ function Shell({
         </div>
       </aside>
       <div className="main-shell">
-        <header className="topbar">
-          <div className="breadcrumb">
-            Auren <ChevronRight size={14} /> <b>{ru.routes[route]}</b>
-          </div>
-          <div className="topbar-actions">
-            <form
-              className="header-search"
-              onSubmit={(e) => {
-                e.preventDefault();
-                nav("catalog");
-              }}
-            >
-              <Search size={17} />
-              <input
-                aria-label="Быстрый поиск в каталоге"
-                placeholder="Поиск проектов"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              <kbd>↵</kbd>
-            </form>
-            <button
-              className="icon-button theme-toggle"
-              aria-label="Переключить тему"
-              onClick={toggleTheme}
-            >
-              <Sun size={19} className="sun-icon" />
-              <Moon size={19} className="moon-icon" />
-            </button>
-            <button
-              className="icon-button"
-              aria-label="Журнал операций"
-              onClick={() => setActivity(true)}
-            >
-              <Activity size={19} />
-              {data.running.length > 0 && <i className="activity-dot" />}
-            </button>
-            <span className="topbar-divider" />
-            <button className="user-button" onClick={() => nav("accounts")}>
-              <div className="mini-avatar">
-                <UserRound size={18} />
-              </div>
-              <span>
-                <b>{account?.name || "Ваш профиль"}</b>
-                <small>
-                  <i
-                    className={`status-dot ${account?.kind === "microsoft" ? "online" : ""}`}
-                  />
-                  {account
-                    ? account.kind === "microsoft"
-                      ? "Microsoft"
-                      : "Локальный"
-                    : "Добавить аккаунт"}
-                </small>
-              </span>
-              <ChevronRight size={15} />
-            </button>
-          </div>
-        </header>
         <div className="content-scroll">
           <main className="page-content" key={route}>
             {!native && (
@@ -217,34 +217,52 @@ function Shell({
                 <Monitor size={15} />
                 <span>
                   Просмотр интерфейса в браузере. Игровые функции доступны в
-                  desktop-приложении Auren.
+                  desktop-приложении Aurum.
                 </span>
               </div>
             )}
-            {route === "home" && (
-              <Home onProfile={setProfile} onProject={setProject} />
-            )}{" "}
-            {route === "profiles" && (
-              <Profiles
-                onProfile={setProfile}
-                onFolderImport={() => setImporting(true)}
+            {profile ? (
+              <ProfileDialog
+                key={profile.id}
+                initial={profile}
+                onClose={() => {
+                  setProfile(null);
+                  navigate("profiles");
+                }}
+                onFindProjects={findProjects}
               />
-            )}{" "}
-            {route === "catalog" && (
-              <Catalog
-                query={query}
-                setQuery={setQuery}
-                onProject={setProject}
-              />
-            )}{" "}
-            {route === "accounts" && (
-              <Suspense
-                fallback={<div className="loading">Открываем аккаунты…</div>}
-              >
-                <Accounts />
-              </Suspense>
-            )}{" "}
-            {route === "settings" && <Settings />}
+            ) : (
+              <>
+                {route === "home" && (
+                  <Home onProfile={openProfile} onProject={setProject} />
+                )}{" "}
+                {route === "profiles" && (
+                  <Profiles
+                    onProfile={openProfile}
+                    onFolderImport={() => setImporting(true)}
+                  />
+                )}{" "}
+                {route === "catalog" && (
+                  <Catalog
+                    query={query}
+                    setQuery={setQuery}
+                    onProject={setProject}
+                    target={catalogTarget}
+                    setTarget={setCatalogTarget}
+                  />
+                )}{" "}
+                {route === "accounts" && (
+                  <Suspense
+                    fallback={
+                      <div className="loading">Открываем аккаунты…</div>
+                    }
+                  >
+                    <Accounts />
+                  </Suspense>
+                )}{" "}
+                {route === "settings" && <Settings />}
+              </>
+            )}
           </main>
         </div>
         <footer className="statusbar">
@@ -253,26 +271,32 @@ function Shell({
             {data.running.length
               ? `Игра запущена · ${data.running.length}`
               : native
-                ? "Готов к приключениям"
+                ? "Готов"
                 : "Просмотр интерфейса"}
           </span>
           <button onClick={() => setActivity(true)}>
             <Activity size={13} /> Журнал
           </button>
-          <span className="statusbar-right">
-            Сделано для ваших миров <span>✦</span>
-          </span>
         </footer>
       </div>
-      {creating && <CreateProfile onClose={() => setCreating(false)} />}{" "}
+      {creating && (
+        <CreateProfile
+          onClose={() => setCreating(false)}
+          onCreated={(p) => {
+            setProfile(p);
+            navigate("profiles");
+          }}
+        />
+      )}{" "}
       {importing && (
         <CreateProfile folderImport onClose={() => setImporting(false)} />
       )}{" "}
-      {profile && (
-        <ProfileDialog initial={profile} onClose={() => setProfile(null)} />
-      )}{" "}
       {project && (
-        <ProjectDialog project={project} onClose={() => setProject(null)} />
+        <ProjectDialog
+          project={project}
+          initialProfileId={catalogTarget.profileId}
+          onClose={() => setProject(null)}
+        />
       )}{" "}
       {activity && (
         <Modal
@@ -303,7 +327,7 @@ function Shell({
               <Download size={19} />
             </div>
             <div>
-              <b>{ru.phases[progress.phase] || "Операция Auren"}</b>
+              <b>{ru.phases[progress.phase] || "Операция Aurum"}</b>
               <small>
                 {auth ? "Подтвердите вход в браузере" : progress.message}
               </small>
