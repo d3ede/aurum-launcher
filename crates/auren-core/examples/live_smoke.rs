@@ -7,7 +7,9 @@ async fn main() -> Result<()> {
     let mode = args.get(1).map(String::as_str).unwrap_or("vanilla");
     let root = std::env::current_dir()?.join(".test-data/live");
     let e = Engine::new(root, |event| {
-        if !["log","loader","libraries"].contains(&event.phase.as_str()) && (event.phase!="assets" || event.done%1000==0 || event.done==event.total) {
+        if !["log", "loader", "libraries"].contains(&event.phase.as_str())
+            && (event.phase != "assets" || event.done % 1000 == 0 || event.done == event.total)
+        {
             println!(
                 "{}: {} ({}/{})",
                 event.phase, event.message, event.done, event.total
@@ -26,7 +28,16 @@ async fn main() -> Result<()> {
         "quilt" => Loader::Quilt,
         _ => bail!("Unknown loader"),
     };
-    let mc = "1.21.1";
+    let requested = args.get(2).map(String::as_str).unwrap_or("1.21.1");
+    let minecraft = if requested == "latest" {
+        e.minecraft_versions().await?["latest"]["release"]
+            .as_str()
+            .context("Нет последней версии")?
+            .to_string()
+    } else {
+        requested.to_string()
+    };
+    let mc = minecraft.as_str();
     let versions = e.loader_versions(mc, loader.clone()).await?;
     let lv = versions.first().cloned();
     let p = if let Some(p) = e
@@ -35,7 +46,7 @@ async fn main() -> Result<()> {
         .database
         .profiles
         .into_iter()
-        .find(|p| p.loader == loader)
+        .find(|p| p.loader == loader && p.minecraft == mc)
     {
         p
     } else {

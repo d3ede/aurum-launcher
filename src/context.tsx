@@ -75,11 +75,16 @@ export function Provider({
         if (live) setFatal(e.message);
       });
     events((event) => {
-      if (["log", "loader", "error", "exited"].includes(event.phase))
+      if (["log", "loader", "error", "exited", "crashed"].includes(event.phase))
         setLogs((old) => [...old.slice(-499), event]);
-      if (event.phase === "running" || event.phase === "exited")
+      if (
+        event.phase === "running" ||
+        event.phase === "exited" ||
+        event.phase === "crashed"
+      ) {
         void refresh().catch((e) => notify(e.message, true));
-      else if (event.phase !== "log") setProgress(event);
+        if (event.phase === "crashed") notify(event.message, true);
+      } else if (event.phase !== "log") setProgress(event);
     }).then((fn) => {
       if (live) unsubscribe = fn;
       else fn();

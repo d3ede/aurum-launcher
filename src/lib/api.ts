@@ -89,6 +89,8 @@ interface Contract {
   ];
   loginMicrosoft: [{ operationId: string }, void];
   openFolder: [{ id?: string }, void];
+  changeDataDirectory: [{ operationId: string }, string | null];
+  restart: [Empty, never];
   openUrl: [{ url: string }, void];
   logs: [{ id: string }, string];
 }

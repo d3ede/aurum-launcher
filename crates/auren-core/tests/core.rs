@@ -55,11 +55,15 @@ fn maven_classifier_and_extension() {
     assert!(maven_path("../secret").is_err());
 }
 #[test]
-fn loader_merge_preserves_universal_and_client_classifiers(){
-    let mut base=json!({"libraries":[{"name":"com.example:lib:1"}],"arguments":{"jvm":[],"game":[]}});
-    auren_core::minecraft::merge(&mut base,json!({"libraries":[{"name":"com.example:lib:2"},{"name":"net.minecraftforge:forge:1.21.1-52:universal"},{"name":"net.minecraftforge:forge:1.21.1-52:client"}]}));
-    assert_eq!(base["libraries"].as_array().unwrap().len(),3);
-    assert_eq!(base["libraries"][0]["name"],"com.example:lib:2");
+fn loader_merge_preserves_universal_and_client_classifiers() {
+    let mut base =
+        json!({"libraries":[{"name":"com.example:lib:1"}],"arguments":{"jvm":[],"game":[]}});
+    auren_core::minecraft::merge(
+        &mut base,
+        json!({"libraries":[{"name":"com.example:lib:2"},{"name":"net.minecraftforge:forge:1.21.1-52:universal"},{"name":"net.minecraftforge:forge:1.21.1-52:client"}]}),
+    );
+    assert_eq!(base["libraries"].as_array().unwrap().len(), 3);
+    assert_eq!(base["libraries"][0]["name"], "com.example:lib:2");
 }
 #[test]
 fn ordered_rules_and_features() {
@@ -237,6 +241,22 @@ async fn corrupted_database_is_never_reset() {
     );
 }
 #[tokio::test]
+async fn data_copy_preserves_source_and_rejects_nonempty_targets() {
+    let dir = tempfile::tempdir().unwrap();
+    let source = dir.path().join("source");
+    let target = dir.path().join("target");
+    std::fs::create_dir_all(&target).unwrap();
+    let e = Engine::new(source.clone(), |_| {}).await.unwrap();
+    e.create_profile("World".into(), "1.21.1".into(), Loader::Vanilla, None, 0)
+        .await
+        .unwrap();
+    e.copy_data(&target, &task()).await.unwrap();
+    let copied = Engine::new(target.clone(), |_| {}).await.unwrap();
+    assert_eq!(copied.snapshot().await.database.profiles.len(), 1);
+    assert!(source.join("state.json").exists());
+    assert!(e.copy_data(&target, &task()).await.is_err());
+}
+#[tokio::test]
 async fn operation_ids_cannot_be_reused() {
     let dir = tempfile::tempdir().unwrap();
     let e = Engine::new(dir.path().into(), |_| {}).await.unwrap();
@@ -248,4 +268,27 @@ async fn operation_ids_cannot_be_reused() {
     assert!(t.check().is_err());
     e.finish(&t, &Ok(())).await;
     assert!(e.task(id, None).await.is_ok());
+}
+
+#[tokio::test]
+async fn offline_png_skin_is_validated_and_persisted() {
+    let dir = tempfile::tempdir().unwrap();
+    let e = Engine::new(dir.path().into(), |_| {}).await.unwrap();
+    let account = e.add_offline("SkinTest".into()).await.unwrap();
+    let png = dir.path().join("input.png");
+    image::RgbaImage::from_pixel(64, 64, image::Rgba([40, 100, 150, 255]))
+        .save(&png)
+        .unwrap();
+    let expected = std::fs::read(&png).unwrap();
+    e.set_skin(&account.id, &png, "alex").await.unwrap();
+    assert_eq!(e.skin(&account.id).await.unwrap(), expected);
+    let restored = Engine::new(dir.path().into(), |_| {}).await.unwrap();
+    let saved = restored.snapshot().await.database.accounts.remove(0);
+    assert!(saved.has_skin);
+    assert_eq!(saved.skin_model, "alex");
+    image::RgbaImage::new(32, 32).save(&png).unwrap();
+    assert!(e.set_skin(&account.id, &png, "steve").await.is_err());
+    std::fs::write(&png, b"not a PNG").unwrap();
+    assert!(e.set_skin(&account.id, &png, "steve").await.is_err());
+    assert_eq!(e.skin(&account.id).await.unwrap(), expected);
 }

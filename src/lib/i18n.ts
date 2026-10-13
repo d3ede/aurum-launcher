@@ -22,6 +22,7 @@ export const ru = {
     resourcepack: "Ресурспаки",
   } satisfies Record<Kind, string>,
   phases: {
+    migration: "Папка данных",
     metadata: "Метаданные",
     java: "Java",
     libraries: "Библиотеки",

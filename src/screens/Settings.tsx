@@ -16,10 +16,11 @@ import { rpc, native } from "../lib/api";
 import { Field } from "../components/ui";
 import type { Settings as SettingsType } from "../types";
 export function Settings() {
-  const { data, run, busy, notify } = useApp();
+  const { data, run, operation, busy, notify } = useApp();
   const [draft, setDraft] = useState(data.settings);
   const [key, setKey] = useState("");
   const [javaStatus, setJavaStatus] = useState("");
+  const [newPath, setNewPath] = useState("");
   const set = <K extends keyof SettingsType>(k: K, v: SettingsType[K]) =>
     setDraft((old) => ({ ...old, [k]: v }));
   const theme = async (theme: SettingsType["theme"]) => {
@@ -235,6 +236,42 @@ export function Settings() {
             >
               <FolderOpen size={16} /> Открыть
             </button>
+          </div>
+          <div className="field">
+            <button
+              type="button"
+              className="text-button"
+              disabled={busy || !!newPath}
+              onClick={async () => {
+                const path = await operation((operationId) =>
+                  rpc("changeDataDirectory", { operationId }),
+                );
+                if (path) setNewPath(path);
+              }}
+            >
+              Изменить папку данных
+            </button>
+            <small>
+              Данные будут скопированы в пустую папку. Исходная папка
+              сохранится. После копирования нужен перезапуск.
+            </small>
+            {newPath && (
+              <div className="dialog-note">
+                Новая папка: {newPath}
+                <br />
+                <button
+                  type="button"
+                  className="button primary"
+                  onClick={() =>
+                    void rpc("restart", {}).catch((e) =>
+                      notify(e.message, true),
+                    )
+                  }
+                >
+                  Перезапустить Auren
+                </button>
+              </div>
+            )}
           </div>
           <label className="checkbox-label">
             <input

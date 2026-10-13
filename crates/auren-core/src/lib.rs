@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod catalog;
 pub mod content;
+pub mod migration;
 pub mod minecraft;
 pub mod model;
 pub mod net;
@@ -140,7 +141,7 @@ impl Engine {
         if self.running.lock().await.contains_key(id) {
             bail!("Сначала остановите игру")
         }
-        if self.operations.lock().await.len() > 0 {
+        if !self.operations.lock().await.is_empty() {
             bail!("Дождитесь завершения текущей операции")
         }
         Ok(())

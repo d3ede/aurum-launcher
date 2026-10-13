@@ -9,10 +9,18 @@ test("honest browser state, navigation and persistent appearance", async ({
     page.getByRole("heading", { name: "Хороший день для нового мира." }),
   ).toBeVisible();
   await expect(page.getByText("Место для вашей первой сборки")).toBeVisible();
-  await page.screenshot({ path: "docs/screenshots/light.png", fullPage: true, animations: 'disabled' });
+  await page.screenshot({
+    path: "docs/screenshots/light.png",
+    fullPage: true,
+    animations: "disabled",
+  });
   await page.getByRole("button", { name: "Переключить тему" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await page.screenshot({ path: "docs/screenshots/dark.png", fullPage: true, animations: 'disabled' });
+  await page.screenshot({
+    path: "docs/screenshots/dark.png",
+    fullPage: true,
+    animations: "disabled",
+  });
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page
@@ -46,7 +54,7 @@ test("honest browser state, navigation and persistent appearance", async ({
   await page.screenshot({
     path: "docs/screenshots/settings.png",
     fullPage: true,
-    animations: 'disabled',
+    animations: "disabled",
   });
   expect(errors).toEqual([]);
 });

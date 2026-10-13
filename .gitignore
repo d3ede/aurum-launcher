@@ -11,3 +11,4 @@ target/
 test-results/
 playwright-report/
 src-tauri/gen/
+*.tsbuildinfo

@@ -109,6 +109,7 @@ function Shell({
               key={id}
               className={`nav-item ${route === id ? "active" : ""}`}
               aria-current={route === id ? "page" : undefined}
+              aria-label={ru.routes[id]}
               onClick={() => nav(id)}
             >
               <Icon size={19} />
@@ -236,7 +237,13 @@ function Shell({
                 onProject={setProject}
               />
             )}{" "}
-            {route === "accounts" && <Suspense fallback={<div className="loading">Открываем аккаунты…</div>}><Accounts /></Suspense>}{" "}
+            {route === "accounts" && (
+              <Suspense
+                fallback={<div className="loading">Открываем аккаунты…</div>}
+              >
+                <Accounts />
+              </Suspense>
+            )}{" "}
             {route === "settings" && <Settings />}
           </main>
         </div>

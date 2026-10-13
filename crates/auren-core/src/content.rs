@@ -45,7 +45,13 @@ impl Engine {
                 task.check()?; if !seen.insert(project.clone()) { if plan.iter().any(|c:&Content|c.project_id==project && c.version_id!=version) { bail!("Конфликт версий зависимости {project}") } continue }
                 if seen.len()>150 { bail!("Слишком много зависимостей") }
                 let (raw,kind,name)=if source=="modrinth" { let raw=self.json(&format!("{MODRINTH}/version/{version}")).await?; let project_data=self.json(&format!("{MODRINTH}/project/{project}")).await?; if raw["project_id"]!=project { bail!("Версия относится к другому проекту") } (raw,project_data["project_type"].as_str().context("Нет типа")?.to_string(),project_data["title"].as_str().unwrap_or(&project).to_string()) }
-                else if source=="curseforge" { let raw=self.cf(&format!("/mods/{project}/files/{version}")).await?; let project_data=self.cf(&format!("/mods/{project}")).await?; if raw["data"]["modId"].to_string()!=project { bail!("Файл относится к другому проекту") } let p=crate::catalog::cf_project(&project_data["data"]); (raw["data"].clone(),p.kind,p.title) } else { bail!("Неизвестный источник") };
+                else if source=="curseforge" {
+                    let raw=self.cf(&format!("/mods/{project}/files/{version}")).await?;
+                    let project_data=self.cf(&format!("/mods/{project}")).await?;
+                    if raw["data"]["modId"].as_u64()!=Some(project.parse::<u64>()?) { bail!("Файл относится к другому проекту") }
+                    let p=crate::catalog::cf_project(&project_data["data"]);
+                    (raw["data"].clone(),p.kind,p.title)
+                } else { bail!("Неизвестный источник") };
                 let pv=if source=="modrinth" {mr_version(&raw)}else{cf_version(&raw)};
                 if !compatible(&pv,&profile,&kind) { bail!("{name}: версия несовместима с Minecraft {} / {}",profile.minecraft,profile.loader.key()) }
                 let directory=folder(&kind)?;

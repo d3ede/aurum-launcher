@@ -113,7 +113,14 @@ impl Engine {
                     let downloads=file["downloads"].as_array().context("Нет адресов загрузки")?;
                     let hash=file["hashes"]["sha1"].as_str().context("Нет SHA1 файла")?;
                     let mut downloaded=false;
-                    for url in downloads { let url=url.as_str().context("Неверный URL")?;let parsed=reqwest::Url::parse(url)?;if parsed.scheme()!="https" || !["cdn.modrinth.com","edge.forgecdn.net","mediafilez.forgecdn.net","github.com","raw.githubusercontent.com"].contains(&parsed.host_str().unwrap_or("")) {bail!("Домен загрузки пакета не разрешён: {}",parsed.host_str().unwrap_or(""))} if self.download(url,&crate::safe_join(&stage,file_path)?,Some(("sha1",hash)),task).await.is_ok() {downloaded=true;break} }
+                    for url in downloads {
+                        let url=url.as_str().context("Неверный URL")?;
+                        let parsed=reqwest::Url::parse(url)?;
+                        if parsed.scheme()!="https" || !["cdn.modrinth.com","edge.forgecdn.net","mediafilez.forgecdn.net","github.com","raw.githubusercontent.com"].contains(&parsed.host_str().unwrap_or("")) {
+                            bail!("Домен загрузки пакета не разрешён: {}",parsed.host_str().unwrap_or(""))
+                        }
+                        if self.download(url,&crate::safe_join(&stage,file_path)?,Some(("sha1",hash)),task).await.is_ok() {downloaded=true;break}
+                    }
                     if !downloaded {task.check()?;bail!("Не удалось загрузить {file_path}")}
                     task.progress("pack",format!("Файлы пакета · {file_path}"),i as u64+1,files.len() as u64);
                 }

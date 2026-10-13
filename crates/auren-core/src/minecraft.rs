@@ -93,17 +93,29 @@ fn text<'a>(v: &'a Value, key: &str) -> Result<&'a str> {
         .with_context(|| format!("В метаданных отсутствует {key}"))
 }
 fn library_key(name: &str) -> String {
-    let (coordinate,ext)=name.split_once('@').unwrap_or((name,"jar"));
-    let parts:Vec<_>=coordinate.split(':').collect();
-    format!("{}:{}:{}@{}",parts.first().unwrap_or(&""),parts.get(1).unwrap_or(&""),parts.get(3).unwrap_or(&""),ext)
+    let (coordinate, ext) = name.split_once('@').unwrap_or((name, "jar"));
+    let parts: Vec<_> = coordinate.split(':').collect();
+    format!(
+        "{}:{}:{}@{}",
+        parts.first().unwrap_or(&""),
+        parts.get(1).unwrap_or(&""),
+        parts.get(3).unwrap_or(&""),
+        ext
+    )
 }
-pub fn library_allowed(lib:&Value,features:&HashMap<String,bool>)->bool {
-    if !allowed(lib,features){return false}
-    if let Some(classifier)=lib["name"].as_str().and_then(|s|s.split(':').nth(3)) {
+pub fn library_allowed(lib: &Value, features: &HashMap<String, bool>) -> bool {
+    if !allowed(lib, features) {
+        return false;
+    }
+    if let Some(classifier) = lib["name"].as_str().and_then(|s| s.split(':').nth(3)) {
         if classifier.starts_with("natives-") {
-            if classifier.ends_with("-arm64"){return cfg!(target_arch="aarch64")}
-            if classifier.ends_with("-x86"){return cfg!(target_arch="x86")}
-            return !cfg!(target_arch="aarch64") && !cfg!(target_arch="x86");
+            if classifier.ends_with("-arm64") {
+                return cfg!(target_arch = "aarch64");
+            }
+            if classifier.ends_with("-x86") {
+                return cfg!(target_arch = "x86");
+            }
+            return !cfg!(target_arch = "aarch64") && !cfg!(target_arch = "x86");
         }
     }
     true
@@ -173,12 +185,16 @@ impl Engine {
             Loader::Neoforge => {
                 let xml = self.http.get("https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml").send().await?.error_for_status()?.text().await?;
                 let re = regex::Regex::new(r"<version>([^<]+)</version>")?;
-                // NeoForge 20.2+ version numbering maps to 1.20.2+; 1.20.1 used Forge coordinates.
+                // Legacy 1.21.1 maps to 21.1.x; Minecraft 26.3 maps to 26.3.x.
                 let parts: Vec<_> = mc.split('.').collect();
-                if parts.first() != Some(&"1") || parts.len() < 2 {
+                if parts.len() < 2 {
                     return Ok(vec![]);
                 }
-                let prefix = format!("{}.{}.", parts[1], parts.get(2).unwrap_or(&"0"));
+                let prefix = if parts.first() == Some(&"1") {
+                    format!("{}.{}.", parts[1], parts.get(2).unwrap_or(&"0"))
+                } else {
+                    format!("{mc}.")
+                };
                 let mut versions: Vec<_> = re
                     .captures_iter(&xml)
                     .filter(|c| c[1].starts_with(&prefix))
@@ -277,6 +293,17 @@ impl Engine {
         task.check()?;
         let instance = self.instance(id)?;
         tokio::fs::create_dir_all(&instance).await?;
+        let launch_id = text(&meta, "id")?;
+        validate_version(launch_id)?;
+        tokio::fs::create_dir_all(instance.join("client")).await?;
+        tokio::fs::copy(
+            self.root
+                .join("versions")
+                .join(&profile.minecraft)
+                .join(format!("{}.jar", profile.minecraft)),
+            instance.join("client").join(format!("{launch_id}.jar")),
+        )
+        .await?;
         tokio::fs::write(
             instance.join("launch.json.tmp"),
             serde_json::to_vec_pretty(&meta)?,
@@ -397,7 +424,7 @@ impl Engine {
                 )
                 .await?;
                 let done = completed.fetch_add(1, Ordering::Relaxed) + 1;
-                if done % 20 == 0 || done == total {
+                if done.is_multiple_of(20) || done == total {
                     task.progress("assets", "Ресурсы игры", done, total);
                 }
                 Ok(())
@@ -578,8 +605,23 @@ impl Engine {
             });
         }
         drop(tx);
+        let mut tail = std::collections::VecDeque::new();
+        let mut last_event = std::time::Instant::now() - std::time::Duration::from_secs(1);
+        let log_dir = self.root.join("logs");
+        tokio::fs::create_dir_all(&log_dir).await?;
+        let mut log =
+            tokio::fs::File::create(log_dir.join(format!("installer-{}.log", task.id))).await?;
+        let mut written = 0usize;
         loop {
-            tokio::select! { line=rx.recv()=>if let Some(line)=line { task.progress("loader",line,0,0); } else { let status=child.wait().await?; if !status.success() { bail!("Установщик завершился с кодом {status}") } return Ok(()) }, _=tokio::time::sleep(std::time::Duration::from_millis(200))=>{ if task.check().is_err() { child.kill().await?; bail!("Установка отменена") } } }
+            task.check()?;
+            tokio::select! {
+                line=rx.recv()=>if let Some(line)=line {
+                    if written<8_000_000 {log.write_all(format!("{line}\n").as_bytes()).await?;written+=line.len()+1;}
+                    if tail.len()==8{tail.pop_front();}tail.push_back(line.clone());
+                    if last_event.elapsed()>std::time::Duration::from_millis(150){task.progress("loader",line,0,0);last_event=std::time::Instant::now();}
+                } else { let status=child.wait().await?; if !status.success() { bail!("Установщик завершился с кодом {status}\n{}",tail.into_iter().collect::<Vec<_>>().join("\n")) } return Ok(()) },
+                _=tokio::time::sleep(std::time::Duration::from_millis(200))=>{ if task.check().is_err() { child.kill().await?; bail!("Установка отменена") } }
+            }
         }
     }
     pub async fn launch(&self, id: &str) -> Result<()> {
@@ -658,13 +700,10 @@ impl Engine {
                 )?;
             }
         }
-        let client = text(&meta, "aurenClient")?;
-        cp.push(
-            self.root
-                .join("versions")
-                .join(client)
-                .join(format!("{client}.jar")),
-        );
+        let client = text(&meta, "id")?;
+        validate_version(client)?;
+        // Loader ignoreList uses version_name.jar; retain that filename for the inherited client.
+        cp.push(instance.join("client").join(format!("{client}.jar")));
         for path in &cp {
             if !path.exists() {
                 bail!(
@@ -696,7 +735,14 @@ impl Engine {
             ),
             ("user_properties".into(), "{}".into()),
             ("clientid".into(), settings.microsoft_client_id.clone()),
-            ("auth_xuid".into(), if account.kind=="microsoft" {self.xuid(&account.id)?}else{String::new()}),
+            (
+                "auth_xuid".into(),
+                if account.kind == "microsoft" {
+                    self.xuid(&account.id)?
+                } else {
+                    String::new()
+                },
+            ),
             ("version_name".into(), text(&meta, "id")?.into()),
             (
                 "version_type".into(),
@@ -822,18 +868,31 @@ impl Engine {
             let mut log = tokio::fs::File::create(instance.join("auren-latest.log"))
                 .await
                 .ok();
+            let mut stream_open = true;
             let status = loop {
                 tokio::select! {
                     status=child.wait()=>break status,
-                    line=rx.recv(), if !rx.is_closed() => if let Some(line)=line { if let Some(f)=log.as_mut() { let _=f.write_all(format!("{line}\n").as_bytes()).await; } task.progress("log",line,0,0); },
+                    line=rx.recv(), if stream_open => if let Some(line)=line { if let Some(f)=log.as_mut() { let _=f.write_all(format!("{line}\n").as_bytes()).await; } task.progress("log",line,0,0); }else{stream_open=false;},
                     _=tokio::time::sleep(std::time::Duration::from_millis(200))=>if stop.load(Ordering::Relaxed) { let _=child.kill().await; break child.wait().await; }
                 }
             };
+            // Capture buffered crash output even when the process exits before the readers finish.
+            while let Ok(Some(line)) =
+                tokio::time::timeout(std::time::Duration::from_secs(2), rx.recv()).await
+            {
+                if let Some(f) = log.as_mut() {
+                    let _ = f.write_all(format!("{line}\n").as_bytes()).await;
+                }
+                task.progress("log", line, 0, 0);
+            }
             engine.running.lock().await.remove(&id);
+            let stopped = stop.load(Ordering::Relaxed);
+            let crashed = !stopped && status.as_ref().map(|s| !s.success()).unwrap_or(true);
             task.progress(
-                "exited",
+                if crashed { "crashed" } else { "exited" },
                 match status {
-                    Ok(s) => format!("Minecraft завершён: {s}"),
+                    Ok(_) if stopped => "Minecraft остановлен".into(),
+                    Ok(s) => format!("Minecraft завершён: {s}. Подробности в журнале сборки"),
                     Err(e) => format!("Ошибка процесса: {e}"),
                 },
                 0,
@@ -959,8 +1018,10 @@ pub fn redact(line: &str, token: &str) -> String {
     } else {
         line.into()
     };
-    regex::Regex::new(r"(?i)(access[_-]?token|refresh[_-]?token|authorization)([=: ]+)(\S+)")
-        .unwrap()
-        .replace_all(&value, "$1$2[REDACTED]")
-        .into_owned()
+    regex::Regex::new(
+        r"(?i)(access[_-]?token|refresh[_-]?token|authorization)([=: ]+)(?:Bearer\s+)?(\S+)",
+    )
+    .unwrap()
+    .replace_all(&value, "$1$2[REDACTED]")
+    .into_owned()
 }

@@ -11,6 +11,7 @@ fn param<T: serde::de::DeserializeOwned>(p: &Value, k: &str) -> Result<T, String
 fn err(e: impl std::fmt::Display) -> String {
     e.to_string()
 }
+struct Relocation(std::sync::atomic::AtomicBool);
 #[tauri::command]
 async fn rpc(
     action: String,
@@ -19,7 +20,67 @@ async fn rpc(
     app: tauri::AppHandle,
 ) -> Result<Value, String> {
     let e = state.inner().clone();
+    if app
+        .state::<Relocation>()
+        .0
+        .load(std::sync::atomic::Ordering::Relaxed)
+        && !["snapshot", "restart", "openFolder", "logs"].contains(&action.as_str())
+    {
+        return Err(
+            "Данные скопированы. Перезапустите Auren, чтобы использовать новую папку".into(),
+        );
+    }
     match action.as_str() {
+        "restart" => {
+            if !e.running.lock().await.is_empty() {
+                return Err("Сначала остановите игру".into());
+            }
+            app.restart()
+        }
+        "changeDataDirectory" => {
+            let _guard = e
+                .busy
+                .try_lock()
+                .map_err(|_| "Дождитесь завершения операции".to_string())?;
+            if !e.running.lock().await.is_empty() {
+                return Err("Сначала остановите игру".into());
+            }
+            let handle = app.clone();
+            let path = tauri::async_runtime::spawn_blocking(move || {
+                handle
+                    .dialog()
+                    .file()
+                    .set_title("Выберите пустую папку для данных Auren")
+                    .blocking_pick_folder()
+            })
+            .await
+            .map_err(err)?;
+            let Some(path) = path else {
+                return Ok(Value::Null);
+            };
+            let path = path.into_path().map_err(err)?;
+            let task = e
+                .task(param(&payload, "operationId")?, None)
+                .await
+                .map_err(err)?;
+            let result: Result<(), anyhow::Error> = async {
+                e.copy_data(&path, &task).await?;
+                task.check()?;
+                let config = app.path().app_config_dir()?;
+                std::fs::create_dir_all(&config)?;
+                let temp = config.join("data-location.json.tmp");
+                std::fs::write(&temp, serde_json::to_vec(&path)?)?;
+                std::fs::rename(temp, config.join("data-location.json"))?;
+                app.state::<Relocation>()
+                    .0
+                    .store(true, std::sync::atomic::Ordering::Relaxed);
+                Ok(())
+            }
+            .await;
+            e.finish(&task, &result).await;
+            result.map_err(err)?;
+            Ok(json!(path.to_string_lossy()))
+        }
         "snapshot" => Ok(json!(e.snapshot().await)),
         "versions" => e.minecraft_versions().await.map_err(err),
         "loaders" => Ok(json!(e
@@ -346,15 +407,29 @@ async fn choose_file(
 }
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let handle = app.handle().clone();
-            let root = app.path().app_data_dir()?;
+            let location = app.path().app_config_dir()?.join("data-location.json");
+            let root = if let Some(path) = std::env::var_os("AUREN_DATA_DIR") {
+                std::path::PathBuf::from(path)
+            } else if location.exists() {
+                serde_json::from_slice(&std::fs::read(location)?)?
+            } else {
+                app.path().app_data_dir()?
+            };
             let engine = tauri::async_runtime::block_on(Engine::new(root, move |event| {
                 let _ = handle.emit("auren:event", event);
             }))?;
             app.manage(engine);
+            app.manage(Relocation(std::sync::atomic::AtomicBool::new(false)));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![rpc])
