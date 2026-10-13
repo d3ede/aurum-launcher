@@ -350,6 +350,20 @@ kbd {
   padding: 1px 4px;
   border-radius: 3px;
 }
+.header-search kbd {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: 5px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--muted);
+}
 .topbar-divider {
   height: 25px;
   width: 1px;
