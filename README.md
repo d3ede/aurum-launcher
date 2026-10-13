@@ -49,9 +49,9 @@ An independent Windows launcher with a warm light theme and a graphite dark them
 
 The installer includes the complete launcher and its interface. Minecraft, Java, loaders, and mods are downloaded separately as you set up instances. Players do not need Node.js or Rust.
 
-The installer does not yet have an **Authenticode publisher certificate**, so Windows may display a SmartScreen warning. Starting with **0.3.2**, Aurum checks GitHub Releases automatically and offers **Update and restart** inside the launcher. Update packages are verified with a separate cryptographic signature before installation. See [launcher updates](docs/UPDATES.md).
+The installer does not yet have an **Authenticode publisher certificate**, so Windows may display a SmartScreen warning. Starting with **0.3.3**, Aurum checks GitHub Releases automatically and offers **Update and restart** inside the launcher. Update packages are verified with a separate cryptographic signature before installation. See [launcher updates](docs/UPDATES.md).
 
-**Already using 0.3.1?** Install 0.3.2 once from Releases to enable future in-app updates.
+**Already using 0.3.1?** Install 0.3.3 once from Releases to enable future in-app updates.
 
 Each release includes `SHA256SUMS.txt` alongside the installer. Check a downloaded file in PowerShell:
 

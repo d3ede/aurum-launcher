@@ -1,6 +1,6 @@
 [package]
 name = "aurum"
-version = "0.3.2"
+version = "0.3.3"
 edition = "2021"
 license = "PolyForm-Noncommercial-1.0.0"
 

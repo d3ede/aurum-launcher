@@ -33,8 +33,8 @@ async function fixture(
               if (w.updateMode === "current") return null;
               return {
                 rid: 101,
-                currentVersion: "0.3.2",
-                version: "0.3.3",
+                currentVersion: "0.3.3",
+                version: "0.3.4",
                 rawJson: {},
                 body: "Update fixture",
               };
@@ -96,7 +96,7 @@ test("checks, postpones, and downloads before restarting", async ({ page }) => {
     page.getByRole("button", { name: "Check for updates" }),
   ).toBeDisabled();
   const banner = page.getByRole("region", { name: "Launcher updates" });
-  await expect(banner).toContainText("Aurum 0.3.3 is available");
+  await expect(banner).toContainText("Aurum 0.3.4 is available");
   await banner.getByRole("button", { name: "Later" }).click();
   await expect(banner).toHaveCount(0);
   await page.getByRole("button", { name: "Update and restart" }).click();

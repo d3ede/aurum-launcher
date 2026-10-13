@@ -10,6 +10,10 @@ import { resolve, join } from "node:path";
 import assert from "node:assert/strict";
 
 const root = resolve(".test-data", `native-updater-${Date.now()}`);
+const releaseVersion = JSON.parse(readFileSync("package.json", "utf8")).version;
+const forgedVersion = releaseVersion.replace(/\d+$/, (value) =>
+  String(Number(value) + 1),
+);
 mkdirSync(root, { recursive: true });
 writeFileSync(
   join(root, "state.json"),
@@ -31,7 +35,7 @@ writeFileSync(
 );
 const installerPath = resolve(
   process.env.AURUM_UPDATER_TEST_INSTALLER ||
-    "target/release/bundle/nsis/Aurum Launcher_0.3.2_x64-setup.exe",
+    `target/release/bundle/nsis/Aurum Launcher_${releaseVersion}_x64-setup.exe`,
 );
 const installer = readFileSync(installerPath);
 const signature = readFileSync(`${installerPath}.sig`, "utf8").trim();
@@ -49,8 +53,8 @@ const server = createServer((request, response) => {
           mode === "current"
             ? "0.3.1"
             : mode === "wrong-version"
-              ? "0.3.3"
-              : "0.3.2",
+              ? forgedVersion
+              : releaseVersion,
         notes: "Owned update verification fixture",
         platforms: {
           "windows-x86_64": {
@@ -113,7 +117,7 @@ try {
   );
   mode = "valid";
   const update = await invoke("plugin:updater|check", { timeout: 15000 });
-  assert.equal(update.version, "0.3.2");
+  assert.equal(update.version, releaseVersion);
   const download = (rid) =>
     page.evaluate(async (rid) => {
       const internal = window.__TAURI_INTERNALS__;

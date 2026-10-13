@@ -2,11 +2,11 @@
 
 ## For players
 
-Aurum 0.3.2 and later check for updates ten seconds after launch and every six hours while open. You can also check under **Settings → Launcher updates**.
+Aurum 0.3.3 and later check for updates ten seconds after launch and every six hours while open. You can also check under **Settings → Launcher updates**.
 
 Choose **Update and restart** to download a new version, verify its signature, and install it automatically. **Later** hides the banner for the current session; the update remains available in Settings. Finish running games and launcher tasks before installing. If a check or download fails, keep using the current version and retry later.
 
-Version 0.3.1 has no updater. Install 0.3.2 once from [GitHub Releases](https://github.com/d3ede/aurum-launcher/releases/latest) to enable future in-app updates.
+Version 0.3.1 has no updater. Install 0.3.3 once from [GitHub Releases](https://github.com/d3ede/aurum-launcher/releases/latest) to enable future in-app updates. The 0.3.2 source tag contains the initial implementation; its release build stopped on stale dependency metadata and was superseded by 0.3.3.
 
 ## Release pipeline
 
