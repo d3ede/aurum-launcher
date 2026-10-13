@@ -122,7 +122,10 @@ try {
   await page
     .getByRole("button", { name: "Найти проекты", exact: true })
     .click();
-  assert.equal(await page.getByLabel("Установить в").inputValue(), profile.id);
+  assert.equal(
+    await page.getByLabel("Установить в").innerText(),
+    `${profile.name} · 1.21.1 · Fabric`,
+  );
   assert.equal(
     await page
       .getByRole("button", { name: "Ресурспаки", exact: true })
@@ -132,16 +135,16 @@ try {
   assert.equal(
     await page
       .getByRole("combobox", { name: "Фильтр версии Minecraft" })
-      .inputValue(),
+      .innerText(),
     "1.21.1",
   );
   await page.getByRole("button", { name: "Моды", exact: true }).click();
+  await page.getByRole("combobox", { name: "Категория проекта" }).click();
+  await page.getByRole("option", { name: "Оптимизация", exact: true }).click();
+  await page.getByRole("combobox", { name: "Сортировка проектов" }).click();
   await page
-    .getByRole("combobox", { name: "Категория проекта" })
-    .selectOption("optimization");
-  await page
-    .getByRole("combobox", { name: "Сортировка проектов" })
-    .selectOption("relevance");
+    .getByRole("option", { name: "По соответствию", exact: true })
+    .click();
   await page
     .getByRole("textbox", { name: "Поиск проектов", exact: true })
     .fill("Sodium");
@@ -150,10 +153,8 @@ try {
   });
   await result.waitFor({ timeout: 60000 });
   assert.equal(
-    await page
-      .getByRole("combobox", { name: "Фильтр загрузчика" })
-      .inputValue(),
-    "fabric",
+    await page.getByRole("combobox", { name: "Фильтр загрузчика" }).innerText(),
+    "Fabric",
   );
   await result.getByRole("button", { name: "Добавить", exact: true }).click();
   await result
@@ -166,6 +167,15 @@ try {
     path: "docs/screenshots/native-catalog.png",
     animations: "disabled",
   });
+  const filtersBox = await page.locator(".catalog-filter-panel").boundingBox();
+  const resultsBox = await page.locator(".catalog-results").boundingBox();
+  assert(filtersBox.x > resultsBox.x + resultsBox.width);
+  await page.getByRole("combobox", { name: "Сортировка проектов" }).click();
+  await page.screenshot({
+    path: "docs/screenshots/native-dropdown.png",
+    animations: "disabled",
+  });
+  await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 960, height: 680 });
   assert.equal(
     await page.evaluate(() => {

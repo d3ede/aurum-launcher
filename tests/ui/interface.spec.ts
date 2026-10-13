@@ -94,3 +94,97 @@ test("layout at minimum desktop size has no horizontal overflow", async ({
     ),
   ).toBe(false);
 });
+
+test("styled menus support keyboard, dismissal and nested dialogs", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "Каталог проектов", exact: true })
+    .click();
+  const filters = await page
+    .getByRole("complementary", { name: "Фильтры проектов" })
+    .boundingBox();
+  const results = await page.locator(".catalog-results").boundingBox();
+  expect(filters!.x).toBeGreaterThan(results!.x + results!.width);
+  const sort = page.getByRole("combobox", { name: "Сортировка проектов" });
+  await sort.click();
+  await expect(page.getByRole("listbox")).toBeVisible();
+  await expect(
+    page.getByRole("option", { name: "По загрузкам", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  await page.screenshot({
+    path: "docs/screenshots/dropdown-light.png",
+    animations: "disabled",
+  });
+  await page.keyboard.press("End");
+  await expect(
+    page.getByRole("option", { name: "Новые проекты", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(sort).toHaveText("Новые проекты");
+  await expect(sort).toBeFocused();
+  await sort.click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("listbox")).toHaveCount(0);
+  await expect(sort).toBeFocused();
+  await sort.click();
+  const heading = await page.locator("h1").boundingBox();
+  await page.mouse.click(heading!.x + 12, heading!.y + 12);
+  await expect(page.getByRole("listbox")).toHaveCount(0);
+  await page.getByRole("button", { name: "Переключить тему" }).click();
+  await sort.click();
+  await page.screenshot({
+    path: "docs/screenshots/dropdown-dark.png",
+    animations: "disabled",
+  });
+  await page.keyboard.press("Escape");
+  await page.setViewportSize({ width: 960, height: 680 });
+  expect(
+    await page.evaluate(() => {
+      const e = document.querySelector(".content-scroll")!;
+      return (
+        e.scrollWidth > e.clientWidth ||
+        document.documentElement.scrollWidth > innerWidth
+      );
+    }),
+  ).toBe(false);
+  await page.getByRole("button", { name: "Главная", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Создать сборку", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("alert").waitFor();
+  await dialog
+    .getByRole("combobox", { name: "Загрузчик", exact: true })
+    .click();
+  await page.getByRole("option", { name: "Fabric", exact: true }).waitFor();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+  await expect(page.getByRole("listbox")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await page.setViewportSize({ width: 1280, height: 820 });
+  await page
+    .getByRole("button", { name: "Аккаунты и скины", exact: true })
+    .click();
+  await page.locator('.skin-stage canvas[data-ready="true"]').waitFor();
+  await page.getByRole("button", { name: "Остановить вращение" }).click();
+  await page.screenshot({
+    path: "docs/screenshots/steve.png",
+    animations: "disabled",
+  });
+  await page
+    .getByRole("button", { name: "Alex · тонкие руки", exact: true })
+    .click();
+  await page
+    .locator('canvas[aria-label="3D-превью модели Alex"][data-ready="true"]')
+    .waitFor();
+  await page.screenshot({
+    path: "docs/screenshots/alex.png",
+    animations: "disabled",
+  });
+  expect(errors).toEqual([]);
+});

@@ -14,6 +14,7 @@ import { native, rpc } from "../lib/api";
 import { ru, formatNumber } from "../lib/i18n";
 import type { CatalogTarget, Kind, Project } from "../types";
 import { ProjectIcon } from "./Catalog";
+import { Select } from "../components/Select";
 import { EmptyState, ErrorBox, Loading } from "../components/ui";
 const categoryNames: Record<string, string> = {
   adventure: "Приключения",
@@ -237,130 +238,22 @@ export function Catalog({
       </div>
       <div className="catalog-context">
         <label htmlFor="catalog-target">Установить в</label>
-        <select
+        <Select
           id="catalog-target"
+          aria-label="Установить в"
           value={target.profileId}
-          onChange={(e) => setTarget({ ...target, profileId: e.target.value })}
-        >
-          <option value="">Без привязки к сборке</option>
-          {data.profiles.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} · {p.minecraft} · {ru.loaders[p.loader]}
-            </option>
-          ))}
-        </select>
+          onValueChange={(profileId) => setTarget({ ...target, profileId })}
+          options={[
+            { value: "", label: "Без привязки к сборке" },
+            ...data.profiles.map((p) => ({
+              value: p.id,
+              label: `${p.name} · ${p.minecraft} · ${ru.loaders[p.loader]}`,
+            })),
+          ]}
+        />
         {bound && <span>Только совместимые проекты</span>}
       </div>
       <div className="catalog-workspace">
-        <aside className="catalog-filter-panel" aria-label="Фильтры проектов">
-          <div className="filter-heading">
-            <b>Фильтры</b>
-            <button className="text-button" onClick={reset}>
-              Сбросить
-            </button>
-          </div>
-          <fieldset>
-            <legend>Источник</legend>
-            <div className="source-switch">
-              <button
-                className={source === "modrinth" ? "active" : ""}
-                onClick={() => setSource("modrinth")}
-              >
-                Modrinth
-              </button>
-              <button
-                className={source === "curseforge" ? "active" : ""}
-                onClick={() => {
-                  setSource("curseforge");
-                  if (sort === "relevance") setSort("downloads");
-                }}
-              >
-                CurseForge
-              </button>
-            </div>
-          </fieldset>
-          <fieldset>
-            <legend>Тип проекта</legend>
-            <div className="filter-options">
-              {Object.entries(ru.kinds).map(([value, label]) => (
-                <button
-                  key={value}
-                  className={kind === value ? "selected" : ""}
-                  aria-pressed={kind === value}
-                  onClick={() => setTarget({ ...target, kind: value as Kind })}
-                >
-                  <span className="filter-check">
-                    {kind === value && <Check size={13} />}
-                  </span>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-          <fieldset>
-            <legend>Версия Minecraft</legend>
-            <select
-              aria-label="Фильтр версии Minecraft"
-              value={effectiveMc}
-              disabled={bound}
-              onChange={(e) => setMc(e.target.value)}
-            >
-              <option value="">Все версии</option>
-              {[...new Set([effectiveMc, ...versions])]
-                .filter(Boolean)
-                .map((v) => (
-                  <option key={v}>{v}</option>
-                ))}
-            </select>
-          </fieldset>
-          {kind === "mod" && (
-            <fieldset>
-              <legend>Загрузчик</legend>
-              <select
-                aria-label="Фильтр загрузчика"
-                value={effectiveLoader}
-                disabled={bound}
-                onChange={(e) => setLoader(e.target.value)}
-              >
-                <option value="">Все загрузчики</option>
-                {Object.entries(ru.loaders)
-                  .filter(([value]) => value !== "vanilla" || bound)
-                  .map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-              </select>
-            </fieldset>
-          )}
-          <fieldset>
-            <legend>Категория</legend>
-            <select
-              aria-label="Категория проекта"
-              value={category}
-              disabled={!categories.length}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              <option value="">Все категории</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {categoryNames[c.name] || c.name}
-                </option>
-              ))}
-            </select>
-          </fieldset>
-          {filterError && (
-            <div className="filter-error" role="alert">
-              {filterError}
-              <button
-                className="text-button"
-                onClick={() => setRetry((v) => v + 1)}
-              >
-                Повторить
-              </button>
-            </div>
-          )}
-        </aside>
         <section className="catalog-results">
           <div className="catalog-results-toolbar">
             <div className="input-icon">
@@ -381,18 +274,19 @@ export function Catalog({
                 </button>
               )}
             </div>
-            <select
+            <Select
               aria-label="Сортировка проектов"
               value={sort}
-              onChange={(e) => setSort(e.target.value)}
-            >
-              <option value="downloads">По загрузкам</option>
-              {source === "modrinth" && (
-                <option value="relevance">По соответствию</option>
-              )}
-              <option value="updated">Недавно обновлённые</option>
-              <option value="newest">Новые проекты</option>
-            </select>
+              onValueChange={setSort}
+              options={[
+                { value: "downloads", label: "По загрузкам" },
+                ...(source === "modrinth"
+                  ? [{ value: "relevance", label: "По соответствию" }]
+                  : []),
+                { value: "updated", label: "Недавно обновлённые" },
+                { value: "newest", label: "Новые проекты" },
+              ]}
+            />
           </div>
           {!native ? (
             <EmptyState
@@ -496,6 +390,111 @@ export function Catalog({
             />
           )}
         </section>
+        <aside className="catalog-filter-panel" aria-label="Фильтры проектов">
+          <div className="filter-heading">
+            <b>Фильтры</b>
+            <button className="text-button" onClick={reset}>
+              Сбросить
+            </button>
+          </div>
+          <fieldset>
+            <legend>Источник</legend>
+            <div className="source-switch">
+              <button
+                className={source === "modrinth" ? "active" : ""}
+                onClick={() => setSource("modrinth")}
+              >
+                Modrinth
+              </button>
+              <button
+                className={source === "curseforge" ? "active" : ""}
+                onClick={() => {
+                  setSource("curseforge");
+                  if (sort === "relevance") setSort("downloads");
+                }}
+              >
+                CurseForge
+              </button>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Тип проекта</legend>
+            <div className="filter-options">
+              {Object.entries(ru.kinds).map(([value, label]) => (
+                <button
+                  key={value}
+                  className={kind === value ? "selected" : ""}
+                  aria-pressed={kind === value}
+                  onClick={() => setTarget({ ...target, kind: value as Kind })}
+                >
+                  <span className="filter-check">
+                    {kind === value && <Check size={13} />}
+                  </span>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Версия Minecraft</legend>
+            <Select
+              aria-label="Фильтр версии Minecraft"
+              value={effectiveMc}
+              disabled={bound}
+              onValueChange={setMc}
+              options={[
+                { value: "", label: "Все версии" },
+                ...[...new Set([effectiveMc, ...versions])]
+                  .filter(Boolean)
+                  .map((v) => ({ value: v, label: v })),
+              ]}
+            />
+          </fieldset>
+          {kind === "mod" && (
+            <fieldset>
+              <legend>Загрузчик</legend>
+              <Select
+                aria-label="Фильтр загрузчика"
+                value={effectiveLoader}
+                disabled={bound}
+                onValueChange={setLoader}
+                options={[
+                  { value: "", label: "Все загрузчики" },
+                  ...Object.entries(ru.loaders)
+                    .filter(([value]) => value !== "vanilla" || bound)
+                    .map(([value, label]) => ({ value, label })),
+                ]}
+              />
+            </fieldset>
+          )}
+          <fieldset>
+            <legend>Категория</legend>
+            <Select
+              aria-label="Категория проекта"
+              value={category}
+              disabled={!categories.length}
+              onValueChange={setCategory}
+              options={[
+                { value: "", label: "Все категории" },
+                ...categories.map((c) => ({
+                  value: c.id,
+                  label: categoryNames[c.name] || c.name,
+                })),
+              ]}
+            />
+          </fieldset>
+          {filterError && (
+            <div className="filter-error" role="alert">
+              {filterError}
+              <button
+                className="text-button"
+                onClick={() => setRetry((v) => v + 1)}
+              >
+                Повторить
+              </button>
+            </div>
+          )}
+        </aside>
       </div>
     </>
   );

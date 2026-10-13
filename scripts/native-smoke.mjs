@@ -37,9 +37,8 @@ await page.getByRole("button", { name: "Новая сборка", exact: true })
 await page
   .getByRole("textbox", { name: "Название сборки" })
   .fill("Desktop smoke");
-await page
-  .getByRole("combobox", { name: "Версия Minecraft" })
-  .selectOption("1.21.1");
+await page.getByRole("combobox", { name: "Версия Minecraft" }).click();
+await page.getByRole("option", { name: "1.21.1", exact: true }).click();
 await page.getByRole("button", { name: "Создать сборку", exact: true }).click();
 await page.getByRole("dialog").waitFor({ state: "hidden" });
 const p = (await rpc("snapshot")).profiles.find(

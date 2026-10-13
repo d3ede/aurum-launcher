@@ -30,6 +30,8 @@ export function Accounts() {
       setSelected(data.selectedAccount || data.accounts[0]?.id || "");
   }, [data.accounts, selected, data.selectedAccount]);
   useEffect(() => {
+    setBytes([]);
+    setSkinError("");
     if (!account) return;
     let live = true;
     setModel(account.skinModel);
@@ -161,8 +163,7 @@ export function Accounts() {
               <p>
                 Они подходят для локальной игры и серверов, допускающих
                 офлайн-вход. Официальные серверы требуют Microsoft-аккаунт с
-                Minecraft. Локальный скин используется только в превью Aurum:
-                игра без дополнительных модов его не применяет.
+                Minecraft.
               </p>
             </div>
           </div>
@@ -202,10 +203,9 @@ export function Accounts() {
           </button>
           <p className="skin-hint">
             64×64 или 64×32 · до 1 МБ
-            <br />
             {account?.kind === "microsoft"
-              ? "Скин отправляется в ваш Minecraft-профиль."
-              : "Офлайн-скин хранится локально для превью. Он не отображается у других игроков."}
+              ? " · Скин отправляется в ваш Minecraft-профиль."
+              : null}
           </p>
           {skinError && (
             <p role="alert" className="danger">

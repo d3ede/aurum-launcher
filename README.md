@@ -1,10 +1,10 @@
 # Aurum Launcher
 
-Независимый desktop Minecraft-лаунчер на **Tauri 2 · Rust · React · TypeScript · Vite**. Светлая кремовая и тёмная графитовая темы, русский интерфейс, изолированные игровые сборки. Собственная графика и реализация; исходники и ассеты других лаунчеров не используются. Окончательная лицензия пока не выбрана.
+Независимый desktop Minecraft-лаунчер на **Tauri 2 · Rust · React · TypeScript · Vite**. Светлая кремовая и тёмная графитовая темы, русский интерфейс, изолированные игровые сборки. Собственная графика и реализация; исходники и ассеты других лаунчеров не используются. Для стандартного 3D-превью используются оригинальные текстуры Steve/Alex из Minecraft (Mojang/Microsoft); происхождение описано в `src/assets/skins/README.md`. Окончательная лицензия пока не выбрана.
 
 ## Запуск
 
-Установщик Windows x64: **[Aurum Launcher_0.2.0_x64-setup.exe](<target/release/bundle/nsis/Aurum Launcher_0.2.0_x64-setup.exe>)**. Запуск без установки: **[target/release/aurum.exe](target/release/aurum.exe)**. Интерфейс встроен; Vite для запуска не нужен. Требуется Microsoft Edge WebView2 Runtime; установщик проверяет его наличие. Сборка не подписана сертификатом издателя.
+Установщик Windows x64: **[Aurum Launcher_0.2.1_x64-setup.exe](<target/release/bundle/nsis/Aurum Launcher_0.2.1_x64-setup.exe>)**. Запуск без установки: **[target/release/aurum.exe](target/release/aurum.exe)**. Интерфейс встроен; Vite для запуска не нужен. Требуется Microsoft Edge WebView2 Runtime; установщик проверяет его наличие. Сборка не подписана сертификатом издателя.
 
 ```powershell
 cd auren
@@ -71,4 +71,4 @@ npm run test:ui
 
 `scripts/native-smoke.mjs` проверяет реальный Tauri WebView2 и IPC через **локальный** CDP-порт 9227: каталог, создание профиля, установка/запуск из UI, остановка, темы, 3D-превью, удаление. Для этой проверки приложение запускают с `AURUM_DATA_DIR` в `.test-data/` и `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9227 --remote-debugging-address=127.0.0.1`. Обычный запуск не включает этот порт.
 
-Обновление Aurum 0.2.0 и его проверки: [docs/REDESIGN.md](docs/REDESIGN.md). Проверки игровой основы 0.1.0: [docs/VERIFICATION.md](docs/VERIFICATION.md). Архитектура: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Обновление интерфейса 0.2.1: [docs/UI-POLISH.md](docs/UI-POLISH.md). Обновление Aurum 0.2.0 и его проверки: [docs/REDESIGN.md](docs/REDESIGN.md). Проверки игровой основы 0.1.0: [docs/VERIFICATION.md](docs/VERIFICATION.md). Архитектура: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).

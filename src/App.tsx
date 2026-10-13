@@ -198,7 +198,7 @@ function Shell({
         <div className="sidebar-bottom">
           <div className="sidebar-version">
             <span>
-              Aurum <b>0.2.0</b>
+              Aurum <b>0.2.1</b>
             </span>
             <button
               aria-label="Настройки Aurum"

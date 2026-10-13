@@ -40,13 +40,22 @@ export function Modal({
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     const root = ref.current!;
-    const focusables = () => [
-      ...root.querySelectorAll<HTMLElement>(
-        'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]',
-      ),
-    ];
+    const focusables = () =>
+      [
+        ...root.querySelectorAll<HTMLElement>(
+          'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]',
+        ),
+      ].filter(
+        (element) =>
+          element.tabIndex >= 0 && element.getClientRects().length > 0,
+      );
     focusables()[0]?.focus();
     const onKey = (e: KeyboardEvent) => {
+      if (
+        document.querySelector('.select-menu[data-state="open"]') ||
+        e.defaultPrevented
+      )
+        return;
       if (e.key === "Escape") close.current();
       if (e.key === "Tab") {
         const list = focusables();

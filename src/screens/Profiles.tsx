@@ -7,6 +7,7 @@ import {
   ArrowDownWideNarrow,
 } from "lucide-react";
 import { useApp } from "../context";
+import { Select } from "../components/Select";
 import { rpc } from "../lib/api";
 import type { Profile } from "../types";
 import { ProfileCard } from "../components/ProfileCard";
@@ -67,14 +68,15 @@ export function Profiles({
         </div>
         <div className="select-icon">
           <ArrowDownWideNarrow size={16} />
-          <select
+          <Select
             value={sort}
-            onChange={(e) => setSort(e.target.value)}
+            onValueChange={setSort}
             aria-label="Сортировка сборок"
-          >
-            <option value="recent">Сначала недавние</option>
-            <option value="name">По названию</option>
-          </select>
+            options={[
+              { value: "recent", label: "Сначала недавние" },
+              { value: "name", label: "По названию" },
+            ]}
+          />
         </div>
         <button
           className="text-button"

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Modal, Field, Loading, ErrorBox, EmptyState } from "./ui";
 import { ProfileIcon, IconPicker } from "./ProfileIcon";
+import { Select } from "./Select";
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
 import { ru } from "../lib/i18n";
@@ -158,27 +159,23 @@ export function CreateProfile({
           <>
             <div className="form-grid">
               <Field label="Версия Minecraft">
-                <select
+                <Select
                   value={mc}
-                  onChange={(e) => setMc(e.target.value)}
+                  onValueChange={setMc}
                   aria-label="Версия Minecraft"
-                >
-                  {versions.map((v) => (
-                    <option key={v}>{v}</option>
-                  ))}
-                </select>
+                  options={versions.map((v) => ({ value: v, label: v }))}
+                />
               </Field>
               <Field label="Загрузчик">
-                <select
+                <Select
                   value={loader}
-                  onChange={(e) => setLoader(e.target.value as Loader)}
-                >
-                  {Object.entries(ru.loaders).map(([k, v]) => (
-                    <option key={k} value={k}>
-                      {v}
-                    </option>
-                  ))}
-                </select>
+                  aria-label="Загрузчик"
+                  onValueChange={(v) => setLoader(v as Loader)}
+                  options={Object.entries(ru.loaders).map(([value, label]) => ({
+                    value,
+                    label,
+                  }))}
+                />
               </Field>
             </div>
             {loader !== "vanilla" && (
@@ -190,20 +187,21 @@ export function CreateProfile({
                     : undefined
                 }
               >
-                <select
+                <Select
                   value={lv}
-                  onChange={(e) => setLv(e.target.value)}
+                  aria-label={`Версия ${ru.loaders[loader]}`}
+                  onValueChange={setLv}
                   disabled={loaderLoading || !loaders.length}
-                >
-                  <option value="">
-                    {loaderLoading
-                      ? "Проверяем совместимость…"
-                      : "Выберите версию"}
-                  </option>
-                  {loaders.map((v) => (
-                    <option key={v}>{v}</option>
-                  ))}
-                </select>
+                  options={[
+                    {
+                      value: "",
+                      label: loaderLoading
+                        ? "Проверяем совместимость…"
+                        : "Выберите версию",
+                    },
+                    ...loaders.map((v) => ({ value: v, label: v })),
+                  ]}
+                />
               </Field>
             )}
           </>

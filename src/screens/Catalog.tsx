@@ -16,6 +16,7 @@ import { native, rpc, compatible } from "../lib/api";
 import { ru, formatNumber } from "../lib/i18n";
 import type { Kind, Loader, Project, ProjectDetail } from "../types";
 import { Modal, Loading, ErrorBox, EmptyState, Field } from "../components/ui";
+import { Select } from "../components/Select";
 export function ProjectIcon({ project }: { project: Project }) {
   return project.icon ? (
     <img className="project-icon" src={project.icon} alt="" loading="lazy" />
@@ -160,35 +161,38 @@ export function ProjectDialog({
               <div className="form-grid">
                 {project.kind !== "modpack" && (
                   <Field label="Установить в сборку">
-                    <select
+                    <Select
                       value={profileId}
-                      onChange={(e) => setProfileId(e.target.value)}
-                    >
-                      <option value="">Выберите сборку</option>
-                      {data.profiles.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} · {p.minecraft} / {ru.loaders[p.loader]}
-                        </option>
-                      ))}
-                    </select>
+                      aria-label="Установить в сборку"
+                      onValueChange={setProfileId}
+                      options={[
+                        { value: "", label: "Выберите сборку" },
+                        ...data.profiles.map((p) => ({
+                          value: p.id,
+                          label: `${p.name} · ${p.minecraft} / ${ru.loaders[p.loader]}`,
+                        })),
+                      ]}
+                    />
                   </Field>
                 )}
                 <Field label="Версия проекта">
-                  <select
+                  <Select
                     value={versionId}
-                    onChange={(e) => setVersionId(e.target.value)}
-                  >
-                    <option value="">
-                      {detail.versions.length
-                        ? "Выберите версию"
-                        : "Совместимых версий нет"}
-                    </option>
-                    {detail.versions.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name}
-                      </option>
-                    ))}
-                  </select>
+                    aria-label="Версия проекта"
+                    onValueChange={setVersionId}
+                    options={[
+                      {
+                        value: "",
+                        label: detail.versions.length
+                          ? "Выберите версию"
+                          : "Совместимых версий нет",
+                      },
+                      ...detail.versions.map((v) => ({
+                        value: v.id,
+                        label: v.name,
+                      })),
+                    ]}
+                  />
                 </Field>
               </div>
               <button
