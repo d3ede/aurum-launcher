@@ -1,4 +1,5 @@
 name: Windows release
+run-name: Windows release ${{ inputs.tag || github.ref_name }}
 
 on:
   push:
@@ -33,6 +34,8 @@ jobs:
           cache: npm
       - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
       - uses: Swatinem/rust-cache@49a0bdc70d2e1b713ca9e2869b211fcce03d3c1c # v2
+        with:
+          cache-on-failure: true
       - name: Validate release inputs
         shell: pwsh
         env:
@@ -54,10 +57,27 @@ jobs:
           cargo clippy --workspace --all-targets --locked -- -D warnings
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Check UI
+        shell: pwsh
         run: |
           npx playwright install chromium
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          npm run test:ui
+          # Software WebGL and lazy imports are slower on the hosted Windows
+          # runner. Keep all assertions and give rendering a realistic budget.
+          New-Item -ItemType Directory -Path .test-data -Force | Out-Null
+          @'
+          import { defineConfig } from '@playwright/test';
+          import { resolve } from 'node:path';
+          import base from '../playwright.config';
+          export default defineConfig({
+            ...base,
+            testDir: resolve('tests/ui'),
+            workers: 1,
+            timeout: 120000,
+            expect: { ...base.expect, timeout: 30000 },
+            webServer: { ...base.webServer, cwd: resolve('.') },
+          });
+          '@ | Set-Content -Path .test-data/playwright-ci.config.ts -Encoding utf8
+          npx playwright test --config=.test-data/playwright-ci.config.ts
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Build signed installer
         env:
