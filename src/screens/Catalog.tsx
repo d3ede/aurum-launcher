@@ -11,7 +11,12 @@ import {
   ExternalLink,
   PackagePlus,
 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+import {
+  ImageLightbox,
+  ProjectDescription,
+  ProjectGallery,
+  safeImageUrl,
+} from "../components/ProjectMedia";
 import { useApp } from "../context";
 import { native, rpc, compatible } from "../lib/api";
 import { ru, formatNumber } from "../lib/i18n";
@@ -48,6 +53,17 @@ export function ProjectDialog({
     "description",
   );
   const [retry, setRetry] = useState(0);
+  const [viewer, setViewer] = useState<{
+    images: string[];
+    index: number;
+  } | null>(null);
+  const gallery = [
+    ...new Set(
+      (detail?.gallery || [])
+        .map(safeImageUrl)
+        .filter((src): src is string => !!src),
+    ),
+  ];
   const profile = data.profiles.find((p) => p.id === profileId);
   useEffect(() => {
     let live = true;
@@ -125,6 +141,13 @@ export function ProjectDialog({
       wide
       onClose={onClose}
     >
+      {viewer && (
+        <ImageLightbox
+          images={viewer.images}
+          initialIndex={viewer.index}
+          onClose={() => setViewer(null)}
+        />
+      )}
       <div className="project-detail-head">
         <ProjectIcon project={project} />
         <div>
@@ -239,45 +262,23 @@ export function ProjectDialog({
               ))}
             </div>
             {tab === "description" && (
-              <div className="markdown">
-                <ReactMarkdown
-                  components={{
-                    a: ({ href, children }) => (
-                      <button
-                        className="inline-link"
-                        onClick={() => {
-                          if (href?.startsWith("https://"))
-                            void run(() => rpc("openUrl", { url: href }));
-                        }}
-                      >
-                        {children}
-                      </button>
-                    ),
-                    img: ({ src, alt }) =>
-                      src?.startsWith("https://") ? (
-                        <img src={src} alt={alt || ""} loading="lazy" />
-                      ) : null,
-                  }}
-                >
-                  {detail.body || project.description}
-                </ReactMarkdown>
-              </div>
+              <ProjectDescription
+                body={detail.body || project.description}
+                onLink={(url) => void run(() => rpc("openUrl", { url }))}
+                onImage={(src) => {
+                  const images = gallery.includes(src)
+                    ? gallery
+                    : [...gallery, src];
+                  setViewer({ images, index: images.indexOf(src) });
+                }}
+              />
             )}
             {tab === "gallery" && (
-              <div className="project-gallery">
-                {detail.gallery.length ? (
-                  detail.gallery.map((src) => (
-                    <img
-                      src={src}
-                      alt={t("Скриншот {{v1}}", { v1: project.title })}
-                      key={src}
-                      loading="lazy"
-                    />
-                  ))
-                ) : (
-                  <p>{t("Автор не добавил скриншоты.")}</p>
-                )}
-              </div>
+              <ProjectGallery
+                images={gallery}
+                title={project.title}
+                onOpen={(index) => setViewer({ images: gallery, index })}
+              />
             )}
             {tab === "versions" && (
               <div className="version-list">

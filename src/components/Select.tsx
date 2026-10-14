@@ -1,10 +1,12 @@
 import { t } from "../lib/i18n";
 import * as Dropdown from "@radix-ui/react-select";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
+import { useState, type ReactNode } from "react";
 export interface SelectOption {
   value: string;
   label: string;
   disabled?: boolean;
+  icon?: ReactNode;
 }
 export function Select({
   value,
@@ -26,8 +28,11 @@ export function Select({
   "aria-label": string;
 }) {
   const empty = "__aurum_any__";
+  const [open, setOpen] = useState(false);
   return (
     <Dropdown.Root
+      open={open}
+      onOpenChange={setOpen}
       value={value || empty}
       onValueChange={(v) => onValueChange(v === empty ? "" : v)}
       disabled={disabled}
@@ -36,6 +41,12 @@ export function Select({
         id={id}
         aria-label={label}
         className={`select-trigger ${className}`}
+        onPointerDown={(event) => {
+          if (open && event.button === 0 && event.pointerType === "mouse") {
+            event.preventDefault();
+            setOpen(false);
+          }
+        }}
       >
         <Dropdown.Value placeholder={placeholder} />
         <Dropdown.Icon className="select-chevron">
@@ -61,7 +72,12 @@ export function Select({
                 value={option.value || empty}
                 disabled={option.disabled}
               >
-                <Dropdown.ItemText>{option.label}</Dropdown.ItemText>
+                <Dropdown.ItemText>
+                  <span className="select-option-label">
+                    {option.icon}
+                    {option.label}
+                  </span>
+                </Dropdown.ItemText>
                 <Dropdown.ItemIndicator className="select-check">
                   <Check size={17} />
                 </Dropdown.ItemIndicator>

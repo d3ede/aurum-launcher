@@ -9,6 +9,8 @@ import {
   ChevronRight,
   X,
   Compass,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import { useApp } from "../context";
 import { native, rpc } from "../lib/api";
@@ -17,50 +19,8 @@ import type { CatalogTarget, Kind, Project } from "../types";
 import { ProjectIcon } from "./Catalog";
 import { Select } from "../components/Select";
 import { EmptyState, ErrorBox, Loading } from "../components/ui";
-const categoryNames: Record<string, string> = {
-  adventure: "Приключения",
-  decoration: "Декор",
-  economy: "Экономика",
-  equipment: "Снаряжение",
-  food: "Еда",
-  library: "Библиотеки",
-  magic: "Магия",
-  management: "Управление",
-  minigame: "Мини-игры",
-  mobs: "Мобы",
-  optimization: "Оптимизация",
-  social: "Общение",
-  storage: "Хранение",
-  technology: "Технологии",
-  transportation: "Транспорт",
-  utility: "Утилиты",
-  worldgen: "Генерация мира",
-  realistic: "Реалистичные",
-  themed: "Тематические",
-  "vanilla-like": "В стиле Vanilla",
-  simplistic: "Минималистичные",
-  fantasy: "Фэнтези",
-  cartoon: "Мультяшные",
-  atmosphere: "Атмосфера",
-  bloom: "Свечение",
-  shadows: "Тени",
-  reflections: "Отражения",
-  "low-end": "Для слабых ПК",
-  "high-end": "Для мощных ПК",
-  challenging: "Сложные",
-  combat: "Сражения",
-  quests: "Задания",
-  lightweight: "Лёгкие",
-  multiplayer: "Мультиплеер",
-  audio: "Звуки",
-  fonts: "Шрифты",
-  gui: "Интерфейс",
-  items: "Предметы",
-  blocks: "Блоки",
-  entities: "Существа",
-  pbr: "PBR",
-  potato: "Для слабых ПК",
-};
+import { CatalogSourceLogo } from "../components/CatalogSourceLogo";
+import { categoryKey } from "../lib/catalog-categories";
 export function Catalog({
   query,
   setQuery,
@@ -76,6 +36,13 @@ export function Catalog({
 }) {
   const { data, operation, busy } = useApp();
   const [source, setSource] = useState<"modrinth" | "curseforge">("modrinth");
+  const [view, setView] = useState<"list" | "grid">(() =>
+    localStorage.getItem("aurum:catalog-view") === "grid" ? "grid" : "list",
+  );
+  const changeView = (value: "list" | "grid") => {
+    setView(value);
+    localStorage.setItem("aurum:catalog-view", value);
+  };
   const kind = target.kind;
   const profile = data.profiles.find((p) => p.id === target.profileId);
   const bound = !!profile && kind !== "modpack";
@@ -128,8 +95,7 @@ export function Catalog({
   useEffect(() => {
     setCategory("");
     setCategories([]);
-    if (!native || (source === "curseforge" && !data.curseforgeConfigured))
-      return;
+    if (!native || source === "curseforge") return;
     let live = true;
     rpc("catalogCategories", { source, kind })
       .then((v) => {
@@ -152,12 +118,7 @@ export function Catalog({
   const effectiveLoader =
     kind === "mod" ? (bound ? profile.loader : loader) : "";
   useEffect(() => {
-    if (
-      !native ||
-      needsLoader ||
-      (source === "curseforge" && !data.curseforgeConfigured)
-    )
-      return;
+    if (!native || needsLoader || source === "curseforge") return;
     let live = true;
     setLoading(true);
     const timer = setTimeout(() => {
@@ -294,18 +255,46 @@ export function Catalog({
                 { value: "newest", label: t("Новые проекты") },
               ]}
             />
+            <div
+              className="catalog-view-switch"
+              role="group"
+              aria-label={t("Вид каталога")}
+            >
+              <button
+                type="button"
+                aria-label={t("Список")}
+                title={t("Список")}
+                aria-pressed={view === "list"}
+                className={view === "list" ? "selected" : ""}
+                onClick={() => changeView("list")}
+              >
+                <List size={18} />
+              </button>
+              <button
+                type="button"
+                aria-label={t("Плитки")}
+                title={t("Плитки")}
+                aria-pressed={view === "grid"}
+                className={view === "grid" ? "selected" : ""}
+                onClick={() => changeView("grid")}
+              >
+                <LayoutGrid size={18} />
+              </button>
+            </div>
           </div>
-          {!native ? (
+          {source === "curseforge" ? (
+            <EmptyState
+              icon={<CatalogSourceLogo source="curseforge" size={34} />}
+              title={t("Ожидается в скором времени")}
+              text={t(
+                "Каталог CurseForge появится в одном из следующих обновлений.",
+              )}
+            />
+          ) : !native ? (
             <EmptyState
               icon={<Compass size={30} />}
               title={t("Каталог ждёт в desktop-приложении")}
               text={t("Поиск и установка доступны в Aurum.")}
-            />
-          ) : source === "curseforge" && !data.curseforgeConfigured ? (
-            <EmptyState
-              icon={<Compass size={30} />}
-              title={t("Подключите CurseForge")}
-              text={t("Добавьте API-ключ в настройках интеграций.")}
             />
           ) : needsLoader ? (
             <EmptyState
@@ -335,7 +324,9 @@ export function Catalog({
               <div className="result-summary">
                 <span>{formatCount(total)}</span>
               </div>
-              <div className="catalog-result-list">
+              <div
+                className={`catalog-result-list ${view === "grid" ? "catalog-result-grid" : ""}`}
+              >
                 {results.map((project) => {
                   const installed = profile?.content.some(
                     (c) =>
@@ -415,23 +406,27 @@ export function Catalog({
           </div>
           <fieldset>
             <legend>{t("Источник")}</legend>
-            <div className="source-switch">
-              <button
-                className={source === "modrinth" ? "active" : ""}
-                onClick={() => setSource("modrinth")}
-              >
-                Modrinth
-              </button>
-              <button
-                className={source === "curseforge" ? "active" : ""}
-                onClick={() => {
-                  setSource("curseforge");
-                  if (sort === "relevance") setSort("downloads");
-                }}
-              >
-                CurseForge
-              </button>
-            </div>
+            <Select
+              className="catalog-source-select"
+              aria-label={t("Источник проектов")}
+              value={source}
+              onValueChange={(value) => {
+                setSource(value as "modrinth" | "curseforge");
+                if (sort === "relevance") setSort("downloads");
+              }}
+              options={[
+                {
+                  value: "modrinth",
+                  label: "Modrinth",
+                  icon: <CatalogSourceLogo source="modrinth" />,
+                },
+                {
+                  value: "curseforge",
+                  label: "CurseForge",
+                  icon: <CatalogSourceLogo source="curseforge" />,
+                },
+              ]}
+            />
           </fieldset>
           <fieldset>
             <legend>{t("Тип проекта")}</legend>
@@ -494,7 +489,7 @@ export function Catalog({
                 { value: "", label: t("Все категории") },
                 ...categories.map((c) => ({
                   value: c.id,
-                  label: t(categoryNames[c.name] || c.name),
+                  label: t(categoryKey(c.name)),
                 })),
               ]}
             />

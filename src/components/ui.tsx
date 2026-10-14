@@ -44,7 +44,9 @@ export function Modal({
     focusables()[0]?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (
-        document.querySelector('.select-menu[data-state="open"]') ||
+        document.querySelector(
+          '.select-menu[data-state="open"], [data-image-lightbox]',
+        ) ||
         e.defaultPrevented
       )
         return;

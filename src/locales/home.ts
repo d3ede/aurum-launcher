@@ -1,4 +1,13 @@
 export const homeEnglish: Record<string, string> = {
+  "Виды каталога": "Catalog views",
+  "Список и плитки, карусель и увеличение изображений.":
+    "List and grid views, an image carousel and zoom.",
+  "В каталоге можно переключаться между списком и адаптивными плитками.":
+    "Switch the catalog between list and responsive grid views.",
+  "Изображения проектов открываются в карусели и увеличиваются по клику.":
+    "Browse project images in a carousel and click to enlarge them.",
+  "Источники каталога собраны в выпадающий список, категории переведены.":
+    "Catalog sources use a dropdown, and categories have translated labels.",
   "Мой аккаунт": "My account",
   "Управление аккаунтом": "Manage account",
   "Открыть аккаунты": "Open accounts",
