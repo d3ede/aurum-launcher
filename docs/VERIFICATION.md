@@ -2,6 +2,20 @@
 
 These records describe checks performed for each update. Historical installer paths, sizes, and hashes refer to those specific builds; the public 0.3.1 artifact is recorded at the end.
 
+## Public release 0.3.6 — October 14, 2026
+
+[Aurum Launcher 0.3.6](https://github.com/d3ede/aurum-launcher/releases/tag/v0.3.6) is built from source commit `81509e2bc1109ebbf1fbe99990350af3245e562b`. Selecting a drive or share root now adds an `Aurum Launcher` directory; explicit folders retain their locations, and automatic updates preserve registered installation paths.
+
+Local checks passed: production frontend build, 13 Vitest tests, 54 regular Rust tests, Clippy, all 43 Playwright scenarios, 17 installer-path cases with repeated normalization, 16 display-language cases, and the close-control rendering regression test. The three existing JDK-dependent process tests remain ignored. The [Windows release workflow](https://github.com/d3ede/aurum-launcher/actions/runs/38568299465) completed successfully, including the new installer regression checks, and published all four signed-update assets from the tag.
+
+The ordinary `releases/latest/download/` links were used to download and verify the public installer, signature, and manifest. Downloaded bytes match GitHub's asset digests and `SHA256SUMS.txt`. The installer identifies itself as Aurum Launcher **0.3.6** and is **6.97 MB** (6,966,402 bytes). SHA256:
+
+```text
+04ebc43ddbd66d2eac974c12086de0b1468bbd0e3bff698bb895c83f39c02bbb
+```
+
+The public `latest.json` offers 0.3.6 using its immutable installer URL and matching signature. The native Minisign verifier validates the downloaded installer with the configured public key; altered installer bytes and an altered signed version are both rejected. The downloaded installer was not executed during verification. This record is committed after the tagged application source without changing its tag or public assets.
+
 ## Public release 0.3.5 — October 14, 2026
 
 [Aurum Launcher 0.3.5](https://github.com/d3ede/aurum-launcher/releases/tag/v0.3.5) is built from source commit `9d4473eb9589538926a587210e36737021171dd8`. The tag contains the compact home panels, installed content manager, catalog views and image gallery, and multilingual installer with the corrected close control. The README now uses one current English preview at `docs/launcher-en.png`; the test screenshot gallery is removed from Git, and QA captures go to ignored `.test-data/screenshots/` storage.
