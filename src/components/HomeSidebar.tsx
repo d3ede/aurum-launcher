@@ -18,7 +18,7 @@ const release = {
   highlights: [
     {
       icon: Megaphone,
-      title: "Aurum 0.3.8",
+      title: "Aurum 0.3.9",
       text: "Ярлыки автоматически ведут на новую версию.",
       date: "15 октября 2026",
       dateTime: "2026-10-15",
