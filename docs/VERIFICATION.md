@@ -2,6 +2,20 @@
 
 These records describe checks performed for each update. Historical installer paths, sizes, and hashes refer to those specific builds; the public 0.3.1 artifact is recorded at the end.
 
+## Public release 0.3.5 — October 14, 2026
+
+[Aurum Launcher 0.3.5](https://github.com/d3ede/aurum-launcher/releases/tag/v0.3.5) is built from source commit `9d4473eb9589538926a587210e36737021171dd8`. The tag contains the compact home panels, installed content manager, catalog views and image gallery, and multilingual installer with the corrected close control. The README now uses one current English preview at `docs/launcher-en.png`; the test screenshot gallery is removed from Git, and QA captures go to ignored `.test-data/screenshots/` storage.
+
+Local checks passed: production frontend build, 13 Vitest tests, 54 regular Rust tests, Clippy, all 43 Playwright scenarios, and the installer close-control rendering test. The three JDK-dependent process tests remain ignored in the regular suite. The [Windows release workflow](https://github.com/d3ede/aurum-launcher/actions/runs/38563003814) passed its code and UI checks, built the signed setup from the tag, and published the release assets.
+
+The public installer is **6.97 MB** (6,966,031 bytes). Its downloaded bytes match GitHub's asset digest and `SHA256SUMS.txt`. SHA256:
+
+```text
+1b32254f5ae0fe46346b4c16890279f864d42670defbb9a73b31b916f6b32a2d
+```
+
+The public `latest.json` offers 0.3.5 and points to its immutable installer URL with the matching updater signature. A separate real WebView2/Tauri client with version 0.3.1 and an owned test data directory downloaded the public installer and verified its signature. Its installation permission was explicitly denied; the installer was not executed and user game data was not used. Only this verification record changes after the tagged application source.
+
 ## Installed content manager — October 14, 2026
 
 The instance content view uses compact project/version/action columns, 52 px icons, readable versions, adjacent switches and trash actions, sorting, and a single state/source/author filter panel. It checks compatible updates on opening and every five minutes while the view is mounted, with a compact update-all action. Full version strings and filenames remain in tooltips. Local Fabric, Quilt, Forge and NeoForge metadata provides names, versions, authors and bounded image previews. Modrinth SHA1 lookups identify imported files and cache project metadata. Unknown local files remain manageable without promising catalog updates.
