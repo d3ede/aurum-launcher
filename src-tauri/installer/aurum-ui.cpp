@@ -4,12 +4,14 @@
 #include <windowsx.h>
 #include <commctrl.h>
 #include <dwmapi.h>
+#include <gdiplus.h>
 #include <stdint.h>
 
 // Small NSIS presentation plugin. It owns no installation, registry or file logic.
 struct Stack { Stack* next; wchar_t text[1]; };
 static HWND rootWindow;
 static HWND closeWindow;
+static ULONG_PTR drawingToken;
 static const COLORREF canvas=RGB(227,229,220), ink=RGB(45,57,47), muted=RGB(101,113,95);
 static const COLORREF gold=RGB(236,201,108), hoverGold=RGB(242,211,130), surface=RGB(241,243,235);
 static const UINT_PTR subclassId=0xA012;
@@ -38,6 +40,27 @@ static void fillRound(HDC dc,const RECT& rect,COLORREF color,int radius) {
   RoundRect(dc,rect.left,rect.top,rect.right,rect.bottom,radius,radius);
   SelectObject(dc,oldPen);SelectObject(dc,oldBrush);DeleteObject(brush);
 }
+static void renderClose(HWND window,HDC dc,const RECT& rect,COLORREF background,bool disabled) {
+  if(!drawingToken) {
+    Gdiplus::GdiplusStartupInput input;
+    Gdiplus::GdiplusStartup(&drawingToken,&input,nullptr);
+  }
+  Gdiplus::Graphics graphics(dc);
+  graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+  graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
+  const float ratio=scale(window,96)/96.0f;
+  const float cx=(rect.left+rect.right)/2.0f,cy=(rect.top+rect.bottom)/2.0f;
+  const LONG width=rect.right-rect.left,height=rect.bottom-rect.top;
+  const float diameter=static_cast<float>(width<height?width:height)-2*ratio;
+  Gdiplus::SolidBrush brush(Gdiplus::Color(255,GetRValue(background),GetGValue(background),GetBValue(background)));
+  graphics.FillEllipse(&brush,cx-diameter/2,cy-diameter/2,diameter,diameter);
+  COLORREF foreground=disabled?muted:ink;
+  Gdiplus::Pen pen(Gdiplus::Color(255,GetRValue(foreground),GetGValue(foreground),GetBValue(foreground)),2*ratio);
+  pen.SetStartCap(Gdiplus::LineCapRound);pen.SetEndCap(Gdiplus::LineCapRound);
+  const float arm=5*ratio;
+  graphics.DrawLine(&pen,cx-arm,cy-arm,cx+arm,cy+arm);
+  graphics.DrawLine(&pen,cx+arm,cy-arm,cx-arm,cy+arm);
+}
 static void renderButton(const DRAWITEMSTRUCT& d) {
   int role=static_cast<int>(reinterpret_cast<INT_PTR>(GetPropW(d.hwndItem,roleKey)));
   if(!role)return;
@@ -49,18 +72,12 @@ static void renderButton(const DRAWITEMSTRUCT& d) {
   if(role==3)background=hover?RGB(217,188,166):RGB(205,213,192);
   if(role==3 && (d.itemState&ODS_SELECTED))background=RGB(202,164,139);
   if(role==5 && hover)background=RGB(218,223,210);
-  fillRound(d.hDC,d.rcItem,background,role==3?d.rcItem.bottom-d.rcItem.top:scale(d.hwndItem,12));
+  if(role==3)renderClose(d.hwndItem,d.hDC,d.rcItem,background,disabled);
+  else fillRound(d.hDC,d.rcItem,background,scale(d.hwndItem,12));
   SetBkMode(d.hDC,TRANSPARENT);SetTextColor(d.hDC,disabled?muted:ink);
   HFONT font=reinterpret_cast<HFONT>(SendMessageW(d.hwndItem,WM_GETFONT,0,0));
   HGDIOBJ oldFont=SelectObject(d.hDC,font);
-  if(role==3) {
-    int cx=(d.rcItem.left+d.rcItem.right)/2,cy=(d.rcItem.top+d.rcItem.bottom)/2;
-    int arm=scale(d.hwndItem,5);HPEN pen=CreatePen(PS_SOLID,scale(d.hwndItem,2),ink);
-    HGDIOBJ old=SelectObject(d.hDC,pen);
-    MoveToEx(d.hDC,cx-arm,cy-arm,nullptr);LineTo(d.hDC,cx+arm,cy+arm);
-    MoveToEx(d.hDC,cx+arm,cy-arm,nullptr);LineTo(d.hDC,cx-arm,cy+arm);
-    SelectObject(d.hDC,old);DeleteObject(pen);
-  } else {
+  if(role!=3) {
     wchar_t label[512];GetWindowTextW(d.hwndItem,label,512);RECT text=d.rcItem;
     DrawTextW(d.hDC,label,-1,&text,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
   }
@@ -104,6 +121,15 @@ static LRESULT CALLBACK paneProc(HWND window,UINT message,WPARAM w,LPARAM l,UINT
     if(item && GetPropW(item->hwndItem,roleKey)){renderButton(*item);return TRUE;}
   }
   if(role==4 && message==WM_PAINT){renderCheckbox(window);return 0;}
+  if(role==3 && message==WM_PAINT) {
+    PAINTSTRUCT paint;HDC dc=BeginPaint(window,&paint);
+    DRAWITEMSTRUCT item={};item.hwndItem=window;item.hDC=dc;
+    GetClientRect(window,&item.rcItem);
+    if(!IsWindowEnabled(window))item.itemState|=ODS_DISABLED;
+    if(GetFocus()==window)item.itemState|=ODS_FOCUS;
+    if(SendMessageW(window,BM_GETSTATE,0,0)&BST_PUSHED)item.itemState|=ODS_SELECTED;
+    renderButton(item);EndPaint(window,&paint);return 0;
+  }
   if(role==6 && message==WM_LBUTTONDOWN) {
     ReleaseCapture();SendMessageW(rootWindow,WM_NCLBUTTONDOWN,HTCAPTION,0);return 0;
   }
@@ -127,9 +153,11 @@ static LRESULT CALLBACK paneProc(HWND window,UINT message,WPARAM w,LPARAM l,UINT
     RemovePropW(window,roleKey);RemovePropW(window,hoverKey);RemoveWindowSubclass(window,paneProc,id);
   }
   LRESULT result=DefSubclassProc(window,message,w,l);
-  if(window!=rootWindow && role==0 && closeWindow &&
-     (message==WM_WINDOWPOSCHANGED || (message==WM_SHOWWINDOW && w)))
+  if(role==0 && IsWindow(closeWindow) && IsWindowVisible(closeWindow) &&
+     (message==WM_WINDOWPOSCHANGED || (message==WM_SHOWWINDOW && w))) {
     SetWindowPos(closeWindow,HWND_TOP,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);
+    RedrawWindow(closeWindow,nullptr,nullptr,RDW_INVALIDATE|RDW_UPDATENOW);
+  }
   if(role==4 && (message==BM_SETCHECK||message==WM_LBUTTONUP||message==WM_KEYUP||message==WM_SETFOCUS||message==WM_KILLFOCUS))
     InvalidateRect(window,nullptr,FALSE);
   return result;
@@ -138,7 +166,11 @@ static void style(HWND window,int role) {
   if(role==3)closeWindow=window;
   SetPropW(window,roleKey,reinterpret_cast<HANDLE>(static_cast<INT_PTR>(role)));
   SetWindowSubclass(window,paneProc,subclassId,0);
-  SetWindowSubclass(GetParent(window),paneProc,subclassId,0);
+  HWND parent=GetParent(window);
+  SetWindowSubclass(parent,paneProc,subclassId,0);
+  // Page siblings must not paint over the overlapping close control.
+  SetWindowLongPtrW(parent,GWL_STYLE,GetWindowLongPtrW(parent,GWL_STYLE)|WS_CLIPSIBLINGS);
+  SetWindowLongPtrW(window,GWL_STYLE,GetWindowLongPtrW(window,GWL_STYLE)|WS_CLIPSIBLINGS);
   if(role==1||role==2||role==3||role==5) {
     LONG_PTR style=GetWindowLongPtrW(window,GWL_STYLE);
     SetWindowLongPtrW(window,GWL_STYLE,(style&~BS_TYPEMASK)|BS_OWNERDRAW);
@@ -150,7 +182,7 @@ ENTRY(Initialize) {
   rootWindow=reinterpret_cast<HWND>(static_cast<INT_PTR>(popInt(stack)));
   LONG_PTR flags=GetWindowLongPtrW(rootWindow,GWL_STYLE);
   flags&=~(WS_CAPTION|WS_BORDER|WS_DLGFRAME|WS_THICKFRAME|WS_SYSMENU|WS_MINIMIZEBOX|WS_MAXIMIZEBOX);
-  SetWindowLongPtrW(rootWindow,GWL_STYLE,flags|WS_POPUP);
+  SetWindowLongPtrW(rootWindow,GWL_STYLE,flags|WS_POPUP|WS_CLIPCHILDREN);
   SetWindowPos(rootWindow,nullptr,0,0,0,0,SWP_FRAMECHANGED|SWP_NOSIZE|SWP_NOMOVE|SWP_NOZORDER);
   SetWindowSubclass(rootWindow,paneProc,subclassId,0);
   roundedWindow(rootWindow,scale(rootWindow,20));
