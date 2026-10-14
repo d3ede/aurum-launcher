@@ -23,7 +23,8 @@ the uninstaller. The launcher's own language setting remains independent.
 Translations are small embedded string tables, compressed together with the
 payload using solid LZMA. There are no downloaded language packs, bundled
 translation engines, extra fonts, or browser runtimes for the installer UI.
-The presentation DLL is approximately 46 KiB with the local LLVM toolchain.
+The presentation DLL is small and uses only Windows system libraries, including
+GDI+ for the antialiased close icon; no graphics runtime is bundled.
 The displayed installed-size estimate adds 512 KiB for the generated uninstaller;
 the actual size varies with the launcher build. The local 0.3.3 build was about
 6.85 MB compressed and approximately 21.40 MB installed.
@@ -43,6 +44,12 @@ config overlay setting `bundle.createUpdaterArtifacts` to `false`; do not disabl
 signed updater artifacts in the production configuration.
 
 ## Verification
+
+`scripts/build-installer-ui.ps1 -Test` also compiles and runs the close-button
+rendering regression test. It renders into memory, without desktop windows or
+input automation, and checks visibility without hover, visual centering at five
+sizes, sibling clipping, and hover feedback. The close button paints directly on
+`WM_PAINT`; showing the window or changing pages raises and redraws the control.
 
 `scripts/test-installer-language.ps1` compiles a small NSIS harness using the
 production language-selection function. Sixteen cases cover regional variants,
