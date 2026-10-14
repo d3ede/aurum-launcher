@@ -7,6 +7,7 @@ import { skinEnglish, skinRussian } from "../locales/skins";
 import { profileCreationEnglish, profileCreationRussian } from "../locales/profile-creation";
 import { profileIconEnglish, profileIconRussian } from "../locales/profile-icons";
 import { updaterEnglish, updaterRussian } from "../locales/updater";
+import { homeEnglish, homeRussian } from "../locales/home";
 import { languages, resolveLanguage } from "../locales/registry";
 type Dictionary = Record<string, string>;
 const english: Dictionary = {
@@ -16,6 +17,7 @@ const english: Dictionary = {
   ...profileCreationEnglish,
   ...profileIconEnglish,
   ...updaterEnglish,
+  ...homeEnglish,
 };
 const russian: Dictionary = {
   ...russianMessages,
@@ -24,6 +26,7 @@ const russian: Dictionary = {
   ...profileCreationRussian,
   ...profileIconRussian,
   ...updaterRussian,
+  ...homeRussian,
 };
 const bundles = import.meta.glob<{ default: Dictionary }>([
   "../locales/messages/*.json",

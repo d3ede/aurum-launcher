@@ -263,10 +263,12 @@ export function CreateProfile({
 }
 export function ProfileDialog({
   initial,
+  initialTab = "content",
   onClose,
   onFindProjects,
 }: {
   initial: Profile;
+  initialTab?: "content" | "settings";
   onFindProjects: (profile: Profile, kind: Kind) => void;
   onClose: () => void;
 }) {
@@ -274,7 +276,7 @@ export function ProfileDialog({
     useApp();
   const profile = data.profiles.find((p) => p.id === initial.id) || initial;
   const [draft, setDraft] = useState(profile);
-  const [tab, setTab] = useState<"content" | "settings" | "logs">("content");
+  const [tab, setTab] = useState<"content" | "settings" | "logs">(initialTab);
   const [content, setContent] = useState<Content[]>([]);
   const [kind, setKind] = useState<Kind | "all">("all");
   const [search, setSearch] = useState("");

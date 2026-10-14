@@ -2,6 +2,14 @@
 
 These records describe checks performed for each update. Historical installer paths, sizes, and hashes refer to those specific builds; the public 0.3.1 artifact is recorded at the end.
 
+## Home layout refresh — October 14, 2026
+
+The home page now has a main content column and a compact account/release sidebar. Navigation and quick launch include locally drawn SVG line-and-pixel patterns. The quick-launch card shows the real instance status and opens the instance's settings tab directly. The sidebar sits 14 px from the right edge, with a 16 px column gap and compact card padding. The news header contains a single “Show all” action; rows cover the published 0.3.3 updater release, instance import, and the skin library. Only the published release has a date. Its details are based on `docs/releases/v0.3.3.md` and link to update settings. No generated illustrations or additional landscape images were added.
+
+Both themes were inspected at 1280×820. At 960×680 the right column moves below the main content without horizontal overflow. New strings have Russian and English dictionaries; other locales retain the existing English fallback. Screenshots: `screenshots/home-light.png`, `screenshots/home-dark.png`, and `screenshots/home-small.png`.
+
+Production TypeScript/Vite build and all 11 Vitest tests passed. Both new home UI tests and the four general interface tests passed, including launch/stop, account navigation, direct settings navigation, release-dialog keyboard dismissal and the minimum window size. The full UI run passed 35 tests; one profile-icon navigation test timed out during concurrent workspace updates. Both profile-icon tests passed on an isolated rerun without changes to the icon editor. The local Windows preview is built separately with `scripts/desktop.ps1 -Mode build -NoBundle -NoSign`; this is not a published updater release.
+
 ## Update: restoring running games — October 14, 2026
 
 After Aurum closes and reopens, game status is restored from real Java processes whose exact `--gameDir` belongs to an existing instance. Relaunching or modifying a running instance is blocked; **Stop** works for restored processes. Status updates automatically when a game exits. Command lines and tokens are not persisted. On Windows, stopping checks process creation time on the same HANDLE used for termination, protecting against PID reuse.

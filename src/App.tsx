@@ -40,6 +40,7 @@ import { Settings } from "./screens/Settings";
 import { UpdateProvider } from "./updater";
 import { LauncherUpdateBanner } from "./components/LauncherUpdate";
 import { APP_VERSION } from "./lib/version";
+import { SidebarPattern } from "./components/TerrainPattern";
 const navigation = [
   ["home", HomeIcon],
   ["profiles", Layers3],
@@ -58,6 +59,9 @@ function Shell({
   const { data, route, navigate, run, progress, logs, notify } = useApp();
   const [query, setQuery] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileSection, setProfileSection] = useState<"content" | "settings">(
+    "content",
+  );
   const [catalogTarget, setCatalogTarget] = useState<CatalogTarget>({
     profileId: "",
     kind: "mod",
@@ -69,8 +73,12 @@ function Shell({
   useEffect(() => {
     if (route !== "profiles") setProfile(null);
   }, [route]);
-  const openProfile = (p: Profile) => {
+  const openProfile = (
+    p: Profile,
+    section: "content" | "settings" = "content",
+  ) => {
     navigate("profiles");
+    setProfileSection(section);
     setProfile(p);
   };
   useEffect(() => {
@@ -186,6 +194,7 @@ function Shell({
         <WindowControls onError={notify} />
       </header>
       <aside className="sidebar">
+        <SidebarPattern />
         <nav>
           {navigation.map(([id, Icon]) => (
             <button
@@ -220,7 +229,10 @@ function Shell({
       <div className="main-shell">
         <LauncherUpdateBanner />
         <div className="content-scroll">
-          <main className="page-content" key={route}>
+          <main
+            className={`page-content${route === "home" && !profile ? " home-page" : ""}`}
+            key={route}
+          >
             {!native && (
               <div className="preview-notice">
                 <Monitor size={15} />
@@ -235,6 +247,7 @@ function Shell({
               <ProfileDialog
                 key={profile.id}
                 initial={profile}
+                initialTab={profileSection}
                 onClose={() => {
                   setProfile(null);
                   navigate("profiles");
@@ -244,7 +257,11 @@ function Shell({
             ) : (
               <>
                 {route === "home" && (
-                  <Home onProfile={openProfile} onProject={setProject} onFolderImport={() => setImporting(true)} />
+                  <Home
+                    onProfile={openProfile}
+                    onProject={setProject}
+                    onFolderImport={() => setImporting(true)}
+                  />
                 )}{" "}
                 {route === "profiles" && (
                   <Profiles
@@ -366,9 +383,7 @@ function Shell({
             <>
               <progress max={progress.total} value={progress.done} />
               <div className="progress-meta">
-                <span>
-                  {progressAmount(progress)}
-                </span>
+                <span>{progressAmount(progress)}</span>
                 <span>
                   {Math.round((progress.done / progress.total) * 100)}%
                 </span>
