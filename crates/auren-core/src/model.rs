@@ -59,6 +59,46 @@ pub struct Content {
     pub filename: String,
     pub kind: String,
     pub enabled: bool,
+    #[serde(flatten)]
+    pub info: ContentInfo,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct ContentInfo {
+    pub version_name: String,
+    pub icon: Option<String>,
+    pub author: String,
+    pub project_url: Option<String>,
+    pub modified_at: u64,
+    pub sha1: String,
+    pub date_published: String,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentUpdate {
+    pub content_id: String,
+    pub version_id: String,
+    pub version_name: String,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentInspection {
+    pub content: Vec<Content>,
+    pub updates: Vec<ContentUpdate>,
+    pub warnings: Vec<String>,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentUpdateResult {
+    pub updated: usize,
+    pub failed: Vec<ContentUpdateFailure>,
+    pub cancelled: bool,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentUpdateFailure {
+    pub name: String,
+    pub message: String,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

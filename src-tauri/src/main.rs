@@ -138,9 +138,12 @@ async fn rpc(
         "createProfile" => {
             let icon_style = serde_json::from_value::<Option<auren_core::model::ProfileIconStyle>>(
                 payload.get("iconStyle").cloned().unwrap_or(Value::Null),
-            ).map_err(err)?.as_ref()
-                .map(auren_core::store::validate_profile_icon_style)
-                .transpose().map_err(err)?;
+            )
+            .map_err(err)?
+            .as_ref()
+            .map(auren_core::store::validate_profile_icon_style)
+            .transpose()
+            .map_err(err)?;
             let icon = payload["icon"]
                 .as_str()
                 .map(auren_core::store::validate_profile_icon)
@@ -326,6 +329,10 @@ async fn rpc(
             .list_content(&param::<String>(&payload, "id")?)
             .await
             .map_err(err)?)),
+        "inspectContent" => Ok(json!(e
+            .inspect_content(&param::<String>(&payload, "id")?)
+            .await
+            .map_err(err)?)),
         "manageContent" => {
             e.manage_content(
                 &param::<String>(&payload, "id")?,
@@ -415,8 +422,8 @@ async fn rpc(
             .map_err(err)?;
             Ok(json!(String::from_utf8_lossy(&bytes)))
         }
-        "install" | "installContent" | "updateContent" | "importPack" | "downloadPack"
-        | "importFolder" | "importModrinth" | "loginMicrosoft" => {
+        "install" | "installContent" | "updateContent" | "updateAllContent" | "importPack"
+        | "downloadPack" | "importFolder" | "importModrinth" | "loginMicrosoft" => {
             let _guard = e
                 .busy
                 .try_lock()
@@ -469,6 +476,15 @@ async fn rpc(
                         .await?;
                         Ok(Value::Null)
                     }
+                    "updateAllContent" => Ok(json!(
+                        e.update_all_content(
+                            payload["id"].as_str().unwrap_or(""),
+                            &param::<Vec<String>>(&payload, "contentIds")
+                                .map_err(anyhow::Error::msg)?,
+                            &task,
+                        )
+                        .await?
+                    )),
                     "loginMicrosoft" => {
                         let result = e
                             .login_microsoft(&task, |url| {

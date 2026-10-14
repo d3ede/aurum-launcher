@@ -78,7 +78,9 @@ impl Engine {
                 if profile.content.iter().any(|c|c.filename==filename && c.project_id!=project && c.kind==kind) || plan.iter().any(|c:&Content|c.filename==filename && c.project_id!=project && c.kind==kind) { bail!("Конфликт имён файлов: {filename}") }
                 task.progress("content",format!("Загружаем {name}"),plan.len() as u64,0);
                 self.download(&url,&stage.join(directory).join(&filename),hash.as_ref().map(|(a,h)|(a.as_str(),h.as_str())),task).await?;
-                plan.push(Content {id:format!("{source}:{project}"),source:source.into(),project_id:project,version_id:version,name,filename,kind,enabled:true});
+                let enabled = profile.content.iter().find(|c| c.source == source && c.project_id == project).is_none_or(|c| c.enabled);
+                let info = crate::content_metadata::catalog_info(source, &raw, &pv);
+                plan.push(Content {id:format!("{source}:{project}"),source:source.into(),project_id:project,version_id:version,name,filename,kind,enabled,info});
             }
             for incompatible in conflicts { if plan.iter().any(|c|c.project_id==incompatible) || profile.content.iter().any(|c|c.project_id==incompatible && c.enabled) { bail!("Установка конфликтует с проектом {incompatible}") } }
             task.check()?;
@@ -92,7 +94,7 @@ impl Engine {
                     if let Some(old)=old { files.push(instance.join(folder(&old.kind)?).join(format!("{}{}",old.filename,if old.enabled{""}else{".disabled"}))); }
                     files.sort();files.dedup();
                     for path in files { if path.exists() { let saved=backup.join(format!("{}-{}",moved.len(),path.file_name().unwrap().to_string_lossy())); tokio::fs::create_dir_all(&backup).await?; tokio::fs::rename(&path,&saved).await?; moved.push((saved,path)); } }
-                    let path=instance.join(dir).join(&new.filename); tokio::fs::rename(stage.join(dir).join(&new.filename),&path).await?; published.push(path);
+                    let path=instance.join(dir).join(format!("{}{}", new.filename, if new.enabled { "" } else { ".disabled" })); tokio::fs::rename(stage.join(dir).join(&new.filename),&path).await?; published.push(path);
                 }
                 let mut db=self.db.lock().await; let mut next=db.clone(); let p=next.profiles.iter_mut().find(|p|p.id==profile_id).context("Сборка удалена")?;
                 for new in plan { p.content.retain(|c| !(c.project_id==new.project_id && c.source==source)); p.content.push(new); }
@@ -140,8 +142,15 @@ impl Engine {
                         filename,
                         kind: kind.into(),
                         enabled,
+                        info: ContentInfo::default(),
                     });
                 c.enabled = enabled;
+                let path = file.path();
+                let cache = self.root.join("cache/content-metadata");
+                c = tokio::task::spawn_blocking(move || {
+                    crate::content_metadata::describe_file(&path, &cache, c)
+                })
+                .await??;
                 content.push(c);
             }
         }
@@ -223,13 +232,17 @@ impl Engine {
         tokio::fs::copy(path, dest).await?;
         Ok(())
     }
-    pub async fn update_content(&self, id: &str, content_id: &str, task: &Task) -> Result<()> {
+    pub async fn update_content(&self, id: &str, content_id: &str, task: &Task) -> Result<bool> {
         let p = self.profile(id).await?;
-        let item = p
-            .content
+        let content = self.list_content(id).await?;
+        let item = content
             .iter()
             .find(|c| c.id == content_id)
             .context("Для локального файла обновление через API недоступно")?;
+        if item.source == "local" {
+            bail!("Для локального файла обновление через API недоступно")
+        }
+        self.remember_content(id, &content).await?;
         let versions = if item.source == "modrinth" {
             self.mr_versions(
                 &item.project_id,
@@ -253,17 +266,21 @@ impl Engine {
             )
             .await?
         };
-        let latest = versions.first().context("Совместимых версий нет")?;
-        let version = if item.source == "modrinth" {
-            mr_version(latest)
-        } else {
-            cf_version(latest)
-        };
-        if version.id == item.version_id {
+        let latest = versions
+            .iter()
+            .find_map(|v| crate::content_metadata::newer_version(item, v, &p));
+        let Some(version) = latest else {
             task.progress("content", "Установлена последняя совместимая версия", 1, 1);
-            return Ok(());
-        }
-        self.install_content(id, &item.source, &item.project_id, &version.id, task)
-            .await
+            return Ok(false);
+        };
+        self.install_content(
+            id,
+            &item.source,
+            &item.project_id,
+            &version.version_id,
+            task,
+        )
+        .await?;
+        Ok(true)
     }
 }

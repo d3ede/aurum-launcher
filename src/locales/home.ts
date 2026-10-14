@@ -6,6 +6,9 @@ export const homeEnglish: Record<string, string> = {
     "The local installer has a compact window without a system title bar, folder selection and two separate shortcuts.",
   "Язык установщика выбирается по интерфейсу Windows; для неподдерживаемых языков используется английский.":
     "The installer follows the Windows display language and uses English for unsupported languages.",
+  "Управление модами": "Mod management",
+  "Фильтры, версии и обновление всех модов.": "Filters, versions and update all mods.",
+  "В этой сборке: компактный список модов, фильтры, сортировка и обновление всех совместимых проектов.": "In this build: compact mod rows, filters, sorting and compatible bulk updates.",
   "Виды каталога": "Catalog views",
   "Список и плитки, карусель и увеличение изображений.":
     "List and grid views, an image carousel and zoom.",

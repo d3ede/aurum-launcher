@@ -4,6 +4,8 @@ import { listen } from "@tauri-apps/api/event";
 import type {
   Account,
   Content,
+  ContentInspection,
+  ContentUpdateResult,
   Loader,
   MinecraftManifest,
   Profile,
@@ -179,6 +181,11 @@ interface Contract {
       id: string;
     },
     Content[],
+  ];
+  inspectContent: [{ id: string }, ContentInspection];
+  updateAllContent: [
+    { id: string; contentIds: string[]; operationId: string },
+    ContentUpdateResult,
   ];
   manageContent: [
     {

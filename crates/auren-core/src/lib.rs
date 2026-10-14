@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod catalog;
 pub mod content;
+pub mod content_metadata;
 pub mod microsoft_oauth;
 pub mod migration;
 pub mod minecraft;

@@ -14,6 +14,28 @@ export interface Content {
   filename: string;
   kind: Kind;
   enabled: boolean;
+  versionName?: string;
+  icon?: string | null;
+  author?: string;
+  projectUrl?: string | null;
+  modifiedAt?: number;
+  sha1?: string;
+  datePublished?: string;
+}
+export interface ContentUpdate {
+  contentId: string;
+  versionId: string;
+  versionName: string;
+}
+export interface ContentInspection {
+  content: Content[];
+  updates: ContentUpdate[];
+  warnings: string[];
+}
+export interface ContentUpdateResult {
+  updated: number;
+  failed: { name: string; message: string }[];
+  cancelled: boolean;
 }
 export interface Profile {
   id: string;

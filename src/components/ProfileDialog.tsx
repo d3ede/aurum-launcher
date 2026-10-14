@@ -11,21 +11,17 @@ import {
   Terminal,
   Settings2,
   Puzzle,
-  FileInput,
-  ToggleLeft,
-  ToggleRight,
-  Compass,
-  Search,
   ArrowLeft,
   LoaderCircle,
 } from "lucide-react";
-import { Modal, Field, Loading, ErrorBox, EmptyState } from "./ui";
+import { Modal, Field, Loading, ErrorBox } from "./ui";
 import { ProfileIcon, IconPicker } from "./ProfileIcon";
+import { InstanceContent } from "./InstanceContent";
 import { Select } from "./Select";
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
 import { ru } from "../lib/i18n";
-import type { Content, Kind, Loader, Profile } from "../types";
+import type { Kind, Loader, Profile } from "../types";
 export function CreateProfile({
   onClose,
   folderImport = false,
@@ -277,11 +273,7 @@ export function ProfileDialog({
   const profile = data.profiles.find((p) => p.id === initial.id) || initial;
   const [draft, setDraft] = useState(profile);
   const [tab, setTab] = useState<"content" | "settings" | "logs">(initialTab);
-  const [content, setContent] = useState<Content[]>([]);
-  const [kind, setKind] = useState<Kind | "all">("all");
-  const [search, setSearch] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
   const [log, setLog] = useState("");
   const [confirm, setConfirm] = useState(false);
   const [revision, setRevision] = useState(0);
@@ -291,32 +283,6 @@ export function ProfileDialog({
     !profile.installedVersion &&
     !["complete", "error"].includes(progress.phase);
   const { logs } = useApp();
-  const visible = content.filter(
-    (c) =>
-      (kind === "all" || c.kind === kind) &&
-      `${c.name} ${c.filename}`.toLowerCase().includes(search.toLowerCase()),
-  );
-  const find = () => onFindProjects(profile, kind === "all" ? "mod" : kind);
-  useEffect(() => {
-    let live = true;
-    setLoading(true);
-    rpc("content", { id: profile.id })
-      .then((c) => {
-        if (live) {
-          setContent(c);
-          setError("");
-        }
-      })
-      .catch((e) => {
-        if (live) setError(e.message);
-      })
-      .finally(() => {
-        if (live) setLoading(false);
-      });
-    return () => {
-      live = false;
-    };
-  }, [profile.id, data.profiles, revision]);
   useEffect(() => {
     if (tab !== "logs") return;
     let live = true;
@@ -331,13 +297,6 @@ export function ProfileDialog({
       live = false;
     };
   }, [profile.id, tab, revision]);
-  const manage = async (c: Content, action: "toggle" | "remove") => {
-    await run(
-      () => rpc("manageContent", { id: profile.id, contentId: c.id, action }),
-      action === "remove" ? t("Файл перемещён в корзину") : undefined,
-    );
-    setRevision((v) => v + 1);
-  };
   return (
     <section className="instance-page">
       <button className="text-button instance-back" onClick={onClose}>
@@ -430,132 +389,7 @@ export function ProfileDialog({
         ))}
       </div>
       {tab === "content" && (
-        <>
-          <div className="instance-content-actions">
-            <div className="input-icon">
-              <Search size={18} />
-              <input
-                aria-label={t("Поиск в сборке")}
-                placeholder={t("Поиск в сборке")}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <button className="button primary" onClick={find}>
-              <Compass size={18} />
-              {t(" Найти проекты")}
-            </button>
-          </div>
-          <div className="content-toolbar">
-            <div className="chips">
-              {(["all", "mod", "shader", "resourcepack"] as const).map((k) => (
-                <button
-                  key={k}
-                  className={kind === k ? "active" : ""}
-                  onClick={() => setKind(k)}
-                >
-                  {k === "all" ? t("Всё") : ru.kinds[k]}
-                </button>
-              ))}
-            </div>
-            <button
-              className="text-button"
-              disabled={busy || running}
-              onClick={async () => {
-                await run(() =>
-                  rpc("importContent", {
-                    id: profile.id,
-                    kind: kind === "all" ? "mod" : kind,
-                  }),
-                );
-                setRevision((v) => v + 1);
-              }}
-            >
-              <FileInput size={15} />
-              {t(" Добавить файл")}
-            </button>
-          </div>
-          {loading ? (
-            <Loading />
-          ) : visible.length ? (
-            <div className="content-list">
-              <div className="content-table-heading">
-                <span>{t("Проект / файл")}</span>
-                <span>{t("Действия")}</span>
-              </div>
-              {visible.map((c) => (
-                <div
-                  className={`content-row ${!c.enabled ? "disabled" : ""}`}
-                  key={c.id}
-                >
-                  <Puzzle size={19} />
-                  <div>
-                    <b>{c.name}</b>
-                    <small title={c.filename}>
-                      {c.filename} ·{" "}
-                      {c.source === "local" ? t("Локальный файл") : c.source}
-                    </small>
-                  </div>
-                  {c.source !== "local" && (
-                    <button
-                      className="icon-button"
-                      aria-label={t("Обновить {{v1}}", { v1: c.name })}
-                      disabled={busy || running}
-                      onClick={async () => {
-                        await operation(
-                          (operationId) =>
-                            rpc("updateContent", {
-                              id: profile.id,
-                              contentId: c.id,
-                              operationId,
-                            }),
-                          t("Контент обновлён"),
-                        );
-                        setRevision((v) => v + 1);
-                      }}
-                    >
-                      <RefreshCw size={16} />
-                    </button>
-                  )}
-                  <button
-                    className="icon-button"
-                    aria-label={`${c.enabled ? t("Отключить") : t("Включить")} ${c.name}`}
-                    disabled={busy || running}
-                    onClick={() => void manage(c, "toggle")}
-                  >
-                    {c.enabled ? (
-                      <ToggleRight size={23} />
-                    ) : (
-                      <ToggleLeft size={23} />
-                    )}
-                  </button>
-                  <button
-                    className="icon-button danger"
-                    aria-label={t("Удалить {{v1}}", { v1: c.name })}
-                    disabled={busy || running}
-                    onClick={() => void manage(c, "remove")}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              icon={<Puzzle size={27} />}
-              title={
-                search
-                  ? t("Ничего не найдено")
-                  : t("Нет установленных проектов")
-              }
-              text={
-                search
-                  ? t("Измените поисковый запрос.")
-                  : t("Добавьте моды, шейдеры или ресурспаки.")
-              }
-            />
-          )}
-        </>
+        <InstanceContent profile={profile} onFindProjects={onFindProjects} />
       )}
       {tab === "settings" && (
         <form

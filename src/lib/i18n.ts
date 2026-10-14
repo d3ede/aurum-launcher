@@ -9,6 +9,10 @@ import { profileIconEnglish, profileIconRussian } from "../locales/profile-icons
 import { updaterEnglish, updaterRussian } from "../locales/updater";
 import { catalogEnglish, catalogRussian } from "../locales/catalog";
 import { homeEnglish, homeRussian } from "../locales/home";
+import {
+  contentManagerEnglish,
+  contentManagerRussian,
+} from "../locales/content-manager";
 import { languages, resolveLanguage } from "../locales/registry";
 type Dictionary = Record<string, string>;
 const english: Dictionary = {
@@ -20,6 +24,7 @@ const english: Dictionary = {
   ...updaterEnglish,
   ...catalogEnglish,
   ...homeEnglish,
+  ...contentManagerEnglish,
 };
 const russian: Dictionary = {
   ...russianMessages,
@@ -30,6 +35,7 @@ const russian: Dictionary = {
   ...updaterRussian,
   ...catalogRussian,
   ...homeRussian,
+  ...contentManagerRussian,
 };
 const bundles = import.meta.glob<{ default: Dictionary }>([
   "../locales/messages/*.json",
