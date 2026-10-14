@@ -168,7 +168,7 @@ test("import is in the library menu, supports multiple selection and both themes
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await fixture(page);
-  await expect(page.getByText("Из Modrinth")).toHaveCount(0);
+  await expect(page.locator(".library-import-options")).toHaveCount(0);
   const dialog = await openImport(page);
   await expect(
     dialog.getByRole("button", { name: "Импортировать", exact: true }),

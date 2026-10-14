@@ -28,6 +28,10 @@ async function fixture(
               args: { restartAfterInstall: args.restartAfterInstall },
             });
             if (command.endsWith("check")) {
+              if (w.holdUpdateCheck)
+                await new Promise<void>((resolve) => {
+                  w.releaseUpdateCheck = resolve;
+                });
               await new Promise((resolve) => setTimeout(resolve, 100));
               if (w.updateMode === "error") throw "network unavailable";
               if (w.updateMode === "current") return null;
@@ -91,10 +95,17 @@ async function fixture(
 
 test("checks, postpones, and downloads before restarting", async ({ page }) => {
   await fixture(page);
+  await page.evaluate(() => {
+    (window as any).holdUpdateCheck = true;
+  });
   await page.getByRole("button", { name: "Check for updates" }).click();
   await expect(
     page.getByRole("button", { name: "Check for updates" }),
   ).toBeDisabled();
+  await page.evaluate(() => {
+    (window as any).holdUpdateCheck = false;
+    (window as any).releaseUpdateCheck();
+  });
   const banner = page.getByRole("region", { name: "Launcher updates" });
   await expect(banner).toContainText("Aurum 0.3.4 is available");
   await banner.getByRole("button", { name: "Later" }).click();

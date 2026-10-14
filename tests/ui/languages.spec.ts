@@ -1,12 +1,14 @@
 import { test, expect } from "@playwright/test";
 test("language picker, instant switch, persistence and RTL layout", async ({
   page,
+  baseURL,
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   const remote: string[] = [];
   page.on("request", (r) => {
-    if (!r.url().startsWith("http://127.0.0.1:1420")) remote.push(r.url());
+    if (new URL(r.url()).origin !== new URL(baseURL!).origin)
+      remote.push(r.url());
   });
   await page.addInitScript(() => {
     if (!localStorage.getItem("aurum:language"))
@@ -33,7 +35,7 @@ test("language picker, instant switch, persistence and RTL layout", async ({
   });
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("lang", "es");
-  await page.getByRole("button", {name:"Ajustes", exact:true}).click();
+  await page.getByRole("button", { name: "Ajustes", exact: true }).click();
   await page.locator(".language-current").click();
   await page.locator(".language-search input").fill("україн");
   await page.getByRole("button", { name: "Українська", exact: true }).click();

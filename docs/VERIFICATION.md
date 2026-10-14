@@ -2,6 +2,14 @@
 
 These records describe checks performed for each update. Historical installer paths, sizes, and hashes refer to those specific builds; the public 0.3.1 artifact is recorded at the end.
 
+## Installed content manager — October 14, 2026
+
+The instance content view uses compact project/version/action columns, 52 px icons, readable versions, adjacent switches and trash actions, sorting, and a single state/source/author filter panel. It checks compatible updates on opening and every five minutes while the view is mounted, with a compact update-all action. Full version strings and filenames remain in tooltips. Local Fabric, Quilt, Forge and NeoForge metadata provides names, versions, authors and bounded image previews. Modrinth SHA1 lookups identify imported files and cache project metadata. Unknown local files remain manageable without promising catalog updates.
+
+Verification: production frontend build, 13 Vitest checks, 54 regular Rust tests (three existing JDK-dependent process tests remain ignored), Clippy, and all 43 UI scenarios. UI checks use an isolated local port when the standard development port is occupied. New tests cover filtering/sorting, project pages, separate versions, larger action targets, partial/offline update errors, running-game restrictions, both themes, and minimum window size. Rust tests cover legacy state compatibility, bounded archive metadata/images, hash-bound identity, compatible/newer releases, concurrent removal/toggling, and cancellation inside a registered bulk operation.
+
+The `content_manager_fixture` example downloaded older actual Sodium and Iris files into `.test-data/`, including a disabled Sodium file, and verified recognition and available updates. `scripts/native-content-manager-smoke.mjs` then used real Tauri IPC and Modrinth downloads to open the project page, update both projects, preserve the disabled state, toggle Sodium, and move the local fixture to trash. No account was added and no game was launched. Native screenshots are `docs/screenshots/content-manager-native-light.png` and `content-manager-native-dark.png`. Live CurseForge update/download integration was not exercised; its existing catalog adapter remains subject to API-key availability.
+
 ## Home layout refresh — October 14, 2026
 
 The home page now has a main content column and a compact account/release sidebar. Navigation and quick launch include locally drawn SVG line-and-pixel patterns. The quick-launch card shows the real instance status and opens the instance's settings tab directly. The sidebar sits 14 px from the right edge, with a 16 px column gap and compact card padding. The news header contains a single “Show all” action; rows cover the published 0.3.3 updater release, instance import, and the skin library. Only the published release has a date. Its details are based on `docs/releases/v0.3.3.md` and link to update settings. No generated illustrations or additional landscape images were added.
