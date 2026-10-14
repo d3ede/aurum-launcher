@@ -2,6 +2,46 @@
 
 These records describe checks performed for each update. Historical installer paths, sizes, and hashes refer to those specific builds; the public 0.3.1 artifact is recorded at the end.
 
+## Public release 0.3.9 — October 15, 2026
+
+[Aurum Launcher 0.3.9](https://github.com/d3ede/aurum-launcher/releases/tag/v0.3.9)
+is built from source commit `0626618ebb6f620f951ade3c2f75c10e4bb7b380`.
+The installer repairs existing Aurum Desktop and Start menu links pointing to
+older copies outside the registered installation folder, while preserving
+shortcut customization and leaving deleted/unrelated links alone.
+
+The [signed Windows release workflow](https://github.com/d3ede/aurum-launcher/actions/runs/38642214894)
+passed its frontend build, 13 unit tests, 54 regular Rust tests, Clippy and all
+44 UI scenarios. Installer checks passed 17 path cases, 16 display-language
+cases, close-control rendering, and eight shortcut cases, including the real
+Tauri executable's product resource and Unicode paths. Local tests also covered
+the full isolated QA installation/update/uninstall cycle without `/D`, stale
+links with both saved choices off, `/NS`, deleted links and unrelated targets.
+The three existing JDK-dependent process tests remain ignored.
+
+Versions 0.3.7 and 0.3.8 were not published because Windows Script Host rejected
+the Cyrillic shortcut fixture on the release server. The test now uses native
+`IShellLinkW` interfaces. Its [standalone Windows Server check](https://github.com/d3ede/aurum-launcher/actions/runs/38641614576)
+passed before the final release. Those source tags were preserved; their failed
+runs never replaced the previous public installer or update manifest.
+
+All four release assets are published. The ordinary public
+`releases/latest/download/` URLs return the new installer, signature and manifest.
+Downloaded bytes match GitHub's asset digests and `SHA256SUMS.txt`; the manifest
+offers 0.3.9 using its immutable installer URL and matching signature.
+The installer identifies itself as **Aurum Launcher 0.3.9**, is **6.97 decimal MB**
+(6,965,780 bytes), and has SHA256:
+
+```text
+70c9c162f92c3476ee1daa320d3b1aa6e86f9de7bd806687119eb7e9f54e051f
+```
+
+Native Minisign verification passed against the configured public key; altered
+installer bytes and an altered signed version were rejected. The downloaded
+installer was not executed, and production game/account data was not used.
+This verification record follows the tagged source without changing its tag
+or published artifacts.
+
 ## Shortcut repair — development build, October 14–15, 2026
 
 Automatic NSIS updates now repair existing product-owned Desktop and Start menu
