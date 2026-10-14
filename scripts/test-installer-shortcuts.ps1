@@ -1,6 +1,6 @@
 $ErrorActionPreference='Stop'
 $installerProject=Split-Path -Parent $PSScriptRoot
-$installerTest=Join-Path $installerProject '.test-data/installer-shortcuts'
+$installerTest=[IO.Path]::GetFullPath((Join-Path $installerProject '.test-data/installer-shortcuts'))
 New-Item -ItemType Directory -Path $installerTest -Force | Out-Null
 $installerCompiler=Join-Path $env:LOCALAPPDATA 'tauri/NSIS/makensis.exe'
 if(!(Test-Path -LiteralPath $installerCompiler)) { throw 'Build a Tauri NSIS bundle before running this test.' }
@@ -33,6 +33,10 @@ New-ShortcutFixture $installerNew 'Aurum Installer QA'
 New-ShortcutFixture $installerForeign 'Unrelated Application'
 Copy-Item -LiteralPath (Join-Path $installerOld 'aurum.exe') -Destination (Join-Path $installerOld 'other.exe') -Force
 $installerTarget=Join-Path $installerNew 'aurum.exe'
+$installerMissing=Join-Path $installerTest 'deleted-copy'
+New-Item -ItemType Directory -Path $installerMissing -Force | Out-Null
+$installerMissingTarget=Join-Path $installerMissing 'aurum.exe'
+Copy-Item -LiteralPath (Join-Path $installerOld 'aurum.exe') -Destination $installerMissingTarget -Force
 $installerCustom=Join-Path $installerTest 'custom'
 New-Item -ItemType Directory -Path $installerCustom -Force | Out-Null
 $installerCases=@(
@@ -40,7 +44,7 @@ $installerCases=@(
   @('current', $installerTarget, 1),
   @('foreign', (Join-Path $installerForeign 'aurum.exe'), 0),
   @('wrong-name', (Join-Path $installerOld 'other.exe'), 0),
-  @('missing-target', (Join-Path $installerTest 'missing/aurum.exe'), 0),
+  @('missing-target', $installerMissingTarget, 0),
   @('custom', (Join-Path $installerOld 'aurum.exe'), 1),
   @('missing-link', '', 0)
 )
@@ -62,7 +66,8 @@ foreach($installerCase in $installerCases) {
     continue
   }
   $link=$installerShell.CreateShortcut($linkPath)
-  $link.TargetPath=$installerCase[1]
+  try { $link.TargetPath=$installerCase[1] }
+  catch { throw ('Unable to create shortcut fixture '+$installerCase[0]+': '+$_.Exception.Message) }
   $link.Arguments='--test "argument with spaces"'
   $link.Description='Keep this description'
   $link.Hotkey='CTRL+ALT+F9'
@@ -76,6 +81,9 @@ foreach($installerCase in $installerCases) {
   $link.Save()
   $installerBefore[$installerCase[0]]= $installerShell.CreateShortcut($linkPath)
 }
+# Some Windows Shell versions require an existing destination when creating a
+# link. Delete this owned payload afterwards to test an orphaned shortcut.
+Remove-Item -LiteralPath $installerMissingTarget
 $installerHarness=@'
 Unicode true
 !addplugindir "__PLUGINS__"

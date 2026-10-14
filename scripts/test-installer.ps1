@@ -5,7 +5,7 @@ $installerSetup=(Resolve-Path -LiteralPath $SetupPath).Path
 if((Get-Item -LiteralPath $installerSetup).VersionInfo.ProductName -ne 'Aurum Installer QA') {
   throw 'This test only accepts the isolated Aurum Installer QA bundle.'
 }
-$installerTest=Join-Path $installerProject '.test-data/installer-smoke/installed'
+$installerTest=[IO.Path]::GetFullPath((Join-Path $installerProject '.test-data/installer-smoke/installed'))
 $installerRegistry='Software\AurumInstallerQA\Aurum Installer QA'
 $installerUninstallRegistry='Software\Microsoft\Windows\CurrentVersion\Uninstall\Aurum Installer QA'
 $installerDesktop=Join-Path ([Environment]::GetFolderPath('Desktop')) 'Aurum Installer QA.lnk'
@@ -63,7 +63,7 @@ Assert-InstallerShortcuts $false $true
 # Reproduce a preview shortcut while the updater installs into the registered
 # directory, without /D. The native regression provides an identifiable QA EXE.
 & (Join-Path $PSScriptRoot 'test-installer-shortcuts.ps1')
-$installerOldCopy=Join-Path $installerProject '.test-data/installer-smoke/old-preview'
+$installerOldCopy=[IO.Path]::GetFullPath((Join-Path $installerProject '.test-data/installer-smoke/old-preview'))
 New-Item -ItemType Directory -Path $installerOldCopy -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $installerProject '.test-data/installer-shortcuts/старый preview/aurum.exe') -Destination (Join-Path $installerOldCopy 'aurum.exe') -Force
 foreach($installerShortcut in @($installerDesktop,$installerStart)) {
@@ -86,7 +86,7 @@ foreach($installerShortcut in @($installerDesktop,$installerStart)) {
   if($installerLink.WorkingDirectory -ne $installerTest -or $installerLink.IconLocation -ne (Join-Path $installerTest 'aurum.exe')+',0') { throw 'Updater left a stale shortcut icon or working directory.' }
 }
 Write-Output 'Automatic update repaired both preview shortcuts using the registered installation path.'
-$installerForeignExe=Join-Path $installerProject '.test-data/installer-shortcuts/foreign/aurum.exe'
+$installerForeignExe=[IO.Path]::GetFullPath((Join-Path $installerProject '.test-data/installer-shortcuts/foreign/aurum.exe'))
 $installerForeignLink=$installerShell.CreateShortcut($installerDesktop)
 $installerForeignLink.TargetPath=$installerForeignExe
 $installerForeignLink.Save()
