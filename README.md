@@ -13,7 +13,7 @@ An independent Windows launcher with a warm light theme and a graphite dark them
 [![Tauri 2](https://img.shields.io/badge/Tauri-2-24c8db)](https://v2.tauri.app/)
 [![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-8a7861)](LICENSE)
 
-**[Download for Windows](https://github.com/d3ede/aurum-launcher/releases/latest/download/Aurum-Launcher_x64-setup.exe)** · [All releases](https://github.com/d3ede/aurum-launcher/releases) · [Report an issue](https://github.com/d3ede/aurum-launcher/issues)
+**[Download for Windows](https://github.com/d3ede/aurum-launcher/releases/latest/download/Aurum-Launcher_x64-setup.exe)** · [Website](https://d3ede.github.io/aurum-site/) · [All releases](https://github.com/d3ede/aurum-launcher/releases) · [Report an issue](https://github.com/d3ede/aurum-launcher/issues)
 
 </div>
 
