@@ -1,4 +1,9 @@
 export const homeEnglish: Record<string, string> = {
+  "Обновление ярлыков": "Shortcut updates",
+  "В этой сборке ярлыки ведут на обновлённый лаунчер.":
+    "In this build, shortcuts point to the updated launcher.",
+  "В этой сборке обновление исправляет существующие ярлыки Aurum на рабочем столе и в меню «Пуск», если они ведут на старую копию.":
+    "In this build, updates repair existing Aurum Desktop and Start menu shortcuts that point to an older copy.",
   "Папка установки": "Installation folder",
   "При выборе диска добавляется папка Aurum Launcher.":
     "Selecting a drive adds an Aurum Launcher folder.",

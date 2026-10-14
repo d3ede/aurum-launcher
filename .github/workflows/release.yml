@@ -92,6 +92,7 @@ jobs:
           ./scripts/test-installer-path.ps1
           ./scripts/test-installer-language.ps1
           ./scripts/build-installer-ui.ps1 -Test
+          ./scripts/test-installer-shortcuts.ps1
       - name: Upload and publish release
         shell: pwsh
         env:

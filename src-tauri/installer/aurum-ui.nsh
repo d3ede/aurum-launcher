@@ -335,6 +335,19 @@ FunctionEnd
 
 Function AurumShortcuts
   ${If} $NoShortcutMode <> 1
+    ; An updater can be launched from an old preview/portable copy. Repair
+    ; existing product-owned links even when their saved checkbox is off.
+    ; Missing links and links to other products are left untouched.
+    ${If} $UpdateMode = 1
+      AurumUI::RepairShortcut /NOUNLOAD "$DESKTOP\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
+      Pop $0
+      AurumUI::RepairShortcut /NOUNLOAD "$SMPROGRAMS\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
+      Pop $0
+      !if "${STARTMENUFOLDER}" != ""
+        AurumUI::RepairShortcut /NOUNLOAD "$SMPROGRAMS\$AppStartMenuFolder\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
+        Pop $0
+      !endif
+    ${EndIf}
     ${If} $AurumStartChoice = 1
       Call CreateOrUpdateStartMenuShortcut
     ${ElseIf} $UpdateMode <> 1

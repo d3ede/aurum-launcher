@@ -140,6 +140,7 @@ test("home has account and factual release panels, working actions and both them
   await expect(page.locator(".home-account-card")).toContainText("CozyPlayer");
   await expect(page.locator(".home-news-card")).toContainText("Aurum 0.3.6");
   await expect(page.locator(".home-news-card")).toContainText("Управление модами");
+  await expect(page.locator(".home-news-card")).toContainText("Обновление ярлыков");
   await expect(page.locator(".home-sidebar img")).toHaveCount(0);
   await expect(page.locator(".sidebar-pattern")).toHaveCount(1);
   await page.screenshot({
@@ -176,6 +177,7 @@ test("home has account and factual release panels, working actions and both them
     "Перед установкой проверяется подпись обновления.",
   );
   await expect(notes).toContainText("В этой сборке: компактный список модов");
+  await expect(notes).toContainText("обновление исправляет существующие ярлыки Aurum");
   await page.keyboard.press("Escape");
   await expect(notes).toHaveCount(0);
   await page
@@ -217,6 +219,7 @@ test("home adapts to minimum window size and translates the new panels", async (
     page.getByRole("heading", { name: "What's new", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".home-news-card")).toContainText("Mod management");
+  await expect(page.locator(".home-news-card")).toContainText("Shortcut updates");
   await page.setViewportSize({ width: 960, height: 680 });
   expect(
     await page
@@ -241,6 +244,7 @@ test("home adapts to minimum window size and translates the new panels", async (
   await expect(notes).toContainText(
     "The update signature is verified before installation.",
   );
+  await expect(notes).toContainText("updates repair existing Aurum Desktop and Start menu shortcuts");
   await expect(
     notes.getByRole("button", { name: "Update settings", exact: true }),
   ).toBeInViewport();

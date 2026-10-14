@@ -33,8 +33,9 @@ function Set-InstallerChoices([int]$Desktop,[int]$Start) {
     $installerKey.SetValue('StartMenuShortcut',$Start,[Microsoft.Win32.RegistryValueKind]::DWord)
   } finally { $installerKey.Dispose() }
 }
-function Invoke-Installer([string]$Flags='/S') {
-  $installerProcess=Start-Process -FilePath $installerSetup -ArgumentList ($Flags+' /D='+$installerTest) -WindowStyle Hidden -PassThru
+function Invoke-Installer([string]$Flags='/S',[switch]$RestoreRegisteredPath) {
+  $installerArguments=if($RestoreRegisteredPath) { $Flags } else { $Flags+' /D='+$installerTest }
+  $installerProcess=Start-Process -FilePath $installerSetup -ArgumentList $installerArguments -WindowStyle Hidden -PassThru
   if(!$installerProcess.WaitForExit(60000)) { throw 'QA installer timed out.' }
   if($installerProcess.ExitCode -ne 0) { throw ('QA installer exit code: '+$installerProcess.ExitCode) }
   if(!(Test-Path -LiteralPath (Join-Path $installerTest 'aurum.exe'))) { throw 'Launcher payload was not installed.' }
@@ -55,10 +56,44 @@ foreach($installerChoices in @(@(1,0),@(0,1),@(0,0),@(1,1))) {
   Write-Output ('Shortcut choices passed: desktop='+$installerChoices[0]+', start='+$installerChoices[1])
 }
 Remove-Item -LiteralPath $installerDesktop
-Invoke-Installer '/S /UPDATE'
+Invoke-Installer '/S /UPDATE' -RestoreRegisteredPath
 Assert-InstallerShortcuts $false $true
 Invoke-Installer '/S /NS'
 Assert-InstallerShortcuts $false $true
+# Reproduce a preview shortcut while the updater installs into the registered
+# directory, without /D. The native regression provides an identifiable QA EXE.
+& (Join-Path $PSScriptRoot 'test-installer-shortcuts.ps1')
+$installerOldCopy=Join-Path $installerProject '.test-data/installer-smoke/old-preview'
+New-Item -ItemType Directory -Path $installerOldCopy -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $installerProject '.test-data/installer-shortcuts/старый preview/aurum.exe') -Destination (Join-Path $installerOldCopy 'aurum.exe') -Force
+foreach($installerShortcut in @($installerDesktop,$installerStart)) {
+  $installerLink=$installerShell.CreateShortcut($installerShortcut)
+  $installerLink.TargetPath=Join-Path $installerOldCopy 'aurum.exe'
+  $installerLink.WorkingDirectory=$installerOldCopy
+  $installerLink.IconLocation=(Join-Path $installerOldCopy 'aurum.exe')+',0'
+  $installerLink.Save()
+}
+# Existing links must be repaired independently of stored checkbox values.
+Set-InstallerChoices 0 0
+Invoke-Installer '/S /UPDATE /NS' -RestoreRegisteredPath
+foreach($installerShortcut in @($installerDesktop,$installerStart)) {
+  if($installerShell.CreateShortcut($installerShortcut).TargetPath -ne (Join-Path $installerOldCopy 'aurum.exe')) { throw '/NS modified an existing preview shortcut.' }
+}
+Invoke-Installer '/S /UPDATE' -RestoreRegisteredPath
+Assert-InstallerShortcuts $true $true
+foreach($installerShortcut in @($installerDesktop,$installerStart)) {
+  $installerLink=$installerShell.CreateShortcut($installerShortcut)
+  if($installerLink.WorkingDirectory -ne $installerTest -or $installerLink.IconLocation -ne (Join-Path $installerTest 'aurum.exe')+',0') { throw 'Updater left a stale shortcut icon or working directory.' }
+}
+Write-Output 'Automatic update repaired both preview shortcuts using the registered installation path.'
+$installerForeignExe=Join-Path $installerProject '.test-data/installer-shortcuts/foreign/aurum.exe'
+$installerForeignLink=$installerShell.CreateShortcut($installerDesktop)
+$installerForeignLink.TargetPath=$installerForeignExe
+$installerForeignLink.Save()
+Invoke-Installer '/S /UPDATE' -RestoreRegisteredPath
+if($installerShell.CreateShortcut($installerDesktop).TargetPath -ne $installerForeignExe) { throw 'Updater changed an unrelated shortcut.' }
+# Remove only this owned QA fixture link before testing normal cleanup.
+Remove-Item -LiteralPath $installerDesktop
 Set-InstallerChoices 0 0
 Invoke-Installer
 Invoke-Installer '/S /UPDATE'

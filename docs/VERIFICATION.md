@@ -2,6 +2,31 @@
 
 These records describe checks performed for each update. Historical installer paths, sizes, and hashes refer to those specific builds; the public 0.3.1 artifact is recorded at the end.
 
+## Shortcut repair — development build, October 14–15, 2026
+
+Automatic NSIS updates now repair existing product-owned Desktop and Start menu
+shortcuts that point to older copies outside the registered installation folder.
+This change is prepared for a future installer; the published 0.3.6 assets are
+unchanged.
+
+The native plugin compiled successfully, and its eight-case NSIS regression
+passed for old/current targets, Unicode paths, unrelated executables, missing
+targets/links, custom shortcut metadata and a real Tauri executable's product
+resource. A separate **Aurum Installer QA**
+bundle used the existing 0.3.5 payload and the modified installer backend without
+launching the payload. Its silent installation/update/uninstall smoke test passed
+all four shortcut combinations and reproduced stale Desktop/Start menu links.
+Updating without `/D` repaired both links using the registered destination even
+with both stored shortcut choices disabled. `/NS` left old links untouched;
+deleted links stayed deleted, unrelated links were preserved, and uninstall kept
+an unrelated file. Only the QA registry namespace and test-owned shortcuts were
+used; game/account data and production Aurum shortcuts were not changed.
+
+The production frontend build, 13 unit tests, the close-control rendering test,
+and both home-page UI scenarios passed. The UI scenarios checked Russian/English
+shortcut announcements, both themes and the minimum window size. Rust sources
+and launcher update protocol were unchanged. No desktop input automation was used.
+
 ## Public release 0.3.6 — October 14, 2026
 
 [Aurum Launcher 0.3.6](https://github.com/d3ede/aurum-launcher/releases/tag/v0.3.6) is built from source commit `81509e2bc1109ebbf1fbe99990350af3245e562b`. Selecting a drive or share root now adds an `Aurum Launcher` directory; explicit folders retain their locations, and automatic updates preserve registered installation paths.

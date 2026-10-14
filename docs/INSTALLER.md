@@ -90,6 +90,22 @@ checks, updater flags, shortcut ownership checks, uninstall registration, and
 explicit opt-in removal of application data. The production identifier remains
 `app.auren.launcher`. Normal updates retain shortcut preferences.
 
+During `/UPDATE`, existing Desktop and Start menu shortcuts are redirected to
+the installed launcher, including links left pointing to an older preview or
+portable copy in another directory. Ownership is checked against the target's
+executable name and Windows `ProductName` resource before changing the link.
+Arguments, hotkeys, descriptions, custom icons and custom working directories
+are retained; an icon or working directory tied to the old executable follows
+the new installation. Deleted shortcuts are not recreated, `/NS` skips repairs,
+and similarly named links to other products are left alone. Missing old targets
+cannot be identified reliably and are also left alone.
+
+`scripts/test-installer-shortcuts.ps1` exercises the actual NSIS plugin with
+isolated versioned executable fixtures and shortcuts under `.test-data/`.
+It verifies old and current targets, Unicode paths, unrelated executables,
+missing links/targets and preservation of shortcut customization. The QA
+installer smoke test additionally checks the automatic update call site.
+
 `installer.nsi` is adapted from Tauri CLI v2.12.2's MIT-licensed template. Its
 license is preserved in `src-tauri/installer/TAURI-MIT-LICENSE` and referenced in
 `NOTICE`. The installer also places these license and notice files beside the
