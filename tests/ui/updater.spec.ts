@@ -37,7 +37,7 @@ async function fixture(
               if (w.updateMode === "current") return null;
               return {
                 rid: 101,
-                currentVersion: "0.3.5",
+                currentVersion: "0.3.6",
                 version: "0.3.6",
                 rawJson: {},
                 body: "Update fixture",

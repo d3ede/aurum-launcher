@@ -86,6 +86,12 @@ jobs:
         run: npm run tauri build
       - name: Prepare signed update manifest and checksums
         run: node scripts/prepare-release.mjs
+      - name: Check installer regressions
+        shell: pwsh
+        run: |
+          ./scripts/test-installer-path.ps1
+          ./scripts/test-installer-language.ps1
+          ./scripts/build-installer-ui.ps1 -Test
       - name: Upload and publish release
         shell: pwsh
         env:

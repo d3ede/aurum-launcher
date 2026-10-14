@@ -138,7 +138,7 @@ test("home has account and factual release panels, working actions and both them
 }) => {
   await fixture(page);
   await expect(page.locator(".home-account-card")).toContainText("CozyPlayer");
-  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.3.5");
+  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.3.6");
   await expect(page.locator(".home-news-card")).toContainText("Управление модами");
   await expect(page.locator(".home-sidebar img")).toHaveCount(0);
   await expect(page.locator(".sidebar-pattern")).toHaveCount(1);
@@ -171,7 +171,7 @@ test("home has account and factual release panels, working actions and both them
   await page
     .getByRole("button", { name: "Все изменения", exact: true })
     .click();
-  const notes = page.getByRole("dialog", { name: "Изменения Aurum 0.3.5" });
+  const notes = page.getByRole("dialog", { name: "Изменения Aurum 0.3.6" });
   await expect(notes).toContainText(
     "Перед установкой проверяется подпись обновления.",
   );
@@ -237,7 +237,7 @@ test("home adapts to minimum window size and translates the new panels", async (
     animations: "disabled",
   });
   await page.getByRole("button", { name: "All changes", exact: true }).click();
-  const notes = page.getByRole("dialog", { name: "Aurum 0.3.5 changes" });
+  const notes = page.getByRole("dialog", { name: "Aurum 0.3.6 changes" });
   await expect(notes).toContainText(
     "The update signature is verified before installation.",
   );
