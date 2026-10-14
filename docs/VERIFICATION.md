@@ -188,6 +188,20 @@ Checks passed:
 
 The release workflow builds version tags, signs installers using a repository Actions secret, generates `latest.json`, and uploads all assets to a draft before publishing. Private signing material is excluded from Git. See [UPDATES.md](UPDATES.md) for publication and key-backup requirements.
 
-Windows installer execution and clean-machine installation/removal remain separate checks. Updater signatures do not provide an Authenticode publisher certificate. Version 0.3.1 requires a one-time manual installation of 0.3.2 to enable future updates.
+Windows installer execution and clean-machine installation/removal remain separate checks. Updater signatures do not provide an Authenticode publisher certificate. Version 0.3.1 requires a one-time manual installation of the public 0.3.3 release to enable future updates.
 
 ![Updater banner in a diagnostic desktop instance](screenshots/updater-native.png)
+
+## Public updater release 0.3.3 — October 14, 2026
+
+The first public updater-enabled release is [v0.3.3](https://github.com/d3ede/aurum-launcher/releases/tag/v0.3.3). The 0.3.2 source tag was retained, but its release attempt stopped on stale npm metadata for `tinyglobby` and `@floating-ui/utils`. The corrected metadata has the same integrity hashes as the actual packages used locally. A fresh `npm ci` succeeded after correction.
+
+[GitHub Actions](https://github.com/d3ede/aurum-launcher/actions/runs/38488520874) completed successfully: production frontend build, 11 Vitest checks, 47 regular Rust tests (the three JDK-dependent process fixtures are ignored in CI), Clippy, all 30 UI checks, signed NSIS packaging, manifest generation, and publication. Hosted Windows UI checks run sequentially with longer rendering timeouts; no assertions were removed. The application source is the immutable `v0.3.3` tag; subsequent main-branch changes only adjust CI and documentation.
+
+Published assets: `Aurum-Launcher_x64-setup.exe`, `Aurum-Launcher_x64-setup.exe.sig`, `latest.json`, and `SHA256SUMS.txt`. Installer size: **6,767,872 bytes**. SHA256:
+
+```text
+8bf74bf56dc4197d8c3f4d673c9f656e82a40a58451b81a2cd87d285f7a1d6d2
+```
+
+Public downloads were compared against the GitHub asset digests and checksum file. The public manifest's version, immutable installer URL, and signature matched the release assets. A real WebView2/native updater client using the production HTTPS endpoint offered 0.3.3 and downloaded the public installer with successful signature verification. That diagnostic client had a separate identifier/data directory, simulated an older version, and explicitly lacked installation permission; the installer was not executed and user data was not modified.

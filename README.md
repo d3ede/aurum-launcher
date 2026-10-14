@@ -108,11 +108,11 @@ npm ci
 # Start the desktop app in development mode
 npm run tauri dev
 
-# Build the installer
-npm run tauri build
+# Build a local application binary without release signing
+npm run tauri build -- --no-bundle
 ```
 
-Build output: `target/release/bundle/nsis/*-setup.exe`. The release application embeds its interface and does not need a Vite server. When distributing the executable without an installer, keep `WebView2Loader.dll` alongside it if that file is present in the output folder.
+Local binary: `target/release/aurum.exe`. Signed installers are built by the GitHub release workflow and appear under `target/release/bundle/nsis/*-setup.exe`. A local installer/update build requires the signing key; see [release publishing](docs/UPDATES.md). The release application embeds its interface and does not need a Vite server. When distributing the executable without an installer, keep `WebView2Loader.dll` alongside it if that file is present in the output folder.
 
 The public Microsoft Client ID is stored in `config/microsoft-client-id.txt`. For your own application, follow the [Microsoft setup guide](docs/MICROSOFT-LOGIN.md). Passwords, tokens, and client secrets are not stored in the source tree.
 
