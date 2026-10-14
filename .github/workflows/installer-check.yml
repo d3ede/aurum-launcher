@@ -1,0 +1,23 @@
+name: Windows installer regression
+
+on: workflow_dispatch
+
+permissions:
+  contents: read
+
+jobs:
+  shortcuts:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Check native installer controls and Unicode shortcuts
+        shell: pwsh
+        run: |
+          ./scripts/build-installer-ui.ps1 -Test
+          ./scripts/test-installer-shortcuts.ps1 -CompilerPath "${env:ProgramFiles(x86)}\NSIS\makensis.exe"

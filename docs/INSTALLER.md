@@ -105,6 +105,10 @@ isolated versioned executable fixtures and shortcuts under `.test-data/`.
 It verifies old and current targets, Unicode paths, unrelated executables,
 missing links/targets and preservation of shortcut customization. The QA
 installer smoke test additionally checks the automatic update call site.
+Fixture links use `IShellLinkW` directly through a small test-only C# helper,
+avoiding Windows Script Host's non-ANSI path restrictions on server images.
+The manually triggered Windows installer regression workflow can validate these
+checks before a full release build; neither it nor the helper ships with Aurum.
 
 `installer.nsi` is adapted from Tauri CLI v2.12.2's MIT-licensed template. Its
 license is preserved in `src-tauri/installer/TAURI-MIT-LICENSE` and referenced in

@@ -1,8 +1,9 @@
+param([string]$CompilerPath)
 $ErrorActionPreference='Stop'
 $installerProject=Split-Path -Parent $PSScriptRoot
 $installerTest=[IO.Path]::GetFullPath((Join-Path $installerProject '.test-data/installer-shortcuts'))
 New-Item -ItemType Directory -Path $installerTest -Force | Out-Null
-$installerCompiler=Join-Path $env:LOCALAPPDATA 'tauri/NSIS/makensis.exe'
+$installerCompiler=if($CompilerPath) { $CompilerPath } else { Join-Path $env:LOCALAPPDATA 'tauri/NSIS/makensis.exe' }
 if(!(Test-Path -LiteralPath $installerCompiler)) { throw 'Build a Tauri NSIS bundle before running this test.' }
 function New-ShortcutFixture([string]$Folder,[string]$Product) {
   New-Item -ItemType Directory -Path $Folder -Force | Out-Null
@@ -57,7 +58,9 @@ if((Test-Path -LiteralPath $installerRealPayload) -and (Get-Item -LiteralPath $i
   Copy-Item -LiteralPath $installerRealPayload -Destination (Join-Path $installerRealPreview 'aurum.exe') -Force
   $installerCases+= ,@('real-launcher', (Join-Path $installerRealPreview 'aurum.exe'), 1, 'Aurum Launcher')
 }
-$installerShell=New-Object -ComObject WScript.Shell
+if(!('AurumInstallerTests.ShortcutFixture' -as [type])) {
+  Add-Type -Path (Join-Path $PSScriptRoot 'installer-shortcut-fixture.cs')
+}
 $installerBefore=@{}
 foreach($installerCase in $installerCases) {
   $linkPath=Join-Path $installerTest ($installerCase[0]+'.lnk')
@@ -65,21 +68,14 @@ foreach($installerCase in $installerCases) {
     if(Test-Path -LiteralPath $linkPath) { Remove-Item -LiteralPath $linkPath }
     continue
   }
-  $link=$installerShell.CreateShortcut($linkPath)
-  try { $link.TargetPath=$installerCase[1] }
-  catch { throw ('Unable to create shortcut fixture '+$installerCase[0]+': '+$_.Exception.Message) }
-  $link.Arguments='--test "argument with spaces"'
-  $link.Description='Keep this description'
-  $link.Hotkey='CTRL+ALT+F9'
-  $link.WindowStyle=7
-  $link.WorkingDirectory=Split-Path -Parent $installerCase[1]
-  $link.IconLocation=$installerCase[1]+',0'
+  $working=Split-Path -Parent $installerCase[1]
+  $icon=$installerCase[1]
   if($installerCase[0] -eq 'custom') {
-    $link.WorkingDirectory=$installerCustom
-    $link.IconLocation=(Join-Path $installerForeign 'aurum.exe')+',0'
+    $working=$installerCustom
+    $icon=Join-Path $installerForeign 'aurum.exe'
   }
-  $link.Save()
-  $installerBefore[$installerCase[0]]= $installerShell.CreateShortcut($linkPath)
+  [AurumInstallerTests.ShortcutFixture]::Create($linkPath,$installerCase[1],$working,$icon)
+  $installerBefore[$installerCase[0]]= [AurumInstallerTests.ShortcutFixture]::Read($linkPath)
 }
 # Some Windows Shell versions require an existing destination when creating a
 # link. Delete this owned payload afterwards to test an orphaned shortcut.
@@ -120,7 +116,7 @@ for($installerIndex=0;$installerIndex -lt $installerCases.Count;$installerIndex+
     if(Test-Path -LiteralPath $linkPath) { throw 'Update recreated a deleted shortcut.' }
     continue
   }
-  $link=$installerShell.CreateShortcut($linkPath)
+  $link=[AurumInstallerTests.ShortcutFixture]::Read($linkPath)
   $expected=if($case[2]) { $installerTarget } else { $case[1] }
   if($link.TargetPath -ne $expected) { throw ('Incorrect shortcut target: '+$name) }
   $before=$installerBefore[$name]
