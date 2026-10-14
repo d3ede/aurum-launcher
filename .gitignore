@@ -9,6 +9,7 @@ node_modules/
 dist/
 target/
 src-tauri/gen/
+src-tauri/installer/sidebar.bmp
 *.tsbuildinfo
 
 # Local toolchains and game/test data

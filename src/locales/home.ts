@@ -1,4 +1,11 @@
 export const homeEnglish: Record<string, string> = {
+  "Новый установщик": "New installer",
+  "Локальная сборка: папка, ярлыки и язык Windows.":
+    "Local build: folder, shortcuts and Windows language.",
+  "В локальном установщике: компактное окно без системной шапки, выбор папки и два отдельных ярлыка.":
+    "The local installer has a compact window without a system title bar, folder selection and two separate shortcuts.",
+  "Язык установщика выбирается по интерфейсу Windows; для неподдерживаемых языков используется английский.":
+    "The installer follows the Windows display language and uses English for unsupported languages.",
   "Виды каталога": "Catalog views",
   "Список и плитки, карусель и увеличение изображений.":
     "List and grid views, an image carousel and zoom.",

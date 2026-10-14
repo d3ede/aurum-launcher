@@ -14,3 +14,7 @@ for the provenance of bundled default Minecraft skins.
 
 Commercial permissions beyond this license require a separate agreement with
 the relevant copyright holder. Contact d3ede through the project repository.
+
+The Windows installer template is adapted from Tauri CLI v2.12.2 under the MIT
+License, Copyright (c) 2017-Present Tauri Apps Contributors.
+See src-tauri/installer/TAURI-MIT-LICENSE for its complete license.

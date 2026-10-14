@@ -351,6 +351,21 @@
 .home-release-details li + li {
   margin-top: 12px;
 }
+.home-release-modal {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.home-release-modal .modal-head,
+.home-release-modal .modal-actions {
+  flex-shrink: 0;
+}
+.home-release-modal .home-release-details {
+  min-height: 0;
+  overflow: auto;
+  margin-top: 0;
+  padding-inline-end: 8px;
+}
 @media (min-width: 1500px) {
   .home-layout {
     grid-template-columns: minmax(0, 1fr) 300px;

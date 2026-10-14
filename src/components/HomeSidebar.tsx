@@ -17,6 +17,11 @@ const release = {
   version: "0.3.3",
   highlights: [
     {
+      icon: Settings2,
+      title: "Новый установщик",
+      text: "Локальная сборка: папка, ярлыки и язык Windows.",
+    },
+    {
       icon: LayoutGrid,
       title: "Виды каталога",
       text: "Список и плитки, карусель и увеличение изображений.",
@@ -34,6 +39,8 @@ const release = {
     },
   ],
   details: [
+    "В локальном установщике: компактное окно без системной шапки, выбор папки и два отдельных ярлыка.",
+    "Язык установщика выбирается по интерфейсу Windows; для неподдерживаемых языков используется английский.",
     "В каталоге можно переключаться между списком и адаптивными плитками.",
     "Изображения проектов открываются в карусели и увеличиваются по клику.",
     "Источники каталога собраны в выпадающий список, категории переведены.",
@@ -123,11 +130,16 @@ export function HomeSidebar() {
       </aside>
       {notes && (
         <Modal
+          className="home-release-modal"
           title={t("Изменения Aurum {{version}}", { version: release.version })}
           subtitle={t("Обновления лаунчера")}
           onClose={() => setNotes(false)}
         >
-          <ul className="home-release-details">
+          <ul
+            className="home-release-details"
+            tabIndex={0}
+            aria-label={t("Все изменения")}
+          >
             {release.details.map((detail) => (
               <li key={detail}>{t(detail)}</li>
             ))}

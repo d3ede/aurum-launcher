@@ -1,4 +1,4 @@
-param([ValidateSet('dev','build')][string]$Mode = 'dev',[switch]$DebugBuild,[switch]$NoBundle,[string]$Config)
+param([ValidateSet('dev','build','bundle')][string]$Mode = 'dev',[switch]$DebugBuild,[switch]$NoBundle,[switch]$NoSign,[switch]$NoBinaryPatching,[string]$Config)
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $env:CARGO_HOME = Join-Path $projectRoot '.tools\cargo'
 $env:RUSTUP_HOME = Join-Path $projectRoot '.tools\rustup'
@@ -19,10 +19,12 @@ Set-Location -LiteralPath $projectRoot
 $tauriArguments=@('run','tauri','--',$Mode)
 if ($DebugBuild) { $tauriArguments += '--debug' }
 if ($NoBundle) { $tauriArguments += '--no-bundle' }
+if ($NoSign) { $tauriArguments += '--no-sign' }
+if ($NoBinaryPatching) { $tauriArguments += '--no-binary-patching' }
 if ($Config) { $tauriArguments += @('--config',$Config) }
 & npm.cmd @tauriArguments
 $desktopExitCode=$LASTEXITCODE
-if ($Mode -eq 'build' -and $desktopExitCode -eq 0) {
+if ($Mode -in @('build','bundle') -and $desktopExitCode -eq 0) {
   $desktopTarget=if ($env:CARGO_TARGET_DIR) { [IO.Path]::GetFullPath($env:CARGO_TARGET_DIR,$projectRoot) } else { Join-Path $projectRoot 'target' }
   $desktopProfile=if ($DebugBuild) { 'debug' } else { 'release' }
   $desktopExe=Join-Path $desktopTarget ($desktopProfile+'\aurum.exe')
