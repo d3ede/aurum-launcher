@@ -21,6 +21,8 @@
   padding: 8px 12px;
   gap: 12px;
   line-height: 20px;
+  justify-content: flex-start;
+  text-align: start;
 }
 .catalog-source-select > span:first-child {
   display: flex;
@@ -28,8 +30,8 @@
   justify-content: flex-start;
   flex: 1;
 }
-.catalog-source-select .select-option-label {
-  gap: 8px;
+.select-option-label:has(> .catalog-source-logo) {
+  gap: 5px;
   line-height: 20px;
 }
 .catalog-source-select .catalog-source-logo {

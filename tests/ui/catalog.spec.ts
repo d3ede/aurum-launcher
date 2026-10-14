@@ -185,6 +185,35 @@ test("source has original logos, animated options and localized coming-soon spac
 }) => {
   await fixture(page);
   const source = page.getByRole("combobox", { name: "Источник проектов" });
+  const checkSourceAlignment = async () => {
+    const spacing = await source.evaluate((button) => {
+      const label = button.querySelector(".select-option-label")!;
+      const logo = label.querySelector("img")!.getBoundingClientRect();
+      const text = [...label.childNodes].find(
+        (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim(),
+      )!;
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      const name = range.getBoundingClientRect();
+      const bounds = button.getBoundingClientRect();
+      return {
+        left: logo.left - bounds.left,
+        gap: name.left - logo.right,
+        vertical: Math.abs(
+          logo.y + logo.height / 2 - bounds.y - bounds.height / 2,
+        ),
+      };
+    });
+    expect(spacing.left).toBeGreaterThanOrEqual(10);
+    expect(spacing.left).toBeLessThanOrEqual(15);
+    expect(spacing.gap).toBeGreaterThanOrEqual(3);
+    expect(spacing.gap).toBeLessThanOrEqual(6);
+    expect(spacing.vertical).toBeLessThanOrEqual(2);
+  };
+  await checkSourceAlignment();
+  await source.screenshot({
+    path: "target/branding-icons/source-modrinth.png",
+  });
   await source.click();
   await expect(
     page.getByRole("option", { name: "Modrinth", exact: true }).locator("img"),
@@ -199,6 +228,13 @@ test("source has original logos, animated options and localized coming-soon spac
     "dropdown-in",
   );
   await page.getByRole("option", { name: "CurseForge", exact: true }).click();
+  await checkSourceAlignment();
+  await source.screenshot({
+    path: "target/branding-icons/source-curseforge.png",
+  });
+  await page.getByRole("button", { name: "Переключить тему" }).click();
+  await checkSourceAlignment();
+  await page.getByRole("button", { name: "Переключить тему" }).click();
   await expect(
     page.getByRole("heading", { name: "Ожидается в скором времени" }),
   ).toBeVisible();
