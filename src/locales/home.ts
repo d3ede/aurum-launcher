@@ -1,4 +1,9 @@
 export const homeEnglish: Record<string, string> = {
+  "Папка установки": "Installation folder",
+  "Локальное исправление: своя папка при выборе диска.":
+    "Local fix: a dedicated folder when selecting a drive.",
+  "Локальное исправление установщика: при выборе диска автоматически добавляется папка Aurum Launcher; выбранная папка сохраняется.":
+    "Local installer fix: selecting a drive adds an Aurum Launcher folder; an explicitly chosen folder keeps its location.",
   "Обновлены главная, каталог и установщик.":
     "Updated home, catalog and installer.",
   "Новый установщик": "New installer",

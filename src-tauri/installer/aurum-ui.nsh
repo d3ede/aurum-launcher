@@ -6,6 +6,7 @@
 !define AURUM_INK 2D392F
 !define AURUM_MUTED 65715F
 !include "${__FILEDIR__}\language-selection.nsh"
+!include "${__FILEDIR__}\install-path.nsh"
 Var AurumDialog
 Var AurumImage
 Var AurumImageHandle
@@ -36,6 +37,13 @@ Var AurumLayoutReady
 !macroend
 
 Function AurumInit
+  ; Interactive/fresh installs never place application files in a drive root.
+  ; Automatic updates retain the registered installation location.
+  ${If} $UpdateMode <> 1
+    StrCpy $0 $INSTDIR
+    Call AurumNormalizeInstallPath
+    StrCpy $INSTDIR $0
+  ${EndIf}
   StrCpy $AurumDesktopChoice 1
   StrCpy $AurumStartChoice 1
   StrCpy $AurumRunChoice 1
@@ -229,6 +237,7 @@ Function AurumBrowse
   nsDialogs::SelectFolderDialog "$(AurumFolder)" "$INSTDIR"
   Pop $0
   ${If} $0 != error
+    Call AurumNormalizeInstallPath
     ${NSD_SetText} $AurumPath $0
   ${EndIf}
 FunctionEnd
@@ -238,7 +247,10 @@ Function AurumLicense
 FunctionEnd
 
 Function AurumSetupLeave
-  ${NSD_GetText} $AurumPath $INSTDIR
+  ${NSD_GetText} $AurumPath $0
+  Call AurumNormalizeInstallPath
+  StrCpy $INSTDIR $0
+  ${NSD_SetText} $AurumPath $INSTDIR
   ${GetRoot} "$INSTDIR" $0
   ${If} $0 == ""
   ${OrIf} $INSTDIR == $0

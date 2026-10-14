@@ -12,6 +12,13 @@ and a license link. Minecraft and Java downloads are separate. WebView2 is only
 downloaded when missing; the installer itself does not require a WebView to render.
 The final screen offers to launch Aurum.
 
+Choosing a drive root automatically adds the product folder: `D:\` becomes
+`D:\Aurum Launcher`. Bare drive names, trailing separators, paths resolving to
+a root, and UNC share roots are also handled. An explicitly selected directory
+keeps its location. Browse results are updated immediately; manually entered
+paths are normalized before installation. Fresh silent installs follow the same
+rule, while automatic updates retain the registered installation location.
+
 ## Language and size
 
 The installer uses the current user's Windows **display language**, rather than
@@ -44,6 +51,11 @@ config overlay setting `bundle.createUpdaterArtifacts` to `false`; do not disabl
 signed updater artifacts in the production configuration.
 
 ## Verification
+
+`scripts/test-installer-path.ps1` compiles a silent NSIS harness using the production
+path normalizer. It verifies drive/share roots, separators, parent segments,
+explicit folders, Unicode folder names, and invalid/empty input without writing
+files to drive roots or network shares.
 
 `scripts/build-installer-ui.ps1 -Test` also compiles and runs the close-button
 rendering regression test. It renders into memory, without desktop windows or
