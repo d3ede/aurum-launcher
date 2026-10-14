@@ -19,7 +19,7 @@ An independent Windows launcher with a warm light theme and a graphite dark them
 
 ---
 
-<img src="docs/launcher-en.png" alt="Aurum Launcher 0.3.5 — English interface" width="1280">
+<img src="docs/launcher-en.png" alt="Aurum Launcher 0.3.6 — English interface" width="1280">
 
 *English interface preview with demonstration data.*
 

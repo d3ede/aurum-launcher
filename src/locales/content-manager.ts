@@ -1,4 +1,8 @@
 export const contentManagerEnglish: Record<string, string> = {
+  Фильтр: "Filter",
+  "Добавить файл": "Add file",
+  Проект: "Project",
+  Версия: "Version",
   "Найти проекты": "Find projects",
   "Найти мод, автора или файл": "Find a mod, author or file",
   "Сортировка контента": "Content sorting",

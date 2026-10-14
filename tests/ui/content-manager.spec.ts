@@ -1,9 +1,14 @@
 import { test, expect, type Page } from "@playwright/test";
 
-async function fixture(page: Page, theme = "light", running = false) {
+async function fixture(
+  page: Page,
+  theme = "light",
+  running = false,
+  language = "ru",
+) {
   await page.addInitScript(
-    ({ theme, running }) => {
-      localStorage.setItem("aurum:language", "ru");
+    ({ theme, running, language }) => {
+      localStorage.setItem("aurum:language", language);
       const w = window as any;
       w.isTauri = true;
       const icon =
@@ -90,7 +95,7 @@ async function fixture(page: Page, theme = "light", running = false) {
       ];
       const profile = {
         id: "profile-test",
-        name: "Уютный мир",
+        name: language === "en" ? "Cozy World" : "Уютный мир",
         minecraft: "1.21.1",
         loader: "fabric",
         loaderVersion: "0.16.14",
@@ -107,7 +112,7 @@ async function fixture(page: Page, theme = "light", running = false) {
         accounts: [],
         selectedAccount: null,
         settings: {
-          language: "ru",
+          language,
           theme,
           javaPath: "",
           ramMb: 4096,
@@ -223,18 +228,49 @@ async function fixture(page: Page, theme = "light", running = false) {
         },
       };
     },
-    { theme, running },
+    { theme, running, language },
   );
   await page.goto("/");
-  await page.getByRole("button", { name: "Мои сборки", exact: true }).click();
   await page
-    .getByRole("button", { name: "Открыть Уютный мир", exact: true })
+    .getByRole("button", {
+      name: language === "en" ? "My instances" : "Мои сборки",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("button", {
+      name: language === "en" ? "Open Cozy World" : "Открыть Уютный мир",
+      exact: true,
+    })
     .click();
   await expect(
-    page.getByRole("table", { name: "Установленный контент" }),
+    page.getByRole("table", {
+      name: language === "en" ? "Installed content" : "Установленный контент",
+    }),
   ).toBeVisible();
-  await expect(page.getByText("Доступно обновлений: 2")).toBeVisible();
+  await expect(
+    page.getByText(
+      language === "en" ? "Updates available: 2" : "Доступно обновлений: 2",
+    ),
+  ).toBeVisible();
 }
+
+test("English content controls and table headings are translated", async ({
+  page,
+}) => {
+  await fixture(page, "light", false, "en");
+  await expect(
+    page.getByRole("button", { name: "Filter", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Add file", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("columnheader")).toHaveText([
+    "Project",
+    "Version",
+    "Actions",
+  ]);
+});
 
 const rows = (page: Page) => page.locator(".installed-content-row");
 const names = (page: Page) =>
