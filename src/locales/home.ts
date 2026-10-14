@@ -1,4 +1,9 @@
 export const homeEnglish: Record<string, string> = {
+  "Ярлыки автоматически ведут на новую версию.":
+    "Shortcuts automatically point to the new version.",
+  "При обновлении ярлыки Aurum на рабочем столе и в меню «Пуск» автоматически перенаправляются на установленную версию.":
+    "Updates automatically redirect Aurum Desktop and Start menu shortcuts to the installed version.",
+  "15 октября 2026": "15 Oct 2026",
   "Обновление ярлыков": "Shortcut updates",
   "В этой сборке ярлыки ведут на обновлённый лаунчер.":
     "In this build, shortcuts point to the updated launcher.",

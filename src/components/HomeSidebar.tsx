@@ -3,7 +3,6 @@ import { APP_VERSION } from "../lib/version";
 import {
   ArrowRight,
   Box,
-  LayoutGrid,
   Megaphone,
   Settings2,
   UserPlus,
@@ -18,30 +17,34 @@ const release = {
   version: APP_VERSION,
   highlights: [
     {
+      icon: Megaphone,
+      title: "Aurum 0.3.7",
+      text: "Ярлыки автоматически ведут на новую версию.",
+      date: "15 октября 2026",
+      dateTime: "2026-10-15",
+    },
+    {
       icon: Settings2,
       title: "Aurum 0.3.6",
       text: "При выборе диска добавляется папка Aurum Launcher.",
       date: "14 октября 2026",
+      dateTime: "2026-10-14",
     },
     {
       icon: Megaphone,
       title: "Aurum 0.3.5",
       text: "Обновлены главная, каталог и установщик.",
       date: "14 октября 2026",
+      dateTime: "2026-10-14",
     },
     {
       icon: Box,
       title: "Управление модами",
       text: "Фильтры, версии и обновление всех модов.",
     },
-    {
-      icon: LayoutGrid,
-      title: "Обновление ярлыков",
-      text: "В этой сборке ярлыки ведут на обновлённый лаунчер.",
-    },
   ],
   details: [
-    "В этой сборке обновление исправляет существующие ярлыки Aurum на рабочем столе и в меню «Пуск», если они ведут на старую копию.",
+    "При обновлении ярлыки Aurum на рабочем столе и в меню «Пуск» автоматически перенаправляются на установленную версию.",
     "При выборе диска установщик автоматически добавляет папку Aurum Launcher; выбранная папка сохраняется.",
     "В установщике: компактное окно без системной шапки, выбор папки и два отдельных ярлыка.",
     "Язык установщика выбирается по интерфейсу Windows; для неподдерживаемых языков используется английский.",
@@ -114,7 +117,7 @@ export function HomeSidebar() {
             </button>
           </div>
           <div className="home-release-list">
-            {release.highlights.map(({ icon: Icon, title, text, date }) => (
+            {release.highlights.map(({ icon: Icon, title, text, date, dateTime }) => (
               <div className="home-release-item" key={title}>
                 <span className="home-release-icon">
                   <Icon size={22} strokeWidth={1.7} />
@@ -123,7 +126,7 @@ export function HomeSidebar() {
                   <h3>{t(title)}</h3>
                   <p>{t(text)}</p>
                   {date && (
-                    <time className="home-release-date" dateTime="2026-10-14">
+                    <time className="home-release-date" dateTime={dateTime}>
                       {t(date)}
                     </time>
                   )}
