@@ -462,7 +462,7 @@ for (const theme of ["light", "dark"]) {
       expect(box!.x + box!.width).toBeLessThanOrEqual(960);
     }
     await page.screenshot({
-      path: `docs/screenshots/content-manager-${theme}.png`,
+      path: `.test-data/screenshots/content-manager-${theme}.png`,
       animations: "disabled",
     });
   });

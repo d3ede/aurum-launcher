@@ -164,7 +164,7 @@ try {
     (await rpc("content", { id: profile.id })).some((c) => c.name === "Sodium"),
   );
   await page.screenshot({
-    path: "docs/screenshots/native-catalog.png",
+    path: ".test-data/screenshots/native-catalog.png",
     animations: "disabled",
   });
   const filtersBox = await page.locator(".catalog-filter-panel").boundingBox();
@@ -172,7 +172,7 @@ try {
   assert(filtersBox.x > resultsBox.x + resultsBox.width);
   await page.getByRole("combobox", { name: "Сортировка проектов" }).click();
   await page.screenshot({
-    path: "docs/screenshots/native-dropdown.png",
+    path: ".test-data/screenshots/native-dropdown.png",
     animations: "disabled",
   });
   await page.keyboard.press("Escape");
@@ -189,7 +189,7 @@ try {
   await page.getByRole("button", { name: "Открыть Aurum UI check" }).click();
   await page.locator(".content-row").filter({ hasText: "Sodium" }).waitFor();
   await page.screenshot({
-    path: "docs/screenshots/native-instance.png",
+    path: ".test-data/screenshots/native-instance.png",
     animations: "disabled",
   });
   assert.deepEqual(errors, []);

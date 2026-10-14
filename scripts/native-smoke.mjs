@@ -28,7 +28,7 @@ assert((await page.locator(".catalog-card").count()) > 0);
 await page.locator(".catalog-card").first().click();
 await page.locator(".markdown").waitFor({ timeout: 60000 });
 await page.screenshot({
-  path: "docs/screenshots/native-project.png",
+  path: ".test-data/screenshots/native-project.png",
   animations: "disabled",
 });
 await page.keyboard.press("Escape");
@@ -84,7 +84,7 @@ await page
   .click();
 await page.locator(".skin-stage canvas").waitFor();
 await page.screenshot({
-  path: "docs/screenshots/native-accounts.png",
+  path: ".test-data/screenshots/native-accounts.png",
   animations: "disabled",
 });
 await page.getByRole("button", { name: "Настройки", exact: true }).click();
@@ -94,7 +94,7 @@ await page.waitForFunction(
 );
 await page.getByRole("button", { name: "Главная", exact: true }).click();
 await page.screenshot({
-  path: "docs/screenshots/native-dark.png",
+  path: ".test-data/screenshots/native-dark.png",
   animations: "disabled",
 });
 await page.getByRole("button", { name: "Переключить тему" }).click();
@@ -102,7 +102,7 @@ await page.waitForFunction(
   () => document.documentElement.dataset.theme === "light",
 );
 await page.screenshot({
-  path: "docs/screenshots/native-light.png",
+  path: ".test-data/screenshots/native-light.png",
   animations: "disabled",
 });
 await rpc("deleteProfile", { id: p.id });

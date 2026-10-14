@@ -106,7 +106,7 @@ try {
     await rows.getByRole("checkbox").check();
   }
   await page.screenshot({
-    path: "docs/screenshots/modrinth-import-native.png",
+    path: ".test-data/screenshots/modrinth-import-native.png",
   });
   await dialog
     .getByRole("button", { name: "Импортировать · 2", exact: true })

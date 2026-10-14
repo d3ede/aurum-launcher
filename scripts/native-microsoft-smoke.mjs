@@ -55,7 +55,7 @@ try {
   }
   assert(!(await labels()).includes(label), "Cancelled Microsoft window remained open");
   assert.equal((await rpc("snapshot")).accounts.length, 0);
-  await page.screenshot({ path: "docs/screenshots/microsoft-window-cancel-native.png", animations: "disabled" });
+  await page.screenshot({ path: ".test-data/screenshots/microsoft-window-cancel-native.png", animations: "disabled" });
   console.log("MICROSOFT_NATIVE_SMOKE_OK: owned window, focus, user close, cancellation, no account mutation");
 } finally {
   if (browser) await browser.close().catch(() => {});

@@ -19,13 +19,9 @@ An independent Windows launcher with a warm light theme and a graphite dark them
 
 ---
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/home-en-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/home-en-light.png">
-  <img src="docs/screenshots/home-en-light.png" alt="Aurum Launcher home: create an instance, import, and browse projects" width="1280">
-</picture>
+<img src="docs/launcher-en.png" alt="Aurum Launcher 0.3.5 — English interface" width="1280">
 
-*Interface preview with demonstration data. [More screenshots](docs/screenshots).*
+*English interface preview with demonstration data.*
 
 ## What Aurum offers
 
@@ -51,7 +47,7 @@ The installer includes the complete launcher and its interface. Minecraft, Java,
 
 The installer does not yet have an **Authenticode publisher certificate**, so Windows may display a SmartScreen warning. Starting with **0.3.3**, Aurum checks GitHub Releases automatically and offers **Update and restart** inside the launcher. Update packages are verified with a separate cryptographic signature before installation. See [launcher updates](docs/UPDATES.md).
 
-**Already using 0.3.1?** Install 0.3.3 once from Releases to enable future in-app updates.
+**Already using 0.3.1?** Install the latest version once from Releases to enable future in-app updates.
 
 Each release includes `SHA256SUMS.txt` alongside the installer. Check a downloaded file in PowerShell:
 

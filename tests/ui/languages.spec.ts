@@ -18,7 +18,7 @@ test("language picker, instant switch, persistence and RTL layout", async ({
   await page.getByRole("button", { name: "Настройки", exact: true }).click();
   await page.getByRole("button", { name: "Выбор языка", exact: true }).click();
   await page.screenshot({
-    path: "docs/screenshots/languages-picker.png",
+    path: ".test-data/screenshots/languages-picker.png",
     animations: "disabled",
   });
   await page
@@ -30,7 +30,7 @@ test("language picker, instant switch, persistence and RTL layout", async ({
     page.getByRole("heading", { name: "Ajustes", exact: true }),
   ).toBeVisible();
   await page.screenshot({
-    path: "docs/screenshots/languages-spanish.png",
+    path: ".test-data/screenshots/languages-spanish.png",
     animations: "disabled",
   });
   await page.reload();
@@ -50,7 +50,7 @@ test("language picker, instant switch, persistence and RTL layout", async ({
   await page.getByRole("button", { name: "العربية", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   await page.screenshot({
-    path: "docs/screenshots/languages-arabic.png",
+    path: ".test-data/screenshots/languages-arabic.png",
     animations: "disabled",
   });
   await page.setViewportSize({ width: 960, height: 680 });

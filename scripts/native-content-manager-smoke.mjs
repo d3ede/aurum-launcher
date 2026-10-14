@@ -78,7 +78,7 @@ try {
       .getByText("Доступно обновлений: 2", { exact: true })
       .waitFor({ timeout: 60000 });
     await page.screenshot({
-      path: `docs/screenshots/content-manager-native-${theme}.png`,
+      path: `.test-data/screenshots/content-manager-native-${theme}.png`,
       animations: "disabled",
     });
   }

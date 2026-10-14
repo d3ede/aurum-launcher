@@ -87,7 +87,7 @@ try {
   await start();
   assert.deepEqual((await rpc("snapshot")).running, [profileId]);
   await page.getByRole("button", { name: "Стоп", exact: true }).waitFor();
-  await page.screenshot({ path: "docs/screenshots/session-restored-native.png" });
+  await page.screenshot({ path: ".test-data/screenshots/session-restored-native.png" });
   await page.getByRole("button", { name: "Стоп", exact: true }).click();
   await page.getByRole("button", { name: "Играть", exact: true }).waitFor();
   assert.deepEqual((await rpc("snapshot")).running, []);

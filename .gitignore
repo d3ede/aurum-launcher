@@ -53,3 +53,6 @@ src/assets/branding/aurum-au-*
 *.exe
 *.msi
 *.msix
+
+# Legacy local QA captures; only the README preview is published
+docs/screenshots/

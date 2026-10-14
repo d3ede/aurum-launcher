@@ -190,14 +190,14 @@ test("import is in the library menu, supports multiple selection and both themes
     dialog.getByRole("button", { name: "Импортировать · 2", exact: true }),
   ).toBeInViewport();
   await page.screenshot({
-    path: "docs/screenshots/modrinth-import-light.png",
+    path: ".test-data/screenshots/modrinth-import-light.png",
     animations: "disabled",
   });
   await page.evaluate(() => {
     document.documentElement.dataset.theme = "dark";
   });
   await page.screenshot({
-    path: "docs/screenshots/modrinth-import-dark.png",
+    path: ".test-data/screenshots/modrinth-import-dark.png",
     animations: "disabled",
   });
   await dialog
@@ -242,7 +242,7 @@ test("running import shows MB and keeps stop accessible above the floating progr
     await expect(page.locator(".operation-panel")).toBeHidden();
     await expect(stop).toBeInViewport();
     await expect(dialog.locator(".import-live")).toBeInViewport();
-    await page.screenshot({ path: `docs/screenshots/modrinth-progress-${theme}.png`, animations: "disabled" });
+    await page.screenshot({ path: `.test-data/screenshots/modrinth-progress-${theme}.png`, animations: "disabled" });
   }
   await stop.click();
   await expect(dialog.getByText("Импорт остановлен · добавлено: 0")).toBeVisible();
@@ -274,7 +274,7 @@ test("filtered select-all keeps other selections, fits minimum window, and retri
     false,
   );
   await page.screenshot({
-    path: "docs/screenshots/modrinth-import-small.png",
+    path: ".test-data/screenshots/modrinth-import-small.png",
     animations: "disabled",
   });
   await dialog

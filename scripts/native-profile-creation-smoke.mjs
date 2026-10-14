@@ -131,7 +131,7 @@ try {
   );
   assert.deepEqual(errors, []);
   await page.screenshot({
-    path: "docs/screenshots/profile-creation-native.png",
+    path: ".test-data/screenshots/profile-creation-native.png",
     animations: "disabled",
   });
   console.log(

@@ -27,5 +27,3 @@ SHA256 of `Aurum Launcher_0.3.0_x64-setup.exe`:
 Checks covered complete key sets and matching placeholders in all 41 dictionaries, system/regional variants, number formatting, and plural forms. Browser E2E checks instant switching RU→ES→UK→AR→ET→JA, persistence on reload, RTL at the minimum window size, and the absence of external requests during language changes. `scripts/native-localization-smoke.mjs` switches **all 41 languages through the real WebView2 interface**, verifies IPC persistence and text direction, then restarts the process and confirms the saved Spanish preference. No JavaScript errors were found.
 
 Game checks and their limitations remain documented in [VERIFICATION.md](VERIFICATION.md), [UI-POLISH.md](UI-POLISH.md), and [MICROSOFT-LOGIN.md](MICROSOFT-LOGIN.md). Changing interface text did not require another Minecraft launch.
-
-![Language selection in the desktop app](screenshots/languages-native.png)

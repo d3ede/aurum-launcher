@@ -7,7 +7,3 @@ A green **Import** button was added to the home screen, to the left of **New ins
 The built interface was checked with four long descriptions, exactly 42 px for two lines, no overlap with download counts, both themes, button placement/colors, and the Modrinth/folder dialogs. There is no horizontal overflow at the minimum width of 960 px. The existing three Modrinth import scenarios passed.
 
 Real WebView2 and Rust IPC checks also passed: four projects from Modrinth, two complete description lines, correct button placement, and both dialogs opening. No JavaScript errors occurred. After verification, the normal launcher was opened with user data and its window centered.
-
-![Corrected cards and import button in the dark theme](screenshots/home-polish-dark.png)
-
-![Project cards in the desktop app](screenshots/home-descriptions-native.png)

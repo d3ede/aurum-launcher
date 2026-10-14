@@ -238,13 +238,13 @@ test("dedicated wardrobe has all defaults, still manual view, animations and bot
     element.scrollTop = 0;
   });
   await page.screenshot({
-    path: "docs/screenshots/skins-light.png",
+    path: ".test-data/screenshots/skins-light.png",
     animations: "disabled",
   });
   await page.getByRole("button", { name: "Переключить тему" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.screenshot({
-    path: "docs/screenshots/skins-dark.png",
+    path: ".test-data/screenshots/skins-dark.png",
     animations: "disabled",
   });
   expect(errors).toEqual([]);
@@ -268,7 +268,7 @@ test("multiple saved PNG skins, model and cape persist, apply switches and delet
     dialog.getByRole("button", { name: "Плащ Мой плащ", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await page.screenshot({
-    path: "docs/screenshots/skin-editor-light.png",
+    path: ".test-data/screenshots/skin-editor-light.png",
     animations: "disabled",
   });
   await dialog
@@ -333,7 +333,7 @@ test("owned Microsoft capes are selectable, local capes stay previews, small edi
     false,
   );
   await page.screenshot({
-    path: "docs/screenshots/skin-editor-dark.png",
+    path: ".test-data/screenshots/skin-editor-dark.png",
     animations: "disabled",
   });
   await dialog

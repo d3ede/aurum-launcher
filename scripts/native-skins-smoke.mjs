@@ -77,7 +77,7 @@ try {
   await editor.waitFor({ state: "hidden" });
   await page.locator(".wardrobe-tile img[data-thumbnail-ready]").first().waitFor();
   await page.locator(".content-scroll").evaluate(e => { e.scrollTop = 0; });
-  await page.screenshot({ path: "docs/screenshots/skins-native.png" });
+  await page.screenshot({ path: ".test-data/screenshots/skins-native.png" });
   assert.equal(JSON.parse(readFileSync(join(dataRoot, "skin-library.json"), "utf8")).skins.length, 2);
   await stop();
   page = await start();

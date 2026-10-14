@@ -37,8 +37,8 @@ async function fixture(
               if (w.updateMode === "current") return null;
               return {
                 rid: 101,
-                currentVersion: "0.3.3",
-                version: "0.3.4",
+                currentVersion: "0.3.5",
+                version: "0.3.6",
                 rawJson: {},
                 body: "Update fixture",
               };
@@ -107,7 +107,7 @@ test("checks, postpones, and downloads before restarting", async ({ page }) => {
     (window as any).releaseUpdateCheck();
   });
   const banner = page.getByRole("region", { name: "Launcher updates" });
-  await expect(banner).toContainText("Aurum 0.3.4 is available");
+  await expect(banner).toContainText("Aurum 0.3.6 is available");
   await banner.getByRole("button", { name: "Later" }).click();
   await expect(banner).toHaveCount(0);
   await page.getByRole("button", { name: "Update and restart" }).click();
@@ -182,7 +182,7 @@ test("running games block installation and the banner fits both themes at minimu
     ),
   ).toBe(false);
   await page.screenshot({
-    path: "docs/screenshots/updater-dark.png",
+    path: ".test-data/screenshots/updater-dark.png",
     animations: "disabled",
   });
   await page.getByRole("button", { name: "Toggle theme" }).click();
@@ -192,7 +192,7 @@ test("running games block installation and the banner fits both themes at minimu
     ),
   ).toBe(false);
   await page.screenshot({
-    path: "docs/screenshots/updater-light.png",
+    path: ".test-data/screenshots/updater-light.png",
     animations: "disabled",
   });
 });

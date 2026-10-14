@@ -227,7 +227,7 @@ for (const theme of ["light", "dark"]) {
       await option.evaluate((e) => getComputedStyle(e).color),
     );
     await page.screenshot({
-      path: `docs/screenshots/modrinth-logo-${theme}.png`,
+      path: `.test-data/screenshots/modrinth-logo-${theme}.png`,
       animations: "disabled",
     });
   });

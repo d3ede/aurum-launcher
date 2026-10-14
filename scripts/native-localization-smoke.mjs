@@ -49,7 +49,7 @@ try {
   await page.locator('.language-current').click();
   const names=await page.locator('.language-grid button').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('aria-label')));
   assert.equal(names.length,41);
-  await page.screenshot({path:'docs/screenshots/languages-native.png',animations:'disabled'});
+  await page.screenshot({path:'.test-data/screenshots/languages-native.png',animations:'disabled'});
   await page.keyboard.press('Escape');
   for(const name of names) {
     await choose(page,name);

@@ -17,7 +17,7 @@ Production TypeScript/Vite build, Vitest (3 tests), and Playwright (4 checks). T
 
 Real Tauri WebView2 checks cover instance creation, selecting Minecraft in the new dropdown, installing and launching the game, compatible filters, category/sort selection, and adding Sodium. Centering and existing user data are preserved.
 
-Screenshots: [Steve](screenshots/steve.png), [Alex](screenshots/alex.png), [light dropdown](screenshots/dropdown-light.png), [dark dropdown](screenshots/dropdown-dark.png), and [desktop catalog](screenshots/native-catalog.png).
+QA screenshots are generated locally under `.test-data/screenshots/` and are not tracked.
 
 Installer: `target/release/bundle/nsis/Aurum Launcher_0.2.1_x64-setup.exe`.
 

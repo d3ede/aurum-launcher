@@ -30,7 +30,7 @@ The `app.auren.launcher` system identifier and Credential Manager service are in
 
 Commands: `scripts/native-redesign.mjs`, `scripts/native-smoke.mjs`, and `scripts/native-content-smoke.mjs`. CDP is enabled only for the test instance on local port 9227. Normal launch uses the embedded interface and the user's data directory without CDP.
 
-Screenshots: [home](screenshots/native-light.png), [dark theme](screenshots/native-dark.png), [catalog](screenshots/native-catalog.png), and [instance screen](screenshots/native-instance.png). Test account and instance names belong only to isolated verification.
+QA screenshots are generated locally under `.test-data/screenshots/` and are not tracked.
 
 Earlier checks of all five loaders and Microsoft/CurseForge limitations are in [VERIFICATION.md](VERIFICATION.md). Complete Microsoft sign-in and CurseForge with a real API key were not confirmed in this update. The native file picker is connected to icon normalization; automated checks cover normalization and IPC persistence, not control of the system dialog.
 

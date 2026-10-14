@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { APP_VERSION } from "../lib/version";
 import {
   ArrowRight,
   Box,
@@ -14,12 +15,13 @@ import { Modal } from "./ui";
 
 // Published release plus features available in this build; dates only for published releases.
 const release = {
-  version: "0.3.3",
+  version: APP_VERSION,
   highlights: [
     {
-      icon: Settings2,
-      title: "Новый установщик",
-      text: "Локальная сборка: папка, ярлыки и язык Windows.",
+      icon: Megaphone,
+      title: "Aurum 0.3.5",
+      text: "Обновлены главная, каталог и установщик.",
+      date: "14 октября 2026",
     },
     {
       icon: Box,
@@ -31,20 +33,9 @@ const release = {
       title: "Виды каталога",
       text: "Список и плитки, карусель и увеличение изображений.",
     },
-    {
-      icon: Megaphone,
-      title: "Aurum 0.3.3",
-      text: "Обновление лаунчера без переустановки вручную.",
-      date: "14 октября 2026",
-    },
-    {
-      icon: Box,
-      title: "Импорт сборок",
-      text: "Профили, моды и миры из Modrinth.",
-    },
   ],
   details: [
-    "В локальном установщике: компактное окно без системной шапки, выбор папки и два отдельных ярлыка.",
+    "В установщике: компактное окно без системной шапки, выбор папки и два отдельных ярлыка.",
     "Язык установщика выбирается по интерфейсу Windows; для неподдерживаемых языков используется английский.",
     "В этой сборке: компактный список модов, фильтры, сортировка и обновление всех совместимых проектов.",
     "В каталоге можно переключаться между списком и адаптивными плитками.",

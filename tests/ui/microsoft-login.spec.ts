@@ -124,7 +124,7 @@ for (const theme of ["light", "dark"]) {
   test(`sign-in layout in ${theme} theme fits the minimum desktop size`, async ({ page }) => {
     await page.setViewportSize({ width: 960, height: 680 });
     await fixture(page, "waiting", theme);
-    await page.screenshot({ path: `docs/screenshots/microsoft-accounts-${theme}.png`, animations: "disabled" });
+    await page.screenshot({ path: `.test-data/screenshots/microsoft-accounts-${theme}.png`, animations: "disabled" });
     const dialog = await start(page);
     await expect(dialog.getByText("Ждём подтверждения в окне Microsoft")).toBeVisible();
     await expect(dialog.locator(".terrain-pattern path")).toHaveCount(12);
@@ -134,9 +134,9 @@ for (const theme of ["light", "dark"]) {
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(960);
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(680);
     expect(await dialog.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
-    await page.screenshot({ path: `docs/screenshots/microsoft-login-${theme}.png`, animations: "disabled" });
+    await page.screenshot({ path: `.test-data/screenshots/microsoft-login-${theme}.png`, animations: "disabled" });
     await page.evaluate(() => (window as any).finishLogin());
     await expect(page.getByRole("dialog", { name: "Вы в игре" })).toBeVisible();
-    await page.screenshot({ path: `docs/screenshots/microsoft-success-${theme}.png`, animations: "disabled" });
+    await page.screenshot({ path: `.test-data/screenshots/microsoft-success-${theme}.png`, animations: "disabled" });
   });
 }

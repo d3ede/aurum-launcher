@@ -8,13 +8,13 @@ The instance content view uses compact project/version/action columns, 52 px ico
 
 Verification: production frontend build, 13 Vitest checks, 54 regular Rust tests (three existing JDK-dependent process tests remain ignored), Clippy, and all 43 UI scenarios. UI checks use an isolated local port when the standard development port is occupied. New tests cover filtering/sorting, project pages, separate versions, larger action targets, partial/offline update errors, running-game restrictions, both themes, and minimum window size. Rust tests cover legacy state compatibility, bounded archive metadata/images, hash-bound identity, compatible/newer releases, concurrent removal/toggling, and cancellation inside a registered bulk operation.
 
-The `content_manager_fixture` example downloaded older actual Sodium and Iris files into `.test-data/`, including a disabled Sodium file, and verified recognition and available updates. `scripts/native-content-manager-smoke.mjs` then used real Tauri IPC and Modrinth downloads to open the project page, update both projects, preserve the disabled state, toggle Sodium, and move the local fixture to trash. No account was added and no game was launched. Native screenshots are `docs/screenshots/content-manager-native-light.png` and `content-manager-native-dark.png`. Live CurseForge update/download integration was not exercised; its existing catalog adapter remains subject to API-key availability.
+The `content_manager_fixture` example downloaded older actual Sodium and Iris files into `.test-data/`, including a disabled Sodium file, and verified recognition and available updates. `scripts/native-content-manager-smoke.mjs` then used real Tauri IPC and Modrinth downloads to open the project page, update both projects, preserve the disabled state, toggle Sodium, and move the local fixture to trash. No account was added and no game was launched. Native screenshots are `.test-data/screenshots/content-manager-native-light.png` and `content-manager-native-dark.png`. Live CurseForge update/download integration was not exercised; its existing catalog adapter remains subject to API-key availability.
 
 ## Home layout refresh — October 14, 2026
 
 The home page now has a main content column and a compact account/release sidebar. Navigation and quick launch include locally drawn SVG line-and-pixel patterns. The quick-launch card shows the real instance status and opens the instance's settings tab directly. The sidebar sits 14 px from the right edge, with a 16 px column gap and compact card padding. The news header contains a single “Show all” action; rows cover the published 0.3.3 updater release, instance import, and the skin library. Only the published release has a date. Its details are based on `docs/releases/v0.3.3.md` and link to update settings. No generated illustrations or additional landscape images were added.
 
-Both themes were inspected at 1280×820. At 960×680 the right column moves below the main content without horizontal overflow. New strings have Russian and English dictionaries; other locales retain the existing English fallback. Screenshots: `screenshots/home-light.png`, `screenshots/home-dark.png`, and `screenshots/home-small.png`.
+Both themes were inspected at 1280×820. At 960×680 the right column moves below the main content without horizontal overflow. New strings have Russian and English dictionaries; other locales retain the existing English fallback. Screenshots: `.test-data/screenshots/home-light.png`, `.test-data/screenshots/home-dark.png`, and `.test-data/screenshots/home-small.png`.
 
 Production TypeScript/Vite build and all 11 Vitest tests passed. Both new home UI tests and the four general interface tests passed, including launch/stop, account navigation, direct settings navigation, release-dialog keyboard dismissal and the minimum window size. The full UI run passed 35 tests; one profile-icon navigation test timed out during concurrent workspace updates. Both profile-icon tests passed on an isolated rerun without changes to the icon editor. The local Windows preview is built separately with `scripts/desktop.ps1 -Mode build -NoBundle -NoSign`; this is not a published updater release.
 
@@ -25,7 +25,7 @@ After Aurum closes and reopens, game status is restored from real Java processes
 - 46 regular Rust tests passed, including a check that a mismatched creation time never terminates a process. Workspace/all-target Clippy with `-D warnings` passed.
 - Three Java tests were explicitly run with `AURUM_PROCESS_TEST_JAVA=C:\Program Files\Java\jdk-25.0.2\bin\java.exe`: restoration after a new Engine is created and targeted stopping without killing unrelated Java; removal of exited games without stale status after reopening; and two processes for one instance. They are normally ignored because they require a JDK. The explicit command `cargo test -p auren-core --test process_recovery -- --ignored` passed.
 - Production TypeScript/Vite build and four main-interface Playwright tests passed.
-- `scripts/native-session-smoke.mjs` passed using real WebView2/IPC: launching an owned Java fixture through normal game launch, closing through **Close Aurum**, preserving the game process, reopening with **Running**/**Stop**, stopping through the UI, then a second launch/close/reopen cycle and automatic status removal after external termination of the test process. No real Minecraft instance was launched in this test. Result: `.test-data/native-session-1791932698089/result.json`; screenshot: `docs/screenshots/session-restored-native.png`. User games were not stopped.
+- `scripts/native-session-smoke.mjs` passed using real WebView2/IPC: launching an owned Java fixture through normal game launch, closing through **Close Aurum**, preserving the game process, reopening with **Running**/**Stop**, stopping through the UI, then a second launch/close/reopen cycle and automatic status removal after external termination of the test process. No real Minecraft instance was launched in this test. Result: `.test-data/native-session-1791932698089/result.json`; screenshot: `.test-data/screenshots/session-restored-native.png`. User games were not stopped.
 
 The corrected Aurum was opened with normal data. Four Java processes present before changing the window retained their PIDs and start times. Installer: `target/skins-build/release/bundle/nsis/Aurum Launcher_0.3.1_x64-setup.exe`, 6,462,105 bytes. SHA256: `85B015355B4919024916EEF990857A0F04EDEE2260D3490329237C20F02DBF60`.
 
@@ -37,7 +37,7 @@ Local copying uses one blocking worker, a reusable 1 MiB buffer, and progress up
 
 For the same synthetic instance (1,000 JSON configurations and a 128 MiB file), import time fell from 4.527 to 0.373 seconds, and progress events from 1,520 to 5. Measurements used a local Windows temporary directory with file caching; they do not guarantee the same speed on a user's drive or for a 15,740 MB instance.
 
-12 Rust import tests and workspace/all-target Clippy with `-D warnings` passed. Four import Playwright tests passed. Real WebView2/Rust IPC also copied two isolated instances while preserving originals: `.test-data/native-modrinth-1791930263983/result.json`. The user's import was not interrupted. Screenshots: `docs/screenshots/modrinth-progress-light.png` and `modrinth-progress-dark.png`.
+12 Rust import tests and workspace/all-target Clippy with `-D warnings` passed. Four import Playwright tests passed. Real WebView2/Rust IPC also copied two isolated instances while preserving originals: `.test-data/native-modrinth-1791930263983/result.json`. The user's import was not interrupted. Screenshots: `.test-data/screenshots/modrinth-progress-light.png` and `modrinth-progress-dark.png`.
 
 Installer: `target/skins-build/release/bundle/nsis/Aurum Launcher_0.3.1_x64-setup.exe`, 6,435,544 bytes. SHA256: `77D766D06ED2A9D8DF0394DA02E2895C4435C5F28B580EB97B8E5393B85E7E53`. The updated executable was opened with normal user data only after confirming that the import had finished or stopped.
 
@@ -50,7 +50,7 @@ On October 14, 2026, a dedicated **Skins & capes** tab added saved appearances, 
 - Workspace/all-target Clippy with `-D warnings` passed.
 - All 17 UI Playwright tests passed. The three skin checks passed again after the final editor-size adjustment. Coverage included adding multiple skins, changing arms/capes, applying, reloading, deleting, both themes, and 960×680 layout. In still mode, frames 750 ms apart matched; dragging changed the view.
 - `scripts/native-skins-smoke.mjs` passed with real WebView2 and Rust IPC without mocks: saving two skins and a local cape, applying a slim-arm appearance, editing its name, verifying PNG/JSON on disk, restarting, and applying another wide-arm appearance. Result: `.test-data/native-skins-1791928140111/result.json`. The test used a separate application identifier and data directory; the user's launcher was not stopped.
-- Screenshots: `docs/screenshots/skins-light.png`, `skins-dark.png`, `skins-native.png`, `skin-editor-light.png`, and `skin-editor-dark.png`.
+- Screenshots: `.test-data/screenshots/skins-light.png`, `skins-dark.png`, `skins-native.png`, `skin-editor-light.png`, and `skin-editor-dark.png`.
 
 Selecting Microsoft-owned capes and rejecting arbitrary local capes for application were checked through UI/mocks. Real authenticated skin/cape mutations in Minecraft Services were not performed. Offline skins and local capes remain launcher previews.
 
@@ -115,7 +115,7 @@ Checks exposed and helped fix loss of Forge client/universal classifiers during 
 - Deleting the test instance.
 - No JavaScript errors in the checked scenario.
 
-Results are written to `.test-data/native-smoke-result.json`. `screenshots/native-*.png` were captured from the actual window using test profiles, not prefilled user data. `screenshots/light.png`, `dark.png`, and `settings.png` show browser preview without a native backend.
+Results are written to `.test-data/native-smoke-result.json`. `.test-data/screenshots/native-*.png` were captured from the actual window using test profiles, not prefilled user data. `.test-data/screenshots/light.png`, `dark.png`, and `settings.png` show browser preview without a native backend.
 
 `scripts/native-content-smoke.mjs` also passed on the release app: installing real Iris 1.8.8 with required Sodium in a clean instance, updating to the latest compatible version, disabling/enabling, removal, and rejecting a Fabric mod in Vanilla. Files were genuinely downloaded and SHA1-verified. This confirms content management; gameplay with Iris was not tested. Result: `.test-data/native-content-result.json`.
 
@@ -156,7 +156,7 @@ Run real smoke tests using `.test-data/live` sequentially: the standalone core e
 
 Device Code Flow was replaced with Authorization Code and PKCE, using an automatic localhost return from the system browser. The owner's Client ID was embedded in the build; player configuration fields and manual code entry were removed. The interface shares the home pattern and displays phases, cancellation, errors, retry, and successful connection.
 
-Checks passed: 4 OAuth tests (the independent RFC 7636 PKCE vector, state/path/ambiguous-parameter validation, a real local HTTP callback rejecting unrelated sessions, cancellation and timeout), 19 existing core tests, 9 import tests, 3 frontend tests, `cargo check --workspace`, and `clippy --workspace --all-targets -- -D warnings`. Six Playwright tests cover success with automatic account selection, denial/cancellation, a fresh retry session, browser errors, no Client ID in settings, and the full dialog at 960×680 in both themes. Screenshots: `docs/screenshots/microsoft-*.png`.
+Checks passed: 4 OAuth tests (the independent RFC 7636 PKCE vector, state/path/ambiguous-parameter validation, a real local HTTP callback rejecting unrelated sessions, cancellation and timeout), 19 existing core tests, 9 import tests, 3 frontend tests, `cargo check --workspace`, and `clippy --workspace --all-targets -- -D warnings`. Six Playwright tests cover success with automatic account selection, denial/cancellation, a fresh retry session, browser errors, no Client ID in settings, and the full dialog at 960×680 in both themes. Screenshots: `.test-data/screenshots/microsoft-*.png`.
 
 Automated checks do not confirm real Microsoft sign-in or the registered application's Minecraft Services access. Entra needs a native `http://localhost` redirect, and an owner of Minecraft Java needs to sign in. See [MICROSOFT-LOGIN.md](MICROSOFT-LOGIN.md).
 
@@ -206,7 +206,6 @@ The release workflow builds version tags, signs installers using a repository Ac
 
 Windows installer execution and clean-machine installation/removal remain separate checks. Updater signatures do not provide an Authenticode publisher certificate. Version 0.3.1 requires a one-time manual installation of the public 0.3.3 release to enable future updates.
 
-![Updater banner in a diagnostic desktop instance](screenshots/updater-native.png)
 
 ## Public updater release 0.3.3 — October 14, 2026
 

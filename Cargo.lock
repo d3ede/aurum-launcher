@@ -246,7 +246,7 @@ dependencies = [
 
 [[package]]
 name = "aurum"
-version = "0.3.3"
+version = "0.3.5"
 dependencies = [
  "anyhow",
  "auren-core",

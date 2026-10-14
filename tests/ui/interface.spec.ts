@@ -14,14 +14,14 @@ test("honest browser state, navigation and persistent appearance", async ({
   await expect(page.getByRole("heading", { name: "Главная" })).toBeVisible();
   await expect(page.getByText("Создайте первую сборку")).toBeVisible();
   await page.screenshot({
-    path: "docs/screenshots/light.png",
+    path: ".test-data/screenshots/light.png",
     fullPage: true,
     animations: "disabled",
   });
   await page.getByRole("button", { name: "Переключить тему" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.screenshot({
-    path: "docs/screenshots/dark.png",
+    path: ".test-data/screenshots/dark.png",
     fullPage: true,
     animations: "disabled",
   });
@@ -56,7 +56,7 @@ test("honest browser state, navigation and persistent appearance", async ({
   await page.getByRole("button", { name: "Тёплый свет" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.screenshot({
-    path: "docs/screenshots/settings.png",
+    path: ".test-data/screenshots/settings.png",
     fullPage: true,
     animations: "disabled",
   });
@@ -122,7 +122,7 @@ test("styled menus support keyboard, dismissal and nested dialogs", async ({
     page.getByRole("option", { name: "По загрузкам", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
   await page.screenshot({
-    path: "docs/screenshots/dropdown-light.png",
+    path: ".test-data/screenshots/dropdown-light.png",
     animations: "disabled",
   });
   await page.keyboard.press("End");
@@ -143,7 +143,7 @@ test("styled menus support keyboard, dismissal and nested dialogs", async ({
   await page.getByRole("button", { name: "Переключить тему" }).click();
   await sort.click();
   await page.screenshot({
-    path: "docs/screenshots/dropdown-dark.png",
+    path: ".test-data/screenshots/dropdown-dark.png",
     animations: "disabled",
   });
   await page.keyboard.press("Escape");
@@ -179,7 +179,7 @@ test("styled menus support keyboard, dismissal and nested dialogs", async ({
   await page.locator('.skin-stage canvas[data-ready="true"]').waitFor();
   await page.getByRole("button", { name: "Сбросить ракурс" }).click();
   await page.screenshot({
-    path: "docs/screenshots/steve.png",
+    path: ".test-data/screenshots/steve.png",
     animations: "disabled",
   });
   await page
@@ -189,7 +189,7 @@ test("styled menus support keyboard, dismissal and nested dialogs", async ({
     .locator('canvas[aria-label="Предпросмотр скина"][data-ready="true"]')
     .waitFor();
   await page.screenshot({
-    path: "docs/screenshots/alex.png",
+    path: ".test-data/screenshots/alex.png",
     animations: "disabled",
   });
   expect(errors).toEqual([]);

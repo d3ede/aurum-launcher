@@ -138,12 +138,12 @@ test("home has account and factual release panels, working actions and both them
 }) => {
   await fixture(page);
   await expect(page.locator(".home-account-card")).toContainText("CozyPlayer");
-  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.3.3");
+  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.3.5");
   await expect(page.locator(".home-news-card")).toContainText("Управление модами");
   await expect(page.locator(".home-sidebar img")).toHaveCount(0);
   await expect(page.locator(".sidebar-pattern")).toHaveCount(1);
   await page.screenshot({
-    path: "docs/screenshots/home-light.png",
+    path: ".test-data/screenshots/home-light.png",
     animations: "disabled",
   });
   await page
@@ -151,7 +151,7 @@ test("home has account and factual release panels, working actions and both them
     .click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.screenshot({
-    path: "docs/screenshots/home-dark.png",
+    path: ".test-data/screenshots/home-dark.png",
     animations: "disabled",
   });
   await page
@@ -171,7 +171,7 @@ test("home has account and factual release panels, working actions and both them
   await page
     .getByRole("button", { name: "Все изменения", exact: true })
     .click();
-  const notes = page.getByRole("dialog", { name: "Изменения Aurum 0.3.3" });
+  const notes = page.getByRole("dialog", { name: "Изменения Aurum 0.3.5" });
   await expect(notes).toContainText(
     "Перед установкой проверяется подпись обновления.",
   );
@@ -233,11 +233,11 @@ test("home adapts to minimum window size and translates the new panels", async (
     page.getByRole("heading", { name: "What's new", exact: true }),
   ).toBeInViewport();
   await page.screenshot({
-    path: "docs/screenshots/home-small.png",
+    path: ".test-data/screenshots/home-small.png",
     animations: "disabled",
   });
   await page.getByRole("button", { name: "All changes", exact: true }).click();
-  const notes = page.getByRole("dialog", { name: "Aurum 0.3.3 changes" });
+  const notes = page.getByRole("dialog", { name: "Aurum 0.3.5 changes" });
   await expect(notes).toContainText(
     "The update signature is verified before installation.",
   );

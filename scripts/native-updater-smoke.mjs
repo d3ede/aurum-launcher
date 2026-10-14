@@ -170,7 +170,7 @@ try {
     "Production frontend must check automatically on startup",
   );
   await page.screenshot({
-    path: "docs/screenshots/updater-native.png",
+    path: ".test-data/screenshots/updater-native.png",
     animations: "disabled",
   });
   const result = {
