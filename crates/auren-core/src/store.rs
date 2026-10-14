@@ -259,14 +259,32 @@ fn encode_profile_icon(image: &image::DynamicImage) -> Result<String> {
     ))
 }
 pub fn validate_profile_icon_style(value: &ProfileIconStyle) -> Result<ProfileIconStyle> {
-    if !matches!(value.symbol.as_str(), "box" | "trees" | "mountain" | "compass" |
-        "pickaxe" | "sword" | "flame" | "snowflake" | "moon" | "sun" |
-        "star" | "heart" | "gem" | "ghost" | "rocket" | "gamepad") {
+    if !matches!(
+        value.symbol.as_str(),
+        "box"
+            | "trees"
+            | "mountain"
+            | "compass"
+            | "pickaxe"
+            | "sword"
+            | "flame"
+            | "snowflake"
+            | "moon"
+            | "sun"
+            | "star"
+            | "heart"
+            | "gem"
+            | "ghost"
+            | "rocket"
+            | "gamepad"
+    ) {
         bail!("Неизвестный символ значка")
     }
     for color in [&value.color, &value.background] {
-        if color.len() != 7 || !color.starts_with('#') ||
-            !color.as_bytes()[1..].iter().all(u8::is_ascii_hexdigit) {
+        if color.len() != 7
+            || !color.starts_with('#')
+            || !color.as_bytes()[1..].iter().all(u8::is_ascii_hexdigit)
+        {
             bail!("Цвет значка должен быть в формате #RRGGBB")
         }
     }

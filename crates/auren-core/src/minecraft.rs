@@ -919,7 +919,9 @@ impl Engine {
         Ok(())
     }
     pub async fn stop(&self, id: &str) -> Result<()> {
-        if self.stop_recovered(id).await? { return Ok(()) }
+        if self.stop_recovered(id).await? {
+            return Ok(());
+        }
         self.running
             .lock()
             .await

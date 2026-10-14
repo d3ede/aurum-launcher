@@ -130,29 +130,53 @@ async fn bulk_configs_and_large_files_are_copied_completely() {
     let source_root = root.path().join("Modrinth");
     let source = legacy(&source_root, "bulk", "Bulk", "vanilla");
     for index in 0..1000 {
-        write(&source, &format!("config/bulk/{index}.json"), b"{\"enabled\":true}");
+        write(
+            &source,
+            &format!("config/bulk/{index}.json"),
+            b"{\"enabled\":true}",
+        );
     }
     let large = vec![0x5a; 128 * 1024 * 1024];
     write(&source, "config/axiom/blueprints/example.bin", &large);
     let events = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let counter = events.clone();
     let mut copy_task = task(Arc::new(AtomicBool::new(false)));
-    copy_task.emit = Arc::new(move |_| { counter.fetch_add(1, Ordering::Relaxed); });
-    let engine = Engine::new(root.path().join("Aurum"), |_| {}).await.unwrap();
-    let selected = scan(std::slice::from_ref(&source_root)).profiles[0].id.clone();
+    copy_task.emit = Arc::new(move |_| {
+        counter.fetch_add(1, Ordering::Relaxed);
+    });
+    let engine = Engine::new(root.path().join("Aurum"), |_| {})
+        .await
+        .unwrap();
+    let selected = scan(std::slice::from_ref(&source_root)).profiles[0]
+        .id
+        .clone();
     let started = std::time::Instant::now();
-    let result = engine.import_modrinth(
-        vec![source_root], vec![selected], &copy_task,
-    ).await.unwrap();
-    println!("bulk import: {:?}, {} progress events", started.elapsed(), events.load(Ordering::Relaxed));
+    let result = engine
+        .import_modrinth(vec![source_root], vec![selected], &copy_task)
+        .await
+        .unwrap();
+    println!(
+        "bulk import: {:?}, {} progress events",
+        started.elapsed(),
+        events.load(Ordering::Relaxed)
+    );
     assert!(result.failed.is_empty(), "{:?}", result.failed);
     assert_eq!(result.imported.len(), 1);
     let dest = engine.instance(&result.imported[0].id).unwrap();
     for index in 0..1000 {
-        assert_eq!(std::fs::read(dest.join(format!("config/bulk/{index}.json"))).unwrap(), b"{\"enabled\":true}");
+        assert_eq!(
+            std::fs::read(dest.join(format!("config/bulk/{index}.json"))).unwrap(),
+            b"{\"enabled\":true}"
+        );
     }
-    assert_eq!(std::fs::read(dest.join("config/axiom/blueprints/example.bin")).unwrap(), large);
-    assert_eq!(std::fs::read(source.join("config/axiom/blueprints/example.bin")).unwrap(), large);
+    assert_eq!(
+        std::fs::read(dest.join("config/axiom/blueprints/example.bin")).unwrap(),
+        large
+    );
+    assert_eq!(
+        std::fs::read(source.join("config/axiom/blueprints/example.bin")).unwrap(),
+        large
+    );
 }
 
 #[tokio::test]
@@ -162,18 +186,32 @@ async fn cancellation_during_file_copy_discards_staging_and_keeps_original() {
     let source = legacy(&source_root, "cancel", "Cancel", "vanilla");
     let bytes = vec![0x37; 8 * 1024 * 1024];
     write(&source, "mods/large.jar", &bytes);
-    let selected = scan(std::slice::from_ref(&source_root)).profiles[0].id.clone();
+    let selected = scan(std::slice::from_ref(&source_root)).profiles[0]
+        .id
+        .clone();
     let cancel = Arc::new(AtomicBool::new(false));
     let mut copy_task = task(cancel.clone());
     copy_task.emit = Arc::new(move |event| {
-        if event.done > 0 { cancel.store(true, Ordering::Relaxed); }
+        if event.done > 0 {
+            cancel.store(true, Ordering::Relaxed);
+        }
     });
-    let engine = Engine::new(root.path().join("Aurum"), |_| {}).await.unwrap();
-    let result = engine.import_modrinth(vec![source_root], vec![selected], &copy_task).await.unwrap();
+    let engine = Engine::new(root.path().join("Aurum"), |_| {})
+        .await
+        .unwrap();
+    let result = engine
+        .import_modrinth(vec![source_root], vec![selected], &copy_task)
+        .await
+        .unwrap();
     assert!(result.cancelled);
     assert!(result.imported.is_empty());
     assert!(engine.snapshot().await.database.profiles.is_empty());
-    assert_eq!(std::fs::read_dir(engine.root.join("staging")).unwrap().count(), 0);
+    assert_eq!(
+        std::fs::read_dir(engine.root.join("staging"))
+            .unwrap()
+            .count(),
+        0
+    );
     assert_eq!(std::fs::read(source.join("mods/large.jar")).unwrap(), bytes);
 }
 
@@ -182,7 +220,9 @@ async fn source_writes_during_copy_are_rejected_before_publishing() {
     let root = tempfile::tempdir().unwrap();
     let source_root = root.path().join("Modrinth");
     let source = legacy(&source_root, "changed", "Changed", "vanilla");
-    let selected = scan(std::slice::from_ref(&source_root)).profiles[0].id.clone();
+    let selected = scan(std::slice::from_ref(&source_root)).profiles[0]
+        .id
+        .clone();
     let changed_file = source.join("options.txt");
     let changed = Arc::new(AtomicBool::new(false));
     let mut copy_task = task(Arc::new(AtomicBool::new(false)));
@@ -191,13 +231,23 @@ async fn source_writes_during_copy_are_rejected_before_publishing() {
             std::fs::write(&changed_file, b"source changed while copying").unwrap();
         }
     });
-    let engine = Engine::new(root.path().join("Aurum"), |_| {}).await.unwrap();
-    let result = engine.import_modrinth(vec![source_root], vec![selected], &copy_task).await.unwrap();
+    let engine = Engine::new(root.path().join("Aurum"), |_| {})
+        .await
+        .unwrap();
+    let result = engine
+        .import_modrinth(vec![source_root], vec![selected], &copy_task)
+        .await
+        .unwrap();
     assert!(result.imported.is_empty());
     assert_eq!(result.failed.len(), 1);
     assert!(result.failed[0].message.contains("изменились"));
     assert!(engine.snapshot().await.database.profiles.is_empty());
-    assert_eq!(std::fs::read_dir(engine.root.join("staging")).unwrap().count(), 0);
+    assert_eq!(
+        std::fs::read_dir(engine.root.join("staging"))
+            .unwrap()
+            .count(),
+        0
+    );
 }
 
 #[tokio::test]
