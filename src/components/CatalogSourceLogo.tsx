@@ -1,31 +1,38 @@
 import modrinthLogo from "../assets/branding/modrinth.svg";
 import curseforgeLogo from "../assets/branding/curseforge.svg";
+import atlauncherLogo from "../assets/branding/atlauncher.svg";
+import ftbLogo from "../assets/branding/ftb.svg";
+import technicLogo from "../assets/branding/technic.png";
+
+const logos: Record<string, string> = {
+  modrinth: modrinthLogo,
+  curseforge: curseforgeLogo,
+  atlauncher: atlauncherLogo,
+  ftb: ftbLogo,
+  technic: technicLogo,
+};
 
 export function CatalogSourceLogo({
   source,
-  size = 22,
+  size = 24,
 }: {
   source: string;
   size?: number;
 }) {
-  if (["atlauncher", "ftb", "technic"].includes(source))
-    return (
-      <span
-        className={`catalog-source-logo catalog-source-monogram ${source}`}
-        style={{ width: size, height: size }}
-        aria-hidden="true"
-      >
-        {source === "atlauncher" ? "AT" : source === "ftb" ? "FTB" : "T"}
-      </span>
-    );
   return (
-    <img
+    <span
       className="catalog-source-logo"
-      src={source === "curseforge" ? curseforgeLogo : modrinthLogo}
-      width={size}
-      height={size}
-      alt=""
+      data-source={source}
+      style={{ width: size, height: size }}
       aria-hidden="true"
-    />
+    >
+      <img
+        className="catalog-source-glyph"
+        src={logos[source] || modrinthLogo}
+        width={size}
+        height={size}
+        alt=""
+      />
+    </span>
   );
 }

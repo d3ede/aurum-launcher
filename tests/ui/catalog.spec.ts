@@ -285,6 +285,77 @@ test("source has original logos, animated options and localized coming-soon spac
       .getByRole("option", { name: "CurseForge", exact: true })
       .locator("img"),
   ).toBeVisible();
+  for (const name of ["ATLauncher", "FTB", "Technic"]) {
+    const option = page.getByRole("option", { name, exact: true });
+    await expect(option.locator(".catalog-source-logo img")).toBeVisible();
+    await expect
+      .poll(() =>
+        option
+          .locator("img")
+          .evaluate(
+            (image: HTMLImageElement) =>
+              image.complete && image.naturalWidth > 0,
+          ),
+      )
+      .toBe(true);
+    await expect(option.locator(".catalog-source-monogram")).toHaveCount(0);
+  }
+  for (const theme of ["light", "dark"]) {
+    if (theme === "dark") {
+      await page.keyboard.press("Escape");
+      await page.getByRole("button", { name: "Переключить тему" }).click();
+      await source.click();
+    }
+    await page
+      .getByRole("listbox")
+      .evaluate((menu) =>
+        menu.getAnimations().forEach((animation) => animation.finish()),
+      );
+    const rows = await page
+      .getByRole("listbox")
+      .locator(".select-option-label")
+      .evaluateAll((labels) =>
+        labels.map((label) => {
+          const icon = label
+            .querySelector(".catalog-source-logo")!
+            .getBoundingClientRect();
+          const range = document.createRange();
+          range.selectNodeContents(
+            [...label.childNodes].find(
+              (node) =>
+                node.nodeType === Node.TEXT_NODE && !!node.textContent?.trim(),
+            )!,
+          );
+          return {
+            width: icon.width,
+            height: icon.height,
+            labelOffset:
+              range.getBoundingClientRect().left -
+              label.getBoundingClientRect().left,
+          };
+        }),
+      );
+    expect(rows).toHaveLength(5);
+    expect(new Set(rows.map((row) => row.labelOffset)).size).toBe(1);
+    expect(rows.every((row) => row.width === 24 && row.height === 24)).toBe(
+      true,
+    );
+    await page
+      .getByRole("listbox")
+      .screenshot({
+        path: `target/branding-icons/source-menu-${theme}.png`,
+        animations: "disabled",
+      });
+  }
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Переключить тему" }).click();
+  for (const name of ["ATLauncher", "FTB", "Technic"]) {
+    await source.click();
+    await page.getByRole("option", { name, exact: true }).click();
+    await expect(source.locator(".catalog-source-logo img")).toBeVisible();
+    await checkSourceAlignment();
+  }
+  await source.click();
   await expect(page.getByRole("listbox")).toHaveCSS(
     "animation-name",
     "dropdown-in",

@@ -13,27 +13,27 @@
 }
 .catalog-source-logo {
   flex-shrink: 0;
-  display: inline-block;
+  display: inline-grid;
+  place-items: center;
+  vertical-align: middle;
+}
+.catalog-source-glyph {
+  display: block;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
 }
-.catalog-source-monogram {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.catalog-source-logo[data-source="atlauncher"] {
+  /* The official cube has dark sides; a quiet light plate retains contrast. */
+  background: #f0f3e8;
   border-radius: 5px;
-  font-size: 9px;
-  font-weight: 800;
-  background: var(--gold-soft);
-  color: var(--text);
 }
-.catalog-source-monogram.ftb {
-  background: #75bbbf26;
+.catalog-source-logo[data-source="atlauncher"] .catalog-source-glyph {
+  padding: 1px;
 }
-.catalog-source-monogram.technic {
-  background: #448fe926;
-}
-.catalog-source-select .catalog-source-monogram {
-  display: inline-flex;
+.catalog-source-logo[data-source="ftb"] .catalog-source-glyph {
+  /* Optical sizing for the wider three-letter mark, without stretching it. */
+  transform: scale(1.1);
 }
 .catalog-provider-note {
   color: var(--muted);
@@ -109,7 +109,7 @@
   line-height: 20px;
 }
 .catalog-source-select .catalog-source-logo {
-  display: block;
+  display: grid;
 }
 .catalog-results {
   container: catalog-results / inline-size;
