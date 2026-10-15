@@ -1,4 +1,12 @@
 export const catalogEnglish: Record<string, string> = {
+  "Установить": "Install",
+  "Удалить": "Remove",
+  "Установлено": "Installed",
+  "Установка…": "Installing…",
+  "Удаление…": "Removing…",
+  "Установлено: {{name}}. Удалить из сборки": "Installed: {{name}}. Remove from instance",
+  "{{name}} установлен в {{profile}}": "{{name}} installed in {{profile}}",
+  "от {{author}}": "by {{author}}",
   "Вид каталога": "Catalog view",
   Список: "List",
   Плитки: "Grid",

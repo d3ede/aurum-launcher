@@ -1,4 +1,9 @@
 export const homeEnglish: Record<string, string> = {
+  "Обновлённый каталог": "Updated catalog",
+  "Крупные иконки, установка и удаление прямо из карточки.":
+    "Larger icons, installation and removal right from each card.",
+  "В этой сборке каталог получил крупные иконки и плитки, контурные кнопки с анимацией установки. Нажмите «Установлено», чтобы переместить проект из выбранной сборки в корзину.":
+    "In this build, the catalog has larger icons and tiles, outlined buttons and an installation animation. Click Installed to move a project from the selected instance to the trash.",
   "Импорт скинов": "Skin import",
   "Все сохранённые скины Modrinth одной кнопкой.":
     "Import all saved Modrinth skins with one click.",

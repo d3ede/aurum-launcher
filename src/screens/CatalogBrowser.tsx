@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import {
   Search,
   Download,
-  Plus,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -20,6 +19,7 @@ import { ProjectIcon } from "./Catalog";
 import { Select } from "../components/Select";
 import { EmptyState, ErrorBox, Loading } from "../components/ui";
 import { CatalogSourceLogo } from "../components/CatalogSourceLogo";
+import { CatalogInstallButton } from "../components/CatalogInstallButton";
 import { categoryKey } from "../lib/catalog-categories";
 export function Catalog({
   query,
@@ -34,7 +34,13 @@ export function Catalog({
   target: CatalogTarget;
   setTarget: (v: CatalogTarget) => void;
 }) {
-  const { data, operation, busy } = useApp();
+  const { data, operation, run, busy } = useApp();
+  const [pending, setPending] = useState<{
+    projectId: string;
+    source: string;
+    profileId: string;
+    action: "installing" | "removing";
+  } | null>(null);
   const [source, setSource] = useState<"modrinth" | "curseforge">("modrinth");
   const [view, setView] = useState<"list" | "grid">(() =>
     localStorage.getItem("aurum:catalog-view") === "grid" ? "grid" : "list",
@@ -168,29 +174,60 @@ export function Catalog({
     data.curseforgeConfigured,
     needsLoader,
   ]);
-  const add = (project: Project) => {
-    if (!profile) return;
-    void operation(
-      async (operationId) => {
-        const detail = await rpc("project", {
-          source: project.source,
-          id: project.id,
-          minecraft: profile.minecraft,
-          ...(kind === "mod" ? { loader: profile.loader } : {}),
-        });
-        const version = detail.versions[0];
-        if (!version)
-          throw new Error(t("Для этой сборки нет совместимой версии проекта"));
-        await rpc("installContent", {
-          id: profile.id,
-          source: project.source,
-          projectId: project.id,
-          versionId: version.id,
-          operationId,
-        });
-      },
-      t("{{v1}} добавлен в {{v2}}", { v1: project.title, v2: profile.name }),
-    );
+  const install = async (project: Project) => {
+    if (!profile || busy || data.running.includes(profile.id)) return;
+    setPending({
+      projectId: project.id,
+      source: project.source,
+      profileId: profile.id,
+      action: "installing",
+    });
+    try {
+      await operation(
+        async (operationId) => {
+          const detail = await rpc("project", {
+            source: project.source,
+            id: project.id,
+            minecraft: profile.minecraft,
+            ...(kind === "mod" ? { loader: profile.loader } : {}),
+          });
+          const version = detail.versions[0];
+          if (!version)
+            throw new Error(t("Для этой сборки нет совместимой версии проекта"));
+          await rpc("installContent", {
+            id: profile.id,
+            source: project.source,
+            projectId: project.id,
+            versionId: version.id,
+            operationId,
+          });
+        },
+        t("{{name}} установлен в {{profile}}", {
+          name: project.title,
+          profile: profile.name,
+        }),
+      );
+    } finally {
+      setPending(null);
+    }
+  };
+  const remove = async (project: Project, contentId: string) => {
+    if (!profile || busy || data.running.includes(profile.id)) return;
+    setPending({
+      projectId: project.id,
+      source: project.source,
+      profileId: profile.id,
+      action: "removing",
+    });
+    try {
+      await run(
+        () =>
+          rpc("manageContent", { id: profile.id, contentId, action: "remove" }),
+        t("Файл перемещён в корзину"),
+      );
+    } finally {
+      setPending(null);
+    }
   };
   const reset = () => {
     setQuery("");
@@ -328,10 +365,17 @@ export function Catalog({
                 className={`catalog-result-list ${view === "grid" ? "catalog-result-grid" : ""}`}
               >
                 {results.map((project) => {
-                  const installed = profile?.content.some(
-                    (c) =>
-                      c.source === project.source && c.projectId === project.id,
-                  );
+                  const installed = bound
+                    ? profile.content.find(
+                        (c) => c.source === project.source && c.projectId === project.id,
+                      )
+                    : undefined;
+                  const action =
+                    pending?.projectId === project.id &&
+                    pending.source === project.source &&
+                    pending.profileId === profile?.id
+                      ? pending.action
+                      : installed ? "installed" : "available";
                   return (
                     <article
                       className="catalog-result"
@@ -343,25 +387,30 @@ export function Catalog({
                       >
                         <ProjectIcon project={project} />
                         <div>
-                          <h3>{project.title}</h3>
+                          <div className="catalog-project-heading">
+                            <h3>{project.title}</h3>
+                            {project.author && (
+                              <span>{t("от {{author}}", { author: project.author })}</span>
+                            )}
+                          </div>
                           <p>{project.description}</p>
-                          <small>
-                            <Download size={14} />{" "}
-                            {formatNumber(project.downloads)}
-                            {project.author && <span>· {project.author}</span>}
-                          </small>
+                          {project.downloads > 0 && (
+                            <small>
+                              <Download size={14} /> {formatNumber(project.downloads)}
+                            </small>
+                          )}
                         </div>
                       </button>
-                      {bound && (
-                        <button
-                          className={`button ${installed ? "secondary" : "primary"}`}
-                          disabled={busy || installed}
-                          onClick={() => add(project)}
-                        >
-                          {installed ? <Check size={16} /> : <Plus size={16} />}
-                          {installed ? t("Добавлено") : t("Добавить")}
-                        </button>
-                      )}
+                      <CatalogInstallButton
+                        state={action}
+                        title={project.title}
+                        disabled={busy || (bound && data.running.includes(profile.id))}
+                        onClick={() => {
+                          if (!bound) onProject(project);
+                          else if (installed) void remove(project, installed.id);
+                          else void install(project);
+                        }}
+                      />
                     </article>
                   );
                 })}

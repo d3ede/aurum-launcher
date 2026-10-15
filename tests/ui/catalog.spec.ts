@@ -1,6 +1,11 @@
 import { test, expect, type Page } from "@playwright/test";
 
-async function fixture(page: Page, language = "ru") {
+async function fixture(
+  page: Page,
+  language = "ru",
+  withProfiles = false,
+  running = false,
+) {
   await page.route("https://media.example.test/**", (route) =>
     route.fulfill({
       contentType: "image/svg+xml",
@@ -8,7 +13,7 @@ async function fixture(page: Page, language = "ru") {
     }),
   );
   await page.addInitScript(
-    ({ language }) => {
+    ({ language, withProfiles, running }) => {
       localStorage.setItem("aurum:language", language);
       const w = window as any;
       w.isTauri = true;
@@ -24,11 +29,45 @@ async function fixture(page: Page, language = "ru") {
         icon: "https://media.example.test/icon.svg",
         downloads: 123456 + i * 9000,
       }));
+      const content = (projectId: string) => ({
+        id: `content:${projectId}`,
+        source: "modrinth",
+        projectId,
+        versionId: "version-1",
+        name: projectId,
+        filename: `${projectId}.jar`,
+        kind: "mod",
+        enabled: true,
+      });
+      const profiles = withProfiles
+        ? [
+            {
+              id: "radiance",
+              name: "Radiance",
+              content: [content("project-0")],
+            },
+            {
+              id: "other",
+              name: "Other instance",
+              content: [content("project-1")],
+            },
+          ].map((p) => ({
+            ...p,
+            minecraft: "1.21.1",
+            loader: "fabric",
+            loaderVersion: "0.16.14",
+            installedVersion: "1.21.1",
+            ramMb: null,
+            jvmArgs: "",
+            lastPlayed: null,
+            cover: 0,
+          }))
+        : [];
       const state = {
-        profiles: [],
+        profiles,
         accounts: [],
         selectedAccount: null,
-        running: [],
+        running: running ? ["radiance"] : [],
         settings: {
           language,
           theme: "light",
@@ -55,7 +94,21 @@ async function fixture(page: Page, language = "ru") {
           if (cmd !== "rpc") return cmd.includes("is_maximized") ? false : 1;
           const { action, payload } = args;
           w.catalogRequests.push({ action, payload });
-          if (action === "snapshot") return state;
+          if (action === "snapshot") return structuredClone(state);
+          if (action === "installContent" || action === "manageContent") {
+            await new Promise<void>((resolve, reject) => {
+              w.finishCatalogAction = (fail = false) =>
+                fail ? reject(new Error("Fixture action failed")) : resolve();
+            });
+            const profile = profiles.find((p) => p.id === payload.id)!;
+            if (action === "installContent")
+              profile.content.push(content(payload.projectId));
+            else
+              profile.content = profile.content.filter(
+                (c) => c.id !== payload.contentId,
+              );
+            return null;
+          }
           if (action === "saveSettings") {
             state.settings = payload.settings;
             return null;
@@ -74,21 +127,30 @@ async function fixture(page: Page, language = "ru") {
             ];
           if (action === "project")
             return {
-              project: projects[0],
+              project: projects.find((p) => p.id === payload.id) || projects[0],
               body: '<center><img src="https://media.example.test/description.svg" width="600" alt="Description screenshot" onerror="window.mediaUnsafe=true" /></center><script>window.mediaUnsafe=true</script>\n\n# Details\n\nNormal **Markdown** with HTML images.\n\n| Name | Value |\n| --- | --- |\n| Test | 1 |',
               gallery: [
                 "https://media.example.test/first.svg",
                 "https://media.example.test/second.svg",
                 "https://media.example.test/third.svg",
               ],
-              versions: [],
+              versions: withProfiles
+                ? [
+                    {
+                      id: "version-1",
+                      name: "1.0",
+                      gameVersions: ["1.21.1"],
+                      loaders: ["fabric"],
+                    },
+                  ]
+                : [],
               url: "https://modrinth.com/project/test",
             };
           return null;
         },
       };
     },
-    { language },
+    { language, withProfiles, running },
   );
   await page.goto("/");
   await page.locator(".sidebar nav button").nth(2).click();
@@ -333,4 +395,186 @@ test("English source placeholder and categories are localized", async ({
   await expect(
     page.getByRole("heading", { name: "Coming soon", exact: true }),
   ).toBeVisible();
+});
+
+async function bindRadiance(page: Page) {
+  await page
+    .getByRole("combobox", { name: "Установить в", exact: true })
+    .click();
+  await page
+    .getByRole("option", { name: "Radiance · 1.21.1 · Fabric", exact: true })
+    .click();
+  await expect(page.locator(".catalog-result")).toHaveCount(9);
+}
+
+test("catalog installs, animates and removes only from the selected instance", async ({
+  page,
+}) => {
+  await fixture(page, "ru", true);
+  const second = page.locator(".catalog-result").nth(1);
+  const button = second.locator(".catalog-install-button");
+  // An unbound install opens the existing instance/version chooser.
+  await button.click();
+  const dialog = page.getByRole("dialog", { name: "Project 2", exact: true });
+  await expect(
+    dialog.getByRole("combobox", { name: "Установить в сборку" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await bindRadiance(page);
+  await expect(button).toHaveClass(/is-available/);
+  await button.click();
+  await expect(button).toHaveAttribute("aria-busy", "true");
+  await expect(button).toContainText("Установка…");
+  await expect(button.locator("svg")).toHaveCSS(
+    "animation-name",
+    "catalog-action-spin",
+  );
+  await expect(button).toBeDisabled();
+  await expect(page.locator(".catalog-install-button").first()).toBeDisabled();
+  await expect
+    .poll(() => page.evaluate(() => typeof (window as any).finishCatalogAction))
+    .toBe("function");
+  await page.evaluate(() => (window as any).finishCatalogAction());
+  await page.mouse.move(0, 0);
+  await expect(button).toHaveClass(/is-installed/);
+  await expect(button).toBeEnabled();
+  await page
+    .locator(".catalog-workspace")
+    .screenshot({
+      path: "target/branding-icons/catalog-installed-light.png",
+      animations: "disabled",
+    });
+  await button.hover();
+  await expect(button.locator(".catalog-action-remove")).toHaveCSS(
+    "opacity",
+    "1",
+  );
+  await expect(button.locator(".catalog-action-label")).toHaveCSS(
+    "opacity",
+    "0",
+  );
+  const danger = await button.evaluate((e) =>
+    getComputedStyle(e).getPropertyValue("--danger").trim(),
+  );
+  await expect
+    .poll(() => button.evaluate((e) => getComputedStyle(e).color))
+    .toBe(
+      await button.evaluate((e, color) => {
+        const probe = document.createElement("span");
+        probe.style.color = color;
+        e.append(probe);
+        const value = getComputedStyle(probe).color;
+        probe.remove();
+        return value;
+      }, danger),
+    );
+  await button.screenshot({
+    path: "target/branding-icons/catalog-remove-hover.png",
+  });
+  // Removal is keyboard-accessible and uses the same trash action as instance content.
+  await button.focus();
+  await page.keyboard.press("Enter");
+  await expect(button).toHaveClass(/is-removing/);
+  await expect(button).toContainText("Удаление…");
+  await page.evaluate(() => (window as any).finishCatalogAction());
+  await expect(button).toHaveClass(/is-available/);
+  const requests = await page.evaluate(() => (window as any).catalogRequests);
+  expect(
+    requests.find((r: any) => r.action === "installContent").payload,
+  ).toMatchObject({
+    id: "radiance",
+    projectId: "project-1",
+    versionId: "version-1",
+  });
+  expect(
+    requests.find((r: any) => r.action === "manageContent").payload,
+  ).toEqual({
+    id: "radiance",
+    contentId: "content:project-1",
+    action: "remove",
+  });
+  await page
+    .getByRole("combobox", { name: "Установить в", exact: true })
+    .click();
+  await page
+    .getByRole("option", {
+      name: "Other instance · 1.21.1 · Fabric",
+      exact: true,
+    })
+    .click();
+  await expect(button).toHaveClass(/is-installed/);
+});
+
+test("failed catalog actions restore controls, including installed state after failed removal", async ({
+  page,
+}) => {
+  await fixture(page, "ru", true);
+  await bindRadiance(page);
+  for (const index of [1, 0]) {
+    const button = page.locator(".catalog-install-button").nth(index);
+    await button.click();
+    await expect(button).toHaveAttribute("aria-busy", "true");
+    await expect
+      .poll(() =>
+        page.evaluate(() => typeof (window as any).finishCatalogAction),
+      )
+      .toBe("function");
+    await page.evaluate(() => {
+      (window as any).finishCatalogAction(true);
+      delete (window as any).finishCatalogAction;
+    });
+    await expect(button).toBeEnabled();
+    await expect(button).toHaveClass(index ? /is-available/ : /is-installed/);
+    await expect(page.locator(".toast")).toContainText("Fixture action failed");
+  }
+});
+
+test("large block tiles fit both themes and respect reduced motion", async ({
+  page,
+}) => {
+  await fixture(page, "ru", true);
+  await bindRadiance(page);
+  await page.getByRole("button", { name: "Плитки", exact: true }).click();
+  await expect(page.locator(".catalog-card .project-icon").first()).toHaveCSS(
+    "width",
+    "100px",
+  );
+  for (const theme of ["light", "dark"]) {
+    if (theme === "dark")
+      await page.getByRole("button", { name: "Переключить тему" }).click();
+    await page.mouse.move(0, 0);
+    await page
+      .locator(".catalog-workspace")
+      .screenshot({
+        path: `target/branding-icons/catalog-actions-grid-${theme}.png`,
+        animations: "disabled",
+      });
+  }
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const button = page.locator(".catalog-install-button").nth(1);
+  await button.click();
+  await expect(button.locator("svg")).toHaveCSS("animation-name", "none");
+  expect(
+    await button.evaluate((e) => getComputedStyle(e, "::before").animationName),
+  ).toBe("none");
+  await page.evaluate(() => (window as any).finishCatalogAction());
+  await expect(button).toHaveClass(/is-installed/);
+});
+
+test("running instances disable catalog mutations and English action labels translate", async ({
+  page,
+}) => {
+  await fixture(page, "en", true, true);
+  await page.getByRole("combobox", { name: "Install into", exact: true }).click();
+  await page
+    .getByRole("option", { name: "Radiance · 1.21.1 · Fabric", exact: true })
+    .click();
+  await expect(page.locator(".catalog-install-button").first()).toContainText(
+    "Installed",
+  );
+  await expect(page.locator(".catalog-install-button").nth(1)).toContainText(
+    "Install",
+  );
+  await expect(page.locator(".catalog-install-button").first()).toBeDisabled();
+  await expect(page.locator(".catalog-install-button").nth(1)).toBeDisabled();
 });
