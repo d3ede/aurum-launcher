@@ -23,6 +23,15 @@ import { ru, formatNumber } from "../lib/i18n";
 import type { Kind, Loader, Project, ProjectDetail } from "../types";
 import { Modal, Loading, ErrorBox, EmptyState, Field } from "../components/ui";
 import { Select } from "../components/Select";
+import {
+  catalogSources,
+  catalogWebsite,
+  packSource,
+} from "../lib/catalog-sources";
+import {
+  PlatformPackOptions,
+  type PackConfiguration,
+} from "../components/PlatformPackOptions";
 export function ProjectIcon({ project }: { project: Project }) {
   return project.icon ? (
     <img className="project-icon" src={project.icon} alt="" loading="lazy" />
@@ -49,6 +58,11 @@ export function ProjectDialog({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [versionId, setVersionId] = useState("");
+  const [packConfig, setPackConfig] = useState<PackConfiguration | null>(null);
+  const configurationKey = `${project.source}:${project.id}:${versionId}`;
+  const platformReady =
+    !packSource(project.source) ||
+    (packConfig?.key === configurationKey && packConfig.ready);
   const [tab, setTab] = useState<"description" | "gallery" | "versions">(
     "description",
   );
@@ -117,6 +131,9 @@ export function ProjectDialog({
             projectId: project.id,
             versionId,
             operationId,
+            ...(packSource(project.source)
+              ? { options: packConfig?.options }
+              : {}),
           });
         else if (profile)
           await rpc("installContent", {
@@ -154,8 +171,7 @@ export function ProjectDialog({
           <b>{project.author || t("Проект сообщества")}</b>
           <p>
             <Download size={14} /> {formatNumber(project.downloads)}
-            {t(" загрузок \u00B7")}{" "}
-            {project.source === "modrinth" ? "Modrinth" : "CurseForge"}
+            {t(" загрузок \u00B7")} {catalogSources[project.source]}
           </p>
         </div>
         <button
@@ -167,7 +183,7 @@ export function ProjectDialog({
                   detail?.url ||
                   (project.source === "modrinth"
                     ? `https://modrinth.com/project/${project.id}`
-                    : `https://www.curseforge.com/minecraft`),
+                    : catalogWebsite(project.source)),
               }),
             )
           }
@@ -223,7 +239,7 @@ export function ProjectDialog({
               </div>
               <button
                 className="button primary"
-                disabled={busy || !canInstall}
+                disabled={busy || !canInstall || !platformReady}
                 onClick={() => void install()}
               >
                 <PackagePlus size={16} />{" "}
@@ -236,6 +252,15 @@ export function ProjectDialog({
               )}
               {selected && !canInstall && profile && (
                 <small>{t("Версия не подходит для выбранной сборки.")}</small>
+              )}
+              {packSource(project.source) && versionId && (
+                <PlatformPackOptions
+                  key={configurationKey}
+                  project={project}
+                  versionId={versionId}
+                  onChange={setPackConfig}
+                  disabled={busy}
+                />
               )}
             </div>
             <div className="tabs">

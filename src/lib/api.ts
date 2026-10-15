@@ -23,10 +23,22 @@ import type {
   SavedCape,
   SkinLibrary,
   AccountAppearance,
+  PackOptions,
+  PackRequirements,
 } from "../types";
 export const native = isTauri();
 type Empty = Record<string, never>;
 interface Contract {
+  packRequirements: [
+    {
+      source: string;
+      projectId: string;
+      versionId: string;
+      options: PackOptions;
+    },
+    PackRequirements,
+  ];
+  choosePackFile: [Empty, string | null];
   skinLibrary: [Empty, SkinLibrary];
   importModrinthSkins: [{ directories: string[] }, ModrinthSkinImportResult];
   accountAppearance: [{ id: string }, AccountAppearance];
@@ -259,6 +271,7 @@ interface Contract {
       projectId: string;
       versionId: string;
       operationId: string;
+      options?: PackOptions;
     },
     string,
   ];

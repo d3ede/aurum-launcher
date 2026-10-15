@@ -16,6 +16,80 @@
   display: inline-block;
   object-fit: contain;
 }
+.catalog-source-monogram {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  font-size: 9px;
+  font-weight: 800;
+  background: var(--gold-soft);
+  color: var(--text);
+}
+.catalog-source-monogram.ftb {
+  background: #75bbbf26;
+}
+.catalog-source-monogram.technic {
+  background: #448fe926;
+}
+.catalog-source-select .catalog-source-monogram {
+  display: inline-flex;
+}
+.catalog-provider-note {
+  color: var(--muted);
+  margin: 0 0 20px;
+}
+.pack-options {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+.pack-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.pack-option input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin: 2px 0;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+.pack-option span {
+  min-width: 0;
+}
+.pack-option small {
+  display: block;
+  color: var(--muted);
+  margin-top: 5px;
+  line-height: 1.5;
+}
+.pack-manual-file {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.pack-manual-file b {
+  flex: 1;
+  min-width: 180px;
+  overflow-wrap: anywhere;
+}
+.pack-manual-file small {
+  width: 100%;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
 .catalog-filter-panel .catalog-source-select {
   min-height: 44px;
   padding: 8px 12px;

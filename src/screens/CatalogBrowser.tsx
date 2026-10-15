@@ -14,7 +14,8 @@ import {
 import { useApp } from "../context";
 import { native, rpc } from "../lib/api";
 import { ru, formatNumber } from "../lib/i18n";
-import type { CatalogTarget, Kind, Project } from "../types";
+import type { CatalogSource, CatalogTarget, Kind, Project } from "../types";
+import { catalogSources, packSource } from "../lib/catalog-sources";
 import { ProjectIcon } from "./Catalog";
 import { Select } from "../components/Select";
 import { EmptyState, ErrorBox, Loading } from "../components/ui";
@@ -41,7 +42,8 @@ export function Catalog({
     profileId: string;
     action: "installing" | "removing";
   } | null>(null);
-  const [source, setSource] = useState<"modrinth" | "curseforge">("modrinth");
+  const [source, setSource] = useState<CatalogSource>("modrinth");
+  const packsOnly = packSource(source);
   const [view, setView] = useState<"list" | "grid">(() =>
     localStorage.getItem("aurum:catalog-view") === "grid" ? "grid" : "list",
   );
@@ -49,7 +51,7 @@ export function Catalog({
     setView(value);
     localStorage.setItem("aurum:catalog-view", value);
   };
-  const kind = target.kind;
+  const kind = packsOnly ? "modpack" : target.kind;
   const profile = data.profiles.find((p) => p.id === target.profileId);
   const bound = !!profile && kind !== "modpack";
   const needsLoader = bound && kind === "mod" && profile.loader === "vanilla";
@@ -101,7 +103,8 @@ export function Catalog({
   useEffect(() => {
     setCategory("");
     setCategories([]);
-    if (!native || source === "curseforge") return;
+    setFilterError("");
+    if (!native || source === "curseforge" || packsOnly) return;
     let live = true;
     rpc("catalogCategories", { source, kind })
       .then((v) => {
@@ -193,7 +196,9 @@ export function Catalog({
           });
           const version = detail.versions[0];
           if (!version)
-            throw new Error(t("Для этой сборки нет совместимой версии проекта"));
+            throw new Error(
+              t("Для этой сборки нет совместимой версии проекта"),
+            );
           await rpc("installContent", {
             id: profile.id,
             source: project.source,
@@ -234,30 +239,46 @@ export function Catalog({
     setCategory("");
     setMc("");
     setLoader("");
-    setSort("downloads");
+    setSort(
+      source === "atlauncher"
+        ? "name"
+        : source === "technic"
+          ? "relevance"
+          : "downloads",
+    );
   };
   return (
     <>
       <div className="page-heading">
         <h1>{t("Каталог проектов")}</h1>
       </div>
-      <div className="catalog-context">
-        <label htmlFor="catalog-target">{t("Установить в")}</label>
-        <Select
-          id="catalog-target"
-          aria-label={t("Установить в")}
-          value={target.profileId}
-          onValueChange={(profileId) => setTarget({ ...target, profileId })}
-          options={[
-            { value: "", label: t("Без привязки к сборке") },
-            ...data.profiles.map((p) => ({
-              value: p.id,
-              label: `${p.name} · ${p.minecraft} · ${ru.loaders[p.loader]}`,
-            })),
-          ]}
-        />
-        {bound && <span>{t("Только совместимые проекты")}</span>}
-      </div>
+      {!packsOnly && (
+        <div className="catalog-context">
+          <label htmlFor="catalog-target">{t("Установить в")}</label>
+          <Select
+            id="catalog-target"
+            aria-label={t("Установить в")}
+            value={target.profileId}
+            onValueChange={(profileId) => setTarget({ ...target, profileId })}
+            options={[
+              { value: "", label: t("Без привязки к сборке") },
+              ...data.profiles.map((p) => ({
+                value: p.id,
+                label: `${p.name} · ${p.minecraft} · ${ru.loaders[p.loader]}`,
+              })),
+            ]}
+          />
+          {bound && <span>{t("Только совместимые проекты")}</span>}
+        </div>
+      )}
+      {packsOnly && (
+        <p className="catalog-provider-note">
+          {t(
+            "Сборки {{source}} устанавливаются как отдельные профили. Вход для публичного каталога не нужен.",
+            { source: catalogSources[source] },
+          )}
+        </p>
+      )}
       <div className="catalog-workspace">
         <section className="catalog-results">
           <div className="catalog-results-toolbar">
@@ -285,12 +306,23 @@ export function Catalog({
               onValueChange={setSort}
               options={[
                 { value: "downloads", label: t("По загрузкам") },
-                ...(source === "modrinth"
+                ...(source === "modrinth" || source === "technic"
                   ? [{ value: "relevance", label: t("По соответствию") }]
                   : []),
-                { value: "updated", label: t("Недавно обновлённые") },
-                { value: "newest", label: t("Новые проекты") },
-              ]}
+                ...(source !== "technic"
+                  ? [
+                      { value: "updated", label: t("Недавно обновлённые") },
+                      { value: "newest", label: t("Новые проекты") },
+                    ]
+                  : []),
+                ...(source === "atlauncher"
+                  ? [{ value: "name", label: t("По названию") }]
+                  : []),
+              ].filter(
+                (o) =>
+                  (source !== "atlauncher" && source !== "technic") ||
+                  o.value !== "downloads",
+              )}
             />
             <div
               className="catalog-view-switch"
@@ -351,7 +383,7 @@ export function Catalog({
           ) : loading ? (
             <Loading
               label={t("Поиск в {{v1}}\u2026", {
-                v1: source === "modrinth" ? "Modrinth" : "CurseForge",
+                v1: catalogSources[source],
               })}
             />
           ) : error ? (
@@ -396,7 +428,8 @@ export function Catalog({
                           <p>{project.description}</p>
                           {project.downloads > 0 && (
                             <small>
-                              <Download size={14} /> {formatNumber(project.downloads)}
+                              <Download size={14} />{" "}
+                              {formatNumber(project.downloads)}
                             </small>
                           )}
                         </div>
@@ -460,56 +493,68 @@ export function Catalog({
               aria-label={t("Источник проектов")}
               value={source}
               onValueChange={(value) => {
-                setSource(value as "modrinth" | "curseforge");
-                if (sort === "relevance") setSort("downloads");
+                setSource(value as CatalogSource);
+                setOffset(0);
+                setResults([]);
+                setCategory("");
+                setMc("");
+                setLoader("");
+                setSort(
+                  value === "atlauncher"
+                    ? "name"
+                    : value === "technic"
+                      ? "relevance"
+                      : "downloads",
+                );
+                if (packSource(value))
+                  setTarget({ profileId: "", kind: "modpack" });
               }}
-              options={[
-                {
-                  value: "modrinth",
-                  label: "Modrinth",
-                  icon: <CatalogSourceLogo source="modrinth" />,
-                },
-                {
-                  value: "curseforge",
-                  label: "CurseForge",
-                  icon: <CatalogSourceLogo source="curseforge" />,
-                },
-              ]}
+              options={Object.entries(catalogSources).map(([value, label]) => ({
+                value,
+                label,
+                icon: <CatalogSourceLogo source={value} />,
+              }))}
             />
           </fieldset>
           <fieldset>
             <legend>{t("Тип проекта")}</legend>
             <div className="filter-options">
-              {Object.entries(ru.kinds).map(([value, label]) => (
-                <button
-                  key={value}
-                  className={kind === value ? "selected" : ""}
-                  aria-pressed={kind === value}
-                  onClick={() => setTarget({ ...target, kind: value as Kind })}
-                >
-                  <span className="filter-check">
-                    {kind === value && <Check size={13} />}
-                  </span>
-                  {label}
-                </button>
-              ))}
+              {Object.entries(ru.kinds)
+                .filter(([value]) => !packsOnly || value === "modpack")
+                .map(([value, label]) => (
+                  <button
+                    key={value}
+                    className={kind === value ? "selected" : ""}
+                    aria-pressed={kind === value}
+                    onClick={() =>
+                      setTarget({ ...target, kind: value as Kind })
+                    }
+                  >
+                    <span className="filter-check">
+                      {kind === value && <Check size={13} />}
+                    </span>
+                    {label}
+                  </button>
+                ))}
             </div>
           </fieldset>
-          <fieldset>
-            <legend>{t("Версия Minecraft")}</legend>
-            <Select
-              aria-label={t("Фильтр версии Minecraft")}
-              value={effectiveMc}
-              disabled={bound}
-              onValueChange={setMc}
-              options={[
-                { value: "", label: t("Все версии") },
-                ...[...new Set([effectiveMc, ...versions])]
-                  .filter(Boolean)
-                  .map((v) => ({ value: v, label: v })),
-              ]}
-            />
-          </fieldset>
+          {source !== "technic" && (
+            <fieldset>
+              <legend>{t("Версия Minecraft")}</legend>
+              <Select
+                aria-label={t("Фильтр версии Minecraft")}
+                value={effectiveMc}
+                disabled={bound}
+                onValueChange={setMc}
+                options={[
+                  { value: "", label: t("Все версии") },
+                  ...[...new Set([effectiveMc, ...versions])]
+                    .filter(Boolean)
+                    .map((v) => ({ value: v, label: v })),
+                ]}
+              />
+            </fieldset>
+          )}
           {kind === "mod" && (
             <fieldset>
               <legend>{t("Загрузчик")}</legend>
@@ -527,22 +572,24 @@ export function Catalog({
               />
             </fieldset>
           )}
-          <fieldset>
-            <legend>{t("Категория")}</legend>
-            <Select
-              aria-label={t("Категория проекта")}
-              value={category}
-              disabled={!categories.length}
-              onValueChange={setCategory}
-              options={[
-                { value: "", label: t("Все категории") },
-                ...categories.map((c) => ({
-                  value: c.id,
-                  label: t(categoryKey(c.name)),
-                })),
-              ]}
-            />
-          </fieldset>
+          {!packsOnly && (
+            <fieldset>
+              <legend>{t("Категория")}</legend>
+              <Select
+                aria-label={t("Категория проекта")}
+                value={category}
+                disabled={!categories.length}
+                onValueChange={setCategory}
+                options={[
+                  { value: "", label: t("Все категории") },
+                  ...categories.map((c) => ({
+                    value: c.id,
+                    label: t(categoryKey(c.name)),
+                  })),
+                ]}
+              />
+            </fieldset>
+          )}
           {filterError && (
             <div className="filter-error" role="alert">
               {filterError}

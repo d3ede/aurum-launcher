@@ -35,6 +35,10 @@ An independent Windows launcher with a warm light theme and a graphite dark them
 | **Skins and capes** | A PNG skin library, nine default characters, wide and slim arms, and animated 3D previews. Apply skins and owned capes to a Microsoft account. |
 | **Interface** | 41 languages, language search, RTL support, light and dark themes, and settings for memory, Java, and game data. |
 
+**In this development build:** browse and install public ATLauncher, FTB and
+Technic modpacks from the project-source dropdown, without a service login.
+See [modpack catalogs](docs/MODPACK-CATALOGS.md) for supported formats and verification limits.
+
 ## Download and install
 
 1. Download **[Aurum-Launcher_x64-setup.exe](https://github.com/d3ede/aurum-launcher/releases/latest/download/Aurum-Launcher_x64-setup.exe)** from the latest release.

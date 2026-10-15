@@ -329,6 +329,21 @@ async fn rpc(
             .search(param(&payload, "query")?)
             .await
             .map_err(err)?)),
+        "choosePackFile" => Ok(json!(
+            choose_file(&app, "Downloaded modpack file", &["jar", "zip", "litemod"]).await?
+        )),
+        "packRequirements" => Ok(json!(e
+            .pack_requirements(
+                &param::<String>(&payload, "source")?,
+                &param::<String>(&payload, "projectId")?,
+                &param::<String>(&payload, "versionId")?,
+                &serde_json::from_value(
+                    payload.get("options").cloned().unwrap_or_else(|| json!({}))
+                )
+                .map_err(err)?,
+            )
+            .await
+            .map_err(err)?)),
         "project" => Ok(json!(e
             .project_detail(
                 &param::<String>(&payload, "source")?,
@@ -517,6 +532,24 @@ async fn rpc(
                         } else {
                             Ok(Value::Null)
                         }
+                    }
+                    "downloadPack"
+                        if auren_core::pack_catalog::is_pack_source(
+                            payload["source"].as_str().unwrap_or(""),
+                        ) =>
+                    {
+                        Ok(json!(
+                            e.download_platform_pack_with_options(
+                                payload["source"].as_str().unwrap_or(""),
+                                payload["projectId"].as_str().unwrap_or(""),
+                                payload["versionId"].as_str().unwrap_or(""),
+                                &serde_json::from_value(
+                                    payload.get("options").cloned().unwrap_or_else(|| json!({}))
+                                )?,
+                                &task,
+                            )
+                            .await?
+                        ))
                     }
                     "downloadPack" => Ok(json!(
                         e.download_pack(

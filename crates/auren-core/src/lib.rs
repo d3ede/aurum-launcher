@@ -9,7 +9,9 @@ pub mod model;
 pub mod modrinth_import;
 pub mod modrinth_skins;
 pub mod net;
+pub mod pack_catalog;
 pub mod packs;
+pub mod platform_packs;
 mod processes;
 pub mod skins;
 pub mod store;
@@ -34,6 +36,8 @@ pub struct Engine {
     pub busy: Arc<Mutex<()>>,
     pub operations: Arc<Mutex<HashMap<String, Arc<AtomicBool>>>>,
     pub running: Arc<Mutex<HashMap<String, Arc<AtomicBool>>>>,
+    pub(crate) catalog_cache: Arc<Mutex<HashMap<String, (std::time::Instant, serde_json::Value)>>>,
+    pub(crate) catalog_index_lock: Arc<Mutex<()>>,
     pub(crate) recovered: Arc<Mutex<HashMap<String, Vec<processes::RecoveredProcess>>>>,
     pub emit: Arc<dyn Fn(Event) + Send + Sync>,
 }
@@ -70,8 +74,13 @@ impl Engine {
         } else {
             Database::default()
         };
+        let package: serde_json::Value =
+            serde_json::from_str(include_str!("../../../package.json"))?;
+        let version = package["version"].as_str().unwrap_or("dev");
         let http = reqwest::Client::builder()
-            .user_agent("Aurum/0.2.0 (independent desktop Minecraft launcher)")
+            .user_agent(format!(
+                "AurumLauncher/{version} (+https://github.com/d3ede/aurum-launcher)"
+            ))
             .connect_timeout(std::time::Duration::from_secs(20))
             .timeout(std::time::Duration::from_secs(180))
             .https_only(true)
@@ -83,6 +92,8 @@ impl Engine {
             busy: Arc::new(Mutex::new(())),
             operations: Arc::new(Mutex::new(HashMap::new())),
             running: Arc::new(Mutex::new(HashMap::new())),
+            catalog_cache: Arc::new(Mutex::new(HashMap::new())),
+            catalog_index_lock: Arc::new(Mutex::new(())),
             recovered: Arc::new(Mutex::new(HashMap::new())),
             emit: Arc::new(emit),
         };

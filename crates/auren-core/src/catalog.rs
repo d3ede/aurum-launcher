@@ -19,6 +19,9 @@ impl Engine {
             .await?)
     }
     pub async fn search(&self, query: Search) -> Result<SearchResult> {
+        if crate::pack_catalog::is_pack_source(&query.source) {
+            return self.search_pack_catalog(query).await;
+        }
         if !["mod", "modpack", "shader", "resourcepack"].contains(&query.kind.as_str()) {
             bail!("Неизвестный тип проекта")
         }
@@ -120,6 +123,9 @@ impl Engine {
         }
     }
     pub async fn catalog_categories(&self, source: &str, kind: &str) -> Result<Value> {
+        if crate::pack_catalog::is_pack_source(source) {
+            return Ok(json!([]));
+        }
         let mut categories: Vec<Value> = if source == "modrinth" {
             let raw = self.json(&format!("{MODRINTH}/tag/category")).await?;
             raw.as_array()
@@ -155,6 +161,9 @@ impl Engine {
         loader: Option<&str>,
     ) -> Result<ProjectDetail> {
         crate::store::validate_version(id)?;
+        if crate::pack_catalog::is_pack_source(source) {
+            return self.pack_catalog_detail(source, id, mc).await;
+        }
         if source == "modrinth" {
             let raw = self.json(&format!("{MODRINTH}/project/{id}")).await?;
             let versions = self.mr_versions(id, mc, loader).await?;

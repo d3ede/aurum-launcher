@@ -154,6 +154,11 @@ impl Engine {
     ) -> Result<String> {
         crate::store::validate_version(project)?;
         crate::store::validate_version(version)?;
+        if crate::pack_catalog::is_pack_source(source) {
+            return self
+                .download_platform_pack(source, project, version, task)
+                .await;
+        }
         let (url, hash) = if source == "modrinth" {
             let raw = self
                 .json(&format!("{}/version/{version}", crate::catalog::MODRINTH))

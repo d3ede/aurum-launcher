@@ -1,6 +1,7 @@
 use crate::{Engine, Task};
 use anyhow::{bail, Context, Result};
 use futures_util::StreamExt;
+use md5::Md5;
 use sha1::{Digest, Sha1};
 use sha2::Sha256;
 use std::path::Path;
@@ -76,6 +77,7 @@ pub async fn verify(path: &Path, expected: Option<(&str, &str)>) -> Result<bool>
     let mut buffer = vec![0u8; 65536];
     let mut sha1 = Sha1::new();
     let mut sha256 = Sha256::new();
+    let mut md5 = Md5::new();
     loop {
         let n = file.read(&mut buffer).await?;
         if n == 0 {
@@ -84,13 +86,16 @@ pub async fn verify(path: &Path, expected: Option<(&str, &str)>) -> Result<bool>
         match algorithm {
             "sha1" => sha1.update(&buffer[..n]),
             "sha256" => sha256.update(&buffer[..n]),
+            "md5" => md5.update(&buffer[..n]),
             _ => bail!("Неизвестная контрольная сумма"),
         }
     }
     let actual = if algorithm == "sha1" {
         format!("{:x}", sha1.finalize())
-    } else {
+    } else if algorithm == "sha256" {
         format!("{:x}", sha256.finalize())
+    } else {
+        format!("{:x}", md5.finalize())
     };
     Ok(actual.eq_ignore_ascii_case(expected))
 }

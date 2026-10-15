@@ -4,6 +4,11 @@ export const homeEnglish: Record<string, string> = {
     "Larger icons, installation and removal right from each card.",
   "В этой сборке каталог получил крупные иконки и плитки, контурные кнопки с анимацией установки. Нажмите «Установлено», чтобы переместить проект из выбранной сборки в корзину.":
     "In this build, the catalog has larger icons and tiles, outlined buttons and an installation animation. Click Installed to move a project from the selected instance to the trash.",
+  "Каталоги сборок": "Modpack catalogs",
+  "Поиск и установка из ATLauncher, FTB и Technic.":
+    "Find and install packs from ATLauncher, FTB and Technic.",
+  "В этой сборке: публичные каталоги ATLauncher, FTB и Technic, выбор версии и установка в отдельный профиль без входа. Для ATLauncher доступны необязательные моды и выбор файлов, скачанных с сайта автора.":
+    "In this build: public ATLauncher, FTB and Technic catalogs, version selection and installation in separate profiles without signing in. ATLauncher supports optional mods and files downloaded from the publisher's website.",
   "Импорт скинов": "Skin import",
   "Все сохранённые скины Modrinth одной кнопкой.":
     "Import all saved Modrinth skins with one click.",

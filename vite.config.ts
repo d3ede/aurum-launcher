@@ -10,6 +10,8 @@ export default defineConfig({
         "**/src-tauri/**",
         "**/crates/**",
         "**/.tools/**",
+        "**/.test-data/**",
+        "**/.release-local/**",
         "**/target/**",
       ],
     },

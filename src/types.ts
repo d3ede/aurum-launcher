@@ -140,9 +140,25 @@ export interface Progress {
   done: number;
   total: number;
 }
+export type CatalogSource =
+  "modrinth" | "curseforge" | "atlauncher" | "ftb" | "technic";
+export interface PackOptions {
+  optional?: string[];
+  manualFiles?: Record<string, string>;
+}
+export interface PackRequirements {
+  optional: {
+    id: string;
+    name: string;
+    description: string;
+    selected: boolean;
+  }[];
+  manualFiles: { id: string; name: string; url: string }[];
+  fileCount: number;
+}
 export interface Project {
   id: string;
-  source: "modrinth" | "curseforge";
+  source: CatalogSource;
   title: string;
   description: string;
   author: string;
@@ -165,7 +181,7 @@ export interface ProjectDetail {
 }
 export interface SearchQuery {
   query: string;
-  source: "modrinth" | "curseforge";
+  source: CatalogSource;
   kind: Kind;
   minecraft: string | null;
   loader: string | null;
