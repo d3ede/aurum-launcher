@@ -16,6 +16,10 @@ src-tauri/installer/sidebar.bmp
 .tools/
 .test-data/
 .release-local/
+# Runtime user libraries and settings must never become source assets.
+skin-library.json
+state.json
+data-location.json
 
 # Environment variables and private credentials
 .env

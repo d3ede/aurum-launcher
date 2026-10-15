@@ -139,6 +139,18 @@ The original development workspace has an isolated toolchain in `.tools/`. It is
 
 Native smoke tests use real Tauri/WebView2 and separate data in `.test-data/`. See the [verification report](docs/VERIFICATION.md).
 
+To open a clean local preview, close any running Aurum window and run:
+
+```powershell
+./scripts/start-preview.ps1
+```
+
+The script opens `target/release/aurum.exe` with a fresh game-data folder and
+WebView profile inside ignored `.test-data/previews/`. It does not copy installed
+accounts, skins or instances, or change persistent environment variables. Running
+the EXE directly uses the normal installed data location. Preview data is local
+and is not included in source commits or installers.
+
 </details>
 
 ### Repository layout
