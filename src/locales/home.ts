@@ -2,8 +2,10 @@ export const homeEnglish: Record<string, string> = {
   "Обновлённый каталог": "Updated catalog",
   "Крупные иконки, установка и удаление прямо из карточки.":
     "Larger icons, installation and removal right from each card.",
-  "В этой сборке каталог получил крупные иконки и плитки, контурные кнопки с анимацией установки. Нажмите «Установлено», чтобы переместить проект из выбранной сборки в корзину.":
-    "In this build, the catalog has larger icons and tiles, outlined buttons and an installation animation. Click Installed to move a project from the selected instance to the trash.",
+  "В Aurum 0.3.10: крупные иконки и плитки, золотые кнопки с анимацией установки. Нажмите «Установлено», чтобы переместить проект из выбранной сборки в корзину.":
+    "Aurum 0.3.10 has larger icons and tiles, gold buttons and an installation animation. Click Installed to move a project from the selected instance to the trash.",
+  "В меню источников используются оригинальные логотипы площадок. FTB полностью помещается в значок, ATLauncher отображается на прозрачном фоне.":
+    "The source menu uses original platform logos. The complete FTB mark fits its icon slot, and ATLauncher has a transparent background.",
   "Каталоги сборок": "Modpack catalogs",
   "Поиск и установка из ATLauncher, FTB и Technic.":
     "Find and install packs from ATLauncher, FTB and Technic.",

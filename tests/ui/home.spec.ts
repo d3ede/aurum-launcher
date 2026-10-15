@@ -172,7 +172,7 @@ test("home has account and factual release panels, working actions and both them
   await page
     .getByRole("button", { name: "Все изменения", exact: true })
     .click();
-  const notes = page.getByRole("dialog", { name: "Изменения Aurum 0.3.9" });
+  const notes = page.getByRole("dialog", { name: "Изменения Aurum 0.3.10" });
   await expect(notes).toContainText(
     "Перед установкой проверяется подпись обновления.",
   );
@@ -240,7 +240,7 @@ test("home adapts to minimum window size and translates the new panels", async (
     animations: "disabled",
   });
   await page.getByRole("button", { name: "All changes", exact: true }).click();
-  const notes = page.getByRole("dialog", { name: "Aurum 0.3.9 changes" });
+  const notes = page.getByRole("dialog", { name: "Aurum 0.3.10 changes" });
   await expect(notes).toContainText(
     "The update signature is verified before installation.",
   );
