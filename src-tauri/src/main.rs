@@ -210,6 +210,19 @@ async fn rpc(
             Ok(Value::Null)
         }
         "skinLibrary" => Ok(json!(e.skin_library().await.map_err(err)?)),
+        "importModrinthSkins" => {
+            let _guard = e
+                .busy
+                .try_lock()
+                .map_err(|_| "Дождитесь завершения текущей операции".to_string())?;
+            let extra: Vec<std::path::PathBuf> = param(&payload, "directories")?;
+            let roots = if extra.is_empty() {
+                auren_core::modrinth_import::default_directories()
+            } else {
+                extra
+            };
+            Ok(json!(e.import_modrinth_skins(roots).await.map_err(err)?))
+        }
         "accountAppearance" => Ok(json!(e
             .account_appearance(&param::<String>(&payload, "id")?)
             .await

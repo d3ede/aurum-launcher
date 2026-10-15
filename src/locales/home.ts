@@ -1,4 +1,9 @@
 export const homeEnglish: Record<string, string> = {
+  "Импорт скинов": "Skin import",
+  "Все сохранённые скины Modrinth одной кнопкой.":
+    "Import all saved Modrinth skins with one click.",
+  "В этой сборке скины из библиотеки Modrinth можно импортировать одной кнопкой в разделе «Скины и плащи». Модели рук сохраняются, дубликаты пропускаются.":
+    "In this build, import saved Modrinth skins with one click in Skins & capes. Arm models are preserved and duplicates are skipped.",
   "Диагностика входа": "Sign-in diagnostics",
   "Minecraft Services показывает причину отказа сервера.":
     "Minecraft Services shows the server's reason for rejecting sign-in.",

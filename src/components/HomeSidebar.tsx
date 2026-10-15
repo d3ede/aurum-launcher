@@ -17,6 +17,11 @@ const release = {
   highlights: [
     {
       icon: UserRound,
+      title: "Импорт скинов",
+      text: "Все сохранённые скины Modrinth одной кнопкой.",
+    },
+    {
+      icon: UserRound,
       title: "Диагностика входа",
       text: "Minecraft Services показывает причину отказа сервера.",
     },
@@ -34,15 +39,9 @@ const release = {
       date: "14 октября 2026",
       dateTime: "2026-10-14",
     },
-    {
-      icon: Megaphone,
-      title: "Aurum 0.3.5",
-      text: "Обновлены главная, каталог и установщик.",
-      date: "14 октября 2026",
-      dateTime: "2026-10-14",
-    },
   ],
   details: [
+    "В этой сборке скины из библиотеки Modrinth можно импортировать одной кнопкой в разделе «Скины и плащи». Модели рук сохраняются, дубликаты пропускаются.",
     "В этой сборке при отказе Minecraft Services отображаются HTTP-статус, описание ошибки сервера и идентификатор запроса, если он доступен.",
     "При обновлении ярлыки Aurum на рабочем столе и в меню «Пуск» автоматически перенаправляются на установленную версию.",
     "При выборе диска установщик автоматически добавляет папку Aurum Launcher; выбранная папка сохраняется.",
@@ -117,22 +116,24 @@ export function HomeSidebar() {
             </button>
           </div>
           <div className="home-release-list">
-            {release.highlights.map(({ icon: Icon, title, text, date, dateTime }) => (
-              <div className="home-release-item" key={title}>
-                <span className="home-release-icon">
-                  <Icon size={22} strokeWidth={1.7} />
-                </span>
-                <div>
-                  <h3>{t(title)}</h3>
-                  <p>{t(text)}</p>
-                  {date && (
-                    <time className="home-release-date" dateTime={dateTime}>
-                      {t(date)}
-                    </time>
-                  )}
+            {release.highlights.map(
+              ({ icon: Icon, title, text, date, dateTime }) => (
+                <div className="home-release-item" key={title}>
+                  <span className="home-release-icon">
+                    <Icon size={22} strokeWidth={1.7} />
+                  </span>
+                  <div>
+                    <h3>{t(title)}</h3>
+                    <p>{t(text)}</p>
+                    {date && (
+                      <time className="home-release-date" dateTime={dateTime}>
+                        {t(date)}
+                      </time>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ),
+            )}
           </div>
         </section>
       </aside>

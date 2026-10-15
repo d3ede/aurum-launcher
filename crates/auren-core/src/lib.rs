@@ -7,6 +7,7 @@ pub mod migration;
 pub mod minecraft;
 pub mod model;
 pub mod modrinth_import;
+pub mod modrinth_skins;
 pub mod net;
 pub mod packs;
 mod processes;

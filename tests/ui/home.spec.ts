@@ -139,7 +139,7 @@ test("home has account and factual release panels, working actions and both them
   await fixture(page);
   await expect(page.locator(".home-account-card")).toContainText("CozyPlayer");
   await expect(page.locator(".home-news-card")).toContainText("Aurum 0.3.9");
-  await expect(page.locator(".home-news-card")).toContainText("Управление модами");
+  await expect(page.locator(".home-news-card")).toContainText("Импорт скинов");
   await expect(page.locator(".home-news-card")).toContainText("Ярлыки автоматически ведут на новую версию.");
   await expect(page.locator(".home-sidebar img")).toHaveCount(0);
   await expect(page.locator(".sidebar-pattern")).toHaveCount(1);
@@ -218,7 +218,7 @@ test("home adapts to minimum window size and translates the new panels", async (
   await expect(
     page.getByRole("heading", { name: "What's new", exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".home-news-card")).toContainText("Mod management");
+  await expect(page.locator(".home-news-card")).toContainText("Skin import");
   await expect(page.locator(".home-news-card")).toContainText("Shortcuts automatically point to the new version.");
   await page.setViewportSize({ width: 960, height: 680 });
   expect(

@@ -10,6 +10,18 @@
   gap: 30px;
   align-items: start;
 }
+.wardrobe-import-result {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
+.wardrobe-import-result p {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
 .wardrobe-character {
   min-width: 0;
   position: sticky;

@@ -107,6 +107,12 @@ export interface ModrinthImportResult {
   failed: { name: string; message: string }[];
   cancelled: boolean;
 }
+export interface ModrinthSkinImportResult {
+  imported: number;
+  duplicates: number;
+  invalid: number;
+  warnings: string[];
+}
 export interface Settings {
   language: string;
   theme: "light" | "dark" | "system";

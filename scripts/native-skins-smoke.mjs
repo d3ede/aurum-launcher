@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { strict as assert } from "node:assert";
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { resolve, join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 
 const root = resolve(".test-data", `native-skins-${Date.now()}`);
 const dataRoot = join(root, "data");
@@ -91,8 +92,42 @@ try {
   assert.equal(library.selections[account.id].skinId, second.id);
   assert.equal((await rpc(page, "snapshot")).accounts[0].skinModel, "steve");
   assert.equal(library.skins.length, 2);
+  const sourceRoot = join(root, "ModrinthApp");
+  mkdirSync(sourceRoot, { recursive: true });
+  const sourcePath = join(sourceRoot, "app.db");
+  const source = new DatabaseSync(sourcePath);
+  source.exec(`CREATE TABLE custom_minecraft_skin_textures (texture_key TEXT PRIMARY KEY, texture BLOB);
+    CREATE TABLE custom_minecraft_skins (minecraft_user_uuid TEXT, texture_key TEXT, variant TEXT, cape_id TEXT);`);
+  const addTexture = source.prepare("INSERT INTO custom_minecraft_skin_textures VALUES (?, ?)");
+  const addSkin = source.prepare("INSERT INTO custom_minecraft_skins VALUES (?, ?, ?, NULL)");
+  addTexture.run("classic", readFileSync("src/assets/skins/wide-efe.png"));
+  addTexture.run("slim", readFileSync("src/assets/skins/slim-kai.png"));
+  addTexture.run("broken", Buffer.from("not PNG"));
+  addSkin.run("one", "classic", "CLASSIC");
+  addSkin.run("one", "slim", "SLIM");
+  addSkin.run("two", "slim", "SLIM");
+  addSkin.run("one", "broken", "CLASSIC");
+  source.close();
+  const sourceBefore = readFileSync(sourcePath);
+  const imported = await rpc(page, "importModrinthSkins", { directories: [sourceRoot] });
+  assert.deepEqual(imported, { imported: 2, duplicates: 1, invalid: 1, warnings: [] });
+  assert.deepEqual(await rpc(page, "importModrinthSkins", { directories: [sourceRoot] }),
+    { imported: 0, duplicates: 3, invalid: 1, warnings: [] });
+  assert.deepEqual(readFileSync(sourcePath), sourceBefore);
+  library = await rpc(page, "skinLibrary");
+  assert.equal(library.skins.length, 4);
+  assert.equal(library.selections[account.id].skinId, second.id);
+  assert.deepEqual(library.skins.slice(2).map(s => s.model).sort(), ["alex", "steve"]);
+  await stop();
+  page = await start();
+  await page.getByRole("button", { name: "Скины и плащи", exact: true }).click();
+  await page.getByRole("button", { name: "Выбрать скин Modrinth 3", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Выбрать скин Modrinth 4", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Импорт из Modrinth", exact: false }).waitFor();
+  await page.screenshot({ path: ".test-data/screenshots/skins-modrinth-native.png" });
   assert.deepEqual(errors, []);
-  const result = { passed: true, savedSkins: 2, localCapes: 1, restarted: true,
+  const result = { passed: true, savedSkins: 4, localCapes: 1, restarted: true,
+    modrinthImport: imported, sourceUnchanged: true,
     switched: true, nativeIpc: true, errors, fixtureRoot: root };
   writeFileSync(join(root, "result.json"), JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result));

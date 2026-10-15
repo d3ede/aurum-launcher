@@ -1,4 +1,15 @@
 export const skinEnglish: Record<string, string> = {
+  "Импорт из Modrinth": "Import from Modrinth",
+  "Импортируем скины…": "Importing skins…",
+  "Все сохранённые скины": "All saved skins",
+  "Выбрать папку Modrinth": "Choose Modrinth folder",
+  "Сохранённые скины Modrinth не найдены.": "No saved Modrinth skins found.",
+  "Импортировано: {{imported}} · Уже в библиотеке: {{duplicates}} · Пропущено: {{invalid}}":
+    "Imported: {{imported}} · Already saved: {{duplicates}} · Skipped: {{invalid}}",
+  "Пропущены повреждённые текстуры и неизвестные модели рук.":
+    "Corrupt textures and unknown arm models were skipped.",
+  "Не удалось прочитать скины Modrinth: {{path}}. Закройте Modrinth и повторите импорт.":
+    "Could not read Modrinth skins: {{path}}. Close Modrinth and retry the import.",
   "Не удалось загрузить текстуру скина": "Could not load skin texture",
   "Не удалось загрузить текстуру плаща": "Could not load cape texture",
   "Скины и плащи": "Skins & capes",

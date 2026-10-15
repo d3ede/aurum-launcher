@@ -18,6 +18,7 @@ import type {
   Project,
   ModrinthScan,
   ModrinthImportResult,
+  ModrinthSkinImportResult,
   SavedSkin,
   SavedCape,
   SkinLibrary,
@@ -27,6 +28,7 @@ export const native = isTauri();
 type Empty = Record<string, never>;
 interface Contract {
   skinLibrary: [Empty, SkinLibrary];
+  importModrinthSkins: [{ directories: string[] }, ModrinthSkinImportResult];
   accountAppearance: [{ id: string }, AccountAppearance];
   defaultSkinTexture: [{ id: string; model: string }, number[]];
   chooseSkinTexture: [

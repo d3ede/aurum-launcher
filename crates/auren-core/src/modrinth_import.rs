@@ -79,7 +79,7 @@ fn read_json(path: &Path) -> Result<Value> {
     Ok(serde_json::from_slice(&std::fs::read(path)?)?)
 }
 
-fn open_database(root: &Path) -> Result<Connection> {
+pub(crate) fn open_database(root: &Path) -> Result<Connection> {
     let db = Connection::open_with_flags(root.join("app.db"), OpenFlags::SQLITE_OPEN_READ_ONLY)
         .context("Не удалось прочитать базу Modrinth. Закройте Modrinth и повторите поиск")?;
     db.busy_timeout(Duration::from_secs(2))?;

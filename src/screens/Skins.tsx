@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import {
   Check,
   ChevronDown,
+  Download,
+  FolderOpen,
   ImagePlus,
   Pencil,
   Plus,
@@ -29,6 +31,7 @@ import type {
   SavedCape,
   SkinLibrary,
   AccountAppearance,
+  ModrinthSkinImportResult,
 } from "../types";
 
 const emptyLibrary: SkinLibrary = { skins: [], capes: [], selections: {} };
@@ -170,6 +173,9 @@ export function Skins() {
   const [loading, setLoading] = useState(false);
   const [reload, setReload] = useState(0);
   const [editorError, setEditorError] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importReport, setImportReport] =
+    useState<ModrinthSkinImportResult | null>(null);
   useEffect(() => {
     if (accountId && !data.accounts.some((a) => a.id === accountId))
       setAccountId(data.selectedAccount || data.accounts[0]?.id || "");
@@ -273,6 +279,29 @@ export function Skins() {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
+  };
+  const importSkins = async (chooseFolder = false) => {
+    await run(async () => {
+      setImporting(true);
+      setError("");
+      try {
+        const directory = chooseFolder
+          ? await rpc("chooseModrinthDirectory", {})
+          : null;
+        if (chooseFolder && !directory) return;
+        setImportReport(null);
+        const result = await rpc("importModrinthSkins", {
+          directories: directory ? [directory] : [],
+        });
+        setImportReport(result);
+        setLibrary(await rpc("skinLibrary", {}));
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+        throw e;
+      } finally {
+        setImporting(false);
+      }
+    });
   };
   const save = async () => {
     if (!draft) return;
@@ -457,6 +486,48 @@ export function Skins() {
           )}
         </section>
         <section className="wardrobe-library">
+          {importReport && (
+            <div className="wardrobe-import-result">
+              <p role="status">
+                {importReport.imported +
+                  importReport.duplicates +
+                  importReport.invalid ===
+                0
+                  ? t("Сохранённые скины Modrinth не найдены.")
+                  : t(
+                      "Импортировано: {{imported}} · Уже в библиотеке: {{duplicates}} · Пропущено: {{invalid}}",
+                      {
+                        imported: importReport.imported,
+                        duplicates: importReport.duplicates,
+                        invalid: importReport.invalid,
+                      },
+                    )}
+              </p>
+              {importReport.invalid > 0 && (
+                <p>
+                  {t(
+                    "Пропущены повреждённые текстуры и неизвестные модели рук.",
+                  )}
+                </p>
+              )}
+              {importReport.warnings.map((path) => (
+                <p key={path}>
+                  {t(
+                    "Не удалось прочитать скины Modrinth: {{path}}. Закройте Modrinth и повторите импорт.",
+                    { path },
+                  )}
+                </p>
+              ))}
+              <button
+                className="text-button"
+                disabled={busy}
+                onClick={() => void importSkins(true)}
+              >
+                <FolderOpen size={15} />
+                {t("Выбрать папку Modrinth")}
+              </button>
+            </div>
+          )}
           {error && (
             <ErrorBox error={error} retry={() => setReload((n) => n + 1)} />
           )}
@@ -475,6 +546,19 @@ export function Skins() {
                 <Plus size={30} />
                 <b>{t("Добавить скин")}</b>
                 <small>{t("PNG · 64×64 или 64×32")}</small>
+              </button>
+              <button
+                className="wardrobe-add"
+                disabled={busy || loading || !native}
+                onClick={() => void importSkins()}
+              >
+                <Download size={30} />
+                <b>
+                  {importing
+                    ? t("Импортируем скины…")
+                    : t("Импорт из Modrinth")}
+                </b>
+                <small>{t("Все сохранённые скины")}</small>
               </button>
               {library.skins.map((s) => (
                 <SkinTile

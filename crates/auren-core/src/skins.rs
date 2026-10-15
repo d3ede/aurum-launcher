@@ -117,6 +117,59 @@ pub fn default_texture(id: &str, model: &str) -> Result<Vec<u8>> {
 }
 
 impl Engine {
+    pub async fn import_modrinth_skins(
+        &self,
+        roots: Vec<std::path::PathBuf>,
+    ) -> Result<crate::modrinth_skins::ModrinthSkinImportResult> {
+        let scan = tokio::task::spawn_blocking(move || crate::modrinth_skins::scan(&roots)).await?;
+        let _lock = self.db.lock().await;
+        let mut library = self.skin_library().await?;
+        let mut report = crate::modrinth_skins::ModrinthSkinImportResult {
+            invalid: scan.invalid,
+            warnings: scan.warnings,
+            ..Default::default()
+        };
+        let mut existing: std::collections::HashSet<_> = library
+            .skins
+            .iter()
+            .map(|s| {
+                // Normalize existing PNGs too, so encoding metadata does not create duplicates.
+                let texture = decode_texture(&s.texture)
+                    .and_then(|b| validate_texture(&b, false))
+                    .map(|b| encode_texture(&b))
+                    .unwrap_or_else(|_| s.texture.clone());
+                (texture, s.model.clone())
+            })
+            .collect();
+        let mut number = library.skins.len() + 1;
+        for skin in scan.skins {
+            if !existing.insert((skin.texture.clone(), skin.model.clone())) {
+                report.duplicates += 1;
+                continue;
+            }
+            while library
+                .skins
+                .iter()
+                .any(|s| s.name == format!("Modrinth {number}"))
+            {
+                number += 1;
+            }
+            library.skins.push(SavedSkin {
+                id: uuid::Uuid::new_v4().to_string(),
+                name: format!("Modrinth {number}"),
+                model: skin.model,
+                texture: skin.texture,
+                cape_id: None,
+            });
+            number += 1;
+            report.imported += 1;
+        }
+        if report.imported > 0 {
+            self.persist_skins(&library).await?;
+        }
+        Ok(report)
+    }
+
     pub async fn skin_library(&self) -> Result<SkinLibrary> {
         let path = self.root.join("skin-library.json");
         if !path.exists() {

@@ -7,9 +7,10 @@ async function fixture(
   page: Page,
   kind: "offline" | "microsoft" = "offline",
   theme = "light",
+  importMode: "normal" | "empty" | "partial" | "error" = "normal",
 ) {
   await page.addInitScript(
-    ({ steve, ari, zuri, kind, theme }) => {
+    ({ steve, ari, zuri, kind, theme, importMode }) => {
       localStorage.setItem("aurum:language", "ru");
       const w = window as any;
       w.isTauri = true;
@@ -93,6 +94,36 @@ async function fixture(
           w.requests.push({ action, payload });
           if (action === "snapshot") return state;
           if (action === "skinLibrary") return structuredClone(library);
+          if (action === "chooseModrinthDirectory") return "D:/Custom Modrinth";
+          if (action === "importModrinthSkins") {
+            if (importMode === "error")
+              throw new Error(
+                "Не удалось прочитать библиотеку скинов; исходный файл сохранён",
+              );
+            if (importMode === "empty" && !payload.directories.length)
+              return { imported: 0, duplicates: 0, invalid: 0, warnings: [] };
+            const imported = library.skins.some(
+              (s: any) => s.id === "modrinth-skin",
+            )
+              ? 0
+              : 1;
+            if (imported)
+              library.skins.push({
+                id: "modrinth-skin",
+                name: "Modrinth 3",
+                model: "alex",
+                texture: texture(zuri),
+                capeId: null,
+              });
+            save();
+            return {
+              imported,
+              duplicates: imported ? 0 : 1,
+              invalid: importMode === "partial" ? 2 : 0,
+              warnings:
+                importMode === "partial" ? ["D:/Broken Modrinth/app.db"] : [],
+            };
+          }
           if (action === "accountAppearance")
             return {
               texture: texture(ari),
@@ -169,7 +200,7 @@ async function fixture(
         },
       };
     },
-    { steve, ari, zuri, kind, theme },
+    { steve, ari, zuri, kind, theme, importMode },
   );
   await page.goto("/");
   await page
@@ -183,6 +214,123 @@ async function fixture(
     "true",
   );
 }
+test("one click imports Modrinth skins, preserves selection and survives restart without duplicates", async ({
+  page,
+}) => {
+  await fixture(page);
+  const importButton = page.getByRole("button", {
+    name: "Импорт из Modrinth",
+    exact: false,
+  });
+  await importButton.click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Импортировано: 1" }),
+  ).toBeVisible();
+  const imported = page.getByRole("button", {
+    name: "Выбрать скин Modrinth 3",
+    exact: true,
+  });
+  await expect(imported).toBeVisible();
+  await expect(imported).toContainText("Тонкие руки");
+  await expect(
+    page.getByRole("button", {
+      name: "Выбрать скин Путешественник",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await importButton.click();
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "Импортировано: 0 · Уже в библиотеке: 1" }),
+  ).toBeVisible();
+  await expect(imported).toHaveCount(1);
+  expect(
+    await page.evaluate(() =>
+      (window as any).requests.filter(
+        (r: any) => r.action === "applyLibrarySkin",
+      ),
+    ),
+  ).toEqual([]);
+  await page.getByRole("button", { name: "Переключить тему" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.screenshot({
+    path: ".test-data/screenshots/skins-modrinth-dark.png",
+  });
+  await page.reload();
+  await page
+    .getByRole("button", { name: "Скины и плащи", exact: true })
+    .click();
+  await expect(imported).toBeVisible();
+});
+
+test("missing automatic library offers a custom Modrinth folder", async ({
+  page,
+}) => {
+  await fixture(page, "offline", "light", "empty");
+  await page.getByRole("button", { name: "Импорт из Modrinth" }).click();
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "Сохранённые скины Modrinth не найдены." }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Выбрать папку Modrinth" }).click();
+  await expect(
+    page.getByRole("button", { name: "Выбрать скин Modrinth 3", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as any).requests
+          .filter((r: any) => r.action === "importModrinthSkins")
+          .at(-1).payload.directories,
+    ),
+  ).toEqual(["D:/Custom Modrinth"]);
+  await page.screenshot({
+    path: ".test-data/screenshots/skins-modrinth-light.png",
+  });
+});
+
+test("partial Modrinth import explains skipped textures and unreadable sources", async ({
+  page,
+}) => {
+  await fixture(page, "offline", "light", "partial");
+  await page.getByRole("button", { name: "Импорт из Modrinth" }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Пропущено: 2" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Пропущены повреждённые текстуры и неизвестные модели рук."),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/Не удалось прочитать скины Modrinth: D:\/Broken/),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Выбрать скин Modrinth 3", exact: true }),
+  ).toBeVisible();
+});
+
+test("failed Modrinth import preserves saved skins and allows retry", async ({
+  page,
+}) => {
+  await fixture(page, "offline", "light", "error");
+  const button = page.getByRole("button", { name: "Импорт из Modrinth" });
+  await button.click();
+  await expect(
+    page
+      .locator(".wardrobe-library")
+      .getByText(
+        "Не удалось прочитать библиотеку скинов; исходный файл сохранён",
+      ),
+  ).toBeVisible();
+  await expect(button).toBeEnabled();
+  await expect(
+    page.getByRole("button", {
+      name: "Выбрать скин Путешественник",
+      exact: true,
+    }),
+  ).toBeVisible();
+});
 test("dedicated wardrobe has all defaults, still manual view, animations and both themes", async ({
   page,
 }) => {
