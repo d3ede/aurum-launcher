@@ -2,7 +2,6 @@ import { useState } from "react";
 import { APP_VERSION } from "../lib/version";
 import {
   ArrowRight,
-  Box,
   Megaphone,
   Settings2,
   UserPlus,
@@ -16,6 +15,11 @@ import { Modal } from "./ui";
 const release = {
   version: APP_VERSION,
   highlights: [
+    {
+      icon: UserRound,
+      title: "Диагностика входа",
+      text: "Minecraft Services показывает причину отказа сервера.",
+    },
     {
       icon: Megaphone,
       title: "Aurum 0.3.9",
@@ -37,13 +41,9 @@ const release = {
       date: "14 октября 2026",
       dateTime: "2026-10-14",
     },
-    {
-      icon: Box,
-      title: "Управление модами",
-      text: "Фильтры, версии и обновление всех модов.",
-    },
   ],
   details: [
+    "В этой сборке при отказе Minecraft Services отображаются HTTP-статус, описание ошибки сервера и идентификатор запроса, если он доступен.",
     "При обновлении ярлыки Aurum на рабочем столе и в меню «Пуск» автоматически перенаправляются на установленную версию.",
     "При выборе диска установщик автоматически добавляет папку Aurum Launcher; выбранная папка сохраняется.",
     "В установщике: компактное окно без системной шапки, выбор папки и два отдельных ярлыка.",

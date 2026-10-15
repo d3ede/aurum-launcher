@@ -27,6 +27,88 @@ struct Credentials {
     expires_at: u64,
     xuid: String,
 }
+
+// Keep server diagnostics, but never forward arbitrary JSON (which may contain tokens).
+async fn minecraft_login_reply(mut response: reqwest::Response, secrets: &[&str]) -> Result<Value> {
+    let status = response.status();
+    if status.is_success() {
+        return Ok(response.json().await?);
+    }
+    let mut body = Vec::new();
+    let mut read_failed = false;
+    // Error pages can be unexpectedly large. Retain a bounded diagnostic response.
+    while body.len() < 16 * 1024 {
+        match response.chunk().await {
+            Ok(Some(chunk)) => {
+                let count = chunk.len().min(16 * 1024 - body.len());
+                body.extend_from_slice(&chunk[..count]);
+            }
+            Ok(None) => break,
+            Err(_) => {
+                read_failed = true;
+                break;
+            }
+        }
+    }
+    let mut details = Vec::new();
+    if let Ok(json) = serde_json::from_slice::<Value>(&body) {
+        for field in [
+            "error",
+            "errorMessage",
+            "error_description",
+            "message",
+            "path",
+            "developerMessage",
+            "requestId",
+            "correlationId",
+        ] {
+            if let Some(value) = json[field]
+                .as_str()
+                .filter(|value| !value.trim().is_empty())
+            {
+                details.push(format!("{field}: {value}"));
+            }
+        }
+    } else {
+        let text = String::from_utf8_lossy(&body);
+        // HTML proxy/CDN pages are not useful as plain-text sign-in errors.
+        if body.len() < 16 * 1024
+            && !text.trim_start().starts_with(['<', '{', '['])
+            && !text.trim().is_empty()
+        {
+            details.push(text.into_owned());
+        }
+    }
+    let request_id = response
+        .headers()
+        .get("x-request-id")
+        .and_then(|value| value.to_str().ok());
+    if let Some(id) = request_id {
+        details.push(format!("x-request-id: {id}"));
+    }
+    if read_failed {
+        details.push("[response read failed]".into());
+    }
+    if body.len() == 16 * 1024 {
+        details.push("[error body truncated at 16384 bytes]".into());
+    }
+    if details.is_empty() {
+        details.push("[no error description returned]".into());
+    }
+    let mut details = details.join("; ");
+    // Redact even a credential echoed inside an otherwise legitimate error message.
+    for secret in secrets.iter().filter(|secret| !secret.is_empty()) {
+        details = details.replace(secret, "[redacted]");
+    }
+    let details = details.split_whitespace().collect::<Vec<_>>().join(" ");
+    let details = if details.chars().count() > 1500 {
+        format!("{}…", details.chars().take(1500).collect::<String>())
+    } else {
+        details
+    };
+    bail!("Minecraft Services: HTTP {status}. {details}")
+}
+
 impl Engine {
     pub async fn login_microsoft(
         &self,
@@ -101,16 +183,13 @@ impl Engine {
             .as_str()
             .context("Нет Xbox user hash")?;
         let token = xsts["Token"].as_str().context("Нет XSTS token")?;
-        let mc: Value = self
+        let response = self
             .http
             .post("https://api.minecraftservices.com/authentication/login_with_xbox")
             .json(&json!({"identityToken":format!("XBL3.0 x={hash};{token}")}))
             .send()
-            .await?
-            .error_for_status()
-            .context("Minecraft Services не разрешил вход для этой сборки Aurum. Разработчику нужно проверить доступ приложения")?
-            .json()
             .await?;
+        let mc = minecraft_login_reply(response, &[msa, xbox_token, token]).await?;
         let access = mc["access_token"].as_str().context("Нет Minecraft token")?;
         let entitlements: Value = self
             .http
@@ -272,5 +351,137 @@ impl Engine {
             return Ok(vec![]);
         }
         Ok(tokio::fs::read(self.root.join("skins").join(format!("{}.png", account.id))).await?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    async fn reply(status: &str, body: &str, headers: &str) -> reqwest::Response {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let wire = format!(
+            "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n{headers}\r\n{body}",
+            body.len()
+        );
+        tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut buffer = [0; 4096];
+            let mut request = Vec::new();
+            while !request.windows(4).any(|part| part == b"\r\n\r\n") {
+                let count = stream.read(&mut buffer).await.unwrap();
+                assert!(count > 0, "client closed before sending HTTP headers");
+                request.extend_from_slice(&buffer[..count]);
+            }
+            stream.write_all(wire.as_bytes()).await.unwrap();
+        });
+        reqwest::Client::builder()
+            .no_proxy()
+            .build()
+            .unwrap()
+            .get(format!("http://{address}"))
+            .send()
+            .await
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn minecraft_rejection_preserves_reason_and_request_id_without_guessing() {
+        let response = reply(
+            "403 Forbidden",
+            r#"{"error":"ForbiddenOperationException","errorMessage":"Invalid app registration, see https://aka.ms/AppRegInfo","path":"/authentication/login_with_xbox","requestId":"request-123"}"#,
+            "",
+        ).await;
+        let error = minecraft_login_reply(response, &[])
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("HTTP 403 Forbidden"));
+        assert!(error.contains("error: ForbiddenOperationException"));
+        assert!(
+            error.contains("errorMessage: Invalid app registration, see https://aka.ms/AppRegInfo")
+        );
+        assert!(error.contains("requestId: request-123"));
+        assert!(error.contains("path: /authentication/login_with_xbox"));
+        assert!(!error.contains("Разработчику"));
+    }
+
+    #[tokio::test]
+    async fn minecraft_errors_exclude_token_fields_and_redact_echoed_credentials() {
+        let response = reply(
+            "401 Unauthorized",
+            r#"{"errorMessage":"Rejected secret-xsts and secret-msa","access_token":"private-access","refresh_token":"private-refresh","unknown":{"Token":"private-xbox"}}"#,
+            "x-request-id: diagnostic-123\r\n",
+        ).await;
+        let error = minecraft_login_reply(response, &["secret-xsts", "secret-msa"])
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("Rejected [redacted] and [redacted]"));
+        assert!(error.contains("x-request-id: diagnostic-123"));
+        for secret in [
+            "secret-xsts",
+            "secret-msa",
+            "private-access",
+            "private-refresh",
+            "private-xbox",
+        ] {
+            assert!(!error.contains(secret));
+        }
+    }
+
+    #[tokio::test]
+    async fn minecraft_errors_handle_plain_text_missing_and_oversized_responses() {
+        let response = reply("429 Too Many Requests", "Try again later\nRate limited", "").await;
+        let error = minecraft_login_reply(response, &[])
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("HTTP 429 Too Many Requests. Try again later Rate limited"));
+        for body in [
+            "",
+            "<html>Proxy failure</html>",
+            r#"{"access_token":"private"}"#,
+            r#"{"access_token":"private"#,
+        ] {
+            let response = reply("503 Service Unavailable", body, "").await;
+            let error = minecraft_login_reply(response, &[])
+                .await
+                .unwrap_err()
+                .to_string();
+            assert!(error.contains("HTTP 503 Service Unavailable"));
+            assert!(error.contains("[no error description returned]"));
+            assert!(!error.contains("private"));
+        }
+        let body = json!({"errorMessage": "я".repeat(2000)}).to_string();
+        let response = reply("403 Forbidden", &body, "").await;
+        let error = minecraft_login_reply(response, &[])
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(error.ends_with('…'));
+        assert!(error.chars().count() < 1600);
+        let response = reply("403 Forbidden", &"x".repeat(20_000), "").await;
+        let error = minecraft_login_reply(response, &[])
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("HTTP 403 Forbidden"));
+        assert!(error.len() < 200);
+    }
+
+    #[tokio::test]
+    async fn successful_minecraft_login_keeps_token_response() {
+        let response = reply(
+            "200 OK",
+            r#"{"access_token":"minecraft-token","expires_in":86400}"#,
+            "",
+        )
+        .await;
+        let result = minecraft_login_reply(response, &[]).await.unwrap();
+        assert_eq!(result["access_token"], "minecraft-token");
+        assert_eq!(result["expires_in"], 86400);
     }
 }

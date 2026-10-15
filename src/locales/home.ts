@@ -1,4 +1,9 @@
 export const homeEnglish: Record<string, string> = {
+  "Диагностика входа": "Sign-in diagnostics",
+  "Minecraft Services показывает причину отказа сервера.":
+    "Minecraft Services shows the server's reason for rejecting sign-in.",
+  "В этой сборке при отказе Minecraft Services отображаются HTTP-статус, описание ошибки сервера и идентификатор запроса, если он доступен.":
+    "In this build, Minecraft Services sign-in failures show the HTTP status, the server's error description and a request ID when available.",
   "Ярлыки автоматически ведут на новую версию.":
     "Shortcuts automatically point to the new version.",
   "При обновлении ярлыки Aurum на рабочем столе и в меню «Пуск» автоматически перенаправляются на установленную версию.":

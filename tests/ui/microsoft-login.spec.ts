@@ -26,6 +26,7 @@ async function fixture(page: Page, mode: "waiting" | "error" = "waiting", theme 
       resolveLogin?.(account);
     };
     w.denyLogin = () => rejectLogin?.("Вход отменён в Microsoft");
+    w.failLogin = (message: string) => rejectLogin?.(message);
     w.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
     w.__TAURI_INTERNALS__ = {
       metadata: { currentWindow: { label: "main" }, currentWebview: { label: "main" } },
@@ -121,6 +122,25 @@ test("build configuration errors stay in the dialog without asking the player fo
 });
 
 for (const theme of ["light", "dark"]) {
+  test(`Minecraft server diagnostics remain visible in the ${theme} sign-in dialog`, async ({ page }) => {
+    await page.setViewportSize({ width: 960, height: 680 });
+    await fixture(page, "waiting", theme);
+    await start(page);
+    // Fixture only: this is not evidence of Aurum's real server response.
+    const message = "Minecraft Services: HTTP 403 Forbidden. error: ForbiddenOperationException; errorMessage: Invalid app registration, see https://aka.ms/AppRegInfo; path: /authentication/login_with_xbox; requestId: fixture-request-123";
+    await page.evaluate((message) => (window as any).failLogin(message), message);
+    const dialog = page.getByRole("dialog", { name: "Не удалось войти", exact: true });
+    await expect(dialog.getByRole("alert")).toContainText(message);
+    await expect(dialog.getByRole("button", { name: "Попробовать снова" })).toBeVisible();
+    const bounds = await dialog.boundingBox();
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(960);
+    expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await page.screenshot({ path: `.test-data/screenshots/microsoft-server-error-${theme}.png`, animations: "disabled" });
+    await dialog.getByRole("button", { name: "Попробовать снова" }).click();
+    await expect(page.getByRole("dialog", { name: "Вход с Microsoft", exact: true })).toBeVisible();
+  });
+
   test(`sign-in layout in ${theme} theme fits the minimum desktop size`, async ({ page }) => {
     await page.setViewportSize({ width: 960, height: 680 });
     await fixture(page, "waiting", theme);
