@@ -128,10 +128,10 @@
   position: relative;
   isolation: isolate;
   display: grid;
-  align-self: flex-start;
+  align-self: center;
   flex-shrink: 0;
   min-width: 142px;
-  min-height: 36px;
+  min-height: 42px;
   padding: 7px 11px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--catalog-action) 70%, transparent);
@@ -149,6 +149,13 @@
 .catalog-install-button:focus-visible {
   outline: 2px solid var(--catalog-action);
   outline-offset: 3px;
+}
+.catalog-install-button:is(.is-available, .is-installing) {
+  --catalog-action: var(--accent-ink);
+  border-color: var(--gold);
+}
+.catalog-install-button.is-available:hover:not(:disabled) {
+  background: var(--gold-soft);
 }
 .catalog-action-label,
 .catalog-action-remove {
@@ -283,7 +290,7 @@
 .catalog-result-grid .catalog-result > .catalog-install-button {
   margin: 0;
   align-self: stretch;
-  min-height: 36px;
+  min-height: 42px;
 }
 @container catalog-results (max-width: 900px) {
   .catalog-result-grid {
