@@ -23,17 +23,9 @@
   height: 100%;
   object-fit: contain;
 }
-.catalog-source-logo[data-source="atlauncher"] {
-  /* The official cube has dark sides; a quiet light plate retains contrast. */
-  background: #f0f3e8;
-  border-radius: 5px;
-}
-.catalog-source-logo[data-source="atlauncher"] .catalog-source-glyph {
-  padding: 1px;
-}
 .catalog-source-logo[data-source="ftb"] .catalog-source-glyph {
-  /* Optical sizing for the wider three-letter mark, without stretching it. */
-  transform: scale(1.1);
+  /* Keep the wide mark inside its slot with a little breathing room. */
+  padding: 1px;
 }
 .catalog-provider-note {
   color: var(--muted);
