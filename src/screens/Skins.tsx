@@ -102,12 +102,6 @@ function SkinTile({
           <Check size={13} />
         </span>
       )}
-      <span className="wardrobe-tile-caption">
-        <b title={skin.name}>{skin.name}</b>
-        <small>
-          {skin.model === "alex" ? t("Тонкие руки") : t("Обычные руки")}
-        </small>
-      </span>
     </button>
   );
 }
@@ -385,14 +379,24 @@ export function Skins() {
             )}
           </p>
         </div>
-        <button
-          className="text-button"
-          disabled={busy || loading || !native}
-          onClick={() => setReload((n) => n + 1)}
-        >
-          <RefreshCw size={15} />
-          {t("Обновить профиль")}
-        </button>
+        <div className="wardrobe-heading-actions">
+          <button
+            className="button secondary"
+            disabled={busy || loading || !native}
+            onClick={() => void importSkins()}
+          >
+            <Download size={16} />
+            {importing ? t("Импортируем скины…") : t("Импорт из Modrinth")}
+          </button>
+          <button
+            className="text-button"
+            disabled={busy || loading || !native}
+            onClick={() => setReload((n) => n + 1)}
+          >
+            <RefreshCw size={15} />
+            {t("Обновить профиль")}
+          </button>
+        </div>
       </div>
       <div className="wardrobe-layout">
         <section className="wardrobe-character">
@@ -418,10 +422,11 @@ export function Skins() {
               </button>
             )}
           </div>
-          <div className="wardrobe-character-name">
-            <b>{account?.name || skin.name}</b>
-            <small>{skin.name}</small>
-          </div>
+          {account && (
+            <div className="wardrobe-character-name">
+              <b>{account.name}</b>
+            </div>
+          )}
           <SkinPreview
             texture={skin.texture}
             model={skin.model}
@@ -546,19 +551,6 @@ export function Skins() {
                 <Plus size={30} />
                 <b>{t("Добавить скин")}</b>
                 <small>{t("PNG · 64×64 или 64×32")}</small>
-              </button>
-              <button
-                className="wardrobe-add"
-                disabled={busy || loading || !native}
-                onClick={() => void importSkins()}
-              >
-                <Download size={30} />
-                <b>
-                  {importing
-                    ? t("Импортируем скины…")
-                    : t("Импорт из Modrinth")}
-                </b>
-                <small>{t("Все сохранённые скины")}</small>
               </button>
               {library.skins.map((s) => (
                 <SkinTile

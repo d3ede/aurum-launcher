@@ -13,9 +13,9 @@ export function skinThumbnail(texture: string, model: "steve" | "alex") {
     .then(async () => {
       if (!renderer)
         renderer = new SkinViewer({
-          width: 180,
-          height: 230,
-          zoom: 0.91,
+          width: 240,
+          height: 310,
+          zoom: 1.28,
           pixelRatio: 1,
           renderPaused: true,
           preserveDrawingBuffer: true,
@@ -26,8 +26,10 @@ export function skinThumbnail(texture: string, model: "steve" | "alex") {
         model: model === "alex" ? "slim" : "default",
       });
       const distance = v.camera.position.length();
+      // Frame the head and torso closely, with the lower legs cropped by the card.
+      v.playerWrapper.position.y = -5;
       v.camera.position
-        .set(distance * 0.24, distance * 0.04, distance * 0.97)
+        .set(distance * 0.24, distance * 0.1, distance * 0.97)
         .setLength(distance);
       v.camera.lookAt(0, 0, 0);
       // Use the same postprocessing/color pipeline as the large preview.

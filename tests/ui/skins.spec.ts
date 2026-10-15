@@ -231,7 +231,7 @@ test("one click imports Modrinth skins, preserves selection and survives restart
     exact: true,
   });
   await expect(imported).toBeVisible();
-  await expect(imported).toContainText("Тонкие руки");
+  await expect(imported).toHaveText("");
   await expect(
     page.getByRole("button", {
       name: "Выбрать скин Путешественник",
@@ -354,6 +354,45 @@ test("dedicated wardrobe has all defaults, still manual view, animations and bot
   await expect(
     page.locator(".wardrobe-tile img[data-thumbnail-ready]"),
   ).toHaveCount(11);
+  await expect(page.locator(".wardrobe-tile-caption")).toHaveCount(0);
+  expect(await page.locator(".wardrobe-tile").allTextContents()).toEqual(
+    Array(11).fill(""),
+  );
+  const framing = await page
+    .locator(".wardrobe-tile img")
+    .first()
+    .evaluate((element) => {
+      const image = element as HTMLImageElement;
+      const canvas = document.createElement("canvas");
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const context = canvas.getContext("2d")!;
+      context.drawImage(image, 0, 0);
+      const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+      let left = canvas.width,
+        right = 0,
+        top = canvas.height,
+        bottom = 0;
+      for (let y = 0; y < canvas.height; y++)
+        for (let x = 0; x < canvas.width; x++)
+          if (data[(y * canvas.width + x) * 4 + 3] > 100) {
+            left = Math.min(left, x);
+            right = Math.max(right, x);
+            top = Math.min(top, y);
+            bottom = Math.max(bottom, y);
+          }
+      return {
+        width: (right - left) / canvas.width,
+        height: (bottom - top) / canvas.height,
+        top: top / canvas.height,
+        bottom: bottom / canvas.height,
+      };
+    });
+  expect(framing.width).toBeGreaterThan(0.6);
+  expect(framing.height).toBeGreaterThan(0.85);
+  expect(framing.top).toBeGreaterThan(0.025);
+  expect(framing.top).toBeLessThan(0.15);
+  expect(framing.bottom).toBeGreaterThan(0.97);
   await expect(page.locator(".skin-orbit")).toHaveCount(0);
   const canvas = page.locator(".wardrobe-character canvas");
   await expect(canvas).toHaveAttribute("data-auto-rotate", "false");
@@ -393,6 +432,19 @@ test("dedicated wardrobe has all defaults, still manual view, animations and bot
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.screenshot({
     path: ".test-data/screenshots/skins-dark.png",
+    animations: "disabled",
+  });
+  await page.setViewportSize({ width: 960, height: 680 });
+  expect(
+    await page
+      .locator(".content-scroll")
+      .evaluate((element) => element.scrollWidth > element.clientWidth),
+  ).toBe(false);
+  await expect(
+    page.getByRole("button", { name: "Импорт из Modrinth", exact: true }),
+  ).toBeInViewport();
+  await page.screenshot({
+    path: ".test-data/screenshots/skins-small.png",
     animations: "disabled",
   });
   expect(errors).toEqual([]);
