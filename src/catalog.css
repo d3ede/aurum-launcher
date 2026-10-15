@@ -153,9 +153,12 @@
 .catalog-install-button:is(.is-available, .is-installing) {
   --catalog-action: var(--accent-ink);
   border-color: var(--gold);
+  background: var(--gold);
+  color: #382f1b;
 }
 .catalog-install-button.is-available:hover:not(:disabled) {
-  background: var(--gold-soft);
+  background: var(--gold-hover);
+  border-color: var(--gold-hover);
 }
 .catalog-action-label,
 .catalog-action-remove {
@@ -191,7 +194,6 @@
 .catalog-install-button[aria-busy="true"] {
   cursor: progress;
   opacity: 1;
-  background: color-mix(in srgb, var(--catalog-action) 7%, transparent);
 }
 .catalog-install-button.is-removing {
   color: var(--danger);
