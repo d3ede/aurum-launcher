@@ -128,7 +128,7 @@ async function fixture(
           if (action === "project")
             return {
               project: projects.find((p) => p.id === payload.id) || projects[0],
-              body: '<center><img src="https://media.example.test/description.svg" width="600" alt="Description screenshot" onerror="window.mediaUnsafe=true" /></center><script>window.mediaUnsafe=true</script>\n\n# Details\n\nNormal **Markdown** with HTML images.\n\n| Name | Value |\n| --- | --- |\n| Test | 1 |',
+              body: w.projectBody ?? '<center><img src="https://media.example.test/description.svg" width="600" alt="Description screenshot" onerror="window.mediaUnsafe=true" /></center><script>window.mediaUnsafe=true</script>\n\n# Details\n\nNormal **Markdown** with HTML images.\n\n| Name | Value |\n| --- | --- |\n| Test | 1 |',
               gallery: [
                 "https://media.example.test/first.svg",
                 "https://media.example.test/second.svg",
@@ -450,6 +450,61 @@ test("safe HTML images render; gallery carousel and zoom restore modal and focus
     path: "target/branding-icons/catalog-gallery.png",
     animations: "disabled",
   });
+});
+
+test("description images load without a local referrer on hotlink-protected hosts", async ({
+  page,
+}) => {
+  await fixture(page);
+  const imageHeaders: Record<string, string>[] = [];
+  await page.route("https://i.imgur.com/**", (route) => {
+    const headers = route.request().headers();
+    imageHeaders.push(headers);
+    return headers.referer
+      ? route.fulfill({ status: 403, body: "Hotlink denied" })
+      : route.fulfill({
+          contentType: "image/svg+xml",
+          body: '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="28"><rect width="120" height="28" fill="#5865f2"/></svg>',
+        });
+  });
+  await page.evaluate(() => {
+    (window as any).projectBody =
+      "[![Discord](https://i.imgur.com/vU8pcbf.png)](https://discord.com/invite/example) ![separator](https://i.imgur.com/yZzzW4Q.pngg)";
+  });
+  await page.locator(".catalog-card").first().click();
+  const dialog = page.getByRole("dialog", {
+    name: "Forest adventures",
+    exact: true,
+  });
+  for (const alt of ["Discord", "separator"]) {
+    const img = dialog.locator(`.markdown img[alt="${alt}"]`);
+    await expect(img).toBeVisible();
+    await expect
+      .poll(() => img.evaluate((e) => (e as HTMLImageElement).naturalWidth))
+      .toBe(120);
+    await expect(img).toHaveAttribute("referrerpolicy", "no-referrer");
+  }
+  expect(imageHeaders).toHaveLength(2);
+  expect(imageHeaders.every((headers) => !headers.referer)).toBe(true);
+  await expect(dialog.locator(".media-unavailable")).toHaveCount(0);
+  await dialog.locator('.markdown img[alt="Discord"]').click();
+  const lightbox = page.getByRole("dialog", {
+    name: "Просмотр изображения",
+    exact: true,
+  });
+  await expect(lightbox.locator("img")).toHaveAttribute(
+    "referrerpolicy",
+    "no-referrer",
+  );
+  await expect
+    .poll(() =>
+      lightbox
+        .locator("img")
+        .evaluate((e) => (e as HTMLImageElement).naturalWidth),
+    )
+    .toBe(120);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
 });
 
 for (const theme of ["light", "dark"]) {

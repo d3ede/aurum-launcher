@@ -42,7 +42,13 @@ function MediaImage({
       <span>{t("Не удалось загрузить изображение")}</span>
     </span>
   ) : (
-    <img {...props} src={src} alt={alt || ""} onError={() => setFailed(true)} />
+    <img
+      {...props}
+      src={src}
+      alt={alt || ""}
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+    />
   );
 }
 

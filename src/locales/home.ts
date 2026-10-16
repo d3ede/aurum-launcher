@@ -1,4 +1,8 @@
 export const homeEnglish: Record<string, string> = {
+  "Оригиналы скриншотов и изображения в описаниях проектов.":
+    "Original screenshots and images in project descriptions.",
+  "В этой сборке исправлена загрузка изображений Imgur в описаниях проектов.":
+    "In this build, Imgur images load correctly in project descriptions.",
   "Галерея в полном качестве": "Full-quality gallery",
   "Оригиналы скриншотов и крупный просмотр по размеру окна.":
     "Original screenshots and a larger viewer that fits the window.",
