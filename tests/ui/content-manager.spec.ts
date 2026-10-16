@@ -5,9 +5,10 @@ async function fixture(
   theme = "light",
   running = false,
   language = "ru",
+  extraRows = 0,
 ) {
   await page.addInitScript(
-    ({ theme, running, language }) => {
+    ({ theme, running, language, extraRows }) => {
       localStorage.setItem("aurum:language", language);
       const w = window as any;
       w.isTauri = true;
@@ -85,6 +86,15 @@ async function fixture(
           modifiedAt: 500,
         },
       ];
+      for (let i = 0; i < extraRows; i++) {
+        content.push({
+          ...content[0],
+          id: `mr:extra-${i}`,
+          projectId: `extra-${i}`,
+          name: `Extra mod ${String(i).padStart(3, "0")}`,
+          filename: `extra-${i}.jar`,
+        });
+      }
       const updates = [
         {
           contentId: "mr:sodium",
@@ -158,7 +168,13 @@ async function fixture(
           w.requests.push({ action, payload });
           if (action === "snapshot") return structuredClone(state);
           if (action === "search") return { projects: [], total: 0 };
-          if (action === "content") return structuredClone(content);
+          if (action === "content") {
+            if (w.pauseContent)
+              await new Promise<void>((resolve) => {
+                w.finishContent = resolve;
+              });
+            return structuredClone(content);
+          }
           if (action === "inspectContent") {
             if (w.inspectFails) throw "Нет сети";
             return structuredClone({ content, updates, warnings: [] });
@@ -178,6 +194,10 @@ async function fixture(
           }
           if (action === "updateContent") {
             apply(payload.contentId);
+            return null;
+          }
+          if (action === "installContent") {
+            apply(`mr:${payload.projectId}`);
             return null;
           }
           if (action === "updateAllContent") {
@@ -215,8 +235,10 @@ async function fixture(
               gallery: [],
               versions: [
                 {
-                  id: item.versionId,
-                  name: item.versionName,
+                  id:
+                    item.projectId === "sodium" ? "new-sodium" : item.versionId,
+                  name:
+                    item.projectId === "sodium" ? "0.6.13" : item.versionName,
                   gameVersions: ["1.21.1"],
                   loaders: ["fabric"],
                 },
@@ -228,7 +250,7 @@ async function fixture(
         },
       };
     },
-    { theme, running, language },
+    { theme, running, language, extraRows },
   );
   await page.goto("/");
   await page
@@ -309,6 +331,132 @@ test("project images and names are separate from versions; project page opens in
   await expect(dialog.getByText("Описание установленного мода")).toBeVisible();
   await dialog.getByRole("button", { name: "Закрыть диалог" }).click();
   await expect(rows(page)).toHaveCount(5);
+});
+
+for (const theme of ["light", "dark"]) {
+  test(`closing a mod page preserves the long list and scroll without refetching in ${theme} theme`, async ({
+    page,
+  }) => {
+    await fixture(page, theme, false, "ru", 80);
+    await page.getByRole("button", { name: "Моды", exact: true }).click();
+    const sodium = rows(page).filter({ hasText: "Sodium" });
+    const open = sodium.getByRole("button", { name: "Sodium", exact: true });
+    await open.scrollIntoViewIfNeeded();
+    const before = await page.evaluate(() => {
+      const w = window as any;
+      w.savedContentTable = document.querySelector(".installed-content-table");
+      w.contentListReplaced = false;
+      w.contentListObserver = new MutationObserver((records) => {
+        for (const record of records) {
+          if (
+            [...record.removedNodes].includes(w.savedContentTable) ||
+            [...record.addedNodes].some(
+              (node) => node instanceof Element && node.matches(".loading"),
+            )
+          )
+            w.contentListReplaced = true;
+        }
+      });
+      w.contentListObserver.observe(
+        document.querySelector(".instance-content-manager"),
+        { childList: true },
+      );
+      return {
+        scroll: document.querySelector(".content-scroll")!.scrollTop,
+        requests: w.requests.filter((r: any) =>
+          ["content", "inspectContent"].includes(r.action),
+        ).length,
+      };
+    });
+    expect(before.scroll).toBeGreaterThan(500);
+    for (const close of ["button", "escape", "backdrop"]) {
+      await open.click();
+      const dialog = page.getByRole("dialog", { name: "Sodium", exact: true });
+      await expect(
+        dialog.getByText("Описание установленного мода"),
+      ).toBeVisible();
+      if (close === "button")
+        await dialog.getByRole("button", { name: "Закрыть диалог" }).click();
+      else if (close === "escape") await page.keyboard.press("Escape");
+      else
+        await page
+          .locator(".modal-backdrop")
+          .click({ position: { x: 5, y: 5 } });
+      await expect(dialog).toHaveCount(0);
+      const after = await page.evaluate(() => ({
+        scroll: document.querySelector(".content-scroll")!.scrollTop,
+        requests: (window as any).requests.filter((r: any) =>
+          ["content", "inspectContent"].includes(r.action),
+        ).length,
+        sameTable:
+          (window as any).savedContentTable ===
+          document.querySelector(".installed-content-table"),
+        replaced: (window as any).contentListReplaced,
+      }));
+      expect(after.scroll).toBeCloseTo(before.scroll, 0);
+      expect(after.requests).toBe(before.requests);
+      expect(after.sameTable).toBe(true);
+      expect(after.replaced).toBe(false);
+      await expect(rows(page)).toHaveCount(84);
+      await expect(
+        page.getByRole("button", { name: "Моды", exact: true }),
+      ).toHaveClass(/active/);
+    }
+    await page.evaluate(() => (window as any).contentListObserver.disconnect());
+  });
+}
+
+test("installing from a mod page refreshes content without hiding the list or resetting scroll", async ({
+  page,
+}) => {
+  await fixture(page, "dark", false, "ru", 80);
+  const sodium = rows(page).filter({ hasText: "Sodium" });
+  const open = sodium.getByRole("button", { name: "Sodium", exact: true });
+  await open.scrollIntoViewIfNeeded();
+  const before = await page
+    .locator(".content-scroll")
+    .evaluate((e) => e.scrollTop);
+  await page.evaluate(() => {
+    (window as any).savedContentTable = document.querySelector(
+      ".installed-content-table",
+    );
+    (window as any).pauseContent = true;
+  });
+  await open.click();
+  const dialog = page.getByRole("dialog", { name: "Sodium", exact: true });
+  await dialog
+    .getByRole("button", { name: "Установить с зависимостями" })
+    .click();
+  await expect(dialog).toHaveCount(0);
+  await expect
+    .poll(() => page.evaluate(() => typeof (window as any).finishContent))
+    .toBe("function");
+  await expect(
+    page.locator(".instance-content-manager > .loading"),
+  ).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as any).savedContentTable ===
+        document.querySelector(".installed-content-table"),
+    ),
+  ).toBe(true);
+  expect(
+    await page.locator(".content-scroll").evaluate((e) => e.scrollTop),
+  ).toBeCloseTo(before, 0);
+  await page.evaluate(() => {
+    (window as any).pauseContent = false;
+    (window as any).finishContent();
+  });
+  await expect(sodium.locator(".installed-content-version b")).toHaveText(
+    "0.6.13",
+  );
+  await expect(
+    page.getByText("Доступно обновлений: 1", { exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.locator(".content-scroll").evaluate((e) => e.scrollTop),
+  ).toBeCloseTo(before, 0);
 });
 
 test("sorting, search, kind and simple state/source/author filters compose and reset", async ({

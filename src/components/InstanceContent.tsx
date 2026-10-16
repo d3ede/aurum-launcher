@@ -417,7 +417,7 @@ export function InstanceContent({
           )}
         </span>
       </div>
-      {loading ? (
+      {loading && !loadedKey.startsWith(`${profile.id}:`) ? (
         <Loading />
       ) : visible.length ? (
         <div
@@ -571,9 +571,9 @@ export function InstanceContent({
         <ProjectDialog
           project={project}
           initialProfileId={profile.id}
-          onClose={() => {
-            setProject(null);
-            setRevision((v) => v + 1);
+          onClose={() => setProject(null)}
+          onInstalled={(profileId) => {
+            if (profileId === profile.id) setRevision((v) => v + 1);
           }}
         />
       )}

@@ -1,4 +1,9 @@
 export const homeEnglish: Record<string, string> = {
+  "Возврат к списку модов": "Return to the mod list",
+  "Страница мода закрывается без перезагрузки и сброса прокрутки.":
+    "Close a mod page without reloading the list or losing your scroll position.",
+  "В этой сборке закрытие страницы установленного мода сохраняет позицию в списке и не запускает повторную загрузку. После установки контент обновляется в фоне.":
+    "In this build, closing an installed mod's page preserves the list position without reloading. After installation, content refreshes in the background.",
   "Обновлённый каталог": "Updated catalog",
   "Крупные иконки, установка и удаление прямо из карточки.":
     "Larger icons, installation and removal right from each card.",

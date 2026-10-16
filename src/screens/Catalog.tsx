@@ -45,10 +45,12 @@ export function ProjectDialog({
   project,
   onClose,
   initialProfileId,
+  onInstalled,
 }: {
   project: Project;
   initialProfileId?: string;
   onClose: () => void;
+  onInstalled?: (profileId: string) => void;
 }) {
   const { data, operation, busy, run } = useApp();
   const [profileId, setProfileId] = useState(
@@ -149,7 +151,10 @@ export function ProjectDialog({
         ? t("Модпак импортирован как новая сборка")
         : t("Проект и необходимые зависимости установлены"),
     );
-    if (ok) onClose();
+    if (ok) {
+      if (project.kind !== "modpack" && profile) onInstalled?.(profile.id);
+      onClose();
+    }
   };
   return (
     <Modal
