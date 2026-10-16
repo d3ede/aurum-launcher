@@ -1,4 +1,7 @@
 export const homeEnglish: Record<string, string> = {
+  "Папки профилей, галерея и возврат к списку модов.":
+    "Profile folders, the gallery and returning to the mod list.",
+  "16 октября 2026": "16 Oct 2026",
   "Оригиналы скриншотов и изображения в описаниях проектов.":
     "Original screenshots and images in project descriptions.",
   "В этой сборке исправлена загрузка изображений Imgur в описаниях проектов.":

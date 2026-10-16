@@ -1,12 +1,6 @@
 import { useState } from "react";
 import { APP_VERSION } from "../lib/version";
-import {
-  ArrowRight,
-  Megaphone,
-  Settings2,
-  UserPlus,
-  UserRound,
-} from "lucide-react";
+import { ArrowRight, Settings2, UserPlus, UserRound } from "lucide-react";
 import { useApp } from "../context";
 import { t } from "../lib/i18n";
 import { Modal } from "./ui";
@@ -15,6 +9,13 @@ import { Modal } from "./ui";
 const release = {
   version: APP_VERSION,
   highlights: [
+    {
+      icon: Settings2,
+      title: "Aurum 0.4.1",
+      text: "Папки профилей, галерея и возврат к списку модов.",
+      date: "16 октября 2026",
+      dateTime: "2026-10-16",
+    },
     {
       icon: Settings2,
       title: "Галерея в полном качестве",
@@ -29,25 +30,6 @@ const release = {
       icon: Settings2,
       title: "Возврат к списку модов",
       text: "Страница мода закрывается без перезагрузки и сброса прокрутки.",
-    },
-    {
-      icon: Settings2,
-      title: "Aurum 0.4.0",
-      text: "Поиск и установка из ATLauncher, FTB и Technic.",
-      date: "15 октября 2026",
-      dateTime: "2026-10-15",
-    },
-    {
-      icon: UserRound,
-      title: "Импорт скинов",
-      text: "Все сохранённые скины Modrinth одной кнопкой.",
-    },
-    {
-      icon: Megaphone,
-      title: "Aurum 0.3.9",
-      text: "Ярлыки автоматически ведут на новую версию.",
-      date: "15 октября 2026",
-      dateTime: "2026-10-15",
     },
   ],
   details: [

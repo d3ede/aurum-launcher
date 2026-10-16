@@ -138,9 +138,10 @@ test("home has account and factual release panels, working actions and both them
 }) => {
   await fixture(page);
   await expect(page.locator(".home-account-card")).toContainText("CozyPlayer");
-  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.3.9");
-  await expect(page.locator(".home-news-card")).toContainText("Импорт скинов");
-  await expect(page.locator(".home-news-card")).toContainText("Ярлыки автоматически ведут на новую версию.");
+  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.4.1");
+  await expect(page.locator(".home-news-card")).toContainText("Понятные папки профилей");
+  await expect(page.locator(".home-news-card")).toContainText("Галерея в полном качестве");
+  await expect(page.locator(".home-news-card")).toContainText("Возврат к списку модов");
   await expect(page.locator(".home-sidebar img")).toHaveCount(0);
   await expect(page.locator(".sidebar-pattern")).toHaveCount(1);
   await page.screenshot({
@@ -172,7 +173,7 @@ test("home has account and factual release panels, working actions and both them
   await page
     .getByRole("button", { name: "Все изменения", exact: true })
     .click();
-  const notes = page.getByRole("dialog", { name: "Изменения Aurum 0.4.0" });
+  const notes = page.getByRole("dialog", { name: "Изменения Aurum 0.4.1" });
   await expect(notes).toContainText(
     "Перед установкой проверяется подпись обновления.",
   );
@@ -218,8 +219,10 @@ test("home adapts to minimum window size and translates the new panels", async (
   await expect(
     page.getByRole("heading", { name: "What's new", exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".home-news-card")).toContainText("Skin import");
-  await expect(page.locator(".home-news-card")).toContainText("Shortcuts automatically point to the new version.");
+  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.4.1");
+  await expect(page.locator(".home-news-card")).toContainText("Readable profile folders");
+  await expect(page.locator(".home-news-card")).toContainText("Full-quality gallery");
+  await expect(page.locator(".home-news-card")).toContainText("Return to the mod list");
   await page.setViewportSize({ width: 960, height: 680 });
   expect(
     await page
@@ -240,7 +243,7 @@ test("home adapts to minimum window size and translates the new panels", async (
     animations: "disabled",
   });
   await page.getByRole("button", { name: "All changes", exact: true }).click();
-  const notes = page.getByRole("dialog", { name: "Aurum 0.4.0 changes" });
+  const notes = page.getByRole("dialog", { name: "Aurum 0.4.1 changes" });
   await expect(notes).toContainText(
     "The update signature is verified before installation.",
   );
