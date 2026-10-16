@@ -645,9 +645,16 @@ fn main() {
             {
                 std::path::PathBuf::from(path)
             } else if location.exists() {
-                serde_json::from_slice(&std::fs::read(location)?)?
+                let selected: std::path::PathBuf =
+                    serde_json::from_slice(&std::fs::read(location)?)?;
+                let legacy = app.path().app_data_dir()?;
+                if selected == legacy {
+                    auren_core::default_data_directory(&legacy)?
+                } else {
+                    selected
+                }
             } else {
-                app.path().app_data_dir()?
+                auren_core::default_data_directory(&app.path().app_data_dir()?)?
             };
             let engine = tauri::async_runtime::block_on(Engine::new(root, move |event| {
                 if event.phase == "auth-exchange" {

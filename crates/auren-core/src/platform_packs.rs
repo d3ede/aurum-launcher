@@ -1,5 +1,5 @@
 //! Staged, cancellable installs. Remote manifests never execute installer scripts.
-use crate::{model::*, pack_catalog::*, store::persist, Engine, Task};
+use crate::{model::*, pack_catalog::*, Engine, Task};
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -553,17 +553,7 @@ impl Engine {
                 }
             }
             task.check()?;
-            let instance = self.instance(&id)?;
-            tokio::fs::create_dir_all(instance.parent().unwrap()).await?;
-            tokio::fs::rename(&game,&instance).await.context("Could not publish pack files")?;
-            let mut db=self.db.lock().await;
-            let mut next=db.clone();next.profiles.push(profile);
-            if let Err(error)=persist(&self.root,&next).await {
-                tokio::fs::rename(&instance,&game).await.context("Could not roll back incomplete pack installation")?;
-                return Err(error).context("Could not save installed pack profile");
-            }
-            *db=next;
-            Ok(())
+            self.publish_profile(profile, Some(&game)).await.context("Could not save installed pack profile")
         }.await;
         let _ = tokio::fs::remove_dir_all(&staging).await;
         result?;

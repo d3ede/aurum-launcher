@@ -486,7 +486,6 @@ impl Engine {
         }
         let id = uuid::Uuid::new_v4().to_string();
         let stage = self.root.join("staging").join(format!("modrinth-{id}"));
-        let dest = self.instance(&id)?;
         let result: Result<Profile> = async {
             tokio::fs::create_dir_all(&stage).await?;
             let src = source.path.clone();
@@ -572,16 +571,7 @@ impl Engine {
                 loader: source.loader.clone(), loader_version: source.loader_version.clone(), installed_version: None,
                 ram_mb: source.ram_mb, jvm_args: source.jvm_args.clone(), last_played: None, cover: 1,
                 icon: source.icon.clone(), icon_style: None, content: vec![] };
-            tokio::fs::create_dir_all(dest.parent().context("Нет папки сборок")?).await?;
-            let mut db = self.db.lock().await;
-            let mut next = db.clone();
-            next.profiles.push(p.clone());
-            tokio::fs::rename(&stage, &dest).await?;
-            if let Err(e) = store::persist(&self.root, &next).await {
-                let _ = tokio::fs::rename(&dest, &stage).await;
-                return Err(e);
-            }
-            *db = next;
+            self.publish_profile(p.clone(), Some(&stage)).await?;
             Ok(p)
         }.await;
         // Only this newly generated staging directory is removed; originals are never changed.

@@ -2,6 +2,8 @@ pub mod auth;
 pub mod catalog;
 pub mod content;
 pub mod content_metadata;
+mod directories;
+pub use directories::default_data_directory;
 pub mod microsoft_oauth;
 pub mod migration;
 pub mod minecraft;
@@ -23,7 +25,7 @@ use std::{
     path::{Component, Path, PathBuf},
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc,
+        Arc, RwLock,
     },
 };
 use tokio::sync::Mutex;
@@ -33,6 +35,7 @@ pub struct Engine {
     pub root: PathBuf,
     pub http: reqwest::Client,
     pub db: Arc<Mutex<Database>>,
+    pub(crate) instance_directories: Arc<RwLock<HashMap<String, String>>>,
     pub busy: Arc<Mutex<()>>,
     pub operations: Arc<Mutex<HashMap<String, Arc<AtomicBool>>>>,
     pub running: Arc<Mutex<HashMap<String, Arc<AtomicBool>>>>,
@@ -68,12 +71,14 @@ impl Task {
 impl Engine {
     pub async fn new(root: PathBuf, emit: impl Fn(Event) + Send + Sync + 'static) -> Result<Self> {
         tokio::fs::create_dir_all(&root).await?;
-        let db = if root.join("state.json").exists() {
+        let mut db: Database = if root.join("state.json").exists() {
             serde_json::from_slice(&tokio::fs::read(root.join("state.json")).await?)
                 .context("Не удалось прочитать state.json; файл сохранён для восстановления")?
         } else {
             Database::default()
         };
+        directories::recover(&root, &mut db)?;
+        directories::validate(&root, &db)?;
         let package: serde_json::Value =
             serde_json::from_str(include_str!("../../../package.json"))?;
         let version = package["version"].as_str().unwrap_or("dev");
@@ -88,6 +93,7 @@ impl Engine {
         let engine = Self {
             root,
             http,
+            instance_directories: Arc::new(RwLock::new(db.instance_directories.clone())),
             db: Arc::new(Mutex::new(db)),
             busy: Arc::new(Mutex::new(())),
             operations: Arc::new(Mutex::new(HashMap::new())),
@@ -98,6 +104,7 @@ impl Engine {
             emit: Arc::new(emit),
         };
         engine.recover_running().await?;
+        engine.migrate_instance_directories().await?;
         Ok(engine)
     }
     pub async fn snapshot(&self) -> Snapshot {
@@ -121,7 +128,11 @@ impl Engine {
     }
     pub fn instance(&self, id: &str) -> Result<PathBuf> {
         uuid::Uuid::parse_str(id).context("Неверный идентификатор сборки")?;
-        Ok(self.root.join("instances").join(id))
+        if self.root.join("instance-move.json").try_exists()? {
+            bail!("Перезапустите лаунчер для завершения переноса профилей")
+        }
+        let directories = self.instance_directories.read().unwrap();
+        directories::instance_path(&self.root, directories.get(id).map_or(id, String::as_str))
     }
     pub async fn task(&self, id: String, profile_id: Option<String>) -> Result<Task> {
         uuid::Uuid::parse_str(&id)?;

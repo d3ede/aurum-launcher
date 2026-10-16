@@ -3,6 +3,9 @@ use anyhow::{bail, Context, Result};
 use md5::{Digest, Md5};
 
 pub async fn persist(root: &std::path::Path, db: &Database) -> Result<()> {
+    if root.join("instance-move.json").try_exists()? {
+        bail!("Перезапустите лаунчер для завершения переноса профилей")
+    }
     let bytes = serde_json::to_vec_pretty(db)?;
     let temp = root.join("state.json.tmp");
     let mut file = tokio::fs::File::create(&temp).await?;
@@ -54,12 +57,7 @@ impl Engine {
             icon_style: None,
             content: vec![],
         };
-        tokio::fs::create_dir_all(self.instance(&p.id)?).await?;
-        let mut db = self.db.lock().await;
-        let mut next = db.clone();
-        next.profiles.push(p.clone());
-        persist(&self.root, &next).await?;
-        *db = next;
+        self.publish_profile(p.clone(), None).await?;
         Ok(p)
     }
     pub async fn update_profile(&self, profile: Profile) -> Result<()> {
@@ -95,12 +93,18 @@ impl Engine {
         old.cover = profile.cover % 4;
         old.icon = icon;
         old.icon_style = icon_style;
+        if self.save_profile_update(&mut db, next.clone(), &profile.id)? {
+            return Ok(());
+        }
         persist(&self.root, &next).await?;
         *db = next;
         Ok(())
     }
     pub async fn delete_profile(&self, id: &str) -> Result<()> {
         self.ensure_idle(id).await?;
+        if self.root.join("instance-move.json").exists() {
+            bail!("Перезапустите лаунчер для завершения переноса")
+        }
         self.profile(id).await?;
         // Preserve deleted worlds in a recoverable trash folder.
         let path = self.instance(id)?;
@@ -112,8 +116,10 @@ impl Engine {
         let mut db = self.db.lock().await;
         let mut next = db.clone();
         next.profiles.retain(|p| p.id != id);
+        next.instance_directories.remove(id);
         persist(&self.root, &next).await?;
         *db = next;
+        self.instance_directories.write().unwrap().remove(id);
         Ok(())
     }
     pub async fn save_settings(&self, settings: Settings) -> Result<()> {

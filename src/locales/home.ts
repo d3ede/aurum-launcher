@@ -4,6 +4,11 @@ export const homeEnglish: Record<string, string> = {
     "Close a mod page without reloading the list or losing your scroll position.",
   "В этой сборке закрытие страницы установленного мода сохраняет позицию в списке и не запускает повторную загрузку. После установки контент обновляется в фоне.":
     "In this build, closing an installed mod's page preserves the list position without reloading. After installation, content refreshes in the background.",
+  "Понятные папки профилей": "Readable profile folders",
+  "Имена сборок в проводнике и автоматический перенос данных.":
+    "Profile names in File Explorer and automatic data migration.",
+  "В этой сборке данные по умолчанию хранятся в Aurum Launcher, а папки профилей называются по имени сборки. Прежние данные переносятся автоматически; выбранная вручную папка данных сохраняется.":
+    "In this build, default data lives in Aurum Launcher and profile folders use profile names. Existing data migrates automatically; custom data locations are preserved.",
   "Обновлённый каталог": "Updated catalog",
   "Крупные иконки, установка и удаление прямо из карточки.":
     "Larger icons, installation and removal right from each card.",

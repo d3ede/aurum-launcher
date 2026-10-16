@@ -115,6 +115,15 @@ fn discover(directories: HashMap<PathBuf, String>) -> HashMap<String, Vec<Recove
     recovered
 }
 
+pub(crate) fn directories_running(paths: Vec<PathBuf>) -> bool {
+    let directories = paths
+        .into_iter()
+        .filter_map(|p| std::fs::canonicalize(p).ok())
+        .map(|p| (p, String::new()))
+        .collect::<HashMap<_, _>>();
+    !directories.is_empty() && !discover(directories).is_empty()
+}
+
 impl Engine {
     pub(crate) async fn recover_running(&self) -> Result<()> {
         let mut directories = HashMap::new();

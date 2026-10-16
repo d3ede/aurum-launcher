@@ -144,6 +144,8 @@ fn legacy_language() -> String {
 #[serde(rename_all = "camelCase")]
 pub struct Database {
     pub profiles: Vec<Profile>,
+    #[serde(default)]
+    pub instance_directories: std::collections::HashMap<String, String>,
     pub accounts: Vec<Account>,
     pub selected_account: Option<String>,
     pub settings: Settings,

@@ -74,7 +74,9 @@ Already using Modrinth App? Choose **Import → From Modrinth** on the home scre
 - **Skins and capes** lets you save multiple appearances and choose one for each account. Default textures belong to Mojang/Microsoft; see [asset provenance](src/assets/skins/README.md).
 - Offline skins are launcher previews. Vanilla does not apply them in-game, and other players will not see them. Uploaded local capes are also preview-only.
 - Change the language instantly in **Settings → Interface language**. Your choice is saved; new installations follow the system language.
-- Game data is stored in the OS application data directory. Settings let you open it or copy data into a new empty folder while preserving the original files.
+- On Windows, game data defaults to `%APPDATA%\Aurum Launcher`, with profiles in `instances\Profile name`. Duplicate names receive a numbered suffix; characters Windows cannot use in folder names are replaced. Renaming a profile also renames its folder.
+- Existing data in `app.auren.launcher` and UUID profile folders migrates automatically at startup, preserving worlds, mods, accounts, and settings. Migration waits until Minecraft is closed. Interrupted profile moves resume on the next launch; existing nonempty data roots are never merged automatically.
+- Settings let you open the data directory or copy data into a new empty folder while preserving the original files. Custom data locations remain unchanged.
 - Set `AURUM_DATA_DIR` to use a separate data directory. The legacy `AUREN_DATA_DIR` variable is also supported.
 
 </details>

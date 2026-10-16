@@ -121,3 +121,49 @@ async fn multiple_existing_processes_for_one_profile_are_stopped_together() {
     assert!(first.0.try_wait().unwrap().is_some());
     assert!(second.0.try_wait().unwrap().is_some());
 }
+
+#[tokio::test]
+#[ignore = "requires AURUM_PROCESS_TEST_JAVA; uses only owned temporary Java fixtures"]
+async fn legacy_migration_waits_for_the_running_game_before_moving_any_game_files() {
+    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.test-data/process-migration");
+    std::fs::create_dir_all(&fixtures).unwrap();
+    let root = tempfile::tempdir_in(fixtures).unwrap();
+    let legacy = root.path().join("app.auren.launcher");
+    let engine = Engine::new(legacy.clone(), |_| {}).await.unwrap();
+    let p = engine
+        .create_profile(
+            "Live world".into(),
+            "1.21.1".into(),
+            Loader::Vanilla,
+            None,
+            0,
+        )
+        .await
+        .unwrap();
+    let directory = legacy.join("instances").join(&p.id);
+    std::fs::rename(engine.instance(&p.id).unwrap(), &directory).unwrap();
+    let mut db = engine.snapshot().await.database;
+    db.instance_directories.clear();
+    auren_core::store::persist(&legacy, &db).await.unwrap();
+    drop(engine);
+    let mut game = java(root.path(), &directory, "Migration").await;
+    assert_eq!(auren_core::default_data_directory(&legacy).unwrap(), legacy);
+    let reopened = Engine::new(legacy.clone(), |_| {}).await.unwrap();
+    assert_eq!(reopened.snapshot().await.running, vec![p.id.clone()]);
+    assert_eq!(reopened.instance(&p.id).unwrap(), directory);
+    assert!(directory.join("ready-Migration").exists());
+    reopened.stop(&p.id).await.unwrap();
+    assert!(game.0.try_wait().unwrap().is_some());
+    drop(reopened);
+    let target = auren_core::default_data_directory(&legacy).unwrap();
+    let migrated = Engine::new(target.clone(), |_| {}).await.unwrap();
+    assert_eq!(
+        migrated.instance(&p.id).unwrap(),
+        target.join("instances/Live world")
+    );
+    assert!(migrated
+        .instance(&p.id)
+        .unwrap()
+        .join("ready-Migration")
+        .exists());
+}
