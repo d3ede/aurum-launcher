@@ -174,7 +174,8 @@ impl Engine {
                     .as_array()
                     .map(|a| {
                         a.iter()
-                            .filter_map(|v| v["url"].as_str().map(String::from))
+                            .filter_map(mr_gallery_image_url)
+                            .map(String::from)
                             .collect()
                     })
                     .unwrap_or_default(),
@@ -332,6 +333,14 @@ pub fn cf_version(v: &Value) -> ProjectVersion {
             .collect(),
     }
 }
+fn mr_gallery_image_url(image: &Value) -> Option<&str> {
+    // Modrinth's `url` can be a 350px thumbnail; display the author's original.
+    image["raw_url"]
+        .as_str()
+        .filter(|url| !url.trim().is_empty())
+        .or_else(|| image["url"].as_str())
+}
+
 fn strings(v: &Value) -> Vec<String> {
     v.as_array()
         .map(|a| {
@@ -340,4 +349,35 @@ fn strings(v: &Value) -> Vec<String> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::mr_gallery_image_url;
+    use serde_json::json;
+
+    #[test]
+    fn gallery_prefers_original_over_compressed_thumbnail() {
+        let image = json!({
+            "url": "https://cdn.modrinth.com/data/project/images/preview_350.webp",
+            "raw_url": "https://cdn.modrinth.com/data/project/images/original.png"
+        });
+        assert_eq!(mr_gallery_image_url(&image), image["raw_url"].as_str());
+    }
+
+    #[test]
+    fn gallery_keeps_legacy_images_without_an_original() {
+        for original in [json!(null), json!(""), json!(" ")] {
+            let image = json!({"url": "https://example.test/legacy.png", "raw_url": original});
+            assert_eq!(
+                mr_gallery_image_url(&image),
+                Some("https://example.test/legacy.png")
+            );
+        }
+        assert_eq!(
+            mr_gallery_image_url(&json!({"url": "https://example.test/legacy.png"})),
+            Some("https://example.test/legacy.png")
+        );
+        assert_eq!(mr_gallery_image_url(&json!({})), None);
+    }
 }

@@ -1,4 +1,9 @@
 export const homeEnglish: Record<string, string> = {
+  "Галерея в полном качестве": "Full-quality gallery",
+  "Оригиналы скриншотов и крупный просмотр по размеру окна.":
+    "Original screenshots and a larger viewer that fits the window.",
+  "В этой сборке галерея Modrinth загружает оригиналы вместо уменьшенных превью. Просмотр подстраивается под размер окна, область галереи стала выше.":
+    "In this build, the Modrinth gallery loads originals instead of thumbnails. The viewer fits the window and the gallery preview is taller.",
   "Возврат к списку модов": "Return to the mod list",
   "Страница мода закрывается без перезагрузки и сброса прокрутки.":
     "Close a mod page without reloading the list or losing your scroll position.",

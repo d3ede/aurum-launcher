@@ -470,7 +470,7 @@ button.lightbox-image:not(:disabled) {
 }
 .project-media-open {
   width: 100%;
-  height: clamp(220px, 38vh, 420px);
+  height: clamp(280px, 52vh, 560px);
   border: 0;
   padding: 0;
   display: grid;
@@ -592,7 +592,7 @@ button.lightbox-image:not(:disabled) {
   align-items: center;
   gap: 16px;
   width: 100%;
-  max-width: 1400px;
+  flex-shrink: 0;
   margin: 0 auto;
   font-size: 14px;
 }
@@ -618,8 +618,8 @@ button.lightbox-image:not(:disabled) {
   justify-content: center;
   align-items: center;
   width: 100%;
-  max-width: 1400px;
-  height: calc(100vh - 104px);
+  flex: 1;
+  min-height: 0;
   margin: 0 auto;
   overflow: auto;
 }
@@ -627,6 +627,8 @@ button.lightbox-image:not(:disabled) {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  height: 100%;
   max-width: 100%;
   max-height: 100%;
   background: none;
@@ -635,8 +637,11 @@ button.lightbox-image:not(:disabled) {
   cursor: zoom-in;
 }
 .lightbox-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
   max-width: 100%;
-  max-height: calc(100vh - 104px);
+  max-height: 100%;
   object-fit: contain;
 }
 .lightbox-stage.zoomed {
@@ -647,11 +652,14 @@ button.lightbox-image:not(:disabled) {
   max-width: none;
   max-height: none;
   width: 150%;
+  height: auto;
+  min-height: 100%;
   cursor: zoom-out;
 }
 .lightbox-stage.zoomed img {
   display: block;
   width: 100%;
+  height: auto;
   max-width: none;
   max-height: none;
 }

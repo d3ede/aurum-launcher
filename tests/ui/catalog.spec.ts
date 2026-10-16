@@ -452,6 +452,71 @@ test("safe HTML images render; gallery carousel and zoom restore modal and focus
   });
 });
 
+for (const theme of ["light", "dark"]) {
+  test(`gallery viewer fills the window for small, portrait and large images in ${theme} theme`, async ({
+    page,
+  }) => {
+    await fixture(page);
+    const sizes = [
+      [350, 110],
+      [600, 1200],
+      [2560, 1440],
+    ];
+    for (const [index, name] of ["first", "second", "third"].entries()) {
+      const [width, height] = sizes[index];
+      await page.route(`https://media.example.test/${name}.svg`, (route) =>
+        route.fulfill({
+          contentType: "image/svg+xml",
+          body: `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="#61885c"/><path d="M0 ${height} ${width / 2} 0 ${width} ${height}" fill="#304632"/></svg>`,
+        }),
+      );
+    }
+    if (theme === "dark")
+      await page.getByRole("button", { name: "Переключить тему" }).click();
+    await page.locator(".catalog-card").first().click();
+    const dialog = page.getByRole("dialog", {
+      name: "Forest adventures",
+      exact: true,
+    });
+    await dialog.getByRole("button", { name: "Галерея · 3" }).click();
+    const preview = dialog.locator(".project-media-open");
+    expect((await preview.boundingBox())!.height).toBeGreaterThan(400);
+    await preview.click();
+    const lightbox = page.getByRole("dialog", {
+      name: "Просмотр изображения",
+      exact: true,
+    });
+    const stage = lightbox.locator(".lightbox-stage");
+    const img = lightbox.locator(".lightbox-image img");
+    for (let i = 0; i < sizes.length; i++) {
+      if (i) await page.keyboard.press("ArrowRight");
+      await expect
+        .poll(() => img.evaluate((e) => (e as HTMLImageElement).naturalWidth))
+        .toBe(sizes[i][0]);
+      const frame = (await stage.boundingBox())!;
+      const picture = (await img.boundingBox())!;
+      expect(picture.width).toBeGreaterThanOrEqual(frame.width - 1);
+      expect(picture.height).toBeGreaterThanOrEqual(frame.height - 1);
+      await expect(img).toHaveCSS("object-fit", "contain");
+      expect(frame.x).toBeGreaterThanOrEqual(0);
+      expect(frame.y + frame.height).toBeLessThanOrEqual(820);
+    }
+    await lightbox.screenshot({
+      path: `target/branding-icons/gallery-fit-${theme}.png`,
+      animations: "disabled",
+    });
+    await page.setViewportSize({ width: 960, height: 680 });
+    const resized = (await stage.boundingBox())!;
+    expect(resized.x + resized.width).toBeLessThanOrEqual(960);
+    expect(resized.y + resized.height).toBeLessThanOrEqual(680);
+    await expect(
+      lightbox.getByRole("button", { name: "Закрыть изображение" }),
+    ).toBeInViewport();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeVisible();
+  });
+}
+
 test("English source placeholder and categories are localized", async ({
   page,
 }) => {
