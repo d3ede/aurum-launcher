@@ -359,3 +359,11 @@ The rebuilt installer is 7,130,517 bytes; SHA256: `5a265864cec6c92a30a0aa5160bd8
 ### Publication preflight
 
 The final local release source, including the independently committed fixed skin preview controls, passed all 73 Playwright scenarios, 13 frontend unit tests, Rust formatting and Git whitespace checks. Earlier Rust, Clippy, native storage and WebView2 checks remain applicable to the unchanged backend. Publication uses the version-tag workflow to build, sign and publish the installer, updater manifest and checksums from the exact tagged source.
+
+## Public release 0.4.2 — October 17, 2026
+
+Release [v0.4.2](https://github.com/d3ede/aurum-launcher/releases/tag/v0.4.2) is published as the latest stable release from source commit `61abf23c77e63dbab16088b9d2ad93aa0b4e5775`. The [Windows release workflow](https://github.com/d3ede/aurum-launcher/actions/runs/39034213293) passed frontend/native checks, all 73 UI scenarios, the signed installer build and installer regression checks before publishing all four update assets.
+
+The public latest-release URLs were downloaded and compared with GitHub asset digests and `SHA256SUMS.txt`. The update manifest reports 0.4.2, uses the immutable version-specific installer URL and matches the detached signature asset. Public installer size: 7,202,120 bytes. SHA256: `cbaeee16e6cb8ff5b8ee0852403831efebc6ee4d11d908fd2954522376570669`.
+
+A separate real WebView2/native updater client, configured with an older application version and isolated test data, received 0.4.2 from the production HTTPS endpoint and downloaded its installer with successful native signature verification. Installation permission was denied in that diagnostic client; it did not execute the installer or modify user game data. The version tag remains on the application source; this publication verification is a subsequent documentation-only commit.
