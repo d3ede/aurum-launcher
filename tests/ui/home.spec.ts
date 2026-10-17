@@ -138,10 +138,14 @@ test("home has account and factual release panels, working actions and both them
 }) => {
   await fixture(page);
   await expect(page.locator(".home-account-card")).toContainText("CozyPlayer");
-  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.4.1");
-  await expect(page.locator(".home-news-card")).toContainText("Понятные папки профилей");
-  await expect(page.locator(".home-news-card")).toContainText("Галерея в полном качестве");
-  await expect(page.locator(".home-news-card")).toContainText("Возврат к списку модов");
+  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.4.2");
+  await expect(page.locator(".home-news-card")).toContainText(
+    "Головы из скинов",
+  );
+  await expect(page.locator(".home-news-card")).toContainText("Окно Microsoft");
+  await expect(page.locator(".home-news-card")).toContainText(
+    "Сохранение входа Microsoft",
+  );
   await expect(page.locator(".home-sidebar img")).toHaveCount(0);
   await expect(page.locator(".sidebar-pattern")).toHaveCount(1);
   await page.screenshot({
@@ -173,12 +177,17 @@ test("home has account and factual release panels, working actions and both them
   await page
     .getByRole("button", { name: "Все изменения", exact: true })
     .click();
-  const notes = page.getByRole("dialog", { name: "Изменения Aurum 0.4.1" });
+  const notes = page.getByRole("dialog", { name: "Изменения Aurum 0.4.2" });
+  await expect(notes).toContainText(
+    "исправлена ошибка сохранения сессии Microsoft",
+  );
   await expect(notes).toContainText(
     "Перед установкой проверяется подпись обновления.",
   );
   await expect(notes).toContainText("В этой сборке: компактный список модов");
-  await expect(notes).toContainText("ярлыки Aurum на рабочем столе и в меню «Пуск» автоматически перенаправляются");
+  await expect(notes).toContainText(
+    "ярлыки Aurum на рабочем столе и в меню «Пуск» автоматически перенаправляются",
+  );
   await page.keyboard.press("Escape");
   await expect(notes).toHaveCount(0);
   await page
@@ -219,10 +228,14 @@ test("home adapts to minimum window size and translates the new panels", async (
   await expect(
     page.getByRole("heading", { name: "What's new", exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.4.1");
-  await expect(page.locator(".home-news-card")).toContainText("Readable profile folders");
-  await expect(page.locator(".home-news-card")).toContainText("Full-quality gallery");
-  await expect(page.locator(".home-news-card")).toContainText("Return to the mod list");
+  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.4.2");
+  await expect(page.locator(".home-news-card")).toContainText("Skin heads");
+  await expect(page.locator(".home-news-card")).toContainText(
+    "Microsoft window",
+  );
+  await expect(page.locator(".home-news-card")).toContainText(
+    "Saving Microsoft sign-in",
+  );
   await page.setViewportSize({ width: 960, height: 680 });
   expect(
     await page
@@ -243,11 +256,14 @@ test("home adapts to minimum window size and translates the new panels", async (
     animations: "disabled",
   });
   await page.getByRole("button", { name: "All changes", exact: true }).click();
-  const notes = page.getByRole("dialog", { name: "Aurum 0.4.1 changes" });
+  const notes = page.getByRole("dialog", { name: "Aurum 0.4.2 changes" });
+  await expect(notes).toContainText("fixes Microsoft session saving failures");
   await expect(notes).toContainText(
     "The update signature is verified before installation.",
   );
-  await expect(notes).toContainText("Updates automatically redirect Aurum Desktop and Start menu shortcuts");
+  await expect(notes).toContainText(
+    "Updates automatically redirect Aurum Desktop and Start menu shortcuts",
+  );
   await expect(
     notes.getByRole("button", { name: "Update settings", exact: true }),
   ).toBeInViewport();

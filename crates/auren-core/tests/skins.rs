@@ -11,6 +11,55 @@ fn texture(width: u32, height: u32) -> Vec<u8> {
     out.into_inner()
 }
 
+#[tokio::test]
+async fn account_avatars_follow_applied_skins_and_survive_restart() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.test-data/avatars");
+    std::fs::create_dir_all(&root).unwrap();
+    let directory = tempfile::tempdir_in(root).unwrap();
+    let engine = Engine::new(directory.path().into(), |_| {}).await.unwrap();
+    let account = engine.add_offline("AvatarTest".into()).await.unwrap();
+    assert_eq!(
+        engine.account_avatar(&account.id).await.unwrap(),
+        auren_core::skins::encode_texture(&default_texture("default:steve", "steve").unwrap())
+    );
+    engine
+        .apply_library_skin(&account.id, "default:zuri", "alex", None)
+        .await
+        .unwrap();
+    let expected =
+        auren_core::skins::encode_texture(&default_texture("default:zuri", "alex").unwrap());
+    assert_eq!(engine.account_avatar(&account.id).await.unwrap(), expected);
+    let restarted = Engine::new(directory.path().into(), |_| {}).await.unwrap();
+    assert_eq!(
+        restarted.account_avatar(&account.id).await.unwrap(),
+        expected
+    );
+    engine
+        .apply_library_skin(&account.id, "default:ari", "alex", None)
+        .await
+        .unwrap();
+    assert_ne!(engine.account_avatar(&account.id).await.unwrap(), expected);
+    assert!(engine.account_avatar("not-an-account").await.is_err());
+}
+
+#[tokio::test]
+async fn microsoft_avatar_cache_works_without_network_or_stored_credentials() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.test-data/avatars");
+    std::fs::create_dir_all(&root).unwrap();
+    let directory = tempfile::tempdir_in(root).unwrap();
+    let engine = Engine::new(directory.path().into(), |_| {}).await.unwrap();
+    let account = engine.add_offline("AvatarCacheTest".into()).await.unwrap();
+    engine
+        .apply_library_skin(&account.id, "default:efe", "alex", None)
+        .await
+        .unwrap();
+    let expected =
+        auren_core::skins::encode_texture(&default_texture("default:efe", "alex").unwrap());
+    engine.db.lock().await.accounts[0].kind = "microsoft".into();
+    engine.db.lock().await.accounts[0].has_skin = false;
+    assert_eq!(engine.account_avatar(&account.id).await.unwrap(), expected);
+}
+
 #[test]
 fn all_nine_default_characters_have_both_models() {
     for name in [

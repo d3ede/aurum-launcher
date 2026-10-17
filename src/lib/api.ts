@@ -42,6 +42,7 @@ interface Contract {
   skinLibrary: [Empty, SkinLibrary];
   importModrinthSkins: [{ directories: string[] }, ModrinthSkinImportResult];
   accountAppearance: [{ id: string }, AccountAppearance];
+  accountAvatar: [{ id: string }, string];
   defaultSkinTexture: [{ id: string; model: string }, number[]];
   chooseSkinTexture: [
     { cape: boolean },

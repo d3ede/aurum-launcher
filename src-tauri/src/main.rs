@@ -227,6 +227,10 @@ async fn rpc(
             .account_appearance(&param::<String>(&payload, "id")?)
             .await
             .map_err(err)?)),
+        "accountAvatar" => Ok(json!(e
+            .account_avatar(&param::<String>(&payload, "id")?)
+            .await
+            .map_err(err)?)),
         "defaultSkinTexture" => Ok(json!(auren_core::skins::default_texture(
             &param::<String>(&payload, "id")?,
             &param::<String>(&payload, "model")?
@@ -516,7 +520,16 @@ async fn rpc(
                     "loginMicrosoft" => {
                         let result = e
                             .login_microsoft(&task, |url| {
-                                microsoft_window::open(&app, &e, &task.id, url)
+                                let app = app.clone();
+                                let engine = e.clone();
+                                let id = task.id.clone();
+                                let cancelled = task.cancel.clone();
+                                async move {
+                                    tauri::async_runtime::spawn_blocking(move || {
+                                        microsoft_window::open(&app, &engine, &id, &url, &cancelled)
+                                    })
+                                    .await?
+                                }
                             })
                             .await;
                         microsoft_window::finish(&app, &task.id);
@@ -662,14 +675,21 @@ fn main() {
                 }
                 let _ = handle.emit("auren:event", event);
             }))?;
-            app.manage(engine);
+            app.manage(engine.clone());
             app.manage(Relocation(std::sync::atomic::AtomicBool::new(false)));
             // Creation-time centering uses the requested client size. Center again
             // after Windows has applied the actual resize frame, then show once.
             if let Some(window) = app.get_webview_window("main") {
                 window.center()?;
                 window.show()?;
+                let closing = app.handle().clone();
+                window.on_window_event(move |event| {
+                    if matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
+                        microsoft_window::shutdown(&closing);
+                    }
+                });
             }
+            microsoft_window::warm_up(app.handle(), &engine);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![rpc])

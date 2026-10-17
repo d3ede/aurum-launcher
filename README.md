@@ -31,7 +31,7 @@ An independent Windows launcher with a warm light theme and a graphite dark them
 | **Loaders** | Vanilla, Fabric, Forge, NeoForge, and Quilt, with compatible loader versions to choose from. |
 | **Mods and content** | Browse Modrinth mods, modpacks, resource packs, and shaders. Manage installed content with project icons, separate versions, search, sorting, and filters. Identify imported files, check compatible updates, update all, toggle mods, and move files to trash. CurseForge API support with your own API key. |
 | **Import** | Import from Modrinth App, `.mrpack` files, CurseForge ZIP archives, or existing game folders. Modrinth imports preserve the original instance. |
-| **Accounts** | Microsoft sign-in in a dedicated window, tokens stored in the OS credential vault, and local offline profiles. |
+| **Accounts** | Microsoft sign-in in a dedicated window, encrypted token storage with keys in the OS credential vault, and local offline profiles. |
 | **Skins and capes** | A PNG skin library, nine default characters, wide and slim arms, and animated 3D previews. Apply skins and owned capes to a Microsoft account. |
 | **Interface** | 41 languages, language search, RTL support, light and dark themes, and settings for memory, Java, and game data. |
 

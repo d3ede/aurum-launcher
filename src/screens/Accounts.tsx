@@ -13,6 +13,7 @@ import { useApp } from "../context";
 import { rpc } from "../lib/api";
 import { EmptyState, Field, Modal } from "../components/ui";
 import { TerrainPattern } from "../components/TerrainPattern";
+import { AccountAvatar } from "../components/AccountAvatar";
 export function Accounts() {
   const { data, run, startMicrosoftLogin, busy, navigate } = useApp();
   const [offline, setOffline] = useState(false);
@@ -75,7 +76,7 @@ export function Accounts() {
                   onClick={() => setSelected(a.id)}
                 >
                   <div className={`account-avatar ${a.kind}`}>
-                    <UserRound size={24} />
+                    <AccountAvatar account={a} />
                   </div>
                   <div>
                     <b>{a.name}</b>

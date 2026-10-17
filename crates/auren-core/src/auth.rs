@@ -4,19 +4,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 pub fn secret(id: &str) -> Result<String> {
-    keyring::Entry::new("app.auren.launcher", id)?
-        .get_password()
-        .context("Данные не найдены в хранилище учётных данных ОС")
+    crate::secret_store::get(id)
 }
 pub fn set_secret(id: &str, value: &str) -> Result<()> {
-    keyring::Entry::new("app.auren.launcher", id)?
-        .set_password(value)
-        .context("Не удалось сохранить секрет в хранилище ОС")
+    crate::secret_store::set(id, value)
 }
 pub fn delete_secret(id: &str) -> Result<()> {
-    keyring::Entry::new("app.auren.launcher", id)?
-        .delete_credential()
-        .map_err(Into::into)
+    crate::secret_store::delete(id)
 }
 #[derive(Serialize, Deserialize)]
 struct Credentials {
@@ -110,10 +104,10 @@ async fn minecraft_login_reply(mut response: reqwest::Response, secrets: &[&str]
 }
 
 impl Engine {
-    pub async fn login_microsoft(
+    pub async fn login_microsoft<F: std::future::Future<Output = Result<()>>>(
         &self,
         task: &Task,
-        open: impl FnOnce(&str) -> Result<()>,
+        open: impl FnOnce(String) -> F,
     ) -> Result<Account> {
         use crate::microsoft_oauth::{self, cancellable, Login};
         use std::time::Duration;
@@ -121,7 +115,8 @@ impl Engine {
         let client = microsoft_oauth::client_id()?;
         let login = Login::begin(client).await?;
         task.check()?;
-        open(&login.authorize_uri)?;
+        open(login.authorize_uri.clone()).await?;
+        task.check()?;
         task.progress("auth-waiting", "Подтвердите вход в окне Microsoft", 0, 0);
         let code = login.wait(task).await?;
         task.progress("auth-exchange", "Подключаем ваш аккаунт", 0, 0);
@@ -323,7 +318,7 @@ impl Engine {
         }
         let folder = self.root.join("skins");
         tokio::fs::create_dir_all(&folder).await?;
-        tokio::fs::write(folder.join(format!("{}.png", account.id)), bytes).await?;
+        tokio::fs::write(folder.join(format!("{}.png", account.id)), &bytes).await?;
         let mut db = self.db.lock().await;
         let mut next = db.clone();
         let account = next
@@ -335,6 +330,8 @@ impl Engine {
         account.has_skin = true;
         persist(&self.root, &next).await?;
         *db = next;
+        drop(db);
+        self.cache_account_avatar(id, &bytes).await;
         Ok(())
     }
     pub async fn skin(&self, id: &str) -> Result<Vec<u8>> {

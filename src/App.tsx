@@ -41,6 +41,7 @@ import { UpdateProvider } from "./updater";
 import { LauncherUpdateBanner } from "./components/LauncherUpdate";
 import { APP_VERSION } from "./lib/version";
 import { SidebarPattern } from "./components/TerrainPattern";
+import { AccountAvatar } from "./components/AccountAvatar";
 const navigation = [
   ["home", HomeIcon],
   ["profiles", Layers3],
@@ -173,7 +174,11 @@ function Shell({
           <span className="topbar-divider" />
           <button className="user-button" onClick={() => nav("accounts")}>
             <div className="mini-avatar">
-              <UserRound size={18} />
+              {account ? (
+                <AccountAvatar account={account} />
+              ) : (
+                <UserRound size={18} />
+              )}
             </div>
             <span>
               <b>{account?.name || t("Ваш профиль")}</b>

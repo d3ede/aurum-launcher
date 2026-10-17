@@ -15,6 +15,7 @@ pub mod pack_catalog;
 pub mod packs;
 pub mod platform_packs;
 mod processes;
+mod secret_store;
 pub mod skins;
 pub mod store;
 
@@ -41,6 +42,7 @@ pub struct Engine {
     pub running: Arc<Mutex<HashMap<String, Arc<AtomicBool>>>>,
     pub(crate) catalog_cache: Arc<Mutex<HashMap<String, (std::time::Instant, serde_json::Value)>>>,
     pub(crate) catalog_index_lock: Arc<Mutex<()>>,
+    pub(crate) avatar_lock: Arc<Mutex<()>>,
     pub(crate) recovered: Arc<Mutex<HashMap<String, Vec<processes::RecoveredProcess>>>>,
     pub emit: Arc<dyn Fn(Event) + Send + Sync>,
 }
@@ -100,6 +102,7 @@ impl Engine {
             running: Arc::new(Mutex::new(HashMap::new())),
             catalog_cache: Arc::new(Mutex::new(HashMap::new())),
             catalog_index_lock: Arc::new(Mutex::new(())),
+            avatar_lock: Arc::new(Mutex::new(())),
             recovered: Arc::new(Mutex::new(HashMap::new())),
             emit: Arc::new(emit),
         };

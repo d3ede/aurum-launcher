@@ -49,6 +49,12 @@ pub struct Appearance {
     pub capes: Vec<OwnedCape>,
 }
 
+#[derive(Serialize, Deserialize)]
+struct AvatarCache {
+    texture: String,
+    updated_at: u64,
+}
+
 pub fn encode_texture(bytes: &[u8]) -> String {
     format!(
         "data:image/png;base64,{}",
@@ -117,6 +123,109 @@ pub fn default_texture(id: &str, model: &str) -> Result<Vec<u8>> {
 }
 
 impl Engine {
+    fn avatar_cache_path(&self, id: &str) -> std::path::PathBuf {
+        use sha2::{Digest, Sha256};
+        self.root
+            .join("cache/account-avatars")
+            .join(format!("{:x}.json", Sha256::digest(id.as_bytes())))
+    }
+
+    async fn write_avatar_cache(&self, id: &str, texture: String) -> Result<()> {
+        let path = self.avatar_cache_path(id);
+        tokio::fs::create_dir_all(path.parent().unwrap()).await?;
+        let temporary = path.with_extension(format!("{}.tmp", uuid::Uuid::new_v4()));
+        let cache = AvatarCache {
+            texture,
+            updated_at: crate::now(),
+        };
+        tokio::fs::write(&temporary, serde_json::to_vec(&cache)?).await?;
+        let result = tokio::fs::rename(&temporary, path).await;
+        if result.is_err() {
+            let _ = tokio::fs::remove_file(temporary).await;
+        }
+        result.map_err(Into::into)
+    }
+
+    pub(crate) async fn cache_account_avatar(&self, id: &str, bytes: &[u8]) {
+        let _guard = self.avatar_lock.lock().await;
+        let _ = self.write_avatar_cache(id, encode_texture(bytes)).await;
+    }
+
+    pub async fn account_avatar(&self, id: &str) -> Result<String> {
+        let account = self
+            .db
+            .lock()
+            .await
+            .accounts
+            .iter()
+            .find(|account| account.id == id)
+            .cloned()
+            .context("Аккаунт не найден")?;
+        let fallback = || {
+            default_texture(
+                if account.skin_model == "alex" {
+                    "default:alex"
+                } else {
+                    "default:steve"
+                },
+                &account.skin_model,
+            )
+            .map(|bytes| encode_texture(&bytes))
+        };
+        if account.kind != "microsoft" {
+            return if account.has_skin {
+                self.skin(id).await.map(|bytes| encode_texture(&bytes))
+            } else {
+                fallback()
+            };
+        }
+        let _guard = self.avatar_lock.lock().await;
+        let cached = tokio::fs::read(self.avatar_cache_path(id))
+            .await
+            .ok()
+            .and_then(|bytes| serde_json::from_slice::<AvatarCache>(&bytes).ok())
+            .filter(|cache| {
+                decode_texture(&cache.texture)
+                    .and_then(|bytes| validate_texture(&bytes, false))
+                    .is_ok()
+            });
+        if let Some(cache) = &cached {
+            if crate::now().saturating_sub(cache.updated_at) < 24 * 60 * 60 {
+                return Ok(cache.texture.clone());
+            }
+        }
+        let loaded = tokio::time::timeout(std::time::Duration::from_secs(8), async {
+            let profile = self.minecraft_profile(id).await?;
+            let skin = profile["skins"]
+                .as_array()
+                .and_then(|skins| skins.iter().find(|skin| skin["state"] == "ACTIVE"));
+            match skin {
+                Some(skin) => {
+                    self.minecraft_texture(
+                        skin["url"].as_str().context("Нет текстуры скина")?,
+                        false,
+                    )
+                    .await
+                }
+                None => fallback(),
+            }
+        })
+        .await;
+        if let Ok(Ok(texture)) = loaded {
+            let _ = self.write_avatar_cache(id, texture.clone()).await;
+            return Ok(texture);
+        }
+        if let Some(cache) = cached {
+            return Ok(cache.texture);
+        }
+        if account.has_skin {
+            if let Ok(bytes) = self.skin(id).await {
+                return Ok(encode_texture(&bytes));
+            }
+        }
+        fallback()
+    }
+
     pub async fn import_modrinth_skins(
         &self,
         roots: Vec<std::path::PathBuf>,

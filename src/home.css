@@ -252,9 +252,9 @@
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
   color: var(--accent-ink);
   background: var(--gold-soft);
 }
@@ -402,8 +402,8 @@
     padding: 14px;
   }
   .home-account-avatar {
-    width: 52px;
-    height: 52px;
+    width: 48px;
+    height: 48px;
   }
   .home-account-info > b {
     font-size: 14px;

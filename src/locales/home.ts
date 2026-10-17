@@ -4,6 +4,26 @@ export const homeEnglish: Record<string, string> = {
     "The list scrolls separately, keeping the Apply button visible.",
   "В этой сборке библиотека скинов прокручивается отдельно от персонажа. Предпросмотр подстраивается под высоту окна, а кнопки изменения и применения остаются на экране.":
     "In this build, the skin library scrolls independently of the character. The preview fits the window height, keeping Edit and Apply on screen.",
+  "Головы из скинов и подготовка окна Microsoft заранее.":
+    "Skin heads and Microsoft window preparation in advance.",
+  "Головы из скинов": "Skin heads",
+  "Ваш скин в шапке, на главной и в списке аккаунтов.":
+    "Your skin in the header, on Home and in the account list.",
+  "Окно Microsoft": "Microsoft window",
+  "Подготавливается в фоне и используется повторно.":
+    "Prepared in the background and reused for sign-in.",
+  "В этой сборке вместо иконок аккаунтов отображаются головы из текущих скинов, включая верхний слой. Скины кэшируются для следующих запусков, а локальные профили показывают выбранный скин.":
+    "This build replaces account icons with current skin heads, including the outer layer. Skins are cached for future launches, and local profiles show their selected skin.",
+  "В этой сборке окно входа Microsoft подготавливается в фоне после запуска Aurum и повторно используется при следующей попытке входа. Страница Microsoft загружается только после нажатия кнопки входа.":
+    "In this build, the Microsoft sign-in window is prepared in the background after Aurum starts and reused for subsequent sign-in attempts. The Microsoft page loads only after you click sign in.",
+  "Исправлено сохранение сессий Microsoft.":
+    "Fixed saving Microsoft sign-in sessions.",
+  "17 октября 2026": "17 Oct 2026",
+  "Сохранение входа Microsoft": "Saving Microsoft sign-in",
+  "В этой сборке исправлена ошибка сохранения длинных сессий.":
+    "This build fixes an error when saving long sign-in sessions.",
+  "В этой сборке исправлена ошибка сохранения сессии Microsoft из-за ограничения хранилища Windows. Существующие сохранённые сессии переносятся автоматически.":
+    "This build fixes Microsoft session saving failures caused by the Windows credential size limit. Existing saved sessions are migrated automatically.",
   "Папки профилей, галерея и возврат к списку модов.":
     "Profile folders, the gallery and returning to the mod list.",
   "16 октября 2026": "16 Oct 2026",

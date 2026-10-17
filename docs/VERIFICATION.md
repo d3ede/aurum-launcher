@@ -313,3 +313,49 @@ Published assets: `Aurum-Launcher_x64-setup.exe`, `Aurum-Launcher_x64-setup.exe.
 ```
 
 Public downloads were compared against the GitHub asset digests and checksum file. The public manifest's version, immutable installer URL, and signature matched the release assets. A real WebView2/native updater client using the production HTTPS endpoint offered 0.3.3 and downloaded the public installer with successful signature verification. That diagnostic client had a separate identifier/data directory, simulated an older version, and explicitly lacked installation permission; the installer was not executed and user data was not modified.
+
+## Encrypted session storage — October 17, 2026
+
+Full credential records now use AES-256-GCM files under the local application data directory. The OS vault stores a fixed 96-character key/reference instead of the token JSON. Ten isolated tests cover large records, legacy migration, key rotation, deletion, failed writes, missing/corrupt files, wrong keys, account swaps and reference validation. Test files stay under `.test-data/`.
+
+A separate real Windows Credential Manager test migrated a synthetic legacy record, saved and read a 23,552-byte synthetic session using a 96-character vault entry, replaced the session and deleted the temporary entry and encrypted files. This test passed outside the sandbox; Windows denies vault writes inside it (error 5). No real account credentials were used.
+
+Checks passed: 89 regular Rust workspace tests, the separate native vault test, workspace/all-target Clippy with `-D warnings`, Rust formatting, 13 frontend tests, the TypeScript/Vite production build and formatting of the changed frontend files. Existing loopback HTTP/OAuth tests needed execution outside the sandbox because its socket policy returns Windows error 10013. Live catalog and Java recovery fixtures remained ignored. Complete Microsoft/Minecraft sign-in with a real account remains a manual check.
+
+To repeat the native storage check:
+
+```powershell
+./scripts/cargo.ps1 -CargoArguments @('test','-p','auren-core','windows_vault_large_secret_round_trip','--lib','--','--ignored')
+```
+
+## Local Windows installer 0.4.2 — October 17, 2026
+
+Built the production application with `scripts/desktop.ps1 -Mode build` and completed packaging with `-Mode bundle` after allowing the official NSIS tool download. The application and installer both report version 0.4.2. The release binary contains the new encrypted storage implementation and the NSIS bundle marker. The installer signature and its version-bound trusted comment were independently verified against the configured updater public key. All 13 frontend tests and both home-page Playwright checks passed, including Russian/English notes and both themes.
+
+Local installer: `Aurum-Launcher-Setup.exe`, 7,106,370 bytes (6.78 MiB). SHA256: `9b332c61f99ad156229f96b060da7a7cae15d6cf0d093fe2063c05a5665178f6`.
+
+The signed installer, signature, update manifest and checksums are also staged locally under `.release-local/v0.4.2/`. This build was not installed or published.
+
+## Account heads and reused sign-in window — October 17, 2026
+
+Account heads now composite the face and outer layer of the skin on an 8×8 canvas in the header, Home panel and account list. Microsoft skin textures use a local 24-hour cache; applying a skin updates the cache immediately. Bundled heads remain visible while loading or offline. Concurrent components sharing an account snapshot reuse the same request. Added pixel checks cover the outer layer, account changes, skin updates and fallback in both themes; Rust checks cover local skin changes, restart and cached Microsoft textures without credentials or network requests.
+
+The Microsoft window is prepared hidden with `about:blank` after startup, then reused for fresh PKCE attempts. A real isolated WebView2 run confirmed focus restoration, native close and UI cancellation, a new operation on retry, reuse of the same window, zero added accounts and process exit when the main window closes. Retry reached the displayed-window waiting phase in 65 ms on this machine; this measures window opening, not Microsoft page download or completed authentication. Idle navigation and stale callback ports are rejected by unit tests.
+
+Checks passed: 92 regular Rust workspace tests, workspace/all-target Clippy, 13 frontend tests, all 66 Playwright scenarios and the signed production NSIS build. The rebuilt 0.4.2 installer is 7,131,011 bytes; SHA256: `090f14c88c1a1d2088a86b72fbe0d74d69a3c57c25b664c1f69750be70c2e4b4`. Its updater signature and signed version comment were verified against the configured public key. The normal bundler restores its unpatched build executable after packaging; installed-payload verification accounts for the NSIS marker patch.
+
+This build was installed over an existing registered 0.4.1 installation and restarted. The uninstall registry and installed executable both report 0.4.2, and the installed executable matches the expected packaged payload byte-for-byte.
+
+### Head scaling and frames
+
+Replaced fractional stretching of the 8×8 head into 33/45/60 CSS pixels with a consistent 32-pixel head, rendered to a backing canvas at the current display scale. Header frames are 36 pixels; Home and account-list frames are 40 pixels. Thin theme-aware borders, inset contrast, rounded corners and a soft shadow distinguish dark skins from the interface. Account refreshes retain the previous head until the replacement loads.
+
+Pixel and geometry checks passed at display scales 100%, 125%, 150%, 175% and 200%, with screenshots in both themes. Nine targeted UI checks, 13 frontend tests, TypeScript, formatting and the signed production build passed. The refined installer is 7,131,069 bytes; SHA256: `2b4f0ae30ceb7c53f0529ff0be77f829f29f410a3143a37d65e9a1d5c4786e0f`. Its signature was verified, the user's installed 0.4.2 was refreshed and restarted, and its executable matched the packaged payload.
+
+The Home card subsequently received a larger head targeting 40 CSS pixels inside a 48-pixel frame. Its backing size snaps to whole eight-pixel multiples at the current display scale. Header heads remain 32 pixels in 36-pixel frames; account-list sizes are unchanged. All nine targeted avatar/Home checks pass, including the five display scales and the minimum window size.
+
+The rebuilt installer is 7,130,517 bytes; SHA256: `5a265864cec6c92a30a0aa5160bd820c28c6b297cea132be3b3031b5cc75400e`. Its signature was verified and it was installed over the user's existing 0.4.2, with payload verification and restart.
+
+### Publication preflight
+
+The final local release source, including the independently committed fixed skin preview controls, passed all 73 Playwright scenarios, 13 frontend unit tests, Rust formatting and Git whitespace checks. Earlier Rust, Clippy, native storage and WebView2 checks remain applicable to the unchanged backend. Publication uses the version-tag workflow to build, sign and publish the installer, updater manifest and checksums from the exact tagged source.

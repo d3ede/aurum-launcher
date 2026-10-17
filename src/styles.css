@@ -416,13 +416,37 @@ kbd {
   margin-top: 2px;
 }
 .mini-avatar {
-  height: 33px;
-  width: 33px;
+  height: 36px;
+  width: 36px;
+  flex-shrink: 0;
   background: var(--avatar);
   display: grid;
   place-items: center;
   border-radius: 10px;
   color: var(--accent-ink);
+}
+.account-skin-head {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: linear-gradient(145deg, var(--input-soft), var(--surface));
+  box-shadow:
+    0 1px 3px #00000024,
+    inset 0 1px 0 #ffffff0d;
+  flex-shrink: 0;
+}
+.account-skin-head canvas {
+  display: block;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  background: #171b1d;
+  box-shadow: 0 0 0 1px #0000004d;
+  image-rendering: auto;
 }
 .status-dot {
   display: inline-block;
@@ -1606,8 +1630,9 @@ kbd {
   box-shadow: 0 0 0 1px var(--gold-border);
 }
 .account-avatar {
-  width: 45px;
-  height: 45px;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   border-radius: 13px;

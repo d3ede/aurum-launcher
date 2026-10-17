@@ -13,6 +13,7 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg",
 keyring = { version = "3", features = ["windows-native", "apple-native", "sync-secret-service"] }
 md-5 = "0.10"
 regex = "1"
+ring = "0.17"
 rusqlite = { version = "0.37", features = ["bundled"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream", "multipart"] }
 serde = { version = "1", features = ["derive"] }
