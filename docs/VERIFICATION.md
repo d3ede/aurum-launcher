@@ -367,3 +367,17 @@ Release [v0.4.2](https://github.com/d3ede/aurum-launcher/releases/tag/v0.4.2) is
 The public latest-release URLs were downloaded and compared with GitHub asset digests and `SHA256SUMS.txt`. The update manifest reports 0.4.2, uses the immutable version-specific installer URL and matches the detached signature asset. Public installer size: 7,202,120 bytes. SHA256: `cbaeee16e6cb8ff5b8ee0852403831efebc6ee4d11d908fd2954522376570669`.
 
 A separate real WebView2/native updater client, configured with an older application version and isolated test data, received 0.4.2 from the production HTTPS endpoint and downloaded its installer with successful native signature verification. Installation permission was denied in that diagnostic client; it did not execute the installer or modify user game data. The version tag remains on the application source; this publication verification is a subsequent documentation-only commit.
+
+## Public release 0.4.3 — October 17, 2026
+
+Release [v0.4.3](https://github.com/d3ede/aurum-launcher/releases/tag/v0.4.3) is published as the latest stable release from source commit `aa6e16a281d73f76cf4d394e15ac9e9f21a5f6fb`. The [Windows release workflow](https://github.com/d3ede/aurum-launcher/actions/runs/39056602623) passed frontend/native checks, all 97 UI scenarios, the signed installer build and installer regression checks before publishing all four update assets.
+
+This release adds local hosting, one-card proxy networks, recent-server history and cached launch preparation. Velocity player tracking now parses the complete logger prefix before adding component labels. Backend transfers do not remove players from the network roster. Bounded partial-line buffering preserves split log events; the interface distinguishes an online count with unavailable names from zero online players.
+
+Local checks passed: production frontend build, 15 frontend unit tests, regular Rust workspace tests, all-target Clippy, formatting, 20 targeted Home/Hosting UI scenarios, two isolated Java/PowerShell network-process fixtures, 17 installer-path cases, 16 installer-language cases, close-button rendering and eight shortcut cases. Process fixtures use only temporary `.test-data` servers, not the user's Minecraft server. No instant Minecraft or mod startup guarantee is made.
+
+The public `releases/latest/download/` URLs were downloaded and checked against GitHub asset digests and `SHA256SUMS.txt`. The manifest reports 0.4.3, points to its immutable version-specific installer URL and matches the detached signature asset. Independent Ed25519/minisign verification passed for the installer and its trusted version comment using the production updater public key. The downloaded Windows installer also reports product version 0.4.3.
+
+Public installer size: 8,251,490 bytes. SHA256: `ac5f7f41feb5ed2a8d349ea27a071897672cb7dc33a830b5ae37f19683288d55`.
+
+The public installer was not executed during this publication check, and the installed launcher and real server processes were not changed. The local `Aurum-Launcher-Setup.exe` copy now contains the verified public installer. The version tag remains on the application source; this publication record is a subsequent documentation-only commit.
