@@ -1,4 +1,5 @@
 export const skinEnglish: Record<string, string> = {
+  "Библиотека скинов": "Skin library",
   "Импорт из Modrinth": "Import from Modrinth",
   "Импортируем скины…": "Importing skins…",
   "Все сохранённые скины": "All saved skins",

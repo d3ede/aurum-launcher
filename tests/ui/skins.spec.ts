@@ -214,6 +214,67 @@ async function fixture(
     "true",
   );
 }
+for (const kind of ["offline", "microsoft"] as const) {
+  test(`${kind} wardrobe keeps preview and Apply visible while the library scrolls`, async ({
+    page,
+  }) => {
+    await fixture(page, kind, kind === "offline" ? "light" : "dark");
+    const library = page.getByRole("region", { name: "Библиотека скинов" });
+    const character = page.locator(".wardrobe-character");
+    const apply = page.getByRole("button", { name: "Применить", exact: true });
+    for (const viewport of [
+      { width: 1280, height: 820 },
+      { width: 1110, height: 779 },
+      { width: 960, height: 680 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await library.evaluate((element) => element.scrollTo(0, 0));
+      await expect(apply).toBeInViewport({ ratio: 1 });
+      await expect(character).toBeInViewport({ ratio: 1 });
+      const before = await character.boundingBox();
+      await library.hover();
+      await page.mouse.wheel(0, 4000);
+      await expect
+        .poll(() => library.evaluate((e) => e.scrollTop))
+        .toBeGreaterThan(0);
+      await page
+        .getByRole("button", { name: "Выбрать скин Zuri", exact: true })
+        .click();
+      await expect(apply).toBeInViewport({ ratio: 1 });
+      expect(await character.boundingBox()).toEqual(before);
+      expect(
+        await page.locator(".content-scroll").evaluate((e) => e.scrollTop),
+      ).toBe(0);
+      expect(
+        await character.evaluate((e) => e.scrollHeight - e.clientHeight),
+      ).toBeLessThanOrEqual(1);
+      expect(
+        await page
+          .locator(".content-scroll")
+          .evaluate((e) => e.scrollWidth - e.clientWidth),
+      ).toBeLessThanOrEqual(1);
+      await apply.click();
+      expect(
+        await page.evaluate(
+          () =>
+            (window as any).requests
+              .filter((r: any) => r.action === "applyLibrarySkin")
+              .at(-1).payload.skinId,
+        ),
+      ).toBe("default:zuri");
+      // Keyboard users can scroll the library without moving the character, too.
+      await library.focus();
+      await page.keyboard.press("Home");
+      await expect.poll(() => library.evaluate((e) => e.scrollTop)).toBe(0);
+      await expect(apply).toBeInViewport({ ratio: 1 });
+      await page.screenshot({
+        path: `.test-data/screenshots/skins-fixed-${kind}-${viewport.width}.png`,
+        animations: "disabled",
+      });
+    }
+  });
+}
+
 test("one click imports Modrinth skins, preserves selection and survives restart without duplicates", async ({
   page,
 }) => {

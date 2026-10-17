@@ -373,11 +373,6 @@ export function Skins() {
       <div className="page-heading wardrobe-heading">
         <div>
           <h1>{t("Скины и плащи")}</h1>
-          <p>
-            {t(
-              "Ваш персонаж, ваши образы. Сохраните любимые и меняйте их в один клик.",
-            )}
-          </p>
         </div>
         <div className="wardrobe-heading-actions">
           <button
@@ -422,11 +417,6 @@ export function Skins() {
               </button>
             )}
           </div>
-          {account && (
-            <div className="wardrobe-character-name">
-              <b>{account.name}</b>
-            </div>
-          )}
           <SkinPreview
             texture={skin.texture}
             model={skin.model}
@@ -490,7 +480,11 @@ export function Skins() {
             />
           )}
         </section>
-        <section className="wardrobe-library">
+        <section
+          className="wardrobe-library"
+          aria-label={t("Библиотека скинов")}
+          tabIndex={0}
+        >
           {importReport && (
             <div className="wardrobe-import-result">
               <p role="status">

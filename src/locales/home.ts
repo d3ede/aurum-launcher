@@ -1,4 +1,9 @@
 export const homeEnglish: Record<string, string> = {
+  "Удобный выбор скина": "Easier skin selection",
+  "Список прокручивается отдельно, кнопка применения всегда видна.":
+    "The list scrolls separately, keeping the Apply button visible.",
+  "В этой сборке библиотека скинов прокручивается отдельно от персонажа. Предпросмотр подстраивается под высоту окна, а кнопки изменения и применения остаются на экране.":
+    "In this build, the skin library scrolls independently of the character. The preview fits the window height, keeping Edit and Apply on screen.",
   "Папки профилей, галерея и возврат к списку модов.":
     "Profile folders, the gallery and returning to the mod list.",
   "16 октября 2026": "16 Oct 2026",
