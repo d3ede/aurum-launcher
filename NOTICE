@@ -12,6 +12,9 @@ and notices. Minecraft textures and other Mojang/Microsoft content are not
 licensed under this project's PolyForm license. See src/assets/skins/README.md
 for the provenance of bundled default Minecraft skins.
 
+PaperMC and Velocity selector marks retain their separate usage terms.
+See src/assets/hosting/README.md for their sources and restrictions.
+
 Commercial permissions beyond this license require a separate agreement with
 the relevant copyright holder. Contact d3ede through the project repository.
 

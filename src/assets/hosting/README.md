@@ -1,0 +1,8 @@
+# Server selector assets
+
+- `paper.svg` and `folia.svg`: official white project marks from [PaperMC's website source](https://github.com/PaperMC/website/tree/main/src/assets/brand). These retain the upstream MIT license in `PAPER-WEBSITE-LICENSE`. Paper's view box includes a small symmetric safety margin; the mark geometry is unchanged. The Folia mark is the original filled silhouette, not a generic outline leaf.
+- `velocity-white.svg`: unmodified official white Velocity mark from https://assets.papermc.io/brand/velocity_logo_white.min.svg, subject to the [official asset terms](https://docs.papermc.io/misc/assets/). It is not recolored or distorted.
+- `purpur.svg`: official [Purpur website artwork](https://purpurmc.org/images/purpur.svg), licensed under the upstream MIT license in `PURPUR-WEBSITE-LICENSE`. The original geometry is rendered as a monochrome CSS mask to match the selector.
+- `spigot.svg`: SpigotMC silhouette from [Simple Icons](https://github.com/simple-icons/simple-icons/blob/develop/icons/spigotmc.svg), available under [CC0 1.0](https://github.com/simple-icons/simple-icons/blob/develop/LICENSE.md). Rendered as a monochrome mask.
+
+These assets retain their upstream terms, not the repository's PolyForm license. Branding does not imply endorsement. The selector uses consistent white marks and centered padding in both themes. Paper, Folia, Purpur and Spigot silhouettes use CSS masks for editable profile colors under their upstream licenses. Velocity retains its original white color; its editor shows that explicitly instead of a disabled palette. Vanilla's cube and custom profile symbols are Lucide illustrations, not official product logos. Profile background colors remain editable.

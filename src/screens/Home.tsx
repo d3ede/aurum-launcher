@@ -19,6 +19,7 @@ import { ErrorBox, Loading } from "../components/ui";
 import { HomePattern } from "../components/TerrainPattern";
 import { ImportProfileButton } from "../components/ImportProfileButton";
 import { HomeSidebar } from "../components/HomeSidebar";
+import { RecentServers } from "../components/RecentServers";
 export function Home({
   onProfile,
   onProject,
@@ -141,6 +142,7 @@ export function Home({
             </>
           )}
         </section>
+        <RecentServers onProfile={onProfile} />
         {recent.length > 0 && (
           <section className="section">
             <div className="section-heading">

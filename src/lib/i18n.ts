@@ -4,11 +4,18 @@ import englishMessages from "../locales/messages/en.json";
 import russianMessages from "../locales/messages/ru.json";
 import { microsoftEnglish, microsoftRussian } from "../locales/microsoft-login";
 import { skinEnglish, skinRussian } from "../locales/skins";
-import { profileCreationEnglish, profileCreationRussian } from "../locales/profile-creation";
-import { profileIconEnglish, profileIconRussian } from "../locales/profile-icons";
+import {
+  profileCreationEnglish,
+  profileCreationRussian,
+} from "../locales/profile-creation";
+import {
+  profileIconEnglish,
+  profileIconRussian,
+} from "../locales/profile-icons";
 import { updaterEnglish, updaterRussian } from "../locales/updater";
 import { catalogEnglish, catalogRussian } from "../locales/catalog";
 import { homeEnglish, homeRussian } from "../locales/home";
+import { hostingEnglish, hostingRussian } from "../locales/hosting";
 import {
   contentManagerEnglish,
   contentManagerRussian,
@@ -24,6 +31,7 @@ const english: Dictionary = {
   ...updaterEnglish,
   ...catalogEnglish,
   ...homeEnglish,
+  ...hostingEnglish,
   ...contentManagerEnglish,
 };
 const russian: Dictionary = {
@@ -35,6 +43,7 @@ const russian: Dictionary = {
   ...updaterRussian,
   ...catalogRussian,
   ...homeRussian,
+  ...hostingRussian,
   ...contentManagerRussian,
 };
 const bundles = import.meta.glob<{ default: Dictionary }>([
@@ -187,6 +196,7 @@ export const ru = {
       catalog: "Каталог проектов",
       accounts: "Аккаунты и скины",
       skins: "Скины и плащи",
+      hosting: "Хостинг",
       settings: "Настройки",
     });
   },

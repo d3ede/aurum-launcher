@@ -6,6 +6,10 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 impl Engine {
     /// Copies data into an empty, user-selected directory. The original is retained.
     pub async fn copy_data(&self, target: &Path, task: &Task) -> Result<()> {
+        let _hosting_guard = self.hosting.gate.lock().await;
+        if !self.hosting_running().is_empty() {
+            bail!("Сначала остановите локальные серверы")
+        }
         if !self.running.lock().await.is_empty() {
             bail!("Сначала остановите все игры")
         }
@@ -63,6 +67,7 @@ impl Engine {
             }
             let db = self.db.lock().await;
             crate::store::persist(&target, &db).await?;
+            self.hosting_rebase_copy(&target).await?;
             Ok(())
         }
         .await;

@@ -51,7 +51,7 @@ export function ProfileIcon({
   );
 }
 
-function ColorControl({
+export function ColorControl({
   label,
   value,
   palette,

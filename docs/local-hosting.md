@@ -1,0 +1,52 @@
+# Local hosting
+
+The **Hosting** navigation item manages local Java server processes independently of Minecraft client instances. Available in Aurum 0.4.3, this is a local desktop feature, not a hosted service.
+
+## Import existing servers
+
+Choose **Add server**, select a folder and explicitly select a server or a network group. Nothing is selected automatically. A proxy with adjacent backends becomes **one network card**, with components inside a collapsed section. Unrelated folders remain in a secondary list. Import records metadata only: no files are moved, configurations changed, EULA accepted or processes started. Removing a network removes its launcher metadata and component records, never server files.
+
+Discovery requires a valid JAR with a main-class manifest and excludes plugin descriptors. Unknown launchable JARs are labeled JAR, not Vanilla. Prepared Paper, Spigot, Folia, Purpur, Fabric, Vanilla and Velocity distributions are recognized, including shared `distributions` folders. Existing adjacent component profiles are grouped on first use, preserving their IDs and settings; `hosting/profiles.before-networks.json` backs up the previous metadata. Grouping is generic and contains no server-project-specific paths or commands.
+
+## One network, one launch
+
+On Windows, a discovered `start.bat`, `start.cmd`, `start.ps1` or `run` equivalent is the network's startup entry point. A custom relative BAT/CMD/PowerShell path can be selected in network settings. Before first execution, the user confirms the exact file and its user-level permissions. Consent is bound to its SHA-256 content; changed content or a different selection requires confirmation again. Trust covers execution of that script and its dependencies, not a sandbox for arbitrary script behavior. Import never executes it. Existing preparation, database startup and component ordering remain the script's responsibility; Aurum does not translate or bypass them.
+
+An owned Windows Job Object contains the launcher script and its descendants. A handshake prevents execution before assignment. The stdin pipe stays open for the full lifetime of the job: console-based supervisors must not receive an accidental EOF when startup finishes. The network stays active even if the initial script exits while descendants continue. Normal app close/update remains blocked. CPU/RAM refer to the owned process tree; available component logs are combined with script output. Script-launched Java stdin and player actions are not falsely exposed as attached component consoles.
+
+Normal **Stop** sends the configured shutdown command (default `stop`) to the startup script, not to an arbitrary backend. Set a different command in network settings when required. If the script has exited or does not handle that command, Aurum reports the problem or keeps waiting; it never automatically escalates to force termination. **Restart** waits for normal shutdown. The separate dropdown force action requires explicit confirmation and affects only the owned job. A forced app/process termination closes that job and terminates its descendants. GUI prompts, elevation and process breakaway are not guaranteed under the noninteractive supervisor.
+
+Without a startup script, the common button starts direct-JAR backends before proxies and waits for readiness. Failure requests graceful shutdown of already-started owned components. Common stop/restart uses their normal console commands. These networks do not automatically start external databases or replicate custom preparation steps. Java/JVM configuration remains per component in stored metadata. The direct-JAR path does not support Forge/NeoForge generated argument-file launchers. Shell-script network launching is currently Windows-only.
+
+## Install clean servers
+
+The installer separates game servers (**Paper, Purpur, Folia, Vanilla**) from the **Velocity proxy**. **Spigot** is also visible, with a link to official BuildTools and an import action for the resulting prepared server; no unofficial Spigot JAR mirror is used. Select a version; only stable PaperMC builds are eligible unless you explicitly opt into experimental builds. Purpur uses the latest successful numbered build from its official API, pinned before download; its published MD5 is verified over HTTPS. Purpur does not expose a PaperMC-style stable channel. Aurum never silently substitutes another Minecraft version. Failed or cancelled installations remove only their own newly created staging directory. Existing folders are never used as installation targets.
+
+Game-server installation requires an explicit unchecked-by-default [Minecraft EULA](https://www.minecraft.net/eula) consent. Import does not grant consent; an existing server needs its own `eula=true` or an explicit acceptance in Hosting settings before launch. Velocity is a proxy, not a Minecraft game server. A new Velocity profile points `lobby` to `127.0.0.1:25566` and listens on `127.0.0.1:25577`; configure its backends and secure forwarding before use. Folia needs specifically compatible plugins and is not a drop-in Paper replacement.
+
+New installations bind to loopback only, leave account verification enabled and do not enable RCON. To make a server available on a LAN or the internet, deliberately adjust its bind address, firewall and proxy configuration. Aurum does not expose ports, change firewall rules or configure port forwarding automatically. Spigot and other prepared distributions can be imported; they are not downloaded from third-party mirrors.
+
+## Console and controls
+
+- Information, Console, Players, Files, Actions and Settings tabs. At normal window sizes, quick actions and online players remain in a right sidebar; the layout collapses at smaller sizes. Information has editable name/description, actual resource measurements and readable MOTD text. Windows API path prefixes are hidden only in presentation; stored canonical paths and confinement remain unchanged.
+- Files lists metadata and browses directories under the selected server root without executing or editing files. Explorer and log-folder actions remain separate.
+- Start, graceful stop, restart and separately confirmed force termination of **Aurum-owned** Java processes.
+- Bounded 2000-line console, severity/search filters, autoscroll control, copy, clear view and in-memory command history. Clearing affects the view, not the server's log files. Sensitive key/value patterns are redacted on a best-effort basis; never paste credentials into the console.
+- Direct-JAR commands use Java stdin, never an OS command shell. Scripted network consoles are read-only. Newlines/control characters and command injection in player names are rejected. Player privilege changes and punitive actions require confirmation.
+- Paper-compatible player actions include kick, ban/pardon, whitelist, OP/deOP and game modes. Velocity offers backend transfer (`send`); plugin-dependent moderation commands are not falsely presented as built-in proxy functionality.
+- Player names come from observed connection events after Aurum starts the process. Scripted networks track the proxy's connection events, not backend joins/leaves during transfers. Component labels are added after parsing, complete Velocity logger prefixes are supported, and partial file lines are buffered with bounded memory. Counts come independently from the local Java server status protocol: a server can report a count without exposing names, which the UI labels explicitly rather than claiming no players are online. CPU and memory refer to the owned Java PID; unavailable measurements are shown as unavailable, not simulated statistics.
+- A port already used by another process disables launch and process controls. Aurum cannot attach stdin or kill an arbitrary external Java process. Stop that process normally and relaunch through Aurum.
+
+Keep Aurum open while hosting. Normal window close, application restart, update installation and data relocation are blocked while owned servers are active. A forced OS termination cannot be intercepted; after reopening, externally running processes remain read-only. No background-service persistence or full console reattachment is claimed.
+
+Settings preserve unrelated configuration values and secrets. The first configuration change creates a `.aurum-backup` alongside the original. Paths are confined to the selected root, including shared JARs and the startup entry point. Network appearance changes validate only name, description and icon, not unrelated proxy settings such as multiline MOTDs. Network settings change only card styling/name and startup selection, not every backend's configuration. BungeeCord/Waterfall YAML configuration must be edited externally. Paper, Folia, Spigot and Purpur silhouettes and custom symbols support profile colors; Velocity retains its original white mark. Background colors remain editable.
+
+Hosting uses an unboxed server list, aligned left-hand metric icons, centered labels above their values and a geometric pattern rather than a landscape illustration. The core metric always represents server software, independently of the chosen profile icon. The summary pattern is green for running servers, muted red for stopped servers and amber during transitions. Add and Install are the two entry points, without duplicate import controls. Quick actions and online players remain in the right column at standard 1280-pixel desktop width; smaller windows stack the auxiliary panel below.
+
+## Verification
+
+`cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `npm test`, `npm run build`, and `npm run test:ui` cover persistence, import, configuration preservation, path confinement, consent, console bounds, player-action confirmation and both UI themes.
+
+The ignored `hosting` integration test requires `AURUM_PROCESS_TEST_JAVA` pointing to a JDK. It compiles and runs only a generic Java stdin fixture under `.test-data`, not Minecraft or a user's server. The read-only folder diagnostic requires an explicitly selected `AURUM_HOSTING_INSPECT_ROOT`.
+
+Sources: [PaperMC Downloads Service](https://docs.papermc.io/misc/downloads-service/), [Paper setup](https://docs.papermc.io/paper/getting-started/), [Velocity commands](https://docs.papermc.io/velocity/built-in-commands/), [Folia](https://papermc.io/software/folia/), [asset usage terms](https://docs.papermc.io/misc/assets/).

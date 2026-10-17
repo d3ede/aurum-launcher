@@ -34,7 +34,7 @@ interface AppState {
     action: (id: string) => Promise<T>,
     success?: string,
   ) => Promise<T | undefined>;
-  play: (p: Profile) => Promise<void>;
+  play: (p: Profile, server?: string) => Promise<void>;
   route: Route;
   navigate: (route: Route) => void;
   create: () => void;
@@ -67,6 +67,7 @@ export function Provider({
   const loginCancelled = useRef(false);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [logs, setLogs] = useState<Progress[]>([]);
+  const [serverShortcut, setServerShortcut] = useState(0);
   const [toast, setToast] = useState<{
     message: string;
     error: boolean;
@@ -86,19 +87,27 @@ export function Provider({
     if (native) setData(await rpc("snapshot", {}));
   }, []);
   useEffect(() => {
-    if (!native || !data.running.length) return;
+    if (!native || (!data.running.length && !data.hostingRunning?.length))
+      return;
     let active = true;
     let pending = false;
     const timer = setInterval(() => {
       if (pending) return;
       pending = true;
       rpc("snapshot", {})
-        .then(snapshot => { if (active) setData(snapshot); })
+        .then((snapshot) => {
+          if (active) setData(snapshot);
+        })
         .catch(() => {})
-        .finally(() => { pending = false; });
+        .finally(() => {
+          pending = false;
+        });
     }, 2000);
-    return () => { active = false; clearInterval(timer); };
-  }, [data.running.length]);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [data.running.length, data.hostingRunning?.length]);
   useEffect(() => {
     let live = true;
     let unsubscribe: (() => void) | undefined;
@@ -113,6 +122,18 @@ export function Provider({
         if (live) setFatal(e.message);
       });
     events((event) => {
+      if (event.phase === "hosting-close-blocked") {
+        notify(event.message, true);
+        return;
+      }
+      if (event.phase === "hosting-changed") {
+        void refresh().catch(() => {});
+        return;
+      }
+      if (event.phase === "server-shortcut") {
+        setServerShortcut((value) => value + 1);
+        return;
+      }
       if (loginIds.current.has(event.id)) {
         if (event.id === loginId.current && event.phase.startsWith("auth-")) {
           if (loginCancelled.current)
@@ -253,7 +274,7 @@ export function Provider({
     }
   }, [microsoftLogin]);
   const play = useCallback(
-    async (p: Profile) => {
+    async (p: Profile, server?: string) => {
       if (!data.selectedAccount) {
         navigate("accounts");
         notify(t("Добавьте аккаунт для запуска игры"));
@@ -262,11 +283,35 @@ export function Provider({
       await operation(async (operationId) => {
         if (!p.installedVersion)
           await rpc("install", { id: p.id, operationId });
-        await rpc("launch", { id: p.id });
+        await rpc("launch", { id: p.id, ...(server ? { server } : {}) });
       }, t("Minecraft запущен"));
     },
     [data.selectedAccount, operation, notify],
   );
+  useEffect(() => {
+    if (!native || !loaded || busy || !data.serverManager) return;
+    void rpc("takeServerShortcut", {})
+      .then(async (request) => {
+        if (!request) return;
+        const profile = data.profiles.find(
+          (profile) => profile.id === request.profileId,
+        );
+        if (!profile) {
+          notify(t("Сборка из ярлыка больше не существует"), true);
+          return;
+        }
+        await play(profile, request.address);
+      })
+      .catch((error) => notify(String(error), true));
+  }, [
+    loaded,
+    busy,
+    data.serverManager,
+    serverShortcut,
+    play,
+    notify,
+    data.profiles,
+  ]);
   if (fatal)
     return (
       <div className="boot-error">

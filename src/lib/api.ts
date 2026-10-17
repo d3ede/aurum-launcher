@@ -2,6 +2,14 @@ import { t } from "./i18n";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
+  HostingProfile,
+  HostingSettings,
+  HostingUpdate,
+  HostingInspection,
+  HostingConsole,
+  HostingInstall,
+} from "./hosting";
+import type {
   Account,
   Content,
   ContentInspection,
@@ -15,6 +23,8 @@ import type {
   SearchQuery as Query,
   Settings,
   Snapshot,
+  RecentServer,
+  ServerStatus,
   Project,
   ModrinthScan,
   ModrinthImportResult,
@@ -29,6 +39,42 @@ import type {
 export const native = isTauri();
 type Empty = Record<string, never>;
 interface Contract {
+  hostingProfiles: [Empty, HostingProfile[]];
+  hostingFiles: [
+    { id: string; path: string },
+    {
+      entries: { name: string; directory: boolean; bytes: number }[];
+      truncated: boolean;
+    },
+  ];
+  hostingScriptTrust: [
+    { id: string },
+    { path: string; hash: string; trusted: boolean },
+  ];
+  hostingTrustScript: [{ id: string; hash: string }, void];
+  hostingNetworkScript: [{ id: string; script: string | null }, void];
+  hostingNetworkStopCommand: [{ id: string; command: string }, void];
+  hostingChooseFolder: [Empty, string | null];
+  hostingInspect: [{ root: string }, HostingInspection];
+  hostingImport: [{ root: string; selected: string[] }, HostingProfile[]];
+  hostingSettings: [{ id: string }, HostingSettings];
+  hostingUpdate: [{ id: string; update: HostingUpdate }, void];
+  hostingRemove: [{ id: string }, void];
+  hostingOpen: [{ id: string; logs: boolean }, void];
+  hostingConsole: [{ id: string; after: number }, HostingConsole];
+  hostingControl: [{ id: string; action: string; command?: string }, void];
+  hostingPlayerAction: [
+    { id: string; player: string; action: string; target?: string },
+    void,
+  ];
+  hostingAcceptEula: [{ id: string; accepted: boolean }, void];
+  hostingVersions: [{ core: string }, { version: string }[]];
+  hostingInstall: [
+    { operationId: string; request: HostingInstall },
+    HostingProfile,
+  ];
+  hostingStart: [{ id: string; operationId: string }, void];
+  hostingRestart: [{ id: string; operationId: string }, void];
   packRequirements: [
     {
       source: string;
@@ -80,6 +126,11 @@ interface Contract {
     ModrinthImportResult,
   ];
   snapshot: [Empty, Snapshot];
+  recentServers: [Empty, RecentServer[]];
+  serverStatus: [{ id: string; force: boolean }, ServerStatus];
+  removeRecentServer: [{ id: string }, void];
+  createServerShortcut: [{ id: string }, string];
+  takeServerShortcut: [Empty, { profileId: string; address: string } | null];
   versions: [Empty, MinecraftManifest];
   loaders: [
     {
@@ -220,6 +271,7 @@ interface Contract {
   launch: [
     {
       id: string;
+      server?: string;
     },
     void,
   ];

@@ -43,7 +43,8 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
   const resource = useRef<Update | null>(null);
   const inFlight = useRef(false);
   const mounted = useRef(true);
-  const blocked = busy || data.running.length > 0;
+  const blocked =
+    busy || data.running.length > 0 || !!data.hostingRunning?.length;
 
   const checkNow = useCallback(async () => {
     if (!native || inFlight.current) return;

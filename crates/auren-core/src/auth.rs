@@ -233,9 +233,24 @@ impl Engine {
         ))
     }
     pub async fn minecraft_token(&self, id: &str) -> Result<String> {
+        Ok(self.minecraft_credentials(id).await?.access_token)
+    }
+    pub(crate) async fn minecraft_launch_credentials(
+        &self,
+        id: &str,
+    ) -> Result<(String, String, String)> {
+        let credentials = self.minecraft_credentials(id).await?;
+        let client_id = if credentials.client_id.is_empty() {
+            crate::microsoft_oauth::client_id()?.to_string()
+        } else {
+            credentials.client_id
+        };
+        Ok((credentials.access_token, client_id, credentials.xuid))
+    }
+    async fn minecraft_credentials(&self, id: &str) -> Result<Credentials> {
         let credentials: Credentials = serde_json::from_str(&secret(id)?)?;
         if credentials.expires_at > crate::now() + 120 {
-            return Ok(credentials.access_token);
+            return Ok(credentials);
         }
         // Remember the issuing app so later builds can refresh existing sessions.
         let client = if credentials.client_id.is_empty() {
@@ -261,7 +276,7 @@ impl Engine {
         let (mut credentials, _) = self.exchange(&oauth).await?;
         credentials.client_id = client;
         set_secret(id, &serde_json::to_string(&credentials)?)?;
-        Ok(credentials.access_token)
+        Ok(credentials)
     }
     pub fn xuid(&self, id: &str) -> Result<String> {
         let credentials: Credentials = serde_json::from_str(&secret(id)?)?;

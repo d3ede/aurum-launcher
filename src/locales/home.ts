@@ -1,4 +1,82 @@
 export const homeEnglish: Record<string, string> = {
+  "В Aurum 0.4.3: исправлен список игроков Velocity в сети. События прокси распознаются с именем компонента и полным форматом журнала; переход между режимами не удаляет игрока из общего списка. Если сервер сообщил только количество, интерфейс показывает, что имена пока недоступны.":
+    "In Aurum 0.4.3: Velocity network player tracking handles component labels and the full logger format. Switching backends no longer removes a player from the network roster. When only a count is known, the UI states that names are unavailable.",
+  "Локальный хостинг, недавние серверы и подготовка запуска.":
+    "Local hosting, recent servers and launch preparation.",
+  "Подготовка запуска": "Launch preparation",
+  "В Aurum 0.4.3: локальный хостинг с профилями серверов, консолью, действиями с игроками, просмотром файлов и настройками Java. Доступна установка Paper, Purpur, Folia, Velocity и Vanilla; Spigot добавляется через официальный BuildTools. Импорт не переносит серверные файлы.":
+    "In Aurum 0.4.3: local hosting with server profiles, console controls, player actions, file browsing and Java settings. Install Paper, Purpur, Folia, Velocity and Vanilla; prepare Spigot with official BuildTools. Import leaves server files in place.",
+  "В Aurum 0.4.3: сеть отображается одной карточкой с общей кнопкой запуска. В Windows можно подтвердить запуск своего BAT, CMD или PowerShell. Входной канал скрипта остаётся открытым; обычная остановка отправляет настроенную команду, а принудительное завершение требует подтверждения. Пока сервер работает, закрытие и обновление лаунчера заблокированы.":
+    "In Aurum 0.4.3: networks have one card and a shared launch button. On Windows, explicitly trust your BAT, CMD or PowerShell startup file. Script stdin remains open; normal stop sends the configured command, while force termination requires confirmation. Launcher close and updates are blocked while owned servers run.",
+  "В Aurum 0.4.3: правая панель хостинга, значки ядер и настраиваемые цвета. Названия метрик находятся над значениями, значки выровнены слева. Узор отражает состояние сервера. Исправлено сохранение оформления сети при многострочном MOTD прокси.":
+    "In Aurum 0.4.3: a Hosting right sidebar, server software icons and editable colors. Metric labels sit above values with aligned left-hand icons. The pattern reflects server status. Saving network appearance works with multiline proxy MOTDs.",
+  "В Aurum 0.4.3: пять недавних серверов за семь дней на главной. Доступны проверка онлайна, вход через нужную сборку, копирование адреса и ярлык на рабочем столе.":
+    "In Aurum 0.4.3: Home lists five recent servers from the past seven days. Check status, join with the right instance, copy the address or create a desktop shortcut.",
+  "В Aurum 0.4.3: кэшируются проверка Java и распакованные нативные библиотеки. Изменённые или удалённые файлы проверяются заново. Это ускоряет подготовку, но не убирает загрузку самой игры и модов.":
+    "In Aurum 0.4.3: Java probes and extracted native libraries are cached. Changed or missing files are checked again. This reduces preparation work, not Minecraft or mod initialization.",
+  "Правая панель, ровные метрики и узор по состоянию сервера.":
+    "Restored right sidebar, aligned metrics and a server-status pattern.",
+  "В разработке: правая панель хостинга снова видна при обычном размере окна. Список серверов оформлен без лишней рамки, кнопки добавления и установки выровнены. Названия метрик находятся над значениями, уменьшенные значки стоят слева. Узор главного блока зеленеет при работе и становится красноватым после остановки.":
+    "In development: the Hosting right sidebar is visible at normal desktop window size again. The server list has no extra frame, and Add and Install buttons share their layout. Metric labels appear above values, with smaller aligned icons on the left. The summary pattern turns green while running and muted red when stopped.",
+  "Свободнее список серверов, значки ядер и исправленное сохранение оформления.":
+    "Roomier server list, server software icons and fixed appearance saving.",
+  "В разработке: список хостинга стал просторнее, метрики показывают значок игрового ядра, а вместо иллюстраций используется узор. Убраны дубли импорта, исправлены центрирование значков и сохранение оформления сети без проверки посторонних параметров прокси. Цвета значков Paper, Folia, Spigot и Purpur можно менять; Velocity сохраняет оригинальный белый логотип.":
+    "In development: Hosting has a roomier server list, game-server icons in metrics and a decorative pattern instead of illustrations. Duplicate import actions are removed. Icon alignment and network appearance saving are fixed without validating unrelated proxy settings. Paper, Folia, Spigot and Purpur icons support custom colors; Velocity retains its original white mark.",
+  "Обновлённый интерфейс и исправление самопроизвольной остановки сети.":
+    "Refreshed hosting interface and a fix for unexpected network shutdowns.",
+  "В разработке: оформление хостинга приближено к единому серверному дашборду: быстрые действия сбоку, информация и ресурсы, просмотр файлов и меню остановки. Служебный префикс Windows скрыт в путях. Исправлено закрытие входного канала стартового скрипта, из-за которого сеть могла останавливаться после запуска. Обычная остановка отправляет настроенную команду скрипту; принудительное завершение требует отдельного подтверждения.":
+    "In development: Hosting has a unified server dashboard with side actions, information and resources, file browsing and a shutdown menu. Windows API path prefixes are hidden. Startup script stdin remains open so console-based supervisors no longer stop because of unexpected EOF. Normal stop sends a configured shutdown command; force termination requires separate confirmation.",
+  "Одна карточка и общий запуск всей сети серверов.":
+    "One card and a shared launch for your server network.",
+  "В разработке: сеть серверов отображается одной карточкой с общей кнопкой запуска. Компоненты доступны внутри. В Windows можно запускать доверенный BAT, CMD или PowerShell всей сети; без скрипта Aurum запускает игровые компоненты перед прокси. Уже импортированные соседние компоненты объединяются без переноса серверных файлов.":
+    "In development: server networks have one card and a shared launch button, with components inside. On Windows, a trusted BAT, CMD or PowerShell script can launch the network. Without a script, Aurum starts game components before the proxy. Previously imported adjacent components are grouped without moving server files.",
+  "Удобный импорт сети, ядра и прокси.":
+    "Clearer network imports, server software and proxies.",
+  "В разработке: импорт объединяет соседние компоненты прокси-сети и не выбирает всё автоматически. JAR плагинов больше не выдаются за Vanilla-серверы. Добавлена установка Purpur, официальный путь Spigot через BuildTools и единые значки проектов.":
+    "In development: import groups adjacent proxy-network components without selecting everything automatically. Plugin JARs are no longer mistaken for Vanilla servers. Purpur installation, the official Spigot BuildTools route and consistent project icons are available.",
+  "Новости лаунчера": "Launcher news",
+  "В разработке: локальный хостинг": "In development: local hosting",
+  "Серверные профили, консоль и установка официальных ядер.":
+    "Server profiles, console controls and official server installation.",
+  "В разработке: раздел «Хостинг» позволяет импортировать готовые серверы и компоненты сети Velocity, устанавливать чистые Paper, Folia, Velocity и Vanilla, управлять консолью, игроками и параметрами Java. Файлы импортированных серверов остаются на месте.":
+    "In development: Hosting imports prepared servers and Velocity network components, installs clean Paper, Folia, Velocity and Vanilla, and provides console controls, player actions and Java settings. Imported server files stay in place.",
+  "Недавние серверы": "Recent servers",
+  "За 7 дней": "Last 7 days",
+  "Все серверы": "All servers",
+  "Серверы за последнюю неделю": "Servers from the past week",
+  "Здесь появятся серверы, к которым вы подключались за последнюю неделю.":
+    "Servers you connected to during the past week will appear here.",
+  "Не удалось загрузить серверы": "Could not load recent servers",
+  "Играть на сервере {{name}}": "Play on {{name}}",
+  "Подключиться к {{address}}": "Connect to {{address}}",
+  "Действия сервера {{name}}": "Actions for {{name}}",
+  "Запустить сборку": "Launch instance",
+  "Посмотреть сборку": "View instance",
+  "Копировать адрес": "Copy address",
+  "Убрать из списка": "Remove from list",
+  "Создать ярлык": "Create shortcut",
+  "Проверяем сервер…": "Checking server…",
+  "Ответ сервера не получен": "No response from server",
+  "Ещё не проверен": "Not checked yet",
+  Недоступен: "Unavailable",
+  "В сети": "Online",
+  "Сначала остановите эту сборку": "Stop this instance first",
+  "Адрес сервера скопирован": "Server address copied",
+  "Не удалось скопировать адрес сервера": "Could not copy server address",
+  "Ярлык сервера создан на рабочем столе":
+    "Server shortcut created on the desktop",
+  "Сборка из ярлыка больше не существует":
+    "The shortcut's instance no longer exists",
+  "В разработке: недавние серверы": "In development: recent servers",
+  "Пять последних серверов за неделю, онлайн и быстрый вход.":
+    "Five recent servers from the past week, live status and quick join.",
+  "В разработке: на главной появился компактный список недавних серверов за семь дней. Доступны проверка онлайна, запуск нужной сборки с подключением к серверу, копирование адреса и ярлык на рабочем столе.":
+    "In development: Home has a compact list of servers used in the past seven days, with status checks, joining through the matching instance, copying addresses and desktop shortcuts.",
+  "В разработке: быстрее запуск": "In development: faster launches",
+  "Java и неизменившиеся библиотеки не готовятся повторно.":
+    "Java and unchanged native libraries are not prepared again.",
+  "В разработке: подготовка запуска Minecraft использует кэш проверки Java и распакованных нативных библиотек. При изменении или удалении файлов кэш обновляется автоматически. Обработка игровых журналов больше не компилирует шаблон скрытия токенов для каждой строки. Загрузка самой игры и модов по-прежнему зависит от сборки и компьютера.":
+    "In development: Minecraft launch preparation caches Java version checks and extracted native libraries. Changed or missing files automatically invalidate the cache. Game log processing no longer compiles the token-redaction pattern for each line. Loading the game and mods still depends on the instance and your computer.",
   "Удобный выбор скина": "Easier skin selection",
   "Список прокручивается отдельно, кнопка применения всегда видна.":
     "The list scrolls separately, keeping the Apply button visible.",

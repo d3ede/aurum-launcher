@@ -158,6 +158,9 @@ pub struct Snapshot {
     pub data_dir: String,
     pub running: Vec<String>,
     pub curseforge_configured: bool,
+    pub server_manager: bool,
+    pub hosting_support: bool,
+    pub hosting_running: Vec<String>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -168,6 +171,26 @@ pub struct Event {
     pub message: String,
     pub done: u64,
     pub total: u64,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecentServer {
+    pub id: String,
+    pub address: String,
+    pub name: String,
+    pub profile_id: String,
+    pub last_played: u64,
+    pub icon: Option<String>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ServerStatus {
+    pub online: bool,
+    pub players: Option<u32>,
+    pub max_players: Option<u32>,
+    pub latency_ms: Option<u64>,
+    pub icon: Option<String>,
+    pub checked_at: u64,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

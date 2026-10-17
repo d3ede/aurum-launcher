@@ -7,8 +7,12 @@ license = "PolyForm-Noncommercial-1.0.0"
 [dependencies]
 anyhow = "1"
 base64 = "0.22"
+chrono = "0.4"
 dirs = "6"
+fastnbt = "2"
+flate2 = "1"
 futures-util = "0.3"
+hickory-resolver = { version = "0.26", default-features = false, features = ["tokio", "system-config"] }
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
 keyring = { version = "3", features = ["windows-native", "apple-native", "sync-secret-service"] }
 md-5 = "0.10"
@@ -23,12 +27,13 @@ sha2 = "0.10"
 shlex = "1"
 sysinfo = { version = "0.39", default-features = false, features = ["system"] }
 tokio = { version = "1", features = ["full"] }
+toml_edit = "0.20.2"
 uuid = { version = "1", features = ["v4", "serde"] }
 walkdir = "2"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Threading"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Threading", "Win32_System_JobObjects"] }
 
 [dev-dependencies]
 tempfile = "3"

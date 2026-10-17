@@ -12,7 +12,7 @@ use std::{
     process::Stdio,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
-        Arc,
+        Arc, LazyLock,
     },
 };
 use tokio::{
@@ -453,8 +453,16 @@ impl Engine {
     }
     pub async fn java(&self, major: u32, task: &Task) -> Result<PathBuf> {
         let configured = self.db.lock().await.settings.java_path.clone();
+        self.java_with_path(major, &configured, task).await
+    }
+    pub(crate) async fn java_with_path(
+        &self,
+        major: u32,
+        configured: &str,
+        task: &Task,
+    ) -> Result<PathBuf> {
         if !configured.is_empty() {
-            let version = java_version(Path::new(&configured)).await?;
+            let version = self.cached_java_version(Path::new(&configured)).await?;
             if version < major {
                 bail!("Требуется Java {major}, выбрана Java {version}")
             }
@@ -463,7 +471,7 @@ impl Engine {
         let runtime = self.root.join("runtimes").join(format!("java-{major}"));
         if runtime.exists() {
             if let Some(path) = find_java(&runtime) {
-                if java_version(&path).await? >= major {
+                if self.cached_java_version(&path).await? >= major {
                     return Ok(path);
                 }
             }
@@ -498,7 +506,7 @@ impl Engine {
         .await?;
         extract_zip(&zip, &runtime, None, task)?;
         let path = find_java(&runtime).context("Java не найдена после распаковки")?;
-        java_version(&path).await?;
+        self.cached_java_version(&path).await?;
         Ok(path)
     }
     async fn install_forge(&self, p: &Profile, java: &Path, task: &Task) -> Result<Value> {
@@ -625,6 +633,17 @@ impl Engine {
         }
     }
     pub async fn launch(&self, id: &str) -> Result<()> {
+        self.launch_target(id, None).await
+    }
+    pub async fn launch_to_server(&self, id: &str, address: &str) -> Result<()> {
+        let address = crate::servers::ServerAddress::parse(address)?;
+        self.launch_target(id, Some(address)).await
+    }
+    async fn launch_target(
+        &self,
+        id: &str,
+        server: Option<crate::servers::ServerAddress>,
+    ) -> Result<()> {
         self.refresh_recovered().await;
         let _guard = self
             .busy
@@ -648,11 +667,6 @@ impl Engine {
                 db.settings.clone(),
             )
         };
-        let token = if account.kind == "microsoft" {
-            self.minecraft_token(&account.id).await?
-        } else {
-            "0".into()
-        };
         let instance = self.instance(id)?;
         let meta: Value =
             serde_json::from_slice(&tokio::fs::read(instance.join("launch.json")).await?)?;
@@ -663,11 +677,31 @@ impl Engine {
             cancel: Arc::new(AtomicBool::new(false)),
             emit: self.emit.clone(),
         };
-        let java = self.java(major, &task).await?;
+        let authentication = async {
+            if account.kind == "microsoft" {
+                self.minecraft_launch_credentials(&account.id).await
+            } else {
+                Ok(("0".into(), String::new(), String::new()))
+            }
+        };
+        let ((token, client_id, xuid), java) =
+            tokio::try_join!(authentication, self.java(major, &task))?;
         let natives = instance.join("natives");
-        tokio::fs::create_dir_all(&natives).await?;
-        let features = HashMap::from([("has_custom_resolution".into(), true)]);
+        let quickplay = crate::servers::quickplay_supported(&p.minecraft, &meta);
+        let quickplay_path = format!(".aurum/quickplay/{}.json", task.id);
+        if quickplay {
+            tokio::fs::create_dir_all(instance.join(".aurum/quickplay")).await?;
+        }
+        let features = HashMap::from([
+            ("has_custom_resolution".into(), true),
+            ("has_quick_plays_support".into(), quickplay),
+            (
+                "is_quick_play_multiplayer".into(),
+                quickplay && server.is_some(),
+            ),
+        ]);
         let mut cp = vec![];
+        let mut native_archives = vec![];
         for lib in meta["libraries"].as_array().context("Нет библиотек")? {
             if !library_allowed(lib, &features) {
                 continue;
@@ -693,14 +727,23 @@ impl Engine {
                     },
                 );
                 let a = &lib["downloads"]["classifiers"][&key];
-                extract_zip(
-                    &crate::safe_join(&self.root.join("libraries"), text(a, "path")?)?,
-                    &natives,
-                    Some("native"),
-                    &task,
-                )?;
+                native_archives.push(crate::safe_join(
+                    &self.root.join("libraries"),
+                    text(a, "path")?,
+                )?);
             }
         }
+        let native_target = natives.clone();
+        let native_task = Task {
+            id: task.id.clone(),
+            profile_id: task.profile_id.clone(),
+            cancel: task.cancel.clone(),
+            emit: task.emit.clone(),
+        };
+        tokio::task::spawn_blocking(move || {
+            crate::launch_cache::prepare_natives(&native_archives, &native_target, &native_task)
+        })
+        .await??;
         let client = text(&meta, "id")?;
         validate_version(client)?;
         // Loader ignoreList uses version_name.jar; retain that filename for the inherited client.
@@ -735,21 +778,15 @@ impl Engine {
                 },
             ),
             ("user_properties".into(), "{}".into()),
+            ("clientid".into(), client_id),
+            ("auth_xuid".into(), xuid),
+            ("quickPlayPath".into(), quickplay_path.clone()),
             (
-                "clientid".into(),
-                if account.kind == "microsoft" {
-                    self.account_client_id(&account.id)?
-                } else {
-                    String::new()
-                },
-            ),
-            (
-                "auth_xuid".into(),
-                if account.kind == "microsoft" {
-                    self.xuid(&account.id)?
-                } else {
-                    String::new()
-                },
+                "quickPlayMultiplayer".into(),
+                server
+                    .as_ref()
+                    .map(|server| server.address.clone())
+                    .unwrap_or_default(),
             ),
             ("version_name".into(), text(&meta, "id")?.into()),
             (
@@ -837,6 +874,26 @@ impl Engine {
                     .collect::<Result<Vec<_>>>()?,
             );
         }
+        if quickplay && !args.iter().any(|argument| argument == "--quickPlayPath") {
+            args.extend(["--quickPlayPath".into(), quickplay_path]);
+        }
+        if let Some(server) = &server {
+            if quickplay {
+                if !args
+                    .iter()
+                    .any(|argument| argument == "--quickPlayMultiplayer")
+                {
+                    args.extend(["--quickPlayMultiplayer".into(), server.address.clone()]);
+                }
+            } else {
+                args.extend([
+                    "--server".into(),
+                    server.host.clone(),
+                    "--port".into(),
+                    server.port.to_string(),
+                ]);
+            }
+        }
         let mut command = Command::new(java);
         command
             .args(&args)
@@ -849,6 +906,19 @@ impl Engine {
         let mut child = command.spawn().context("Не удалось запустить Java")?;
         let stop = Arc::new(AtomicBool::new(false));
         self.running.lock().await.insert(id.into(), stop.clone());
+        if let Some(server) = &server {
+            if let Err(error) = self
+                .remember_server(id, &server.address, "", crate::now())
+                .await
+            {
+                task.progress(
+                    "log",
+                    format!("Не удалось сохранить сервер в истории: {error}"),
+                    0,
+                    0,
+                );
+            }
+        }
         let engine = self.clone();
         let id = id.to_string();
         let stdout = child.stdout.take().unwrap();
@@ -966,12 +1036,7 @@ pub fn extract_zip(zip: &Path, target: &Path, mode: Option<&str>, task: &Task) -
         task.check()?;
         let mut f = archive.by_index(i)?;
         let name = f.name().to_owned();
-        if mode == Some("native")
-            && (name.starts_with("META-INF/")
-                || ![".dll", ".so", ".dylib", ".jnilib"]
-                    .iter()
-                    .any(|ext| name.ends_with(ext)))
-        {
+        if mode == Some("native") && !crate::launch_cache::native_entry(&name) {
             continue;
         }
         if f.unix_mode().is_some_and(|m| m & 0o170000 == 0o120000) {
@@ -992,13 +1057,14 @@ pub fn extract_zip(zip: &Path, target: &Path, mode: Option<&str>, task: &Task) -
     Ok(())
 }
 pub fn substitute(s: &str, vars: &HashMap<String, String>) -> Result<String> {
-    let re = regex::Regex::new(r"\$\{([^}]+)\}")?;
-    for cap in re.captures_iter(s) {
+    static PARAMETERS: LazyLock<regex::Regex> =
+        LazyLock::new(|| regex::Regex::new(r"\$\{([^}]+)\}").unwrap());
+    for cap in PARAMETERS.captures_iter(s) {
         if !vars.contains_key(&cap[1]) {
             bail!("Неизвестный параметр запуска: {}", &cap[1])
         }
     }
-    Ok(re
+    Ok(PARAMETERS
         .replace_all(s, |c: &regex::Captures| vars[&c[1]].clone())
         .into())
 }
@@ -1024,15 +1090,18 @@ pub fn expand_args(
     Ok(result)
 }
 pub fn redact(line: &str, token: &str) -> String {
+    static CREDENTIALS: LazyLock<regex::Regex> = LazyLock::new(|| {
+        regex::Regex::new(
+            r"(?i)(access[_-]?token|refresh[_-]?token|authorization)([=: ]+)(?:Bearer\s+)?(\S+)",
+        )
+        .unwrap()
+    });
     let value = if token != "0" && !token.is_empty() {
         line.replace(token, "[REDACTED]")
     } else {
         line.into()
     };
-    regex::Regex::new(
-        r"(?i)(access[_-]?token|refresh[_-]?token|authorization)([=: ]+)(?:Bearer\s+)?(\S+)",
-    )
-    .unwrap()
-    .replace_all(&value, "$1$2[REDACTED]")
-    .into_owned()
+    CREDENTIALS
+        .replace_all(&value, "$1$2[REDACTED]")
+        .into_owned()
 }

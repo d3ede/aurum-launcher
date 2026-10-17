@@ -33,11 +33,15 @@ An independent Windows launcher with a warm light theme and a graphite dark them
 | **Import** | Import from Modrinth App, `.mrpack` files, CurseForge ZIP archives, or existing game folders. Modrinth imports preserve the original instance. |
 | **Accounts** | Microsoft sign-in in a dedicated window, encrypted token storage with keys in the OS credential vault, and local offline profiles. |
 | **Skins and capes** | A PNG skin library, nine default characters, wide and slim arms, and animated 3D previews. Apply skins and owned capes to a Microsoft account. |
+| **Local hosting** | Import server folders and proxy networks, install official server distributions, use console and player controls, and manage a network with one launch button. See [local hosting](docs/local-hosting.md). |
+| **Recent servers** | A weekly server history with status checks, matching-instance launches and Windows desktop shortcuts. See [recent servers](docs/recent-servers.md). |
 | **Interface** | 41 languages, language search, RTL support, light and dark themes, and settings for memory, Java, and game data. |
 
 **In this development build:** browse and install public ATLauncher, FTB and
 Technic modpacks from the project-source dropdown, without a service login.
 See [modpack catalogs](docs/MODPACK-CATALOGS.md) for supported formats and verification limits.
+
+**New in 0.4.3:** local hosting, recent servers and cached launch preparation. Read the [release notes](docs/releases/v0.4.3.md). Hosting is local, not a hosted service; keep Aurum open while its servers run. Launch caching reduces repeated preparation work, not Minecraft or mod initialization time.
 
 ## Download and install
 

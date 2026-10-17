@@ -9,6 +9,7 @@ import "./skins.css";
 import "./catalog.css";
 import "./content.css";
 import "./home.css";
+import "./servers.css";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />

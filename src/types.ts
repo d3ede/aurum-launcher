@@ -131,6 +131,25 @@ export interface Snapshot {
   dataDir: string;
   running: string[];
   curseforgeConfigured: boolean;
+  serverManager?: boolean;
+  hostingSupport?: boolean;
+  hostingRunning?: string[];
+}
+export interface RecentServer {
+  id: string;
+  address: string;
+  name: string;
+  profileId: string;
+  lastPlayed: number;
+  icon: string | null;
+}
+export interface ServerStatus {
+  online: boolean;
+  players: number | null;
+  maxPlayers: number | null;
+  latencyMs: number | null;
+  icon: string | null;
+  checkedAt: number;
 }
 export interface Progress {
   id: string;
@@ -198,4 +217,10 @@ export interface MinecraftManifest {
   versions: { id: string; type: string }[];
 }
 export type Route =
-  "home" | "profiles" | "catalog" | "accounts" | "skins" | "settings";
+  | "home"
+  | "profiles"
+  | "catalog"
+  | "accounts"
+  | "skins"
+  | "hosting"
+  | "settings";

@@ -3,6 +3,8 @@ pub mod catalog;
 pub mod content;
 pub mod content_metadata;
 mod directories;
+pub mod hosting;
+mod launch_cache;
 pub use directories::default_data_directory;
 pub mod microsoft_oauth;
 pub mod migration;
@@ -16,6 +18,7 @@ pub mod packs;
 pub mod platform_packs;
 mod processes;
 mod secret_store;
+pub mod servers;
 pub mod skins;
 pub mod store;
 
@@ -43,6 +46,9 @@ pub struct Engine {
     pub(crate) catalog_cache: Arc<Mutex<HashMap<String, (std::time::Instant, serde_json::Value)>>>,
     pub(crate) catalog_index_lock: Arc<Mutex<()>>,
     pub(crate) avatar_lock: Arc<Mutex<()>>,
+    pub(crate) java_versions: Arc<Mutex<launch_cache::JavaVersionCache>>,
+    pub(crate) servers: Arc<servers::ServerState>,
+    pub(crate) hosting: Arc<hosting::HostingState>,
     pub(crate) recovered: Arc<Mutex<HashMap<String, Vec<processes::RecoveredProcess>>>>,
     pub emit: Arc<dyn Fn(Event) + Send + Sync>,
 }
@@ -103,6 +109,9 @@ impl Engine {
             catalog_cache: Arc::new(Mutex::new(HashMap::new())),
             catalog_index_lock: Arc::new(Mutex::new(())),
             avatar_lock: Arc::new(Mutex::new(())),
+            java_versions: Arc::new(Mutex::new(HashMap::new())),
+            servers: Arc::new(servers::ServerState::default()),
+            hosting: Arc::new(hosting::HostingState::default()),
             recovered: Arc::new(Mutex::new(HashMap::new())),
             emit: Arc::new(emit),
         };
@@ -117,6 +126,9 @@ impl Engine {
             data_dir: self.root.to_string_lossy().into(),
             running: self.running.lock().await.keys().cloned().collect(),
             curseforge_configured: auth::secret("curseforge").is_ok(),
+            server_manager: true,
+            hosting_support: true,
+            hosting_running: self.hosting_running(),
         }
     }
     pub async fn profile(&self, id: &str) -> Result<Profile> {

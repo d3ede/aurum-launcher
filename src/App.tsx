@@ -16,6 +16,7 @@ import {
   Download,
   LoaderCircle,
   Monitor,
+  Server,
 } from "lucide-react";
 import { Provider, useApp } from "./context";
 import { native, rpc } from "./lib/api";
@@ -36,6 +37,9 @@ const Accounts = lazy(() =>
 const Skins = lazy(() =>
   import("./screens/Skins").then((module) => ({ default: module.Skins })),
 );
+const Hosting = lazy(() =>
+  import("./screens/Hosting").then((module) => ({ default: module.Hosting })),
+);
 import { Settings } from "./screens/Settings";
 import { UpdateProvider } from "./updater";
 import { LauncherUpdateBanner } from "./components/LauncherUpdate";
@@ -48,6 +52,7 @@ const navigation = [
   ["catalog", Compass],
   ["accounts", UserRound],
   ["skins", Shirt],
+  ["hosting", Server],
   ["settings", Settings2],
 ] as const;
 function Shell({
@@ -301,6 +306,11 @@ function Shell({
                     }
                   >
                     <Skins />
+                  </Suspense>
+                )}
+                {route === "hosting" && (
+                  <Suspense fallback={null}>
+                    <Hosting />
                   </Suspense>
                 )}
                 {route === "settings" && <Settings />}

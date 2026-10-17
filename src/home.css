@@ -305,6 +305,9 @@
   font-size: 11px;
 }
 .home-release-list {
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 3px;
   margin-top: 6px;
 }
 .home-release-item {

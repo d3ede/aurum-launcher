@@ -1,5 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod hosting;
 mod microsoft_window;
+mod server_shortcuts;
 use auren_core::Engine;
 use serde_json::{json, Value};
 use tauri::{Emitter, Manager};
@@ -36,14 +38,23 @@ async fn rpc(
             "Данные скопированы. Перезапустите Aurum, чтобы использовать новую папку".into(),
         );
     }
+    if action.starts_with("hosting") {
+        return hosting::rpc(&action, &payload, &e, &app).await;
+    }
     match action.as_str() {
         "restart" => {
+            if !e.hosting_running().is_empty() {
+                return Err("Сначала остановите локальные серверы".into());
+            }
             if !e.running.lock().await.is_empty() {
                 return Err("Сначала остановите игру".into());
             }
             app.restart()
         }
         "changeDataDirectory" => {
+            if !e.hosting_running().is_empty() {
+                return Err("Сначала остановите локальные серверы".into());
+            }
             let _guard = e
                 .busy
                 .try_lock()
@@ -88,6 +99,24 @@ async fn rpc(
             Ok(json!(path.to_string_lossy()))
         }
         "snapshot" => Ok(json!(e.snapshot().await)),
+        "recentServers" => Ok(json!(e.recent_servers().await.map_err(err)?)),
+        "serverStatus" => Ok(json!(e
+            .server_status(
+                &param::<String>(&payload, "id")?,
+                payload["force"].as_bool().unwrap_or(false)
+            )
+            .await
+            .map_err(err)?)),
+        "removeRecentServer" => {
+            e.remove_recent_server(&param::<String>(&payload, "id")?)
+                .await
+                .map_err(err)?;
+            Ok(Value::Null)
+        }
+        "createServerShortcut" => Ok(json!(
+            server_shortcuts::create(&app, &e, &param::<String>(&payload, "id")?).await?
+        )),
+        "takeServerShortcut" => Ok(json!(app.state::<server_shortcuts::Shortcuts>().take()?)),
         "scanModrinth" => {
             let extra: Vec<std::path::PathBuf> = param(&payload, "directories")?;
             let mut roots = auren_core::modrinth_import::default_directories();
@@ -391,9 +420,12 @@ async fn rpc(
             Ok(Value::Null)
         }
         "launch" => {
-            e.launch(&param::<String>(&payload, "id")?)
-                .await
-                .map_err(err)?;
+            let id = param::<String>(&payload, "id")?;
+            if let Some(address) = payload["server"].as_str() {
+                e.launch_to_server(&id, address).await.map_err(err)?;
+            } else {
+                e.launch(&id).await.map_err(err)?;
+            }
             Ok(Value::Null)
         }
         "stop" => {
@@ -639,9 +671,13 @@ async fn choose_file(
     path.map(|p| p.into_path().map_err(err)).transpose()
 }
 fn main() {
+    let shortcuts = server_shortcuts::Shortcuts::default();
+    shortcuts.enqueue(&std::env::args().collect::<Vec<_>>());
     tauri::Builder::default()
+        .manage(shortcuts)
         .manage(microsoft_window::MicrosoftWindow::default())
-        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+        .plugin(tauri_plugin_single_instance::init(|app, arguments, _| {
+            server_shortcuts::receive(app, &arguments);
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.unminimize();
                 let _ = window.set_focus();
@@ -684,8 +720,23 @@ fn main() {
                 window.show()?;
                 let closing = app.handle().clone();
                 window.on_window_event(move |event| {
-                    if matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
-                        microsoft_window::shutdown(&closing);
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        if !closing.state::<Engine>().hosting_running().is_empty() {
+                            api.prevent_close();
+                            let _ = closing.emit(
+                                "auren:event",
+                                auren_core::model::Event {
+                                    id: String::new(),
+                                    profile_id: None,
+                                    phase: "hosting-close-blocked".into(),
+                                    message: "Сначала остановите локальные серверы".into(),
+                                    done: 0,
+                                    total: 0,
+                                },
+                            );
+                        } else {
+                            microsoft_window::shutdown(&closing);
+                        }
                     }
                 });
             }
