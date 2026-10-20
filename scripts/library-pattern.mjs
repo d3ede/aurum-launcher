@@ -6,17 +6,36 @@ import { writeFileSync } from "node:fs";
 const width = 1000;
 const height = 520;
 const paths = [];
-for (let line = 0; line < 7; line++) {
-  for (const copy of [-width, -width / 2, 0, width / 2]) {
+for (let line = 0; line < 5; line++) {
+  for (const copy of [-width, 0, width]) {
     const startX = 320 + copy;
-    const startY = line * 8;
+    const startY = line * 22;
     let d = `M${startX - width} ${startY - height}`;
     for (const cycle of [-1, 0, 1]) {
       const x = startX + cycle * width;
       const y = startY + cycle * height;
-      d += `C${x + 80} ${y + 90} ${x + 90} ${y + 150} ${x + 380} ${y + 180}`;
-      d += `C${x + 670} ${y + 210} ${x + 920} ${y + 430} ${x + width} ${y + height}`;
+      d += `C${x + 40} ${y + 100} ${x + 100} ${y + 220} ${x + 470} ${y + 230}`;
+      d += `C${x + 840} ${y + 240} ${x + 960} ${y + 420} ${x + width} ${y + height}`;
     }
+    paths.push(`<path d="${d}"/>`);
+  }
+}
+// Closed, widely spaced contour islands add variety in the empty space between
+// ribbons. They stay inside the tile, so they have no loose ends or edge seams.
+for (const [cx, cy, radiusX, radiusY] of [
+  [600, 390, 145, 76],
+  [850, 110, 108, 60],
+]) {
+  for (let ring = 0; ring < 3; ring++) {
+    const rx = radiusX - ring * 24;
+    const ry = radiusY - ring * 14;
+    const n = (value) => Math.round(value * 10) / 10;
+    const d =
+      `M${cx - rx} ${cy}` +
+      `C${cx - rx} ${n(cy - ry * 0.65)} ${n(cx - rx * 0.55)} ${cy - ry} ${cx} ${cy - ry}` +
+      `C${n(cx + rx * 0.65)} ${cy - ry} ${cx + rx} ${n(cy - ry * 0.45)} ${cx + rx} ${cy}` +
+      `C${cx + rx} ${n(cy + ry * 0.65)} ${n(cx + rx * 0.45)} ${cy + ry} ${cx} ${cy + ry}` +
+      `C${n(cx - rx * 0.65)} ${cy + ry} ${cx - rx} ${n(cy + ry * 0.45)} ${cx - rx} ${cy}Z`;
     paths.push(`<path d="${d}"/>`);
   }
 }
