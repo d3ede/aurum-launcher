@@ -381,3 +381,17 @@ The public `releases/latest/download/` URLs were downloaded and checked against 
 Public installer size: 8,251,490 bytes. SHA256: `ac5f7f41feb5ed2a8d349ea27a071897672cb7dc33a830b5ae37f19683288d55`.
 
 The public installer was not executed during this publication check, and the installed launcher and real server processes were not changed. The local `Aurum-Launcher-Setup.exe` copy now contains the verified public installer. The version tag remains on the application source; this publication record is a subsequent documentation-only commit.
+
+## Public release 0.4.4 — October 20, 2026
+
+Release [v0.4.4](https://github.com/d3ede/aurum-launcher/releases/tag/v0.4.4) is published as the latest stable release from source commit `d8ba4248aec098cd7fdf9cb8bb3f6b40346ab562`. The [Windows release workflow](https://github.com/d3ede/aurum-launcher/actions/runs/39459937581) passed frontend/native checks, all 105 UI scenarios, the signed installer build and installer regression checks before publishing all four update assets.
+
+This release includes persistent custom instance ordering, CurseForge imports that retain the instance when individual downloads require manual handling, named modpack installation progress and the Windows PowerShell installer separator fix. The four feature/fix commits and the release preparation commit are pushed to `main`; the version tag remains on the application source.
+
+Local checks passed: production frontend build, 19 frontend unit tests, regular Rust workspace tests, all-target Clippy, formatting and 14 targeted Home, ordering, pack-catalog and manual-download UI scenarios. Installer checks passed 17 path cases, 16 language cases, close-button rendering and eight shortcut cases. Manual-download scenarios use fixtures; this does not claim compatibility with every third-party pack or remove the official CurseForge API-key requirement.
+
+The public `releases/latest/download/` URLs were downloaded and verified against GitHub asset digests and `SHA256SUMS.txt`. The manifest reports 0.4.4, points to the immutable version-specific installer URL and matches the detached signature asset. Independent Ed25519/minisign verification passed for the installer and its version-bound trusted comment using the production updater public key. The downloaded installer also reports product version 0.4.4.
+
+Public installer size: 8,267,978 bytes. SHA256: `1c78a785f540ddd059fa7b31eed7357cb4c176b0f80ebe656200b38636fe9c84`.
+
+The public installer was not executed during publication verification. The installed launcher, real server processes and user game data were not changed. The ignored local `Aurum-Launcher-Setup.exe` copy contains the verified public installer. This publication record is a subsequent documentation-only commit.
