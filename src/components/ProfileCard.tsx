@@ -44,11 +44,11 @@ export function ProfileCard({
       }
     >
       {running ? (
-        <Square size={layout === "row" ? 21 : 16} />
+        <Square size={layout === "row" ? 18 : 16} />
       ) : (
-        <Play size={layout === "row" ? 24 : 16} />
+        <Play size={layout === "row" ? 20 : 16} />
       )}
-      {layout === "tile" && action}
+      {action}
     </button>
   );
   if (layout === "row") {
@@ -60,7 +60,7 @@ export function ProfileCard({
           onClick={onOpen}
           aria-label={t("Открыть {{v1}}", { v1: profile.name })}
         >
-          <ProfileIcon profile={profile} size={72} />
+          <ProfileIcon profile={profile} size={52} />
           <div>
             <h3>{profile.name}</h3>
             <p>
@@ -73,7 +73,7 @@ export function ProfileCard({
               {status}
             </span>
           </div>
-          <ChevronRight size={20} aria-hidden="true" />
+          <ChevronRight size={16} aria-hidden="true" />
         </button>
         <div className="instance-card-launch">{launch}</div>
       </article>

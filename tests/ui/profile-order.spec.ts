@@ -100,12 +100,20 @@ async function chooseSort(page: Page, label: string) {
   await page.getByRole("option", { name: label, exact: true }).click();
 }
 
-async function startDrag(page: Page, source: string, target: string) {
+async function startDrag(
+  page: Page,
+  source: string,
+  target: string,
+  fromEdge = false,
+) {
   const from = (await handle(page, source).boundingBox())!;
   const to = (await page
     .locator(`[data-profile-id="${target}"]`)
     .boundingBox())!;
-  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.move(
+    from.x + from.width / 2,
+    from.y + (fromEdge ? 8 : from.height / 2),
+  );
   await page.mouse.down();
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, {
     steps: 8,
@@ -118,7 +126,7 @@ test("defaults to newest, dragging immediately selects custom and persists acros
   await fixture(page);
   await expect(cards(page)).toHaveText(["Gamma", "Beta", "Alpha", "Zulu"]);
   await expect(sort(page)).toHaveText("Сначала новые");
-  await startDrag(page, "Gamma", "Zulu");
+  await startDrag(page, "Gamma", "Zulu", true);
   await expect(sort(page)).toHaveText("Пользовательская");
   await expect(page.locator('[data-profile-id="Zulu"]')).toHaveClass(
     /is-drop-target/,
@@ -187,7 +195,7 @@ test("horizontal cards launch and stop the chosen instance without opening it an
   await fixture(page);
   const card = page.locator('[data-profile-id="Gamma"]');
   const play = card.getByRole("button", { name: "Играть", exact: true });
-  await expect(play).toHaveText("");
+  await expect(play).toHaveText("Играть");
   await play.click();
   await expect(
     card.getByRole("button", { name: "Стоп", exact: true }),
@@ -210,7 +218,7 @@ test("horizontal cards launch and stop the chosen instance without opening it an
   for (const theme of ["light", "dark"]) {
     if (theme === "dark")
       await page.getByRole("button", { name: "Переключить тему" }).click();
-    for (const width of [960, 1560]) {
+    for (const width of [960, 1280, 1560]) {
       await page.setViewportSize({ width, height: 900 });
       await page.mouse.move(20, 800);
       const geometry = await card.evaluate((element) => {
@@ -219,18 +227,29 @@ test("horizontal cards launch and stop the chosen instance without opening it an
           .getBoundingClientRect();
         const title = element.querySelector("h3")!.getBoundingClientRect();
         const bounds = element.getBoundingClientRect();
+        const next = element.nextElementSibling!.getBoundingClientRect();
+        const grip = element
+          .querySelector(".profile-sort-handle")!
+          .getBoundingClientRect();
         return {
-          square: button.width === button.height,
+          rectangular: button.width > button.height,
           separate: title.right <= button.left,
           inside: button.right < bounds.right,
           overflow: document.documentElement.scrollWidth > innerWidth,
+          twoInRow:
+            Math.abs(next.top - bounds.top) < 1 && next.left > bounds.left,
+          compact: bounds.height <= 108,
+          fullHeightGrip: grip.height >= bounds.height - 2,
         };
       });
       expect(geometry).toEqual({
-        square: true,
+        rectangular: true,
         separate: true,
         inside: true,
         overflow: false,
+        twoInRow: true,
+        compact: true,
+        fullHeightGrip: true,
       });
       await page.screenshot({
         path: `.test-data/screenshots/profile-rows-${theme}-${width}.png`,

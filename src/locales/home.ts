@@ -1,9 +1,9 @@
 export const homeEnglish: Record<string, string> = {
   "Карточки сборок": "Instance cards",
-  "Горизонтальные карточки, квадратный запуск и общий узор.":
-    "Horizontal cards, a square launch button and a shared pattern.",
-  "В этой сборке: библиотека использует горизонтальные карточки с крупным значком, статусом и квадратной кнопкой запуска без надписи. Фоновые линии продолжаются между карточками. Перетаскивание и управление с клавиатуры сохраняются.":
-    "In this build: the library uses horizontal cards with a large icon, status and a square icon-only launch button. Background lines continue between cards. Dragging and keyboard reordering remain available.",
+  "Компактные карточки по две в ряд, кнопка «Играть» и серые волны.":
+    "Compact cards in two columns, a Play button and gray waves.",
+  "В этой сборке: библиотека показывает компактные карточки по две в ряд, со статусом и кнопкой «Играть». Серые волны продолжаются между карточками. Перетаскивать можно за всю боковую полоску; управление с клавиатуры сохраняется.":
+    "In this build: the library shows compact cards in two columns, with status and a labeled Play button. Gray waves continue between cards. Drag from anywhere on the side strip; keyboard reordering remains available.",
   "20 октября 2026": "October 20, 2026",
   "Свой порядок сборок и импорт с ручной загрузкой недостающих модов.":
     "Custom instance order and imports with manual downloads for missing mods.",
