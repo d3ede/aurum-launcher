@@ -19,6 +19,7 @@ $installerSmall=[Drawing.Font]::new('Segoe UI',12)
 $installerGraphics.DrawString('Aurum',$installerFont,$installerInk,32,146)
 $installerGraphics.DrawString('Launcher',$installerSmall,$installerMuted,36,198)
 $installerVersion=(Get-Content (Join-Path $installerRoot 'package.json') -Raw | ConvertFrom-Json).version
-$installerGraphics.DrawString(('v'+$installerVersion+'  ·  Windows x64'),$installerSmall,$installerInk,36,645)
+# Keep the separator ASCII-encoded in source for Windows PowerShell 5.1.
+$installerGraphics.DrawString(('v'+$installerVersion+'  '+[char]0x00B7+'  Windows x64'),$installerSmall,$installerInk,36,645)
 $installerBitmap.Save((Join-Path $installerRoot 'src-tauri/installer/sidebar.bmp'),[Drawing.Imaging.ImageFormat]::Bmp)
 foreach($installerDisposable in @($installerGraphics,$installerBitmap,$installerPen,$installerLogo,$installerInk,$installerMuted,$installerFont,$installerSmall)) { $installerDisposable.Dispose() }
