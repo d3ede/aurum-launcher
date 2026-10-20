@@ -47,6 +47,17 @@ pub struct Profile {
     pub icon_style: Option<ProfileIconStyle>,
     #[serde(default)]
     pub content: Vec<Content>,
+    #[serde(default)]
+    pub manual_downloads: Vec<PackManualDownload>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PackManualDownload {
+    pub name: String,
+    pub path: String,
+    pub url: String,
+    pub sha1: String,
+    pub reason: String,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

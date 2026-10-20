@@ -365,6 +365,19 @@ async fn rpc(
         "choosePackFile" => Ok(json!(
             choose_file(&app, "Downloaded modpack file", &["jar", "zip", "litemod"]).await?
         )),
+        "importPackManualFile" => {
+            let id = param::<String>(&payload, "id")?;
+            let file_path = param::<String>(&payload, "path")?;
+            if let Some(path) =
+                choose_file(&app, "Downloaded modpack file", &["jar", "zip", "litemod"]).await?
+            {
+                e.import_pack_manual_file(&id, &file_path, &path)
+                    .await
+                    .map_err(err)?;
+                return Ok(json!(true));
+            }
+            Ok(json!(false))
+        }
         "packRequirements" => Ok(json!(e
             .pack_requirements(
                 &param::<String>(&payload, "source")?,

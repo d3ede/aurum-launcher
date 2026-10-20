@@ -533,7 +533,7 @@ impl Engine {
             crate::store::validate_version(&mc)?;
             if let Some(v)=&lv {crate::store::validate_version(v)?;}
             let profile = Profile {id:id.clone(),name:detail.project.title,minecraft:mc,loader:l,loader_version:lv,installed_version:None,
-                ram_mb:plan.ram.filter(|n|(512..=131072).contains(n)),jvm_args:String::new(),last_played:None,cover:0,icon:None,icon_style:None,content:vec![]};
+                ram_mb:plan.ram.filter(|n|(512..=131072).contains(n)),jvm_args:String::new(),last_played:None,cover:0,icon:None,icon_style:None,manual_downloads: vec![], content: vec![]};
             // Download and normalize a small icon through the existing image validator.
             let mut profile=profile;
             if let Some(icon)=detail.project.icon {

@@ -55,6 +55,7 @@ impl Engine {
             cover: cover % 4,
             icon: None,
             icon_style: None,
+            manual_downloads: vec![],
             content: vec![],
         };
         self.publish_profile(p.clone(), None).await?;

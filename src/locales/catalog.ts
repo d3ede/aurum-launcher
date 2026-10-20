@@ -1,10 +1,29 @@
 export const catalogEnglish: Record<string, string> = {
+  "Нужна ручная установка": "Manual installation needed",
+  "Остальные файлы сборки установлены. Скачайте недостающие файлы по ссылкам и выберите их здесь — лаунчер проверит версию и добавит их в сборку.":
+    "The other pack files are installed. Download the missing files using the links and select them here. The launcher will verify the version and add them to the instance.",
+  "Автор разрешает скачивание только с сайта":
+    "The author only allows downloads from the website",
+  "Не удалось скачать автоматически": "Automatic download failed",
+  "Страница файла": "File page",
+  "Выбрать скачанный файл": "Select downloaded file",
+  "Файл добавлен в сборку": "File added to instance",
+  "Все недостающие файлы установлены": "All missing files are installed",
+  "Продолжить позже": "Continue later",
+  "Нужно установить вручную: {{count}}": "Files to install manually: {{count}}",
+  "Показать файлы": "Show files",
+  "Папка сборки": "Instance folder",
+  "Выбран другой файл. Скачайте указанную версию мода":
+    "The selected file does not match. Download the specified mod version",
+  "Файл не найден в списке ручной установки":
+    "File not found in the manual installation list",
   Установить: "Install",
   Удалить: "Remove",
   Установлено: "Installed",
   "Установка…": "Installing…",
   "Удаление…": "Removing…",
-  "Установлено: {{name}}. Удалить из сборки": "Installed: {{name}}. Remove from instance",
+  "Установлено: {{name}}. Удалить из сборки":
+    "Installed: {{name}}. Remove from instance",
   "{{name}} установлен в {{profile}}": "{{name}} installed in {{profile}}",
   "от {{author}}": "by {{author}}",
   "Сборки {{source}} устанавливаются как отдельные профили. Вход для публичного каталога не нужен.":

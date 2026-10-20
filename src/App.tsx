@@ -1,5 +1,5 @@
 import { t, tMessage } from "./lib/i18n";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import {
   Home as HomeIcon,
   Layers3,
@@ -46,6 +46,7 @@ import { LauncherUpdateBanner } from "./components/LauncherUpdate";
 import { APP_VERSION } from "./lib/version";
 import { SidebarPattern } from "./components/TerrainPattern";
 import { AccountAvatar } from "./components/AccountAvatar";
+import { PackManualDownloads } from "./components/PackManualDownloads";
 const navigation = [
   ["home", HomeIcon],
   ["profiles", Layers3],
@@ -62,7 +63,7 @@ function Shell({
   creating: boolean;
   setCreating: (v: boolean) => void;
 }) {
-  const { data, route, navigate, run, progress, logs, notify } = useApp();
+  const { data, route, navigate, run, busy, progress, logs, notify } = useApp();
   const [query, setQuery] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileSection, setProfileSection] = useState<"content" | "settings">(
@@ -75,6 +76,20 @@ function Shell({
   const [project, setProject] = useState<Project | null>(null);
   const [importing, setImporting] = useState(false);
   const [activity, setActivity] = useState(false);
+  const [manualProfileId, setManualProfileId] = useState<string | null>(null);
+  const shownManualProfiles = useRef(new Set<string>());
+  useEffect(() => {
+    if (busy || project || importing || creating || manualProfileId) return;
+    const pending = data.profiles.find(
+      (p) =>
+        p.manualDownloads?.length && !shownManualProfiles.current.has(p.id),
+    );
+    if (pending) {
+      shownManualProfiles.current.add(pending.id);
+      setManualProfileId(pending.id);
+    }
+  }, [data.profiles, busy, project, importing, creating, manualProfileId]);
+  const manualProfile = data.profiles.find((p) => p.id === manualProfileId);
   const account = data.accounts.find((a) => a.id === data.selectedAccount);
   useEffect(() => {
     if (route !== "profiles") setProfile(null);
@@ -124,6 +139,12 @@ function Shell({
   };
   return (
     <div className="app-shell">
+      {manualProfile && (
+        <PackManualDownloads
+          profile={manualProfile}
+          onClose={() => setManualProfileId(null)}
+        />
+      )}
       <header className="titlebar" data-tauri-drag-region>
         <button
           className="titlebar-brand"

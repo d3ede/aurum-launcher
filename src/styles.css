@@ -2528,3 +2528,53 @@ kbd {
     scroll-behavior: auto !important;
   }
 }
+.pack-manual-list {
+  max-height: min(48vh, 480px);
+  overflow-y: auto;
+  padding: 0 24px;
+}
+.pack-missing-file {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.pack-manual-info {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  overflow-wrap: anywhere;
+}
+.pack-manual-info small,
+.pack-manual-info code {
+  color: var(--muted);
+  font-size: 12px;
+}
+.pack-manual-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.pack-manual-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px;
+  margin: 16px 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+@media (max-width: 720px) {
+  .pack-missing-file {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .pack-manual-actions {
+    justify-content: flex-start;
+  }
+}

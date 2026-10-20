@@ -17,6 +17,7 @@ import {
 import { Modal, Field, Loading, ErrorBox } from "./ui";
 import { ProfileIcon, IconPicker } from "./ProfileIcon";
 import { InstanceContent } from "./InstanceContent";
+import { PackManualNotice } from "./PackManualDownloads";
 import { Select } from "./Select";
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
@@ -370,6 +371,7 @@ export function ProfileDialog({
           </button>
         </div>
       </div>
+      <PackManualNotice profile={profile} />
       <div className="tabs">
         {(
           [

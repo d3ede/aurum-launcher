@@ -51,6 +51,14 @@ export interface Profile {
   icon?: string | null;
   iconStyle?: ProfileIconStyle | null;
   content: Content[];
+  manualDownloads?: PackManualDownload[];
+}
+export interface PackManualDownload {
+  name: string;
+  path: string;
+  url: string;
+  sha1: string;
+  reason: "restricted" | "download";
 }
 export interface Account {
   id: string;

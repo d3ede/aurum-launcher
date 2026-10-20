@@ -3,6 +3,11 @@ export const homeEnglish: Record<string, string> = {
   "Перетаскивайте сборки — ваш порядок сохранится.": "Drag instances to save your own order.",
   "В этой сборке новые профили отображаются первыми. Перетаскивание включает пользовательскую сортировку и сохраняет порядок. Можно переключиться на сортировку по названию или дате добавления, а затем вернуться к своему порядку.":
     "In this build, new instances appear first. Dragging switches to custom sorting and saves the order. Switch to sorting by name or date added, then return to your saved order.",
+  "Импорт без потери сборки": "Keep your pack during import",
+  "Недостающие моды — в списке со ссылками для ручной установки.":
+    "Missing mods are listed with links for manual installation.",
+  "В этой сборке импорт CurseForge продолжается, если отдельные моды нужно скачать вручную или их загрузка не удалась. Остальные файлы и настройки сохраняются. В конце доступен список недостающих файлов со ссылками на нужные версии и проверкой скачанного файла; список можно снова открыть в сборке.":
+    "In this build, CurseForge import continues when individual mods need manual downloads or fail to download. Other files and settings are preserved. A list of missing files provides links to the required versions and verifies downloaded files. Reopen the list from the instance.",
   "В Aurum 0.4.3: исправлен список игроков Velocity в сети. События прокси распознаются с именем компонента и полным форматом журнала; переход между режимами не удаляет игрока из общего списка. Если сервер сообщил только количество, интерфейс показывает, что имена пока недоступны.":
     "In Aurum 0.4.3: Velocity network player tracking handles component labels and the full logger format. Switching backends no longer removes a player from the network roster. When only a count is known, the UI states that names are unavailable.",
   "Локальный хостинг, недавние серверы и подготовка запуска.":
