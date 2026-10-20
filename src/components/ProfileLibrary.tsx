@@ -101,6 +101,7 @@ export function ProfileLibrary({
           className={`profile-sortable${preview?.id === profile.id ? " is-dragging" : ""}${preview?.target === profile.id && preview.id !== profile.id ? " is-drop-target" : ""}`}
         >
           <ProfileCard
+            layout="row"
             profile={profile}
             onOpen={() => onProfile(profile)}
             reorderHandle={

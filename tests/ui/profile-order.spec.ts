@@ -21,8 +21,16 @@ async function fixture(page: Page, language = "ru") {
           icon: null,
           content: [],
         })),
-        accounts: [],
-        selectedAccount: null,
+        accounts: [
+          {
+            id: "preview-account",
+            uuid: "preview",
+            name: "Player",
+            kind: "offline",
+            hasSkin: false,
+          },
+        ],
+        selectedAccount: "preview-account",
         settings: {
           language,
           theme: "light",
@@ -34,9 +42,10 @@ async function fixture(page: Page, language = "ru") {
           showSnapshots: false,
         },
         dataDir: "D:/Aurum",
-        running: [],
+        running: [] as string[],
         curseforgeConfigured: false,
       };
+      w.profileCardRequests = [];
       w.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
       w.__TAURI_INTERNALS__ = {
         metadata: {
@@ -50,10 +59,16 @@ async function fixture(page: Page, language = "ru") {
           if (command !== "rpc")
             return command.includes("is_maximized") ? false : 1;
           if (args.action === "snapshot") return structuredClone(state);
-        if (args.action === "saveSettings") {
-          state.settings = args.payload.settings;
-          return null;
-        }
+          w.profileCardRequests.push(args);
+          if (args.action === "launch") state.running.push(args.payload.id);
+          if (args.action === "stop")
+            state.running = state.running.filter(
+              (id: string) => id !== args.payload.id,
+            );
+          if (args.action === "saveSettings") {
+            state.settings = args.payload.settings;
+            return null;
+          }
           if (args.action === "content") return [];
           return null;
         },
@@ -164,4 +179,70 @@ test("custom sort and reorder controls have English labels", async ({
     .press("ArrowRight");
   await expect(dropdown).toHaveText("Custom");
   await expect(cards(page)).toHaveText(["Beta", "Gamma", "Alpha", "Zulu"]);
+});
+
+test("horizontal cards launch and stop the chosen instance without opening it and fit both themes", async ({
+  page,
+}) => {
+  await fixture(page);
+  const card = page.locator('[data-profile-id="Gamma"]');
+  const play = card.getByRole("button", { name: "Играть", exact: true });
+  await expect(play).toHaveText("");
+  await play.click();
+  await expect(
+    card.getByRole("button", { name: "Стоп", exact: true }),
+  ).toBeEnabled();
+  await expect(card.locator(".instance-card-status")).toHaveText("Запущена");
+  await card.getByRole("button", { name: "Стоп", exact: true }).click();
+  await expect(play).toBeEnabled();
+  expect(
+    await page.evaluate(() =>
+      (window as any).profileCardRequests
+        .filter((request: any) => ["launch", "stop"].includes(request.action))
+        .map((request: any) => [request.action, request.payload.id]),
+    ),
+  ).toEqual([
+    ["launch", "Gamma"],
+    ["stop", "Gamma"],
+  ]);
+  await expect(page.locator(".library")).toBeVisible();
+
+  for (const theme of ["light", "dark"]) {
+    if (theme === "dark")
+      await page.getByRole("button", { name: "Переключить тему" }).click();
+    for (const width of [960, 1560]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.mouse.move(20, 800);
+      const geometry = await card.evaluate((element) => {
+        const button = element
+          .querySelector(".instance-card-play")!
+          .getBoundingClientRect();
+        const title = element.querySelector("h3")!.getBoundingClientRect();
+        const bounds = element.getBoundingClientRect();
+        return {
+          square: button.width === button.height,
+          separate: title.right <= button.left,
+          inside: button.right < bounds.right,
+          overflow: document.documentElement.scrollWidth > innerWidth,
+        };
+      });
+      expect(geometry).toEqual({
+        square: true,
+        separate: true,
+        inside: true,
+        overflow: false,
+      });
+      await page.screenshot({
+        path: `.test-data/screenshots/profile-rows-${theme}-${width}.png`,
+        animations: "disabled",
+      });
+    }
+  }
+  await card
+    .getByRole("button", { name: "Открыть Gamma", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Gamma", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".library")).toHaveCount(0);
 });

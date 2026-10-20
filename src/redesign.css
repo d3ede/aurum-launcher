@@ -602,8 +602,7 @@ textarea {
   width: 48px;
   height: 48px;
 }
-.profile-grid,
-.profile-grid.library {
+.profile-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
@@ -1753,8 +1752,7 @@ input[type="range"] {
   .titlebar .topbar-actions {
     margin-left: auto;
   }
-  .profile-grid,
-  .profile-grid.library {
+  .profile-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .catalog-workspace {
