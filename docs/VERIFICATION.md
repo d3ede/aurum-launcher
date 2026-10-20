@@ -395,3 +395,17 @@ The public `releases/latest/download/` URLs were downloaded and verified against
 Public installer size: 8,267,978 bytes. SHA256: `1c78a785f540ddd059fa7b31eed7357cb4c176b0f80ebe656200b38636fe9c84`.
 
 The public installer was not executed during publication verification. The installed launcher, real server processes and user game data were not changed. The ignored local `Aurum-Launcher-Setup.exe` copy contains the verified public installer. This publication record is a subsequent documentation-only commit.
+
+## Public release 0.4.5 — October 20, 2026
+
+Release [v0.4.5](https://github.com/d3ede/aurum-launcher/releases/tag/v0.4.5) is published as the latest stable release from source commit `2d84b2a356564745c83571b98f06cb866e63f516`. The [Windows release workflow](https://github.com/d3ede/aurum-launcher/actions/runs/39481250088) passed frontend/native checks, all 109 UI scenarios, the signed installer build and installer regression checks before publishing all four update assets.
+
+This release includes compact horizontal instance cards, shared flowing background lines, animated pointer dragging, card action menus and locally bundled circular language icons. The eight accumulated UI commits and the release preparation commit are pushed to `main`; the version tag remains on the application source. Existing language-icon MIT licensing and attribution are retained.
+
+Local checks passed: production frontend build, 19 frontend unit tests, regular Rust workspace tests, all-target Clippy, formatting and 10 targeted Home, language-picker and instance-library UI scenarios. Installer checks passed 17 path cases, 16 language cases, close-button rendering and eight shortcut cases. UI tests cover opening cards separately from launch/stop controls, custom ordering, keyboard controls, menu actions, delete confirmation, running-instance restrictions, both themes and continuous background geometry.
+
+The public `releases/latest/download/` URLs were downloaded and checked against GitHub asset digests and `SHA256SUMS.txt`. The manifest reports 0.4.5, uses the immutable version-specific installer URL and matches the detached signature asset. Independent Ed25519/minisign verification passed for the installer and its version-bound trusted comment using the production updater public key. The downloaded installer also reports product version 0.4.5.
+
+Public installer size: 8,280,763 bytes. SHA256: `1a565025628506cc07fe2539c3797a2fbd1c8a0ad838b6a8e5608ef8cc037757`.
+
+The public installer was not executed during this publication check. The installed launcher, real server processes and user game data were not changed. The ignored local `Aurum-Launcher-Setup.exe` copy contains the verified public installer. This record is a subsequent documentation-only commit.
