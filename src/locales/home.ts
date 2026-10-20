@@ -1,9 +1,9 @@
 export const homeEnglish: Record<string, string> = {
   "Карточки сборок": "Instance cards",
-  "Компактные карточки по две в ряд, кнопка «Играть» и серые волны.":
-    "Compact cards in two columns, a Play button and gray waves.",
-  "В этой сборке: библиотека показывает компактные карточки по две в ряд, со статусом и кнопкой «Играть». Серые волны продолжаются между карточками. Перетаскивать можно за всю боковую полоску; управление с клавиатуры сохраняется.":
-    "In this build: the library shows compact cards in two columns, with status and a labeled Play button. Gray waves continue between cards. Drag from anywhere on the side strip; keyboard reordering remains available.",
+  "Меню действий сборки и перетаскивание с анимацией.":
+    "Instance action menus and animated dragging.",
+  "В этой сборке: карточки сборок следуют за курсором при перетаскивании. Меню с тремя точками позволяет открыть папку, переименовать, проверить установку и переместить сборку в корзину с подтверждением. Промежутки вокруг кнопок открывают сборку.":
+    "In this build: instance cards follow the cursor while dragging. The three-dot menu opens the folder, renames, verifies installation and moves the instance to trash after confirmation. Gaps around the buttons open the instance.",
   "20 октября 2026": "October 20, 2026",
   "Свой порядок сборок и импорт с ручной загрузкой недостающих модов.":
     "Custom instance order and imports with manual downloads for missing mods.",

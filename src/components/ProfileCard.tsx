@@ -5,6 +5,7 @@ import type { Profile } from "../types";
 import { ru } from "../lib/i18n";
 import { rpc } from "../lib/api";
 import { ProfileIcon } from "./ProfileIcon";
+import { ProfileActions } from "./ProfileActions";
 import type { ReactNode } from "react";
 export function ProfileCard({
   profile,
@@ -73,9 +74,11 @@ export function ProfileCard({
               {status}
             </span>
           </div>
-          <ChevronRight size={16} aria-hidden="true" />
         </button>
         <div className="instance-card-launch">{launch}</div>
+        <div className="instance-card-menu">
+          <ProfileActions profile={profile} />
+        </div>
       </article>
     );
   }

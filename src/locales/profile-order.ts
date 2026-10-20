@@ -1,4 +1,8 @@
 export const profileOrderEnglish: Record<string, string> = {
+  "Действия сборки {{name}}": "Actions for {{name}}",
+  "Открыть папку": "Open folder",
+  Переименовать: "Rename",
+  "Переименовать сборку": "Rename instance",
   "Сначала новые": "Newest first",
   Пользовательская: "Custom",
   "Переместить сборку {{name}}": "Move instance {{name}}",

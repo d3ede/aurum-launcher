@@ -65,6 +65,16 @@ async function fixture(page: Page, language = "ru") {
             state.running = state.running.filter(
               (id: string) => id !== args.payload.id,
             );
+          if (args.action === "updateProfile")
+            state.profiles = state.profiles.map((profile) =>
+              profile.id === args.payload.profile.id
+                ? args.payload.profile
+                : profile,
+            );
+          if (args.action === "deleteProfile")
+            state.profiles = state.profiles.filter(
+              (profile) => profile.id !== args.payload.id,
+            );
           if (args.action === "saveSettings") {
             state.settings = args.payload.settings;
             return null;
@@ -127,11 +137,22 @@ test("defaults to newest, dragging immediately selects custom and persists acros
   await expect(cards(page)).toHaveText(["Gamma", "Beta", "Alpha", "Zulu"]);
   await expect(sort(page)).toHaveText("Сначала новые");
   await startDrag(page, "Gamma", "Zulu", true);
+  await expect(page.locator(".profile-drag-preview")).toBeVisible();
+  expect(
+    (await page.locator(".profile-drag-preview").boundingBox())!.x,
+  ).toBeGreaterThan(
+    (await page.locator('[data-profile-id="Gamma"]').boundingBox())!.x + 100,
+  );
+  await page.screenshot({
+    path: ".test-data/screenshots/profile-drag.png",
+    animations: "disabled",
+  });
   await expect(sort(page)).toHaveText("Пользовательская");
   await expect(page.locator('[data-profile-id="Zulu"]')).toHaveClass(
     /is-drop-target/,
   );
   await page.mouse.up();
+  await expect(page.locator(".profile-drag-preview")).toHaveCount(0);
   await expect(cards(page)).toHaveText(["Beta", "Alpha", "Zulu", "Gamma"]);
   await page.reload();
   await openLibrary(page);
@@ -264,4 +285,116 @@ test("horizontal cards launch and stop the chosen instance without opening it an
     page.getByRole("heading", { name: "Gamma", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".library")).toHaveCount(0);
+});
+
+test("card gaps open the instance while its menu manages it without navigation", async ({
+  page,
+}) => {
+  await fixture(page);
+  const card = page.locator('[data-profile-id="Gamma"]');
+  const more = card.getByRole("button", {
+    name: "Действия сборки Gamma",
+    exact: true,
+  });
+  await more.click();
+  await page.keyboard.press("Escape");
+  await expect(more).toBeFocused();
+  await more.click();
+  await page
+    .getByRole("menuitem", { name: "Открыть папку", exact: true })
+    .click();
+  await expect(page.locator(".library")).toBeVisible();
+  expect(
+    await page.evaluate(() =>
+      (window as any).profileCardRequests
+        .filter((request: any) => request.action === "openFolder")
+        .map((request: any) => request.payload.id),
+    ),
+  ).toEqual(["Gamma"]);
+  await more.click();
+  await page
+    .getByRole("menuitem", { name: "Переименовать", exact: true })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Название", exact: true })
+    .fill("Renamed instance");
+  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await expect(card.locator("h3")).toHaveText("Renamed instance");
+  await card
+    .getByRole("button", {
+      name: "Действия сборки Renamed instance",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("menuitem", { name: "Проверить установку", exact: true })
+    .click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as any).profileCardRequests.filter(
+            (request: any) => request.action === "install",
+          ).length,
+      ),
+    )
+    .toBe(1);
+  await expect(
+    card.getByRole("button", { name: "Играть", exact: true }),
+  ).toBeEnabled();
+  const launch = (await card.locator(".instance-card-launch").boundingBox())!;
+  await page.mouse.click(launch.x + 3, launch.y + launch.height / 2);
+  await expect(
+    page.getByRole("heading", { name: "Renamed instance", exact: true }),
+  ).toBeVisible();
+});
+
+test("delete requires confirmation and destructive menu actions are disabled while running", async ({
+  page,
+}) => {
+  await fixture(page);
+  const card = page.locator('[data-profile-id="Gamma"]');
+  const more = card.getByRole("button", {
+    name: "Действия сборки Gamma",
+    exact: true,
+  });
+  await card.getByRole("button", { name: "Играть", exact: true }).click();
+  await expect(
+    card.getByRole("button", { name: "Стоп", exact: true }),
+  ).toBeEnabled();
+  await more.click();
+  for (const name of ["Переименовать", "Проверить установку", "Удалить сборку"])
+    await expect(
+      page.getByRole("menuitem", { name, exact: true }),
+    ).toBeDisabled();
+  await expect(
+    page.getByRole("menuitem", { name: "Открыть папку", exact: true }),
+  ).toBeEnabled();
+  await page.keyboard.press("Escape");
+  await card.getByRole("button", { name: "Стоп", exact: true }).click();
+  await expect(
+    card.getByRole("button", { name: "Играть", exact: true }),
+  ).toBeEnabled();
+  await more.click();
+  await page
+    .getByRole("menuitem", { name: "Удалить сборку", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Отмена", exact: true }).click();
+  expect(
+    await page.evaluate(() =>
+      (window as any).profileCardRequests.filter(
+        (request: any) => request.action === "deleteProfile",
+      ),
+    ),
+  ).toEqual([]);
+  await more.click();
+  await page
+    .getByRole("menuitem", { name: "Удалить сборку", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Удалить сборку", exact: true })
+    .click();
+  await expect(card).toHaveCount(0);
+  await expect(page.locator(".library .instance-card")).toHaveCount(3);
 });

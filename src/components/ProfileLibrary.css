@@ -11,7 +11,7 @@
   position: relative;
   isolation: isolate;
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) 136px 32px;
+  grid-template-columns: 24px minmax(0, 1fr) 120px 36px;
   align-items: center;
   min-height: 104px;
   border-radius: 12px;
@@ -23,10 +23,10 @@
   z-index: -1;
   pointer-events: none;
   background-image: url("../assets/branding/library-pattern.svg");
-  background-size: 560px 560px;
+  background-size: 1000px 520px;
   background-position: 0 0;
   background-attachment: fixed;
-  opacity: 0.22;
+  opacity: 0.16;
 }
 .instance-card-row .instance-card-grip {
   grid-column: 1;
@@ -42,6 +42,7 @@
   align-self: stretch;
   gap: 12px;
   padding: 14px 10px;
+  padding-inline-end: 164px;
   text-align: start;
 }
 .instance-card-row .instance-card-open:hover {
@@ -54,9 +55,6 @@
 .instance-card-row .instance-card-open p {
   margin-top: 3px;
   font-size: 12px;
-}
-.instance-card-row .instance-card-open > svg {
-  margin-inline-start: 144px;
 }
 .instance-card-row .profile-icon {
   border-radius: 11px;
@@ -97,32 +95,50 @@
   justify-content: flex-end;
   border-inline-start: 1px solid var(--border);
   padding-inline-start: 10px;
+  pointer-events: none;
 }
 .instance-card-row .instance-card-play {
-  width: 124px;
-  height: 48px;
-  min-height: 48px;
+  width: 108px;
+  height: 40px;
+  min-height: 40px;
   flex-shrink: 0;
   padding: 0;
   border-radius: 9px;
+  font-size: 13px;
+  box-shadow: none;
+  pointer-events: auto;
+}
+.instance-card-row .instance-card-menu {
+  position: relative;
+  grid-column: 4;
+  grid-row: 1;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.instance-card-row .profile-card-more {
+  width: 28px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  color: var(--muted);
+  pointer-events: auto;
 }
 .instance-card-play .lucide-play {
   margin-inline-start: 2px;
 }
 @media (max-width: 1000px) {
   .instance-card.instance-card-row {
-    grid-template-columns: 24px minmax(0, 1fr) 108px 28px;
+    grid-template-columns: 24px minmax(0, 1fr) 96px 28px;
   }
   .instance-card-row .instance-card-open {
     gap: 8px;
-  }
-  .instance-card-row .instance-card-open > svg {
-    margin-inline-start: 112px;
+    padding-inline-end: 128px;
   }
   .instance-card-row .instance-card-play {
-    width: 96px;
-    height: 44px;
-    min-height: 44px;
+    width: 84px;
+    height: 38px;
+    min-height: 38px;
     font-size: 12px;
     gap: 6px;
   }
@@ -155,9 +171,82 @@
   outline-offset: -3px;
 }
 .profile-sortable.is-dragging {
-  opacity: 0.5;
+  opacity: 0.18;
 }
 .profile-sortable.is-drop-target .instance-card {
   border-color: var(--gold);
   box-shadow: 0 0 0 2px var(--gold);
+}
+.profile-drag-preview {
+  position: fixed;
+  z-index: 4500;
+  pointer-events: none;
+  user-select: none;
+  will-change: transform;
+}
+.profile-drag-preview .instance-card {
+  transform: rotate(1deg) scale(1.025);
+  box-shadow:
+    0 18px 40px #0004,
+    0 3px 9px #0002;
+  border-color: var(--gold);
+  animation: profile-pickup 140ms ease-out;
+  transition: transform 160ms ease;
+}
+.profile-drag-preview.is-settling .instance-card {
+  transform: rotate(0deg) scale(1);
+}
+.profile-drag-preview .instance-card-play,
+.profile-drag-preview .profile-card-more {
+  pointer-events: none;
+}
+@keyframes profile-pickup {
+  from {
+    transform: rotate(0deg) scale(1);
+  }
+  to {
+    transform: rotate(1deg) scale(1.025);
+  }
+}
+.profile-actions-menu {
+  position: fixed;
+  z-index: 4000;
+  width: 224px;
+  padding: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 12px 32px #0003;
+}
+.profile-actions-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: start;
+  font-size: 13px;
+}
+.profile-actions-menu button:hover:not(:disabled),
+.profile-actions-menu button:focus-visible {
+  background: var(--input-soft);
+}
+.profile-actions-menu .danger {
+  color: var(--danger);
+}
+.profile-actions-menu [role="separator"] {
+  height: 1px;
+  margin: 5px 4px;
+  background: var(--border);
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-drag-preview .instance-card {
+    animation: none;
+    transition: none;
+    transform: none;
+  }
 }
