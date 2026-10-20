@@ -1,6 +1,12 @@
 export const homeEnglish: Record<string, string> = {
+  "20 октября 2026": "October 20, 2026",
+  "Свой порядок сборок и импорт с ручной загрузкой недостающих модов.":
+    "Custom instance order and imports with manual downloads for missing mods.",
+  "В Aurum 0.4.4: сохраняется свой порядок сборок после перетаскивания. Импорт CurseForge не теряет сборку из-за модов, требующих ручной загрузки; недостающие файлы доступны в отдельном списке. Прогресс установки показывает название сборки, а разделитель в установщике корректно создаётся в Windows PowerShell.":
+    "In Aurum 0.4.4: drag-and-drop instance order is saved. CurseForge imports preserve the instance when mods require manual downloads, with a separate missing-file list. Installation progress shows the pack name, and the installer separator is generated correctly in Windows PowerShell.",
   "Порядок сборок": "Instance order",
-  "Перетаскивайте сборки — ваш порядок сохранится.": "Drag instances to save your own order.",
+  "Перетаскивайте сборки — ваш порядок сохранится.":
+    "Drag instances to save your own order.",
   "В этой сборке новые профили отображаются первыми. Перетаскивание включает пользовательскую сортировку и сохраняет порядок. Можно переключиться на сортировку по названию или дате добавления, а затем вернуться к своему порядку.":
     "In this build, new instances appear first. Dragging switches to custom sorting and saves the order. Switch to sorting by name or date added, then return to your saved order.",
   "Импорт без потери сборки": "Keep your pack during import",
