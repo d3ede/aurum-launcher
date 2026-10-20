@@ -116,18 +116,17 @@
   color: var(--accent-ink);
   flex-shrink: 0;
 }
-.language-code {
-  font-size: 12px;
-  font-weight: 650;
-  color: var(--secondary);
+.language-icon {
+  display: block;
   width: 38px;
   height: 38px;
   flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  background: var(--input-soft);
-  border-radius: 8px;
-  direction: ltr;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.language-current .language-icon {
+  width: 46px;
+  height: 46px;
 }
 .system-language {
   width: 100%;

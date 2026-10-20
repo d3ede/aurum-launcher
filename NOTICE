@@ -15,6 +15,11 @@ for the provenance of bundled default Minecraft skins.
 PaperMC and Velocity selector marks retain their separate usage terms.
 See src/assets/hosting/README.md for their sources and restrictions.
 
+Language picker icons are from AnandChowdhary/language-icons, under the MIT
+License, Copyright (c) 2019 Anand Chowdhary.
+See src/assets/languages/LICENSE for the complete license and README.md in
+that directory for asset provenance.
+
 Commercial permissions beyond this license require a separate agreement with
 the relevant copyright holder. Contact d3ede through the project repository.
 

@@ -13,6 +13,24 @@ import {
 } from "../lib/i18n";
 import { native, rpc } from "../lib/api";
 
+const languageIcons = import.meta.glob<string>("../assets/languages/*.svg", {
+  eager: true,
+  query: "?url",
+  import: "default",
+});
+
+function LanguageIcon({ code }: { code: string }) {
+  return (
+    <img
+      className="language-icon"
+      src={languageIcons[`../assets/languages/${code.split("-")[0]}.svg`]}
+      alt=""
+      width={38}
+      height={38}
+    />
+  );
+}
+
 export function LanguagePicker({
   onChange,
 }: {
@@ -87,9 +105,13 @@ export function LanguagePicker({
         disabled={busy || changing}
         aria-label={t("Выбор языка")}
       >
-        <span className="language-symbol">
-          <Globe2 size={24} />
-        </span>
+        {preference === "system" ? (
+          <span className="language-symbol">
+            <Globe2 size={24} />
+          </span>
+        ) : (
+          <LanguageIcon code={locale} />
+        )}
         <span>
           <b dir="auto">
             {preference === "system" ? t("Как в системе") : current.nativeName}
@@ -181,9 +203,7 @@ export function LanguagePicker({
                         disabled={changing}
                         onClick={() => void choose(l.code)}
                       >
-                        <span className="language-code">
-                          {l.code.split("-")[0].toUpperCase()}
-                        </span>
+                        <LanguageIcon code={l.code} />
                         <span>
                           <b dir="auto">{l.nativeName}</b>
                           <small>{getLanguageName(l.code)}</small>
