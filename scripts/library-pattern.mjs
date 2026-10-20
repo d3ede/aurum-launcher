@@ -20,25 +20,6 @@ for (let line = 0; line < 5; line++) {
     paths.push(`<path d="${d}"/>`);
   }
 }
-// Closed, widely spaced contour islands add variety in the empty space between
-// ribbons. They stay inside the tile, so they have no loose ends or edge seams.
-for (const [cx, cy, radiusX, radiusY] of [
-  [600, 390, 145, 76],
-  [850, 110, 108, 60],
-]) {
-  for (let ring = 0; ring < 3; ring++) {
-    const rx = radiusX - ring * 24;
-    const ry = radiusY - ring * 14;
-    const n = (value) => Math.round(value * 10) / 10;
-    const d =
-      `M${cx - rx} ${cy}` +
-      `C${cx - rx} ${n(cy - ry * 0.65)} ${n(cx - rx * 0.55)} ${cy - ry} ${cx} ${cy - ry}` +
-      `C${n(cx + rx * 0.65)} ${cy - ry} ${cx + rx} ${n(cy - ry * 0.45)} ${cx + rx} ${cy}` +
-      `C${cx + rx} ${n(cy + ry * 0.65)} ${n(cx + rx * 0.45)} ${cy + ry} ${cx} ${cy + ry}` +
-      `C${n(cx - rx * 0.65)} ${cy + ry} ${cx - rx} ${n(cy + ry * 0.45)} ${cx - rx} ${cy}Z`;
-    paths.push(`<path d="${d}"/>`);
-  }
-}
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none"><g stroke="#94999F" stroke-width=".8">${paths.join("")}</g></svg>\n`;
 writeFileSync(
   new URL("../src/assets/branding/library-pattern.svg", import.meta.url),

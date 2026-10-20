@@ -431,9 +431,9 @@ test("six cards show continuous curves, an unframed menu and a clickable trailin
       count: paths.length,
       noInteriorEnds: paths.every(
         (path) =>
-          /z$/i.test(path.getAttribute("d")!.trim()) ||
-          (path.getPointAtLength(0).y < 0 &&
-            path.getPointAtLength(path.getTotalLength()).y > 520),
+          !/z/i.test(path.getAttribute("d")!) &&
+          path.getPointAtLength(0).y < 0 &&
+          path.getPointAtLength(path.getTotalLength()).y > 520,
       ),
       noSquares: svg.querySelectorAll("rect").length === 0,
     };
