@@ -1,13 +1,19 @@
 import { test, expect, type Page } from "@playwright/test";
 
-async function fixture(page: Page, language = "ru") {
+async function fixture(page: Page, language = "ru", sixProfiles = false) {
   await page.addInitScript(
-    ({ language }) => {
+    ({ language, sixProfiles }) => {
       localStorage.setItem("aurum:language", language);
       const w = window as any;
       w.isTauri = true;
       const state = {
-        profiles: ["Zulu", "Alpha", "Beta", "Gamma"].map((name, index) => ({
+        profiles: [
+          "Zulu",
+          "Alpha",
+          "Beta",
+          "Gamma",
+          ...(sixProfiles ? ["Delta", "Epsilon"] : []),
+        ].map((name, index) => ({
           id: name,
           name,
           minecraft: "1.21.1",
@@ -84,20 +90,20 @@ async function fixture(page: Page, language = "ru") {
         },
       };
     },
-    { language },
+    { language, sixProfiles },
   );
   await page.goto("/");
-  await openLibrary(page, language);
+  await openLibrary(page, language, sixProfiles ? 6 : 4);
 }
 
-async function openLibrary(page: Page, language = "ru") {
+async function openLibrary(page: Page, language = "ru", count = 4) {
   await page
     .getByRole("button", {
       name: language === "ru" ? "Мои сборки" : "My instances",
       exact: true,
     })
     .click();
-  await expect(page.locator(".library .instance-card")).toHaveCount(4);
+  await expect(page.locator(".library .instance-card")).toHaveCount(count);
 }
 
 const cards = (page: Page) => page.locator(".library h3");
@@ -252,6 +258,12 @@ test("horizontal cards launch and stop the chosen instance without opening it an
         const grip = element
           .querySelector(".profile-sort-handle")!
           .getBoundingClientRect();
+        const menu = element
+          .querySelector(".profile-card-more")!
+          .getBoundingClientRect();
+        const arrow = element
+          .querySelector(".instance-card-chevron")!
+          .getBoundingClientRect();
         return {
           rectangular: button.width > button.height,
           separate: title.right <= button.left,
@@ -261,6 +273,7 @@ test("horizontal cards launch and stop the chosen instance without opening it an
             Math.abs(next.top - bounds.top) < 1 && next.left > bounds.left,
           compact: bounds.height <= 108,
           fullHeightGrip: grip.height >= bounds.height - 2,
+          actionOrder: button.right <= menu.left && menu.right < arrow.left,
         };
       });
       expect(geometry).toEqual({
@@ -271,6 +284,7 @@ test("horizontal cards launch and stop the chosen instance without opening it an
         twoInRow: true,
         compact: true,
         fullHeightGrip: true,
+        actionOrder: true,
       });
       await page.screenshot({
         path: `.test-data/screenshots/profile-rows-${theme}-${width}.png`,
@@ -397,4 +411,56 @@ test("delete requires confirmation and destructive menu actions are disabled whi
     .click();
   await expect(card).toHaveCount(0);
   await expect(page.locator(".library .instance-card")).toHaveCount(3);
+});
+
+test("six cards show continuous curves, an unframed menu and a clickable trailing arrow", async ({
+  page,
+}) => {
+  await fixture(page, "ru", true);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const first = page.locator(".library .instance-card").first();
+  const pattern = await first.evaluate(async (element) => {
+    const image = getComputedStyle(element, "::before").backgroundImage;
+    const url = image.slice(5, -2);
+    const svg = new DOMParser().parseFromString(
+      await (await fetch(url)).text(),
+      "image/svg+xml",
+    );
+    const paths = [...svg.querySelectorAll("path")];
+    return {
+      count: paths.length,
+      noInteriorEnds: paths.every(
+        (path) =>
+          path.getPointAtLength(0).y < 0 &&
+          path.getPointAtLength(path.getTotalLength()).y > 520,
+      ),
+      noSquares: svg.querySelectorAll("rect").length === 0,
+    };
+  });
+  expect(pattern.count).toBeGreaterThan(0);
+  expect(pattern.noInteriorEnds).toBe(true);
+  expect(pattern.noSquares).toBe(true);
+  for (const theme of ["light", "dark"]) {
+    if (theme === "dark")
+      await page.getByRole("button", { name: "Переключить тему" }).click();
+    const more = first.locator(".profile-card-more");
+    await more.hover();
+    await expect(more).toHaveCSS("border-top-width", "0px");
+    await expect(more).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    const menuBounds = (await more.boundingBox())!;
+    const arrowBounds = (await first
+      .locator(".instance-card-chevron")
+      .boundingBox())!;
+    expect(menuBounds.x + menuBounds.width).toBeLessThan(arrowBounds.x);
+    await page.mouse.move(20, 800);
+    await page.screenshot({
+      path: `.test-data/screenshots/profile-pattern-six-${theme}.png`,
+      animations: "disabled",
+    });
+  }
+  const arrow = (await first.locator(".instance-card-chevron").boundingBox())!;
+  await page.mouse.click(arrow.x + arrow.width / 2, arrow.y + arrow.height / 2);
+  await expect(
+    page.getByRole("heading", { name: "Epsilon", exact: true }),
+  ).toBeVisible();
 });

@@ -11,7 +11,7 @@
   position: relative;
   isolation: isolate;
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) 120px 36px;
+  grid-template-columns: 24px minmax(0, 1fr) 120px 28px 28px;
   align-items: center;
   min-height: 104px;
   border-radius: 12px;
@@ -24,7 +24,7 @@
   pointer-events: none;
   background-image: url("../assets/branding/library-pattern.svg");
   background-size: 1000px 520px;
-  background-position: 0 0;
+  background-position: 0 80px;
   background-attachment: fixed;
   opacity: 0.16;
 }
@@ -37,16 +37,27 @@
   border-inline-end: 1px solid var(--border);
 }
 .instance-card-row .instance-card-open {
+  position: relative;
   grid-column: 2 / -1;
   grid-row: 1;
   align-self: stretch;
   gap: 12px;
   padding: 14px 10px;
-  padding-inline-end: 164px;
+  padding-inline-end: 184px;
   text-align: start;
 }
 .instance-card-row .instance-card-open:hover {
-  background: var(--input-soft);
+  background: transparent;
+}
+.instance-card-row .instance-card-open > .instance-card-chevron {
+  position: absolute;
+  inset-inline-end: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+[dir="rtl"] .instance-card-row .instance-card-open > .instance-card-chevron {
+  transform: translateY(-50%) scaleX(-1);
 }
 .instance-card-row .instance-card-open h3 {
   font-size: 16px;
@@ -117,23 +128,36 @@
   pointer-events: none;
 }
 .instance-card-row .profile-card-more {
-  width: 28px;
+  width: 24px;
   height: 32px;
   min-height: 32px;
   padding: 0;
   color: var(--muted);
   pointer-events: auto;
 }
+.instance-card-row .profile-card-more,
+.instance-card-row .profile-card-more:hover,
+.instance-card-row .profile-card-more[aria-expanded="true"] {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.instance-card-row .profile-card-more:hover {
+  color: var(--text);
+}
 .instance-card-play .lucide-play {
   margin-inline-start: 2px;
 }
 @media (max-width: 1000px) {
   .instance-card.instance-card-row {
-    grid-template-columns: 24px minmax(0, 1fr) 96px 28px;
+    grid-template-columns: 24px minmax(0, 1fr) 96px 24px 24px;
   }
   .instance-card-row .instance-card-open {
     gap: 8px;
-    padding-inline-end: 128px;
+    padding-inline-end: 148px;
+  }
+  .instance-card-row .instance-card-open > .instance-card-chevron {
+    inset-inline-end: 4px;
   }
   .instance-card-row .instance-card-play {
     width: 84px;
@@ -199,6 +223,10 @@
 .profile-drag-preview .instance-card-play,
 .profile-drag-preview .profile-card-more {
   pointer-events: none;
+}
+.profile-drag-preview .instance-card-row::before {
+  background-attachment: scroll;
+  background-position: var(--pattern-x) var(--pattern-y);
 }
 @keyframes profile-pickup {
   from {

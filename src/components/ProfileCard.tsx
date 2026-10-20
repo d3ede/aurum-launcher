@@ -74,6 +74,11 @@ export function ProfileCard({
               {status}
             </span>
           </div>
+          <ChevronRight
+            className="instance-card-chevron"
+            size={16}
+            aria-hidden="true"
+          />
         </button>
         <div className="instance-card-launch">{launch}</div>
         <div className="instance-card-menu">

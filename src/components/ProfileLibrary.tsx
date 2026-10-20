@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type PointerEvent,
+  type CSSProperties,
 } from "react";
 import { createPortal } from "react-dom";
 import { GripVertical } from "lucide-react";
@@ -325,12 +326,16 @@ export function ProfileLibrary({
             className={`profile-drag-preview${preview.settling ? " is-settling" : ""}`}
             inert
             aria-hidden="true"
-            style={{
-              left: preview.left,
-              top: preview.top,
-              width: preview.width,
-              transform: `translate3d(${preview.x}px, ${preview.y}px, 0)`,
-            }}
+            style={
+              {
+                left: preview.left,
+                top: preview.top,
+                width: preview.width,
+                transform: `translate3d(${preview.x}px, ${preview.y}px, 0)`,
+                "--pattern-x": `${-preview.left}px`,
+                "--pattern-y": `${80 - preview.top}px`,
+              } as CSSProperties
+            }
           >
             <ProfileCard
               layout="row"
