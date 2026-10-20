@@ -1,4 +1,8 @@
 export const homeEnglish: Record<string, string> = {
+  "Новые карточки сборок, меню действий и значки языков.":
+    "New instance cards, action menus and language icons.",
+  "В Aurum 0.4.5: компактные горизонтальные карточки сборок с общим плавным узором. Сборки следуют за курсором при перетаскивании; меню действий открывает папку, переименование, проверку установки и удаление с подтверждением. Значки языков встроены в лаунчер и не требуют загрузки из сети.":
+    "In Aurum 0.4.5: compact horizontal instance cards share a flowing background pattern. Cards follow the cursor while dragging; the action menu opens the folder, renames, verifies installation and deletes after confirmation. Language icons are bundled locally and need no network downloads.",
   "Карточки сборок": "Instance cards",
   "Меню действий сборки и перетаскивание с анимацией.":
     "Instance action menus and animated dragging.",
