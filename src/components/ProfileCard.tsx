@@ -5,12 +5,15 @@ import type { Profile } from "../types";
 import { ru } from "../lib/i18n";
 import { rpc } from "../lib/api";
 import { ProfileIcon } from "./ProfileIcon";
+import type { ReactNode } from "react";
 export function ProfileCard({
   profile,
   onOpen,
+  reorderHandle,
 }: {
   profile: Profile;
   onOpen: () => void;
+  reorderHandle?: ReactNode;
 }) {
   const { data, busy, play, run, progress } = useApp();
   const running = data.running.includes(profile.id);
@@ -36,6 +39,7 @@ export function ProfileCard({
       </button>
       <div className="instance-card-footer">
         <span>
+          {reorderHandle}
           {running
             ? t("Запущена")
             : installing

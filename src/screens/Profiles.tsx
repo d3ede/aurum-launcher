@@ -5,7 +5,13 @@ import { useApp } from "../context";
 import { Select } from "../components/Select";
 
 import type { Profile } from "../types";
-import { ProfileCard } from "../components/ProfileCard";
+import { ProfileLibrary } from "../components/ProfileLibrary";
+import {
+  readProfileOrder,
+  sortProfiles,
+  type ProfileOrder,
+  type ProfileSort,
+} from "../lib/profile-order";
 import { EmptyState } from "../components/ui";
 import { ImportProfileButton } from "../components/ImportProfileButton";
 export function Profiles({
@@ -15,16 +21,22 @@ export function Profiles({
   onProfile: (p: Profile) => void;
   onFolderImport: () => void;
 }) {
-  const { data, create, busy } = useApp();
+  const { data, create, busy, notify } = useApp();
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState("recent");
-  const profiles = data.profiles
-    .filter((p) => p.name.toLowerCase().includes(query.toLowerCase()))
-    .sort((a, b) =>
-      sort === "name"
-        ? a.name.localeCompare(b.name, "ru")
-        : (b.lastPlayed || 0) - (a.lastPlayed || 0),
-    );
+  const storageKey = `aurum:profile-order:${data.dataDir}`;
+  const [order, setOrder] = useState(() => readProfileOrder(storageKey));
+  const profiles = sortProfiles(data.profiles, order);
+  const hasMatches = profiles.some((p) =>
+    p.name.toLowerCase().includes(query.toLowerCase()),
+  );
+  function saveOrder(next: ProfileOrder) {
+    setOrder(next);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(next));
+    } catch {
+      notify(t("Не удалось сохранить порядок сборок"), true);
+    }
+  }
   return (
     <>
       <div className="page-heading">
@@ -57,12 +69,15 @@ export function Profiles({
         <div className="select-icon">
           <ArrowDownWideNarrow size={16} />
           <Select
-            value={sort}
-            onValueChange={setSort}
+            value={order.sort}
+            onValueChange={(sort) =>
+              saveOrder({ ...order, sort: sort as ProfileSort })
+            }
             aria-label={t("Сортировка сборок")}
             options={[
-              { value: "recent", label: t("Сначала недавние") },
+              { value: "recent", label: t("Сначала новые") },
               { value: "name", label: t("По названию") },
+              { value: "custom", label: t("Пользовательская") },
             ]}
           />
         </div>
@@ -75,12 +90,14 @@ export function Profiles({
           {t(" Импорт папки игры")}
         </button>
       </div>
-      {profiles.length ? (
-        <div className="profile-grid library">
-          {profiles.map((p) => (
-            <ProfileCard key={p.id} profile={p} onOpen={() => onProfile(p)} />
-          ))}
-        </div>
+      {hasMatches ? (
+        <ProfileLibrary
+          profiles={profiles}
+          query={query}
+          order={order}
+          onOrder={saveOrder}
+          onProfile={onProfile}
+        />
       ) : (
         <EmptyState
           icon={<FolderOpen size={34} />}

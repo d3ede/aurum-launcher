@@ -1,0 +1,40 @@
+.profile-sortable {
+  display: grid;
+  min-width: 0;
+}
+.profile-sortable .instance-card-footer > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.profile-sort-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  color: var(--muted);
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.profile-sort-handle:hover,
+.profile-sort-handle:focus-visible {
+  color: var(--text);
+  background: var(--input-soft);
+}
+.profile-sort-handle:active {
+  cursor: grabbing;
+}
+.profile-sortable.is-dragging {
+  opacity: 0.5;
+}
+.profile-sortable.is-drop-target .instance-card {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px var(--gold);
+}

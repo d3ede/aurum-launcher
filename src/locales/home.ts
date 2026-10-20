@@ -1,4 +1,8 @@
 export const homeEnglish: Record<string, string> = {
+  "Порядок сборок": "Instance order",
+  "Перетаскивайте сборки — ваш порядок сохранится.": "Drag instances to save your own order.",
+  "В этой сборке новые профили отображаются первыми. Перетаскивание включает пользовательскую сортировку и сохраняет порядок. Можно переключиться на сортировку по названию или дате добавления, а затем вернуться к своему порядку.":
+    "In this build, new instances appear first. Dragging switches to custom sorting and saves the order. Switch to sorting by name or date added, then return to your saved order.",
   "В Aurum 0.4.3: исправлен список игроков Velocity в сети. События прокси распознаются с именем компонента и полным форматом журнала; переход между режимами не удаляет игрока из общего списка. Если сервер сообщил только количество, интерфейс показывает, что имена пока недоступны.":
     "In Aurum 0.4.3: Velocity network player tracking handles component labels and the full logger format. Switching backends no longer removes a player from the network roster. When only a count is known, the UI states that names are unavailable.",
   "Локальный хостинг, недавние серверы и подготовка запуска.":

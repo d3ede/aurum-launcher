@@ -15,6 +15,7 @@ import {
 import { updaterEnglish, updaterRussian } from "../locales/updater";
 import { catalogEnglish, catalogRussian } from "../locales/catalog";
 import { homeEnglish, homeRussian } from "../locales/home";
+import { profileOrderEnglish, profileOrderRussian } from "../locales/profile-order";
 import { hostingEnglish, hostingRussian } from "../locales/hosting";
 import {
   contentManagerEnglish,
@@ -31,6 +32,7 @@ const english: Dictionary = {
   ...updaterEnglish,
   ...catalogEnglish,
   ...homeEnglish,
+  ...profileOrderEnglish,
   ...hostingEnglish,
   ...contentManagerEnglish,
 };
@@ -43,6 +45,7 @@ const russian: Dictionary = {
   ...updaterRussian,
   ...catalogRussian,
   ...homeRussian,
+  ...profileOrderRussian,
   ...hostingRussian,
   ...contentManagerRussian,
 };
