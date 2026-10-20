@@ -379,7 +379,12 @@ function Shell({
               <Download size={19} />
             </div>
             <div>
-              <b>{ru.phases[progress.phase] || t("Операция Aurum")}</b>
+              <b>
+                {ru.phases[progress.phase] || t("Операция Aurum")}
+                {progress.phase === "pack" && progress.packName
+                  ? ` ${progress.packName}`
+                  : ""}
+              </b>
               <small>{tMessage(progress.message)}</small>
             </div>
             <button

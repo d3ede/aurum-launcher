@@ -69,7 +69,19 @@ impl Task {
         (self.emit)(Event {
             id: self.id.clone(),
             profile_id: self.profile_id.clone(),
+            pack_name: None,
             phase: phase.into(),
+            message: message.into(),
+            done,
+            total,
+        });
+    }
+    pub fn pack_progress(&self, name: &str, message: impl Into<String>, done: u64, total: u64) {
+        (self.emit)(Event {
+            id: self.id.clone(),
+            profile_id: self.profile_id.clone(),
+            pack_name: Some(name.into()),
+            phase: "pack".into(),
             message: message.into(),
             done,
             total,

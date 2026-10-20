@@ -728,6 +728,7 @@ fn main() {
                                 auren_core::model::Event {
                                     id: String::new(),
                                     profile_id: None,
+                                    pack_name: None,
                                     phase: "hosting-close-blocked".into(),
                                     message: "Сначала остановите локальные серверы".into(),
                                     done: 0,

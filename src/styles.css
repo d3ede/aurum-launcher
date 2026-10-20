@@ -2166,6 +2166,7 @@ kbd {
 .operation-header b {
   font-size: 14px;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 .operation-header small {
   display: block;

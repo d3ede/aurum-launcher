@@ -104,6 +104,7 @@ impl Engine {
         let id = uuid::Uuid::new_v4().to_string();
         let stage = self.root.join("staging").join(&task.id).join("pack");
         tokio::fs::create_dir_all(&stage).await?;
+        let pack_name = name.clone();
         let result:Result<()>=async {
             if mr {
                 let files=manifest["files"].as_array().context("Нет списка файлов")?;
@@ -122,7 +123,7 @@ impl Engine {
                         if self.download(url,&crate::safe_join(&stage,file_path)?,Some(("sha1",hash)),task).await.is_ok() {downloaded=true;break}
                     }
                     if !downloaded {task.check()?;bail!("Не удалось загрузить {file_path}")}
-                    task.progress("pack",format!("Файлы пакета · {file_path}"),i as u64+1,files.len() as u64);
+                    task.pack_progress(&pack_name,format!("Файлы пакета · {file_path}"),i as u64+1,files.len() as u64);
                 }
             } else {
                 let files=manifest["files"].as_array().context("Нет файлов CurseForge")?;
@@ -131,7 +132,7 @@ impl Engine {
                     let name=f["fileName"].as_str().context("Нет имени файла")?;if name.contains('/') {bail!("Неверное имя файла")}
                     let hash=f["hashes"].as_array().and_then(|a|a.iter().find(|h|h["algo"]==1)).and_then(|v|v["value"].as_str()).context("Нет SHA1")?;
                     self.download(f["downloadUrl"].as_str().context("Автор запретил загрузку через сторонние приложения; скачайте файл вручную")?,&crate::safe_join(&stage.join("mods"),name)?,Some(("sha1",hash)),task).await?;
-                    task.progress("pack","Файлы CurseForge",i as u64+1,files.len() as u64);
+                    task.pack_progress(&pack_name,"Файлы CurseForge",i as u64+1,files.len() as u64);
                 }
             }
             let overrides=if mr {vec!["overrides/".to_string(),"client-overrides/".to_string()]}else{vec![format!("{}/",manifest["overrides"].as_str().unwrap_or("overrides").trim_end_matches('/'))]};

@@ -154,6 +154,7 @@ export interface ServerStatus {
 export interface Progress {
   id: string;
   profileId: string | null;
+  packName?: string | null;
   phase: string;
   message: string;
   done: number;

@@ -189,6 +189,7 @@ impl Engine {
                     (self.emit)(Event {
                         id: uuid::Uuid::new_v4().to_string(),
                         profile_id: Some(id),
+                        pack_name: None,
                         phase: "exited".into(),
                         message: "Minecraft завершён".into(),
                         done: 0,

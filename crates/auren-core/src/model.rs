@@ -167,6 +167,8 @@ pub struct Snapshot {
 pub struct Event {
     pub id: String,
     pub profile_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pack_name: Option<String>,
     pub phase: String,
     pub message: String,
     pub done: u64,

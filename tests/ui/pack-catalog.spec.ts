@@ -1,8 +1,13 @@
 import { test, expect, type Page } from "@playwright/test";
 
-async function fixture(page: Page, language = "ru", unsupported = false) {
+async function fixture(
+  page: Page,
+  language = "ru",
+  unsupported = false,
+  installing = false,
+) {
   await page.addInitScript(
-    ({ language, unsupported }) => {
+    ({ language, unsupported, installing }) => {
       localStorage.setItem("aurum:language", language);
       const w = window as any;
       w.isTauri = true;
@@ -36,15 +41,29 @@ async function fixture(page: Page, language = "ru", unsupported = false) {
         downloads: 2400,
       });
       w.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
+      const callbacks = new Map<number, Function>();
+      let nextCallback = 0;
+      let eventHandler: number | undefined;
+      w.emitPackProgress = (payload: any) =>
+        callbacks.get(eventHandler!)?.({
+          event: "auren:event",
+          id: 1,
+          payload,
+        });
       w.__TAURI_INTERNALS__ = {
         metadata: {
           currentWindow: { label: "main" },
           currentWebview: { label: "main" },
         },
-        transformCallback() {
-          return 1;
+        transformCallback(callback: Function) {
+          callbacks.set(++nextCallback, callback);
+          return nextCallback;
         },
         async invoke(cmd: string, args: any) {
+          if (cmd === "plugin:event|listen") {
+            if (args.event === "auren:event") eventHandler = args.handler;
+            return 1;
+          }
           if (cmd !== "rpc") return cmd.includes("is_maximized") ? false : 1;
           const { action, payload } = args;
           w.packRequests.push({ action, payload });
@@ -107,12 +126,29 @@ async function fixture(page: Page, language = "ru", unsupported = false) {
             };
           }
           if (action === "choosePackFile") return "D:/fixture/manual.jar";
-          if (action === "downloadPack") return "installed-fixture";
+          if (action === "downloadPack") {
+            if (installing) {
+              w.packOperationId = payload.operationId;
+              queueMicrotask(() =>
+                w.emitPackProgress({
+                  id: payload.operationId,
+                  profileId: null,
+                  phase: "pack",
+                  packName: `${payload.source} fixture`,
+                  message: "Файлы CurseForge",
+                  done: 15,
+                  total: 109,
+                }),
+              );
+              return new Promise(() => {});
+            }
+            return "installed-fixture";
+          }
           return null;
         },
       };
     },
-    { language, unsupported },
+    { language, unsupported, installing },
   );
   await page.goto("/");
   await page.locator(".sidebar nav button").nth(2).click();
@@ -128,6 +164,57 @@ async function source(page: Page, name: string, language = "ru") {
   await expect(page.locator(".catalog-result h3")).toContainText(
     `${name.toLowerCase()} fixture`,
   );
+}
+
+for (const language of ["ru", "en"]) {
+  test(`installation progress names the modpack and wraps long names (${language})`, async ({
+    page,
+  }) => {
+    await fixture(page, language, false, true);
+    await source(page, "FTB", language);
+    await page.locator(".catalog-card").click();
+    await page
+      .getByRole("button", {
+        name:
+          language === "ru"
+            ? "Создать сборку из модпака"
+            : "Creating an instance from a mod pack",
+      })
+      .click();
+    const panel = page.locator(".operation-panel");
+    const title = panel.locator("b");
+    const label = language === "ru" ? "Модпак" : "Modpack";
+    await expect(title).toHaveText(`${label} ftb fixture`);
+    await expect(panel.locator("progress")).toHaveAttribute("value", "15");
+    const name = "ОченьДлинноеНазваниеМодпака".repeat(8);
+    await page.evaluate((packName) => {
+      const w = window as any;
+      w.emitPackProgress({
+        id: w.packOperationId,
+        profileId: null,
+        phase: "pack",
+        packName,
+        message: "Файлы CurseForge",
+        done: 16,
+        total: 109,
+      });
+    }, name);
+    await expect(title).toHaveText(`${label} ${name}`);
+    const bounds = await panel.boundingBox();
+    const titleBounds = await title.boundingBox();
+    expect(titleBounds!.x + titleBounds!.width).toBeLessThanOrEqual(
+      bounds!.x + bounds!.width,
+    );
+    await page.screenshot({
+      path: `.test-data/screenshots/pack-progress-${language}-dark.png`,
+    });
+    await page.evaluate(() => {
+      document.documentElement.dataset.theme = "light";
+    });
+    await page.screenshot({
+      path: `.test-data/screenshots/pack-progress-${language}-light.png`,
+    });
+  });
 }
 
 test("all pack sources browse anonymously and show only supported filters", async ({

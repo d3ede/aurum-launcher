@@ -389,6 +389,7 @@ impl Engine {
             (engine.emit)(Event {
                 id: identifier,
                 profile_id: None,
+                pack_name: None,
                 phase: "hosting-changed".into(),
                 message: String::new(),
                 done: 0,

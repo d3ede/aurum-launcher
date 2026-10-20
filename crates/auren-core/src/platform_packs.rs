@@ -504,7 +504,7 @@ impl Engine {
                         self.download(&f.url,&dest,hash,task).await.with_context(||format!("Could not download {}",f.name))?;
                     }
                     let done=completed.fetch_add(1,std::sync::atomic::Ordering::Relaxed)+1;
-                    task.progress("pack",format!("{title} · {}",f.name),done,file_count as u64);
+                    task.pack_progress(title,&f.name,done,file_count as u64);
                     Ok::<_,anyhow::Error>((i,dest))
                 }.boxed()
             }).collect();
