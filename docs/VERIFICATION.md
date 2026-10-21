@@ -409,3 +409,17 @@ The public `releases/latest/download/` URLs were downloaded and checked against 
 Public installer size: 8,280,763 bytes. SHA256: `1a565025628506cc07fe2539c3797a2fbd1c8a0ad838b6a8e5608ef8cc037757`.
 
 The public installer was not executed during this publication check. The installed launcher, real server processes and user game data were not changed. The ignored local `Aurum-Launcher-Setup.exe` copy contains the verified public installer. This record is a subsequent documentation-only commit.
+
+## Public release 0.4.6 — October 21, 2026
+
+Release [v0.4.6](https://github.com/d3ede/aurum-launcher/releases/tag/v0.4.6) is published as the latest stable release from source commit `1447834ff7e771df5ee65174a72572d85c038762`. The [Windows release workflow](https://github.com/d3ede/aurum-launcher/actions/runs/39606430254) passed frontend/native checks, all 111 UI scenarios, the signed installer build and installer regression checks before publishing all four update assets.
+
+This release corrects CurseForge content folders, detects checksum-matching missing files in Downloads while the dialog is open and makes source-download cleanup opt-in. Home no longer repeats the quick-launch instance in its recent list and has refined alignment and card spacing. The feature/fix commit and release preparation commit are pushed to `main`; the version tag remains on the application source.
+
+Local checks passed: production frontend build, 19 frontend unit tests, regular Rust workspace tests, all-target Clippy, formatting, all 111 UI scenarios and the signed production NSIS build. Installer checks passed 17 path cases, 16 language cases, close-button rendering at five sizes and eight shortcut cases. Import fixtures cover content-folder routing, unavailable project metadata, checksum mismatches, browser-renamed duplicates, incomplete downloads, optional cleanup and persisted state. These checks use isolated data, not real user downloads; they do not establish compatibility with every third-party pack or remove the official CurseForge API-key requirement. Previously imported content is not automatically relocated.
+
+The public `releases/latest/download/` URLs were downloaded and checked against GitHub asset digests and `SHA256SUMS.txt`. The manifest reports 0.4.6, uses the immutable version-specific installer URL and matches the detached signature asset. Independent Ed25519/minisign verification passed for the installer and its version-bound trusted comment using the production updater public key. The downloaded installer also reports product version 0.4.6.
+
+Public installer size: 8,282,767 bytes. SHA256: `565b8f8673e202892941981deb7518873c3667525fcf94e32719dbd4d05dc67e`.
+
+The public installer was not executed during this publication check. The installed launcher, real server processes and user game data were not changed. The ignored local `Aurum-Launcher-Setup.exe` copy contains the verified public installer. This record is a subsequent documentation-only commit.
