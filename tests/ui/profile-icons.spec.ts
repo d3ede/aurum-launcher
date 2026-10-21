@@ -95,6 +95,7 @@ test("symbol and independent custom colors persist and render on cards", async (
 }) => {
   await fixture(page);
   await page.goto("/");
+  await page.getByRole("button", { name: "Мои сборки", exact: true }).click();
   await page
     .getByRole("button", { name: "Открыть Мир значков", exact: true })
     .first()
@@ -116,6 +117,7 @@ test("symbol and independent custom colors persist and render on cards", async (
   });
   await page.getByRole("button", { name: "Сохранить", exact: true }).click();
   await page.reload();
+  await page.getByRole("button", { name: "Мои сборки", exact: true }).click();
   const cardIcon = page
     .getByRole("button", { name: "Открыть Мир значков", exact: true })
     .first()

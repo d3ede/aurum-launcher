@@ -1,4 +1,12 @@
 export const homeEnglish: Record<string, string> = {
+  "Импорт и быстрый запуск": "Imports and quick launch",
+  "Быстрый запуск без дублей, ресурспаки и шейдеры в своих папках.":
+    "Quick launch without duplicates, resource packs and shaders in their own folders.",
+  "Подхват скачанных файлов": "Detect downloaded files",
+  "Недостающие файлы из «Загрузок» добавляются в сборку после проверки версии.":
+    "Missing files in Downloads are imported after checking their versions.",
+  "В этой сборке: сборка из быстрого запуска не повторяется в недавних. Главная выровнена с поиском, блок быстрого запуска компактнее, между подсветкой карточки и кнопкой игры появился отступ. Импорт CurseForge распределяет моды, ресурспаки и шейдеры по своим папкам. Пока открыто окно недостающих файлов, Aurum проверяет «Загрузки» и импортирует только файлы с нужной контрольной суммой. Удаление исходных загрузок после успешного импорта включается отдельно.":
+    "In this build: the quick launch instance no longer appears in the recent list. Home aligns with search, quick launch is more compact, and instance cards have space between the hover area and Play. CurseForge imports place mods, resource packs and shaders in their own folders. While the missing files window is open, Aurum checks Downloads and only imports files with the required checksum. Removing source downloads after successful import is optional.",
   "Новые карточки сборок, меню действий и значки языков.":
     "New instance cards, action menus and language icons.",
   "В Aurum 0.4.5: компактные горизонтальные карточки сборок с общим плавным узором. Сборки следуют за курсором при перетаскивании; меню действий открывает папку, переименование, проверку установки и удаление с подтверждением. Значки языков встроены в лаунчер и не требуют загрузки из сети.":

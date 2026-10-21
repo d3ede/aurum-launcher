@@ -64,10 +64,11 @@ export function Home({
       live = false;
     };
   }, [retry]);
-  const recent = [...data.profiles]
-    .sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0))
-    .slice(0, 3);
-  const last = recent[0];
+  const ordered = [...data.profiles].sort(
+    (a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0),
+  );
+  const last = ordered[0];
+  const recent = ordered.slice(1, 4);
   const running = last && data.running.includes(last.id);
   return (
     <div className="home-layout">

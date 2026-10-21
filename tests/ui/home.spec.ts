@@ -1,8 +1,13 @@
 import { test, expect, type Page } from "@playwright/test";
 
-async function fixture(page: Page, theme = "light", language = "ru") {
+async function fixture(
+  page: Page,
+  theme = "light",
+  language = "ru",
+  profileCount = 1,
+) {
   await page.addInitScript(
-    ({ theme, language }) => {
+    ({ theme, language, profileCount }) => {
       localStorage.setItem("aurum:language", language);
       const w = window as any;
       w.isTauri = true;
@@ -22,7 +27,12 @@ async function fixture(page: Page, theme = "light", language = "ru") {
         content: [],
       };
       const state = {
-        profiles: [profile],
+        profiles: Array.from({ length: profileCount }, (_, index) => ({
+          ...profile,
+          id: index === 0 ? profile.id : `other-${index}`,
+          name: index === 0 ? profile.name : `Other ${index}`,
+          lastPlayed: profile.lastPlayed - index,
+        })),
         accounts: [
           {
             id: "account-1",
@@ -127,7 +137,7 @@ async function fixture(page: Page, theme = "light", language = "ru") {
         },
       };
     },
-    { theme, language },
+    { theme, language, profileCount },
   );
   await page.goto("/");
   await expect(page.locator(".recommended-project")).toHaveCount(4);
@@ -137,6 +147,10 @@ test("home has account and factual release panels, working actions and both them
   page,
 }) => {
   await fixture(page);
+  await expect(page.locator(".home-primary .instance-card")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Недавние сборки" }),
+  ).toHaveCount(0);
   await expect(page.locator(".home-account-card")).toContainText("CozyPlayer");
   await expect(page.locator(".home-news-card")).toContainText("Aurum 0.4.5");
   await expect(page.locator(".home-news-card")).toContainText(
@@ -219,6 +233,45 @@ test("home has account and factual release panels, working actions and both them
   await expect(
     page.getByRole("heading", { name: "Аккаунты и скины", exact: true }),
   ).toBeVisible();
+});
+
+test("quick launch is unique and cards leave space above Play in both themes", async ({
+  page,
+}) => {
+  await fixture(page, "dark", "ru", 5);
+  await expect(page.locator(".home-primary .instance-card")).toHaveCount(3);
+  await expect(page.locator(".quick-launch")).toContainText("Radiance");
+  await expect(page.locator(".home-primary .profile-grid")).not.toContainText(
+    "Radiance",
+  );
+  await expect(page.locator(".home-primary .profile-grid")).toContainText(
+    "Other 3",
+  );
+  for (const width of [1280, 960]) {
+    await page.setViewportSize({ width, height: 820 });
+    const search = await page.locator(".header-search").boundingBox();
+    const quick = await page.locator(".quick-launch").boundingBox();
+    expect(Math.abs(search!.x - quick!.x)).toBeLessThanOrEqual(1);
+    for (const theme of ["dark", "light"]) {
+      if ((await page.locator("html").getAttribute("data-theme")) !== theme) {
+        await page
+          .getByRole("button", { name: "Переключить тему", exact: true })
+          .click();
+      }
+      const card = page.locator(".home-primary .instance-card").first();
+      const open = card.locator(".instance-card-open");
+      await open.hover();
+      const area = await open.boundingBox();
+      const play = await card
+        .locator(".instance-card-footer .button")
+        .boundingBox();
+      expect(play!.y - (area!.y + area!.height)).toBeGreaterThanOrEqual(12);
+      await page.screenshot({
+        path: `.test-data/screenshots/home-spacing-${width}-${theme}.png`,
+        animations: "disabled",
+      });
+    }
+  }
 });
 
 test("home adapts to minimum window size and translates the new panels", async ({

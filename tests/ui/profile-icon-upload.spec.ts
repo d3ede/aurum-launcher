@@ -65,6 +65,7 @@ test("uploaded image keeps its pixels while the background is editable", async (
     };
   });
   await page.goto("/");
+  await page.getByRole("button", { name: "Мои сборки", exact: true }).click();
   await page
     .getByRole("button", { name: "Открыть Image test", exact: true })
     .first()

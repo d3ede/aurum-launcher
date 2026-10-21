@@ -1,4 +1,10 @@
 export const catalogEnglish: Record<string, string> = {
+  "Скачайте недостающие файлы по ссылкам. Пока это окно открыто, лаунчер проверяет папку «Загрузки» и добавляет файлы нужных версий в сборку. Файл из другой папки можно выбрать вручную.":
+    "Download the missing files using the links. While this window is open, the launcher checks Downloads and imports the required versions into the instance. You can select files from other folders manually.",
+  "Удалять найденные файлы из «Загрузок» после успешного импорта":
+    "Remove detected files from Downloads after a successful import",
+  "Не удалось проверить «Загрузки». Можно выбрать файл вручную.":
+    "Could not check Downloads. You can select a file manually.",
   "Нужна ручная установка": "Manual installation needed",
   "Остальные файлы сборки установлены. Скачайте недостающие файлы по ссылкам и выберите их здесь — лаунчер проверит версию и добавит их в сборку.":
     "The other pack files are installed. Download the missing files using the links and select them here. The launcher will verify the version and add them to the instance.",

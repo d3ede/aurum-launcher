@@ -3,6 +3,49 @@ use anyhow::{bail, Context, Result};
 use serde_json::Value;
 use std::{io::Read, path::Path};
 
+// Used only when the provider cannot identify a ZIP's project type.
+fn archive_content_folder(path: &Path) -> Option<&'static str> {
+    let mut zip = zip::ZipArchive::new(std::fs::File::open(path).ok()?).ok()?;
+    let mut resources = false;
+    let mut shaders = false;
+    for index in 0..zip.len() {
+        let file = zip.by_index(index).ok()?;
+        let name = file.name();
+        if matches!(
+            name,
+            "fabric.mod.json"
+                | "quilt.mod.json"
+                | "META-INF/mods.toml"
+                | "META-INF/neoforge.mods.toml"
+        ) {
+            return None;
+        }
+        resources |= name == "pack.mcmeta";
+        shaders |= name.starts_with("shaders/");
+    }
+    if shaders {
+        Some("shaderpacks")
+    } else if resources {
+        Some("resourcepacks")
+    } else {
+        None
+    }
+}
+
+fn download_name_matches(actual: &str, expected: &str) -> bool {
+    if actual == expected {
+        return true;
+    }
+    let Some((stem, extension)) = expected.rsplit_once('.') else {
+        return false;
+    };
+    actual
+        .strip_prefix(stem)
+        .and_then(|s| s.strip_prefix(" ("))
+        .and_then(|s| s.strip_suffix(&format!(").{extension}")))
+        .is_some_and(|number| !number.is_empty() && number.bytes().all(|b| b.is_ascii_digit()))
+}
+
 fn loader(deps: &Value) -> Result<(Loader, Option<String>)> {
     for (key, l) in [
         ("fabric-loader", Loader::Fabric),
@@ -138,15 +181,26 @@ impl Engine {
                 }
             } else {
                 let files=manifest["files"].as_array().context("Нет файлов CurseForge")?;
+                let mut projects = std::collections::HashMap::new();
                 for (i,file) in files.iter().enumerate() {
                     task.check()?;
                     let project=file["projectID"].as_u64().context("Нет projectID")?;
                     let version=file["fileID"].as_u64().context("Нет fileID")?;
                     let raw=cf(format!("/mods/{project}/files/{version}")).await?;
-                    if let Some(mut missing) = self.import_curseforge_file(&stage, project, version, &raw["data"], task).await? {
+                    if let std::collections::hash_map::Entry::Vacant(entry) = projects.entry(project) {
+                        entry.insert(cf(format!("/mods/{project}")).await.ok());
+                    }
+                    let info = projects.get(&project).and_then(Option::as_ref);
+                    let folder = match info.and_then(|i| i["data"]["classId"].as_u64()) {
+                        Some(12) => Some("resourcepacks"),
+                        Some(6552) => Some("shaderpacks"),
+                        Some(6) => Some("mods"),
+                        _ => None,
+                    };
+                    if let Some(mut missing) = self.import_curseforge_file(&stage, project, version, &raw["data"], folder, task).await? {
                         // Project metadata improves the label and links to the exact file version.
                         // A failed optional lookup must not discard the rest of the pack.
-                        if let Ok(info) = cf(format!("/mods/{project}")).await {
+                        if let Some(info) = info {
                             if let Some(name) = info["data"]["name"].as_str() { missing.name = name.into(); }
                             if let Some(slug) = info["data"]["slug"].as_str().filter(|s| !s.is_empty() && s.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')) {
                                 missing.url = format!("https://www.curseforge.com/minecraft/mc-mods/{slug}/files/{version}");
@@ -190,6 +244,7 @@ impl Engine {
         project: u64,
         version: u64,
         file: &Value,
+        folder: Option<&str>,
         task: &Task,
     ) -> Result<Option<PackManualDownload>> {
         task.check()?;
@@ -200,7 +255,7 @@ impl Engine {
         if name.contains('/') {
             bail!("Неверное имя файла")
         }
-        let path = format!("mods/{name}");
+        let path = format!("{}/{name}", folder.unwrap_or("mods"));
         let dest = crate::safe_join(stage, &path)?;
         let hash = file["hashes"]
             .as_array()
@@ -216,6 +271,13 @@ impl Engine {
                 .await
                 .is_ok()
             {
+                if folder.is_none() && name.ends_with(".zip") {
+                    if let Some(folder) = archive_content_folder(&dest) {
+                        let target = crate::safe_join(stage, &format!("{folder}/{name}"))?;
+                        tokio::fs::create_dir_all(target.parent().unwrap()).await?;
+                        tokio::fs::rename(&dest, target).await?;
+                    }
+                }
                 return Ok(None);
             }
             task.check()?;
@@ -250,7 +312,6 @@ impl Engine {
             .find(|f| f.path == file_path)
             .context("Файл не найден в списке ручной установки")?;
         validate_pack_path(&missing.path)?;
-        let dest = crate::safe_join(&self.instance(id)?, &missing.path)?;
         let stage = self
             .root
             .join("staging")
@@ -262,6 +323,17 @@ impl Engine {
             if !crate::net::verify(&temp, Some(("sha1", &missing.sha1))).await? {
                 bail!("Выбран другой файл. Скачайте указанную версию мода")
             }
+            let mut destination = missing.path.clone();
+            if let Some(name) = missing
+                .path
+                .strip_prefix("mods/")
+                .filter(|name| name.ends_with(".zip"))
+            {
+                if let Some(folder) = archive_content_folder(&temp) {
+                    destination = format!("{folder}/{name}");
+                }
+            }
+            let dest = crate::safe_join(&self.instance(id)?, &destination)?;
             tokio::fs::create_dir_all(dest.parent().unwrap()).await?;
             tokio::fs::rename(&temp, &dest).await?;
             let mut db = self.db.lock().await;
@@ -279,6 +351,63 @@ impl Engine {
         .await;
         let _ = tokio::fs::remove_dir_all(&stage).await;
         result
+    }
+
+    /// Only inspect completed files matching the requested names, directly in Downloads.
+    /// Every candidate is verified again by import_pack_manual_file before publication.
+    pub async fn scan_pack_downloads(
+        &self,
+        id: &str,
+        downloads: &Path,
+        remove_imported: bool,
+    ) -> Result<usize> {
+        let profile = self.profile(id).await?;
+        if profile.manual_downloads.is_empty() {
+            return Ok(0);
+        }
+        let mut entries = match tokio::fs::read_dir(downloads).await {
+            Ok(entries) => entries,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(0),
+            Err(error) => return Err(error.into()),
+        };
+        let mut candidates = vec![];
+        while let Some(entry) = entries.next_entry().await? {
+            if entry.file_type().await?.is_file() {
+                candidates.push(entry.path());
+            }
+        }
+        let mut imported = 0;
+        for missing in profile.manual_downloads {
+            let expected = missing.path.rsplit('/').next().context("Нет имени файла")?;
+            for source in &candidates {
+                if !source
+                    .file_name()
+                    .and_then(|s| s.to_str())
+                    .is_some_and(|name| download_name_matches(name, expected))
+                {
+                    continue;
+                }
+                if !crate::net::verify(source, Some(("sha1", &missing.sha1)))
+                    .await
+                    .unwrap_or(false)
+                {
+                    continue;
+                }
+                self.import_pack_manual_file(id, &missing.path, source)
+                    .await?;
+                imported += 1;
+                // Cleanup is optional and happens only after the file and database are saved.
+                if remove_imported
+                    && crate::net::verify(source, Some(("sha1", &missing.sha1)))
+                        .await
+                        .unwrap_or(false)
+                {
+                    let _ = tokio::fs::remove_file(source).await;
+                }
+                break;
+            }
+        }
+        Ok(imported)
     }
     pub async fn download_pack(
         &self,
@@ -591,6 +720,169 @@ mod tests {
         let profile = engine.profile(&id).await.unwrap();
         assert_eq!(profile.manual_downloads.len(), 1);
         assert_eq!(profile.manual_downloads[0].path, "mods/mod-3.jar");
+    }
+
+    #[tokio::test]
+    async fn curseforge_routes_project_types_and_inspects_unknown_archives() {
+        let (dir, task) = fixture();
+        let engine = Engine::new(dir.path().join("data"), |_| {}).await.unwrap();
+        let pack = dir.path().join("pack.zip");
+        archive(&pack);
+        let stage = engine.root.join("staging").join(&task.id).join("pack");
+        let shader = stage.join("mods/mod-3.zip");
+        std::fs::create_dir_all(shader.parent().unwrap()).unwrap();
+        let mut zip = zip::ZipWriter::new(std::fs::File::create(&shader).unwrap());
+        zip.start_file("shaders/test.fsh", zip::write::SimpleFileOptions::default())
+            .unwrap();
+        zip.write_all(b"shader source").unwrap();
+        zip.finish().unwrap();
+        let shader_hash = format!("{:x}", Sha1::digest(std::fs::read(&shader).unwrap()));
+        std::fs::create_dir_all(stage.join("shaderpacks")).unwrap();
+        std::fs::write(stage.join("shaderpacks/mod-2.zip"), b"correct mod").unwrap();
+        let id = engine
+            .import_pack_with(&pack, &task, |path| {
+                let shader_hash = shader_hash.clone();
+                async move {
+                    if path == "/mods/1" {
+                        return Ok(json!({"data":{"classId":12,"name":"Textures"}}));
+                    }
+                    if path == "/mods/2" {
+                        return Ok(json!({"data":{"classId":6552}}));
+                    }
+                    let mut raw = metadata(path.clone()).await?;
+                    if path.contains("/files/") {
+                        let project = raw["data"]["modId"].as_u64().unwrap();
+                        if project < 4 {
+                            raw["data"]["fileName"] = json!(format!("mod-{project}.zip"));
+                        }
+                        if project == 3 {
+                            raw["data"]["hashes"][0]["value"] = json!(shader_hash);
+                        }
+                    }
+                    Ok(raw)
+                }
+            })
+            .await
+            .unwrap();
+        let profile = engine.profile(&id).await.unwrap();
+        assert_eq!(profile.manual_downloads[0].path, "resourcepacks/mod-1.zip");
+        let game = engine.instance(&id).unwrap();
+        assert!(game.join("shaderpacks/mod-2.zip").exists());
+        assert!(game.join("shaderpacks/mod-3.zip").exists());
+        assert!(!game.join("mods/mod-2.zip").exists());
+        assert!(!game.join("mods/mod-3.zip").exists());
+        let resource = dir.path().join("textures.zip");
+        let mut zip = zip::ZipWriter::new(std::fs::File::create(&resource).unwrap());
+        zip.start_file("pack.mcmeta", zip::write::SimpleFileOptions::default())
+            .unwrap();
+        zip.write_all(b"{}").unwrap();
+        zip.finish().unwrap();
+        assert_eq!(archive_content_folder(&resource), Some("resourcepacks"));
+    }
+
+    #[tokio::test]
+    async fn manual_zip_is_routed_by_contents_when_project_metadata_is_unavailable() {
+        let (dir, task) = fixture();
+        let engine = Engine::new(dir.path().join("data"), |_| {}).await.unwrap();
+        let pack = dir.path().join("pack.zip");
+        archive(&pack);
+        prepare(&engine, &task).await;
+        let resource = dir.path().join("textures.zip");
+        let mut zip = zip::ZipWriter::new(std::fs::File::create(&resource).unwrap());
+        zip.start_file("pack.mcmeta", zip::write::SimpleFileOptions::default())
+            .unwrap();
+        zip.write_all(b"{}").unwrap();
+        zip.finish().unwrap();
+        let hash = format!("{:x}", Sha1::digest(std::fs::read(&resource).unwrap()));
+        let id = engine
+            .import_pack_with(&pack, &task, |path| {
+                let hash = hash.clone();
+                async move {
+                    if path == "/mods/1" {
+                        bail!("Project unavailable");
+                    }
+                    let mut raw = metadata(path.clone()).await?;
+                    if path == "/mods/1/files/11" {
+                        raw["data"]["fileName"] = json!("textures.zip");
+                        raw["data"]["hashes"][0]["value"] = json!(hash);
+                    }
+                    Ok(raw)
+                }
+            })
+            .await
+            .unwrap();
+        engine
+            .import_pack_manual_file(&id, "mods/textures.zip", &resource)
+            .await
+            .unwrap();
+        let game = engine.instance(&id).unwrap();
+        assert!(game.join("resourcepacks/textures.zip").exists());
+        assert!(!game.join("mods/textures.zip").exists());
+        assert!(!engine
+            .profile(&id)
+            .await
+            .unwrap()
+            .manual_downloads
+            .iter()
+            .any(|file| file.path == "mods/textures.zip"));
+    }
+
+    #[tokio::test]
+    async fn downloads_scan_checks_versions_ignores_partial_files_and_optionally_cleans_up() {
+        let (dir, task) = fixture();
+        let engine = Engine::new(dir.path().join("data"), |_| {}).await.unwrap();
+        let pack = dir.path().join("pack.zip");
+        archive(&pack);
+        prepare(&engine, &task).await;
+        let id = engine
+            .import_pack_with(&pack, &task, metadata)
+            .await
+            .unwrap();
+        let downloads = dir.path().join("Downloads");
+        std::fs::create_dir_all(&downloads).unwrap();
+        std::fs::write(downloads.join("mod-1.jar"), b"wrong version").unwrap();
+        std::fs::write(downloads.join("mod-1 (1).jar"), b"correct mod").unwrap();
+        std::fs::write(downloads.join("mod-3.jar.crdownload"), b"correct mod").unwrap();
+        std::fs::write(downloads.join("unrelated.jar"), b"correct mod").unwrap();
+        assert_eq!(
+            engine
+                .scan_pack_downloads(&id, &downloads, false)
+                .await
+                .unwrap(),
+            1
+        );
+        assert!(downloads.join("mod-1 (1).jar").exists());
+        assert_eq!(
+            engine
+                .scan_pack_downloads(&id, &downloads, false)
+                .await
+                .unwrap(),
+            0
+        );
+        std::fs::write(downloads.join("mod-3.jar"), b"correct mod").unwrap();
+        assert_eq!(
+            engine
+                .scan_pack_downloads(&id, &downloads, true)
+                .await
+                .unwrap(),
+            1
+        );
+        assert!(!downloads.join("mod-3.jar").exists());
+        assert!(downloads.join("mod-1.jar").exists());
+        assert!(downloads.join("mod-3.jar.crdownload").exists());
+        assert!(downloads.join("unrelated.jar").exists());
+        let engine = Engine::new(engine.root.clone(), |_| {}).await.unwrap();
+        assert!(engine
+            .profile(&id)
+            .await
+            .unwrap()
+            .manual_downloads
+            .is_empty());
+        assert!(engine
+            .instance(&id)
+            .unwrap()
+            .join("mods/mod-3.jar")
+            .exists());
     }
 
     #[tokio::test]

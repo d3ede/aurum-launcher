@@ -358,3 +358,17 @@ button.installed-project-name:hover {
     transition: none;
   }
 }
+.pack-download-cleanup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-block: 12px;
+  color: var(--secondary);
+  font-size: 12px;
+}
+.pack-download-cleanup input {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--gold);
+}

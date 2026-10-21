@@ -86,6 +86,7 @@ interface Contract {
   ];
   choosePackFile: [Empty, string | null];
   importPackManualFile: [{ id: string; path: string }, boolean];
+  scanPackDownloads: [{ id: string; removeImported: boolean }, number];
   skinLibrary: [Empty, SkinLibrary];
   importModrinthSkins: [{ directories: string[] }, ModrinthSkinImportResult];
   accountAppearance: [{ id: string }, AccountAppearance];

@@ -279,6 +279,7 @@ svg {
   border: 1px solid var(--border-strong);
 }
 .titlebar {
+  --content-gutter: 28px;
   grid-column: 1/-1;
   display: flex;
   align-items: center;
@@ -286,14 +287,14 @@ svg {
   background: var(--sidebar);
   border-bottom: 1px solid var(--border);
   user-select: none;
-  gap: 18px;
+  gap: var(--content-gutter);
 }
 .titlebar-brand {
   display: flex;
   gap: 10px;
   align-items: center;
   padding: 0 20px;
-  width: 213px;
+  width: 214px;
   height: 100%;
   flex-shrink: 0;
   background: none;
@@ -648,7 +649,7 @@ textarea {
   gap: 10px;
   justify-content: space-between;
   align-items: center;
-  padding: 0 16px 16px;
+  padding: 12px 16px 16px;
 }
 .instance-card-footer > span {
   color: var(--muted);
@@ -1786,10 +1787,10 @@ input[type="range"] {
     grid-template-columns: 196px minmax(0, 1fr);
   }
   .titlebar-brand {
-    width: 195px;
+    width: 196px;
   }
   .titlebar {
-    gap: 10px;
+    --content-gutter: 24px;
   }
   .header-search {
     width: auto;

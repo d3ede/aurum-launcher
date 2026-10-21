@@ -33,6 +33,11 @@
   max-width: none;
   padding: 20px 14px 28px 28px;
 }
+@media (max-width: 1000px) {
+  .page-content.home-page {
+    padding-inline-start: 24px;
+  }
+}
 .home-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 280px;
@@ -53,7 +58,7 @@
 }
 .home-primary .quick-launch {
   padding: 24px;
-  min-height: 205px;
+  min-height: 168px;
   gap: 18px;
 }
 .home-pattern {
@@ -374,7 +379,7 @@
     grid-template-columns: minmax(0, 1fr) 300px;
   }
   .home-primary .quick-launch {
-    min-height: 220px;
+    min-height: 176px;
   }
   .home-card-heading h2 {
     font-size: 17px;
@@ -413,7 +418,7 @@
   }
   .home-primary .quick-launch {
     flex-wrap: wrap;
-    min-height: 205px;
+    min-height: 168px;
     padding: 20px;
   }
   .home-primary .quick-launch-info {

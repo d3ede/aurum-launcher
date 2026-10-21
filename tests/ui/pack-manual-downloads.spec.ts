@@ -84,6 +84,15 @@ async function fixture(page: Page, language = "ru", theme = "dark") {
               );
             return true;
           }
+          if (action === "scanPackDownloads") {
+            if (!w.autoDownloadPath) return 0;
+            const files = state.profiles[0].manualDownloads;
+            state.profiles[0].manualDownloads = files.filter(
+              (f: any) => f.path !== w.autoDownloadPath,
+            );
+            w.autoDownloadPath = null;
+            return files.length - state.profiles[0].manualDownloads.length;
+          }
           if (action === "inspectContent")
             return { content: [], updates: [], warnings: [] };
           if (action === "content") return [];
@@ -224,4 +233,48 @@ test("cancelled picker and wrong versions retain the missing list", async ({
     }),
   ).toBeVisible();
   await expect(dialog.locator(".pack-missing-file")).toHaveCount(2);
+});
+
+test("downloads are detected while the dialog is open and cleanup is optional", async ({
+  page,
+}) => {
+  await fixture(page);
+  const dialog = page.getByRole("dialog", { name: "Нужна ручная установка" });
+  const cleanup = dialog.getByRole("checkbox");
+  await expect(cleanup).not.toBeChecked();
+  await page.evaluate(() => {
+    (window as any).autoDownloadPath = "mods/restricted-1.2.jar";
+  });
+  await expect(dialog.locator(".pack-missing-file")).toHaveCount(1);
+  await cleanup.check();
+  await expect(cleanup).toBeChecked();
+  await page.evaluate(() => {
+    (window as any).autoDownloadPath = "mods/failed-2.0.jar";
+  });
+  await expect(dialog).toContainText("Все недостающие файлы установлены");
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as any).requests
+            .filter((r: any) => r.action === "scanPackDownloads")
+            .at(-1)?.payload.removeImported,
+      ),
+    )
+    .toBe(true);
+  const scans = await page.evaluate(
+    () =>
+      (window as any).requests.filter(
+        (r: any) => r.action === "scanPackDownloads",
+      ).length,
+  );
+  await page.waitForTimeout(2200);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as any).requests.filter(
+          (r: any) => r.action === "scanPackDownloads",
+        ).length,
+    ),
+  ).toBe(scans);
 });

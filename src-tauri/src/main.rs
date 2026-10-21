@@ -378,6 +378,14 @@ async fn rpc(
             }
             Ok(json!(false))
         }
+        "scanPackDownloads" => Ok(json!(e
+            .scan_pack_downloads(
+                &param::<String>(&payload, "id")?,
+                &app.path().download_dir().map_err(err)?,
+                payload["removeImported"].as_bool().unwrap_or(false),
+            )
+            .await
+            .map_err(err)?)),
         "packRequirements" => Ok(json!(e
             .pack_requirements(
                 &param::<String>(&payload, "source")?,
