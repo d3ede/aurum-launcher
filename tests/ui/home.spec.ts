@@ -152,7 +152,7 @@ test("home has account and factual release panels, working actions and both them
     page.getByRole("heading", { name: "Недавние сборки" }),
   ).toHaveCount(0);
   await expect(page.locator(".home-account-card")).toContainText("CozyPlayer");
-  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.4.5");
+  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.4.6");
   await expect(page.locator(".home-news-card")).toContainText(
     "Головы из скинов",
   );
@@ -191,8 +191,8 @@ test("home has account and factual release panels, working actions and both them
   await page
     .getByRole("button", { name: "Все изменения", exact: true })
     .click();
-  const notes = page.getByRole("dialog", { name: "Изменения Aurum 0.4.5" });
-  await expect(notes).toContainText("В Aurum 0.4.5:");
+  const notes = page.getByRole("dialog", { name: "Изменения Aurum 0.4.6" });
+  await expect(notes).toContainText("В Aurum 0.4.6:");
   await expect(notes).toContainText("локальный хостинг");
   await expect(notes).not.toContainText("В разработке:");
   await expect(notes).toContainText(
@@ -284,7 +284,7 @@ test("home adapts to minimum window size and translates the new panels", async (
   await expect(
     page.getByRole("heading", { name: "What's new", exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.4.5");
+  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.4.6");
   await expect(page.locator(".home-news-card")).toContainText("Skin heads");
   await expect(page.locator(".home-news-card")).toContainText(
     "Microsoft window",
@@ -312,8 +312,8 @@ test("home adapts to minimum window size and translates the new panels", async (
     animations: "disabled",
   });
   await page.getByRole("button", { name: "All changes", exact: true }).click();
-  const notes = page.getByRole("dialog", { name: "Aurum 0.4.5 changes" });
-  await expect(notes).toContainText("In Aurum 0.4.5:");
+  const notes = page.getByRole("dialog", { name: "Aurum 0.4.6 changes" });
+  await expect(notes).toContainText("In Aurum 0.4.6:");
   await expect(notes).toContainText("local hosting");
   await expect(notes).not.toContainText("In development:");
   await expect(notes).toContainText("fixes Microsoft session saving failures");

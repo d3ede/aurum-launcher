@@ -41,7 +41,7 @@ An independent Windows launcher with a warm light theme and a graphite dark them
 Technic modpacks from the project-source dropdown, without a service login.
 See [modpack catalogs](docs/MODPACK-CATALOGS.md) for supported formats and verification limits.
 
-**New in 0.4.5:** compact horizontal instance cards, card action menus, animated dragging and locally bundled language icons. Read the [release notes](docs/releases/v0.4.5.md).
+**New in 0.4.6:** corrected CurseForge content folders, checksum-verified imports from Downloads and a tidier Home quick launch without duplicate instances. Read the [release notes](docs/releases/v0.4.6.md).
 
 Hosting is local, not a hosted service; keep Aurum open while its servers run. Launch caching reduces repeated preparation work, not Minecraft or mod initialization time.
 
