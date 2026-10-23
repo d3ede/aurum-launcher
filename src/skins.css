@@ -434,3 +434,13 @@
     margin-top: 12px;
   }
 }
+
+.page-content:has(> .wardrobe-layout) {
+  position: relative;
+}
+.wardrobe-initial-state {
+  position: absolute;
+  inset-block-start: 130px;
+  inset-inline: 24px;
+  z-index: 1;
+}

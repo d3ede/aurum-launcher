@@ -138,7 +138,7 @@ test("skin heads share requests, compose the hat layer and refresh across accoun
     32, 112, 224, 255,
   ]);
   await page
-    .getByRole("button", { name: "Аккаунты и скины", exact: true })
+    .getByRole("button", { name: "Профили", exact: true })
     .click();
   await expect(
     page.locator(".account-avatar canvas[data-head-ready=true]"),

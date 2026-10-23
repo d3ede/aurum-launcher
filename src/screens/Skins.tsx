@@ -25,7 +25,7 @@ import {
 import { skinThumbnail } from "../lib/skinThumbnails";
 import { SkinPreview, type SkinMotion } from "../components/SkinPreview";
 import { Select } from "../components/Select";
-import { ErrorBox, Field, Modal } from "../components/ui";
+import { ErrorBox, Field, Loading, Modal } from "../components/ui";
 import type {
   SavedSkin,
   SavedCape,
@@ -35,6 +35,17 @@ import type {
 } from "../types";
 
 const emptyLibrary: SkinLibrary = { skins: [], capes: [], selections: {} };
+// Per-account in-memory cache: survives navigation, never stores account credentials.
+const skinPageCache = new Map<
+  string,
+  {
+    library: SkinLibrary;
+    appearance: AccountAppearance | null;
+    chosen: string;
+    capeId: string | null;
+  }
+>();
+
 const motions: { value: SkinMotion; label: string }[] = [
   { value: "idle", label: "Ожидание" },
   { value: "still", label: "Без анимации" },
@@ -156,10 +167,22 @@ export function Skins() {
     data.selectedAccount || data.accounts[0]?.id || "",
   );
   const account = data.accounts.find((a) => a.id === accountId);
-  const [library, setLibrary] = useState<SkinLibrary>(emptyLibrary);
-  const [appearance, setAppearance] = useState<AccountAppearance | null>(null);
-  const [chosen, setChosen] = useState("");
-  const [capeId, setCapeId] = useState<string | null>(null);
+  const cached = skinPageCache.get(accountId);
+  const [library, setLibrary] = useState<SkinLibrary>(
+    () => cached?.library || emptyLibrary,
+  );
+  const [appearance, setAppearance] = useState<AccountAppearance | null>(
+    () => cached?.appearance || null,
+  );
+  const [chosen, setChosen] = useState(() => cached?.chosen || "");
+  const [capeId, setCapeId] = useState<string | null>(
+    () => cached?.capeId || null,
+  );
+  const [loadedAccount, setLoadedAccount] = useState<string | null>(() =>
+    !native || cached ? accountId : null,
+  );
+  const [revealedAccount, setRevealedAccount] = useState<string | null>(null);
+  const [decodedSkin, setDecodedSkin] = useState("");
   const [motion, setMotion] = useState<SkinMotion>("idle");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [error, setError] = useState("");
@@ -180,9 +203,12 @@ export function Skins() {
     let live = true;
     setError("");
     setProfileError("");
-    setAppearance(null);
-    setChosen("");
-    setCapeId(null);
+    const previous = skinPageCache.get(accountId);
+    setAppearance(previous?.appearance || null);
+    setLibrary(previous?.library || emptyLibrary);
+    setChosen(previous?.chosen || "");
+    setCapeId(previous?.capeId || null);
+    setLoadedAccount(!native || previous ? accountId : null);
     if (!native) {
       setLibrary(emptyLibrary);
       return;
@@ -199,7 +225,16 @@ export function Skins() {
         if (lib.status === "fulfilled") {
           setLibrary(lib.value);
           const selected = lib.value.selections[accountId];
-          if (selected) {
+          const remembered = previous?.chosen;
+          const rememberedExists =
+            remembered === "current" ||
+            [...lib.value.skins, ...defaultSkins].some(
+              (s) => s.id === remembered,
+            );
+          if (remembered && rememberedExists) {
+            setChosen(remembered);
+            setCapeId(previous.capeId);
+          } else if (selected) {
             setChosen(selected.skinId);
             setCapeId(selected.capeId);
           }
@@ -209,6 +244,22 @@ export function Skins() {
               ? lib.reason.message
               : String(lib.reason),
           );
+        const selectedId =
+          lib.status === "fulfilled"
+            ? lib.value.selections[accountId]?.skinId
+            : null;
+        const selectedExists =
+          lib.status === "fulfilled" &&
+          [...lib.value.skins, ...defaultSkins].some(
+            (s) => s.id === selectedId,
+          );
+        if (
+          result.status === "fulfilled" ||
+          previous ||
+          selectedExists ||
+          !accountId
+        )
+          setLoadedAccount(accountId);
         if (result.status === "fulfilled") {
           setAppearance(result.value);
           if (lib.status === "fulfilled" && !lib.value.selections[accountId])
@@ -240,6 +291,26 @@ export function Skins() {
     (appearance?.texture ? current : defaultSkins[0]);
   const capes = [...(appearance?.capes || []), ...library.capes];
   const selectedCape = capes.find((c) => c.id === capeId);
+  const canPreview = loadedAccount === accountId;
+  const previewKey = JSON.stringify([accountId, skin.texture, skin.model]);
+  const reveal = canPreview && revealedAccount === accountId;
+  useEffect(() => {
+    if (!native || !canPreview || decodedSkin !== previewKey) return;
+    skinPageCache.delete(accountId);
+    skinPageCache.set(accountId, { library, appearance, chosen, capeId });
+    if (skinPageCache.size > 16)
+      skinPageCache.delete(skinPageCache.keys().next().value!);
+  }, [
+    accountId,
+    library,
+    appearance,
+    chosen,
+    capeId,
+    canPreview,
+    decodedSkin,
+    previewKey,
+  ]);
+
   const activeKey = library.selections[accountId]?.skinId;
   const choose = (s: SavedSkin) => {
     setChosen(s.id);
@@ -393,7 +464,31 @@ export function Skins() {
           </button>
         </div>
       </div>
-      <div className="wardrobe-layout">
+      {!reveal && (
+        <div className="wardrobe-initial-state">
+          {profileError || error ? (
+            <ErrorBox
+              error={profileError || error}
+              retry={() => setReload((n) => n + 1)}
+            />
+          ) : (
+            <Loading label={t("Получаем образ Minecraft…")} />
+          )}
+        </div>
+      )}
+      <div
+        className="wardrobe-layout"
+        style={
+          reveal
+            ? undefined
+            : {
+                visibility: "hidden",
+                pointerEvents: "none",
+              }
+        }
+        aria-hidden={!reveal}
+        inert={!reveal}
+      >
         <section className="wardrobe-character">
           <div className="wardrobe-account">
             <span>{t("Аккаунт для образа")}</span>
@@ -417,12 +512,20 @@ export function Skins() {
               </button>
             )}
           </div>
-          <SkinPreview
-            texture={skin.texture}
-            model={skin.model}
-            cape={selectedCape?.texture}
-            motion={motion}
-          />
+          {canPreview && (
+            <SkinPreview
+              key={`${accountId}:${reload}`}
+              texture={skin.texture}
+              model={skin.model}
+              cape={selectedCape?.texture}
+              motion={motion}
+              onReady={() => {
+                setDecodedSkin(previewKey);
+                setRevealedAccount(accountId);
+              }}
+              onError={setProfileError}
+            />
+          )}
           <Field label={t("Анимация")}>
             <Select
               aria-label={t("Анимация персонажа")}

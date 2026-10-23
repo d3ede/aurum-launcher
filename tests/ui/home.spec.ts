@@ -238,7 +238,7 @@ test("home has account and factual release panels, working actions and both them
     .getByRole("button", { name: "Управление аккаунтом", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Аккаунты и скины", exact: true }),
+    page.getByRole("heading", { name: "Профили", exact: true }),
   ).toBeVisible();
 });
 

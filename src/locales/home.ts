@@ -1,4 +1,5 @@
 export const homeEnglish: Record<string, string> = {
+  Профили: "Profiles",
   "Импорт и быстрый запуск": "Imports and quick launch",
   "Быстрый запуск без дублей, ресурспаки и шейдеры в своих папках.":
     "Quick launch without duplicates, resource packs and shaders in their own folders.",

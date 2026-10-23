@@ -53,7 +53,7 @@ async function fixture(page: Page, mode: "waiting" | "error" = "waiting", theme 
     };
   }, { mode, theme });
   await page.goto("/");
-  await page.getByRole("button", { name: "Аккаунты и скины", exact: true }).click();
+  await page.getByRole("button", { name: "Профили", exact: true }).click();
   await expect(page.getByRole("button", { name: "Войти с Microsoft", exact: true })).toBeVisible();
 }
 

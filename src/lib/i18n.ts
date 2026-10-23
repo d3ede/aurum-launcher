@@ -15,7 +15,10 @@ import {
 import { updaterEnglish, updaterRussian } from "../locales/updater";
 import { catalogEnglish, catalogRussian } from "../locales/catalog";
 import { homeEnglish, homeRussian } from "../locales/home";
-import { profileOrderEnglish, profileOrderRussian } from "../locales/profile-order";
+import {
+  profileOrderEnglish,
+  profileOrderRussian,
+} from "../locales/profile-order";
 import { hostingEnglish, hostingRussian } from "../locales/hosting";
 import {
   contentManagerEnglish,
@@ -197,7 +200,7 @@ export const ru = {
       home: "Главная",
       profiles: "Мои сборки",
       catalog: "Каталог проектов",
-      accounts: "Аккаунты и скины",
+      accounts: "Профили",
       skins: "Скины и плащи",
       hosting: "Хостинг",
       settings: "Настройки",

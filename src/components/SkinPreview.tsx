@@ -29,6 +29,8 @@ export function SkinPreview({
   cape,
   motion = "idle",
   className = "",
+  onReady,
+  onError,
 }: {
   bytes?: number[];
   texture?: string;
@@ -36,10 +38,14 @@ export function SkinPreview({
   cape?: string | null;
   motion?: SkinMotion;
   className?: string;
+  onReady?: () => void;
+  onError?: (message: string) => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const viewer = useRef<SkinViewer | null>(null);
+  const callbacks = useRef({ onReady, onError });
+  callbacks.current = { onReady, onError };
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
   const reset = () => {
@@ -122,7 +128,9 @@ export function SkinPreview({
       observer.observe(stage.current!);
       reset();
     } catch (e) {
-      setError(t("3D-превью недоступно: {{v1}}", { v1: String(e) }));
+      const message = t("3D-превью недоступно: {{v1}}", { v1: String(e) });
+      setError(message);
+      callbacks.current.onError?.(message);
     }
     return () => {
       observer?.disconnect();
@@ -156,18 +164,22 @@ export function SkinPreview({
           ? alex
           : steve);
     const image = new Image();
+    const failed = (message: string) => {
+      if (!live) return;
+      setError(message);
+      callbacks.current.onError?.(message);
+    };
     image.onload = () => {
       if (!live) return;
       try {
         v.loadSkin(image, { model: model === "alex" ? "slim" : "default" });
         setReady(true);
+        callbacks.current.onReady?.();
       } catch (e) {
-        setError(String(e));
+        failed(String(e));
       }
     };
-    image.onerror = () => {
-      if (live) setError(t("Не удалось загрузить текстуру скина"));
-    };
+    image.onerror = () => failed(t("Не удалось загрузить текстуру скина"));
     image.src = src;
     return () => {
       live = false;

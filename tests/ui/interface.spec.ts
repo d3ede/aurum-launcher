@@ -35,7 +35,7 @@ test("honest browser state, navigation and persistent appearance", async ({
   ).toBeVisible();
   await expect(page.locator(".catalog-card")).toHaveCount(0);
   await page
-    .getByRole("button", { name: "Аккаунты и скины", exact: true })
+    .getByRole("button", { name: "Профили", exact: true })
     .click();
   await expect(
     page.getByRole("heading", { name: "Нет аккаунтов" }),
