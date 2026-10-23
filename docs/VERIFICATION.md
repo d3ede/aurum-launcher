@@ -423,3 +423,15 @@ The public `releases/latest/download/` URLs were downloaded and checked against 
 Public installer size: 8,282,767 bytes. SHA256: `565b8f8673e202892941981deb7518873c3667525fcf94e32719dbd4d05dc67e`.
 
 The public installer was not executed during this publication check. The installed launcher, real server processes and user game data were not changed. The ignored local `Aurum-Launcher-Setup.exe` copy contains the verified public installer. This record is a subsequent documentation-only commit.
+
+## Public release 0.5.0 — October 23, 2026
+
+Release [v0.5.0](https://github.com/d3ede/aurum-launcher/releases/tag/v0.5.0) is published as the latest stable release from source commit `c975eb3a0090187dbdb975f0f3f619d1d12f9bc3`. The [Windows release workflow](https://github.com/d3ede/aurum-launcher/actions/runs/39993737949) passed frontend/native checks, all 116 UI scenarios, the signed installer build and installer regression checks before publishing all four update assets. The separate Cloudflare Worker checks also passed.
+
+This release enables CurseForge without personal API keys, optional combined catalog search with source badges, cached skin previews, versioned changelog sections and interface refinements. The application versions, lockfiles and release notes are consistent at 0.5.0.
+
+The public `releases/latest/download/` files were downloaded and verified against `SHA256SUMS.txt`; the installer digest also matches GitHub's published asset digest. The manifest reports 0.5.0, uses its immutable version-specific installer URL and matches the detached signature. Independent Ed25519/minisign verification passed for both the installer and its version-bound trusted comment against the production updater public key. The downloaded installer reports product and file version 0.5.0.
+
+Public installer size: 8,307,252 bytes. SHA256: `82f9a83b88edb2175b2d2f662adf9034f0b93256e847acc5f3e9f6d13b6311ba`.
+
+The installer was not executed during publication verification. The version tag remains on the application source; this verification record follows it as a documentation-only commit.
