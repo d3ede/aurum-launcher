@@ -1,4 +1,18 @@
 export const homeEnglish: Record<string, string> = {
+  "CurseForge и общий поиск": "CurseForge and combined search",
+  "CurseForge работает без личного API-ключа: поиск, установка и обновления доступны сразу.":
+    "CurseForge works without a personal API key: search, installation and updates are available immediately.",
+  "Режим «Все источники» ищет одновременно на нескольких площадках; значок на обложке показывает источник проекта.":
+    "All sources searches multiple platforms together; the logo on the cover identifies the project's source.",
+  "Если одна площадка недоступна, результаты остальных остаются видны.":
+    "If one platform is unavailable, results from the others remain visible.",
+  "Скины и интерфейс": "Skins and interface",
+  "Последний загруженный скин сохраняется при переходах; до первой загрузки показывается ожидание вместо временного персонажа.":
+    "The last loaded skin is remembered across navigation; the first visit waits for loading instead of showing a temporary character.",
+  "История изменений разделена по версиям, а «Что нового» показывает последние выпуски.":
+    "The changelog is organized by version, and What's new shows recent releases.",
+  "Раздел аккаунтов переименован в «Профили», обновлено оформление карточек сборок и кнопок запуска.":
+    "The account section is now Profiles, with refreshed instance cards and Play buttons.",
   Профили: "Profiles",
   "Импорт и быстрый запуск": "Imports and quick launch",
   "Быстрый запуск без дублей, ресурспаки и шейдеры в своих папках.":

@@ -152,7 +152,7 @@ test("home has account and factual release panels, working actions and both them
     page.getByRole("heading", { name: "Недавние сборки" }),
   ).toHaveCount(0);
   await expect(page.locator(".home-account-card")).toContainText("CozyPlayer");
-  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.4.6");
+  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.5.0");
   await expect(page.locator(".home-news-version")).toHaveCount(3);
   await expect(page.locator(".home-news-card")).toContainText("Aurum 0.4.5");
   await expect(page.locator(".home-news-card")).not.toContainText(
@@ -190,13 +190,13 @@ test("home has account and factual release panels, working actions and both them
     .getByRole("button", { name: "Все изменения", exact: true })
     .click();
   const notes = page.getByRole("dialog", { name: "История версий" });
-  await expect(notes.locator(".release-section")).toHaveCount(11);
+  await expect(notes.locator(".release-section")).toHaveCount(12);
   await expect(notes.locator(".release-section[open]")).toHaveCount(1);
   await expect(notes.locator(".release-section[open]")).toContainText(
-    "Aurum 0.4.6",
+    "Aurum 0.5.0",
   );
   await expect(notes.locator(".release-section[open]")).toContainText(
-    "Импорт CurseForge",
+    "Каталог проектов",
   );
   await expect(notes).not.toContainText("В этой сборке:");
   await notes.locator("summary").filter({ hasText: "Aurum 0.4.3" }).click();
@@ -291,7 +291,7 @@ test("home adapts to minimum window size and translates the new panels", async (
   await expect(
     page.getByRole("heading", { name: "What's new", exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.4.6");
+  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.5.0");
   await expect(page.locator(".home-news-version")).toHaveCount(3);
   await expect(page.locator(".home-news-card")).toContainText(
     "Quick launch and imports",
@@ -319,7 +319,7 @@ test("home adapts to minimum window size and translates the new panels", async (
   const notes = page.getByRole("dialog", { name: "Version history" });
   await expect(notes.locator(".release-section[open]")).toHaveCount(1);
   await expect(notes.locator(".release-section[open]")).toContainText(
-    "CurseForge imports",
+    "CurseForge and combined search",
   );
   await expect(notes).not.toContainText("In this build:");
   await notes.screenshot({
