@@ -3,20 +3,9 @@ use anyhow::{bail, Context, Result};
 use serde_json::{json, Value};
 
 pub const MODRINTH: &str = "https://api.modrinth.com/v2";
-pub const CURSEFORGE: &str = "https://api.curseforge.com/v1";
 impl Engine {
     pub async fn cf(&self, path: &str) -> Result<Value> {
-        let key = crate::auth::secret("curseforge")
-            .context("Для CurseForge нужен API-ключ. Добавьте его в настройках")?;
-        Ok(self
-            .http
-            .get(format!("{CURSEFORGE}{path}"))
-            .header("x-api-key", key)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?)
+        self.curseforge_request(path).await
     }
     pub async fn search(&self, query: Search) -> Result<SearchResult> {
         if crate::pack_catalog::is_pack_source(&query.source) {
@@ -76,7 +65,7 @@ impl Engine {
                 _ => bail!("Неизвестная сортировка"),
             };
             let class = class_id(&query.kind)?;
-            let mut url = reqwest::Url::parse(&format!("{CURSEFORGE}/mods/search"))?;
+            let mut url = crate::aurum_api::curseforge_url("/mods/search")?;
             {
                 let mut p = url.query_pairs_mut();
                 p.append_pair("gameId", "432")
@@ -98,16 +87,8 @@ impl Engine {
                     }
                 }
             }
-            let key = crate::auth::secret("curseforge")
-                .context("Добавьте API-ключ CurseForge в настройках")?;
-            let result: Value = self
-                .http
-                .get(url)
-                .header("x-api-key", key)
-                .send()
-                .await?
-                .error_for_status()?
-                .json()
+            let result = self
+                .cf(&format!("/mods/search?{}", url.query().unwrap_or("")))
                 .await?;
             Ok(SearchResult {
                 total: result["pagination"]["totalCount"].as_u64().unwrap_or(0),
@@ -243,7 +224,7 @@ impl Engine {
         mc: Option<&str>,
         loader: Option<&str>,
     ) -> Result<Vec<Value>> {
-        let mut url = reqwest::Url::parse(&format!("{CURSEFORGE}/mods/{id}/files"))?;
+        let mut url = crate::aurum_api::curseforge_url(&format!("/mods/{id}/files"))?;
         {
             let mut p = url.query_pairs_mut();
             p.append_pair("pageSize", "50");

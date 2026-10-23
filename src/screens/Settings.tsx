@@ -10,9 +10,7 @@ import {
   FolderOpen,
   Cpu,
   Coffee,
-  KeyRound,
   Check,
-  ExternalLink,
   Save,
 } from "lucide-react";
 import { useApp } from "../context";
@@ -22,7 +20,6 @@ import type { Settings as SettingsType } from "../types";
 export function Settings() {
   const { data, run, operation, busy, notify } = useApp();
   const [draft, setDraft] = useState(data.settings);
-  const [key, setKey] = useState("");
   const [javaStatus, setJavaStatus] = useState("");
   const [newPath, setNewPath] = useState("");
   const set = <K extends keyof SettingsType>(k: K, v: SettingsType[K]) =>
@@ -306,83 +303,6 @@ export function Settings() {
               </small>
             </div>
           </label>
-        </section>
-        <section className="settings-section">
-          <div className="settings-title">
-            <span>
-              <KeyRound size={21} />
-            </span>
-            <div>
-              <h2>{t("Интеграции")}</h2>
-              <p>{t("Секреты хранятся в хранилище учётных данных ОС")}</p>
-            </div>
-          </div>
-          <Field
-            label={t("CurseForge API-ключ{{v1}}", {
-              v1: data.curseforgeConfigured ? t(" \u00B7 подключён") : "",
-            })}
-            hint={t(
-              "Официальный ключ для стороннего приложения. Значение не сохраняется в конфигурации и не возвращается интерфейсу.",
-            )}
-          >
-            <div className="input-action">
-              <input
-                type="password"
-                autoComplete="new-password"
-                value={key}
-                onChange={(e) => setKey(e.target.value)}
-                placeholder={
-                  data.curseforgeConfigured
-                    ? t("Ключ сохранён в хранилище ОС")
-                    : t("Вставьте API-ключ")
-                }
-              />
-              <button
-                type="button"
-                className="button secondary"
-                disabled={busy || !key.trim()}
-                onClick={async () => {
-                  const ok = await run(async () => {
-                    await rpc("setCurseforgeKey", { key });
-                    return true;
-                  }, t("Ключ сохранён"));
-                  if (ok) setKey("");
-                }}
-              >
-                {t("Сохранить ключ")}
-              </button>
-            </div>
-          </Field>
-          <div className="button-row">
-            <button
-              type="button"
-              className="text-button"
-              onClick={() =>
-                void run(() =>
-                  rpc("openUrl", {
-                    url: "https://docs.curseforge.com/rest-api/",
-                  }),
-                )
-              }
-            >
-              {t("Получить ключ ")}
-              <ExternalLink size={14} />
-            </button>
-            {data.curseforgeConfigured && (
-              <button
-                type="button"
-                className="text-button danger"
-                onClick={() =>
-                  void run(
-                    () => rpc("setCurseforgeKey", { key: "" }),
-                    t("CurseForge отключён"),
-                  )
-                }
-              >
-                {t("Удалить ключ")}
-              </button>
-            )}
-          </div>
         </section>
         <div className="settings-save">
           <span>

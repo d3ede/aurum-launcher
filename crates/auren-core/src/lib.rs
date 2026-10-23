@@ -1,3 +1,4 @@
+mod aurum_api;
 pub mod auth;
 pub mod catalog;
 pub mod content;
@@ -38,6 +39,7 @@ use tokio::sync::Mutex;
 pub struct Engine {
     pub root: PathBuf,
     pub http: reqwest::Client,
+    pub(crate) aurum_api_status: Arc<Mutex<aurum_api::ApiStatus>>,
     pub db: Arc<Mutex<Database>>,
     pub(crate) instance_directories: Arc<RwLock<HashMap<String, String>>>,
     pub busy: Arc<Mutex<()>>,
@@ -113,6 +115,7 @@ impl Engine {
         let engine = Self {
             root,
             http,
+            aurum_api_status: Arc::new(Mutex::new(aurum_api::ApiStatus::default())),
             instance_directories: Arc::new(RwLock::new(db.instance_directories.clone())),
             db: Arc::new(Mutex::new(db)),
             busy: Arc::new(Mutex::new(())),
@@ -137,7 +140,7 @@ impl Engine {
             database: self.db.lock().await.clone(),
             data_dir: self.root.to_string_lossy().into(),
             running: self.running.lock().await.keys().cloned().collect(),
-            curseforge_configured: auth::secret("curseforge").is_ok(),
+            curseforge_configured: self.aurum_curseforge_available().await,
             server_manager: true,
             hosting_support: true,
             hosting_running: self.hosting_running(),

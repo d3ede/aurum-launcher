@@ -1,0 +1,3 @@
+# Copy to .dev.vars for local development only.
+# Enable only after obtaining an approved project key for this use.
+CURSEFORGE_API_KEY=

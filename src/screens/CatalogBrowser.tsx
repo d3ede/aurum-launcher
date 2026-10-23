@@ -104,7 +104,7 @@ export function Catalog({
     setCategory("");
     setCategories([]);
     setFilterError("");
-    if (!native || source === "curseforge" || packsOnly) return;
+    if (!native || packsOnly) return;
     let live = true;
     rpc("catalogCategories", { source, kind })
       .then((v) => {
@@ -127,7 +127,7 @@ export function Catalog({
   const effectiveLoader =
     kind === "mod" ? (bound ? profile.loader : loader) : "";
   useEffect(() => {
-    if (!native || needsLoader || source === "curseforge") return;
+    if (!native || needsLoader) return;
     let live = true;
     setLoading(true);
     const timer = setTimeout(() => {
@@ -351,15 +351,7 @@ export function Catalog({
               </button>
             </div>
           </div>
-          {source === "curseforge" ? (
-            <EmptyState
-              icon={<CatalogSourceLogo source="curseforge" size={34} />}
-              title={t("Ожидается в скором времени")}
-              text={t(
-                "Каталог CurseForge появится в одном из следующих обновлений.",
-              )}
-            />
-          ) : !native ? (
+          {!native ? (
             <EmptyState
               icon={<Compass size={30} />}
               title={t("Каталог ждёт в desktop-приложении")}
@@ -399,7 +391,9 @@ export function Catalog({
                 {results.map((project) => {
                   const installed = bound
                     ? profile.content.find(
-                        (c) => c.source === project.source && c.projectId === project.id,
+                        (c) =>
+                          c.source === project.source &&
+                          c.projectId === project.id,
                       )
                     : undefined;
                   const action =
@@ -407,7 +401,9 @@ export function Catalog({
                     pending.source === project.source &&
                     pending.profileId === profile?.id
                       ? pending.action
-                      : installed ? "installed" : "available";
+                      : installed
+                        ? "installed"
+                        : "available";
                   return (
                     <article
                       className="catalog-result"
@@ -422,7 +418,9 @@ export function Catalog({
                           <div className="catalog-project-heading">
                             <h3>{project.title}</h3>
                             {project.author && (
-                              <span>{t("от {{author}}", { author: project.author })}</span>
+                              <span>
+                                {t("от {{author}}", { author: project.author })}
+                              </span>
                             )}
                           </div>
                           <p>{project.description}</p>
@@ -437,10 +435,13 @@ export function Catalog({
                       <CatalogInstallButton
                         state={action}
                         title={project.title}
-                        disabled={busy || (bound && data.running.includes(profile.id))}
+                        disabled={
+                          busy || (bound && data.running.includes(profile.id))
+                        }
                         onClick={() => {
                           if (!bound) onProject(project);
-                          else if (installed) void remove(project, installed.id);
+                          else if (installed)
+                            void remove(project, installed.id);
                           else void install(project);
                         }}
                       />

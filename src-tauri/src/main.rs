@@ -213,15 +213,6 @@ async fn rpc(
                 .map_err(err)?;
             Ok(Value::Null)
         }
-        "setCurseforgeKey" => {
-            let key = param::<String>(&payload, "key")?;
-            if key.is_empty() {
-                let _ = auren_core::auth::delete_secret("curseforge");
-            } else {
-                auren_core::auth::set_secret("curseforge", &key).map_err(err)?
-            }
-            Ok(Value::Null)
-        }
         "addOffline" => Ok(json!(e
             .add_offline(param(&payload, "name")?)
             .await

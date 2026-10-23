@@ -53,6 +53,11 @@ test("honest browser state, navigation and persistent appearance", async ({
   await expect(
     page.getByRole("heading", { name: "Внешний вид" }),
   ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Aurum API" })).toHaveCount(0);
+  await expect(page.locator('input[type="password"]')).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Сохранить ключ", exact: true }),
+  ).toHaveCount(0);
   await page.getByRole("button", { name: "Тёплый свет" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.screenshot({

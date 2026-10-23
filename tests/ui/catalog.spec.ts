@@ -102,7 +102,10 @@ async function fixture(
             });
             const profile = profiles.find((p) => p.id === payload.id)!;
             if (action === "installContent")
-              profile.content.push(content(payload.projectId));
+              profile.content.push({
+                ...content(payload.projectId),
+                source: payload.source,
+              });
             else
               profile.content = profile.content.filter(
                 (c) => c.id !== payload.contentId,
@@ -113,7 +116,15 @@ async function fixture(
             state.settings = payload.settings;
             return null;
           }
-          if (action === "search") return { projects, total: 9 };
+          if (action === "search")
+            return {
+              projects: projects.map((p) => ({
+                ...p,
+                source: payload.query.source,
+                kind: payload.query.kind,
+              })),
+              total: 9,
+            };
           if (action === "versions")
             return {
               latest: { release: "1.21.1" },
@@ -127,8 +138,13 @@ async function fixture(
             ];
           if (action === "project")
             return {
-              project: projects.find((p) => p.id === payload.id) || projects[0],
-              body: w.projectBody ?? '<center><img src="https://media.example.test/description.svg" width="600" alt="Description screenshot" onerror="window.mediaUnsafe=true" /></center><script>window.mediaUnsafe=true</script>\n\n# Details\n\nNormal **Markdown** with HTML images.\n\n| Name | Value |\n| --- | --- |\n| Test | 1 |',
+              project: {
+                ...(projects.find((p) => p.id === payload.id) || projects[0]),
+                source: payload.source,
+              },
+              body:
+                w.projectBody ??
+                '<center><img src="https://media.example.test/description.svg" width="600" alt="Description screenshot" onerror="window.mediaUnsafe=true" /></center><script>window.mediaUnsafe=true</script>\n\n# Details\n\nNormal **Markdown** with HTML images.\n\n| Name | Value |\n| --- | --- |\n| Test | 1 |',
               gallery: [
                 "https://media.example.test/first.svg",
                 "https://media.example.test/second.svg",
@@ -242,7 +258,7 @@ test("list/grid persist, adapt beside filters and preserve dropdown pointer/togg
   });
 });
 
-test("source has original logos, animated options and localized coming-soon spacing", async ({
+test("source has original logos, animated options and an active CurseForge catalog", async ({
   page,
 }) => {
   await fixture(page);
@@ -340,12 +356,10 @@ test("source has original logos, animated options and localized coming-soon spac
     expect(rows.every((row) => row.width === 24 && row.height === 24)).toBe(
       true,
     );
-    await page
-      .getByRole("listbox")
-      .screenshot({
-        path: `target/branding-icons/source-menu-${theme}.png`,
-        animations: "disabled",
-      });
+    await page.getByRole("listbox").screenshot({
+      path: `target/branding-icons/source-menu-${theme}.png`,
+      animations: "disabled",
+    });
   }
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Переключить тему" }).click();
@@ -368,23 +382,33 @@ test("source has original logos, animated options and localized coming-soon spac
   await page.getByRole("button", { name: "Переключить тему" }).click();
   await checkSourceAlignment();
   await page.getByRole("button", { name: "Переключить тему" }).click();
+  await expect(page.locator(".catalog-result")).toHaveCount(9);
   await expect(
     page.getByRole("heading", { name: "Ожидается в скором времени" }),
-  ).toBeVisible();
-  const toolbar = await page.locator(".catalog-results-toolbar").boundingBox();
-  const empty = await page
-    .locator(".catalog-results > .empty-state")
-    .boundingBox();
-  expect(empty!.y - toolbar!.y - toolbar!.height).toBeGreaterThanOrEqual(19);
-  expect(
-    await page.evaluate(
-      () =>
-        (window as any).catalogRequests.filter(
-          (r: any) =>
-            r.action === "search" && r.payload.query.source === "curseforge",
-        ).length,
-    ),
-  ).toBe(0);
+  ).toHaveCount(0);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as any).catalogRequests.filter(
+            (r: any) =>
+              r.action === "search" && r.payload.query.source === "curseforge",
+          ).length,
+      ),
+    )
+    .toBeGreaterThan(0);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as any).catalogRequests.filter(
+            (r: any) =>
+              r.action === "catalogCategories" &&
+              r.payload.source === "curseforge",
+          ).length,
+      ),
+    )
+    .toBeGreaterThan(0);
   await page.locator(".catalog-workspace").screenshot({
     path: "target/branding-icons/catalog-curseforge.png",
     animations: "disabled",
@@ -572,7 +596,7 @@ for (const theme of ["light", "dark"]) {
   });
 }
 
-test("English source placeholder and categories are localized", async ({
+test("English CurseForge catalog and categories are localized", async ({
   page,
 }) => {
   await fixture(page, "en");
@@ -585,7 +609,8 @@ test("English source placeholder and categories are localized", async ({
   await page.getByRole("option", { name: "CurseForge", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Coming soon", exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
+  await expect(page.locator(".catalog-result")).toHaveCount(9);
 });
 
 async function bindRadiance(page: Page) {
@@ -629,12 +654,10 @@ test("catalog installs, animates and removes only from the selected instance", a
   await page.mouse.move(0, 0);
   await expect(button).toHaveClass(/is-installed/);
   await expect(button).toBeEnabled();
-  await page
-    .locator(".catalog-workspace")
-    .screenshot({
-      path: "target/branding-icons/catalog-installed-light.png",
-      animations: "disabled",
-    });
+  await page.locator(".catalog-workspace").screenshot({
+    path: "target/branding-icons/catalog-installed-light.png",
+    animations: "disabled",
+  });
   await button.hover();
   await expect(button.locator(".catalog-action-remove")).toHaveCSS(
     "opacity",
@@ -734,12 +757,10 @@ test("large block tiles fit both themes and respect reduced motion", async ({
     if (theme === "dark")
       await page.getByRole("button", { name: "Переключить тему" }).click();
     await page.mouse.move(0, 0);
-    await page
-      .locator(".catalog-workspace")
-      .screenshot({
-        path: `target/branding-icons/catalog-actions-grid-${theme}.png`,
-        animations: "disabled",
-      });
+    await page.locator(".catalog-workspace").screenshot({
+      path: `target/branding-icons/catalog-actions-grid-${theme}.png`,
+      animations: "disabled",
+    });
   }
   await page.emulateMedia({ reducedMotion: "reduce" });
   const button = page.locator(".catalog-install-button").nth(1);
@@ -756,7 +777,9 @@ test("running instances disable catalog mutations and English action labels tran
   page,
 }) => {
   await fixture(page, "en", true, true);
-  await page.getByRole("combobox", { name: "Install into", exact: true }).click();
+  await page
+    .getByRole("combobox", { name: "Install into", exact: true })
+    .click();
   await page
     .getByRole("option", { name: "Radiance · 1.21.1 · Fabric", exact: true })
     .click();
@@ -768,4 +791,52 @@ test("running instances disable catalog mutations and English action labels tran
   );
   await expect(page.locator(".catalog-install-button").first()).toBeDisabled();
   await expect(page.locator(".catalog-install-button").nth(1)).toBeDisabled();
+});
+
+test("CurseForge opens project versions and installs into the selected instance", async ({
+  page,
+}) => {
+  await fixture(page, "ru", true);
+  await page
+    .getByRole("combobox", { name: "Источник проектов", exact: true })
+    .click();
+  await page.getByRole("option", { name: "CurseForge", exact: true }).click();
+  await bindRadiance(page);
+  await expect(page.locator(".catalog-result")).toHaveCount(9);
+  await page.locator(".catalog-card").nth(1).click();
+  const dialog = page.getByRole("dialog", { name: "Project 2", exact: true });
+  await expect(dialog).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window as any).catalogRequests.some(
+          (r: any) =>
+            r.action === "project" &&
+            r.payload.source === "curseforge" &&
+            r.payload.id === "project-1",
+        ),
+      ),
+    )
+    .toBe(true);
+  await page.keyboard.press("Escape");
+  const install = page
+    .locator(".catalog-result")
+    .nth(1)
+    .locator(".catalog-install-button");
+  await install.click();
+  await expect(install).toHaveAttribute("aria-busy", "true");
+  await expect
+    .poll(() => page.evaluate(() => typeof (window as any).finishCatalogAction))
+    .toBe("function");
+  await page.evaluate(() => (window as any).finishCatalogAction());
+  await expect(install).toHaveClass(/is-installed/);
+  const requests = await page.evaluate(() => (window as any).catalogRequests);
+  expect(
+    requests.find((r: any) => r.action === "installContent").payload,
+  ).toMatchObject({
+    source: "curseforge",
+    projectId: "project-1",
+    versionId: "version-1",
+    id: "radiance",
+  });
 });

@@ -1,0 +1,25 @@
+name: Check Aurum API
+on:
+  push:
+    paths: ["services/aurum-api/**", ".github/workflows/aurum-api.yml"]
+  pull_request:
+    paths: ["services/aurum-api/**", ".github/workflows/aurum-api.yml"]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/aurum-api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.22.0"
+          cache: npm
+          cache-dependency-path: services/aurum-api/package-lock.json
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: npm run dry-run

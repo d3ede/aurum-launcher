@@ -29,7 +29,7 @@ An independent Windows launcher with a warm light theme and a graphite dark them
 | --- | --- |
 | **Instances** | Separate Minecraft instances with their own mods, worlds, settings, and icons. Creating an instance starts installing the game and the appropriate Java runtime. |
 | **Loaders** | Vanilla, Fabric, Forge, NeoForge, and Quilt, with compatible loader versions to choose from. |
-| **Mods and content** | Browse Modrinth mods, modpacks, resource packs, and shaders. Manage installed content with project icons, separate versions, search, sorting, and filters. Identify imported files, check compatible updates, update all, toggle mods, and move files to trash. CurseForge API support with your own API key. |
+| **Mods and content** | Browse Modrinth mods, modpacks, resource packs, and shaders. Manage installed content with project icons, separate versions, search, sorting, and filters. Identify imported files, check compatible updates, update all, toggle mods, and move files to trash. CurseForge connects through Aurum API; no personal API key is required. |
 | **Import** | Import from Modrinth App, `.mrpack` files, CurseForge ZIP archives, or existing game folders. Modrinth imports preserve the original instance. |
 | **Accounts** | Microsoft sign-in in a dedicated window, encrypted token storage with keys in the OS credential vault, and local offline profiles. |
 | **Skins and capes** | A PNG skin library, nine default characters, wide and slim arms, and animated 3D previews. Apply skins and owned capes to a Microsoft account. |
@@ -94,7 +94,7 @@ Aurum is under active development. The verified target runtime is **Windows x64*
 | Area | Current status |
 | --- | --- |
 | **Microsoft** | OAuth with PKCE, the sign-in window, and token storage are implemented. A complete sign-in with a real account and the application's Minecraft Services access still need manual verification. |
-| **CurseForge** | An official API key is required. Requests with a real key have not been verified yet; author restrictions on third-party downloads are respected. |
+| **CurseForge** | Uses Aurum API with the project key stored on the server. Catalog, real mod installation, metadata/update checks and CurseForge ZIP import passed a native core smoke test against the deployed gateway. Author restrictions on third-party downloads are respected. |
 | **Installer** | The NSIS package builds successfully. Installation and removal on a clean Windows machine still need separate verification. |
 | **Other platforms** | macOS/Linux builds have not been verified. Automatic Java downloads currently target Windows. |
 | **Launcher updates** | Automatic checks, signed downloads, and in-app installation through GitHub Releases. Finish running games and launcher tasks before installing. |
@@ -162,6 +162,8 @@ and is not included in source commits or installers.
 </details>
 
 ### Repository layout
+
+The Cloudflare API lives in [`services/aurum-api`](services/aurum-api/README.md), including local checks, the HTTP contract, and deployment instructions. All CurseForge operations use Aurum API; the project key stays in Workers secrets. The public `AURUM_API_URL` is configured in [`.env.example`](.env.example). Copy it to `.env` for a local override. Builds read `.env.example`, then `.env`, then the build environment; a process environment override takes priority at runtime. Only the public origin is embedded, and HTTPS is required. An empty origin disables CurseForge without affecting other providers or local operations.
 
 ```text
 src/                 React interface, components, and localization
