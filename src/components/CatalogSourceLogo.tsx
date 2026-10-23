@@ -3,6 +3,7 @@ import curseforgeLogo from "../assets/branding/curseforge.svg";
 import atlauncherLogo from "../assets/branding/atlauncher.svg";
 import ftbLogo from "../assets/branding/ftb.svg";
 import technicLogo from "../assets/branding/technic.png";
+import { Layers } from "lucide-react";
 
 const logos: Record<string, string> = {
   modrinth: modrinthLogo,
@@ -26,13 +27,17 @@ export function CatalogSourceLogo({
       style={{ width: size, height: size }}
       aria-hidden="true"
     >
-      <img
-        className="catalog-source-glyph"
-        src={logos[source] || modrinthLogo}
-        width={size}
-        height={size}
-        alt=""
-      />
+      {source === "all" ? (
+        <Layers size={size} />
+      ) : (
+        <img
+          className="catalog-source-glyph"
+          src={logos[source] || modrinthLogo}
+          width={size}
+          height={size}
+          alt=""
+        />
+      )}
     </span>
   );
 }

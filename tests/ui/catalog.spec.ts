@@ -116,7 +116,9 @@ async function fixture(
             state.settings = payload.settings;
             return null;
           }
-          if (action === "search")
+          if (action === "search") {
+            if (w.failedSource === payload.query.source)
+              throw new Error("Source offline");
             return {
               projects: projects.map((p) => ({
                 ...p,
@@ -125,6 +127,7 @@ async function fixture(
               })),
               total: 9,
             };
+          }
           if (action === "versions")
             return {
               latest: { release: "1.21.1" },
@@ -351,7 +354,7 @@ test("source has original logos, animated options and an active CurseForge catal
           };
         }),
       );
-    expect(rows).toHaveLength(5);
+    expect(rows).toHaveLength(6);
     expect(new Set(rows.map((row) => row.labelOffset)).size).toBe(1);
     expect(rows.every((row) => row.width === 24 && row.height === 24)).toBe(
       true,
@@ -613,14 +616,14 @@ test("English CurseForge catalog and categories are localized", async ({
   await expect(page.locator(".catalog-result")).toHaveCount(9);
 });
 
-async function bindRadiance(page: Page) {
+async function bindRadiance(page: Page, resultCount = 9) {
   await page
     .getByRole("combobox", { name: "Установить в", exact: true })
     .click();
   await page
     .getByRole("option", { name: "Radiance · 1.21.1 · Fabric", exact: true })
     .click();
-  await expect(page.locator(".catalog-result")).toHaveCount(9);
+  await expect(page.locator(".catalog-result")).toHaveCount(resultCount);
 }
 
 test("catalog installs, animates and removes only from the selected instance", async ({
@@ -839,4 +842,119 @@ test("CurseForge opens project versions and installs into the selected instance"
     versionId: "version-1",
     id: "radiance",
   });
+});
+
+test("all sources shows origin badges, keeps project origins and handles partial failure", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page
+    .getByRole("combobox", { name: "Источник проектов", exact: true })
+    .click();
+  await page
+    .getByRole("option", { name: "Все источники", exact: true })
+    .click();
+  await expect(page.locator(".catalog-result")).toHaveCount(18);
+  await expect(
+    page.getByRole("img", { name: "Источник: Modrinth", exact: true }),
+  ).toHaveCount(9);
+  await expect(
+    page.getByRole("img", { name: "Источник: CurseForge", exact: true }),
+  ).toHaveCount(9);
+  await expect(
+    page.getByRole("combobox", { name: "Категория проекта", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Далее", exact: true }),
+  ).toBeDisabled();
+  await page.locator(".catalog-result").nth(1).locator(".catalog-card").click();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window as any).catalogRequests.some(
+          (r: any) =>
+            r.action === "project" && r.payload.source === "curseforge",
+        ),
+      ),
+    )
+    .toBe(true);
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Плитки", exact: true }).click();
+  await page.screenshot({
+    path: ".test-data/screenshots/catalog-all-light.png",
+  });
+  await page.getByRole("button", { name: "Переключить тему" }).click();
+  await page.setViewportSize({ width: 960, height: 680 });
+  await page.screenshot({
+    path: ".test-data/screenshots/catalog-all-dark.png",
+  });
+  await page.evaluate(() => {
+    (window as any).failedSource = "curseforge";
+  });
+  await page
+    .getByRole("textbox", { name: "Поиск проектов", exact: true })
+    .fill("only here");
+  await expect(page.locator(".catalog-source-warning")).toContainText(
+    "CurseForge",
+  );
+  await expect(page.locator(".catalog-result")).toHaveCount(9);
+  await page.evaluate(() => {
+    (window as any).failedSource = null;
+  });
+  await page
+    .getByRole("button", { name: "Попробовать снова", exact: true })
+    .click();
+  await expect(page.locator(".catalog-result")).toHaveCount(18);
+  await expect(page.locator(".catalog-source-warning")).toHaveCount(0);
+  await page.getByRole("button", { name: "Модпаки", exact: true }).click();
+  await expect(page.locator(".catalog-result")).toHaveCount(45);
+  const sources = await page.evaluate(() => [
+    ...new Set(
+      (window as any).catalogRequests
+        .filter(
+          (r: any) =>
+            r.action === "search" && r.payload.query.kind === "modpack",
+        )
+        .map((r: any) => r.payload.query.source),
+    ),
+  ]);
+  expect(sources).toHaveLength(5);
+});
+
+test("combined results install from their actual source into the selected instance", async ({
+  page,
+}) => {
+  await fixture(page, "ru", true);
+  await page
+    .getByRole("combobox", { name: "Источник проектов", exact: true })
+    .click();
+  await page
+    .getByRole("option", { name: "Все источники", exact: true })
+    .click();
+  await bindRadiance(page, 18);
+  await expect(page.locator(".catalog-result")).toHaveCount(18);
+  const result = page.locator(".catalog-result").nth(1);
+  await expect(
+    result.getByRole("img", { name: "Источник: CurseForge", exact: true }),
+  ).toBeVisible();
+  const install = result.locator(".catalog-install-button");
+  await install.click();
+  await expect
+    .poll(() => page.evaluate(() => typeof (window as any).finishCatalogAction))
+    .toBe("function");
+  await page.evaluate(() => (window as any).finishCatalogAction());
+  await expect(install).toHaveClass(/is-installed/);
+  const requests = await page.evaluate(() => (window as any).catalogRequests);
+  expect(
+    requests.find((r: any) => r.action === "installContent").payload,
+  ).toMatchObject({
+    source: "curseforge",
+    projectId: "project-0",
+    id: "radiance",
+  });
+  expect(
+    requests
+      .filter((r: any) => r.action === "search")
+      .every((r: any) => r.payload.query.source !== "all"),
+  ).toBe(true);
 });
