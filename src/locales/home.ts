@@ -255,6 +255,90 @@ export const homeEnglish: Record<string, string> = {
     "Profiles, accounts and game files keep their existing locations.",
   "Настройки обновлений": "Update settings",
   "Настройки сборки {{name}}": "Settings for {{name}}",
+  Подробнее: "Details",
+  "Текущая версия": "Current version",
+  "История версий": "Version history",
+  "Подробнее о версии {{version}}": "More about version {{version}}",
+  "Быстрый запуск и импорт": "Quick launch and imports",
+  Главная: "Home",
+  "Сборка из быстрого запуска больше не дублируется в недавних.":
+    "The quick-launch instance no longer appears twice in recent instances.",
+  "Компактнее быстрый запуск и ровнее отступы карточек.":
+    "Quick launch is more compact, with more consistent card spacing.",
+  "Импорт CurseForge": "CurseForge imports",
+  "Моды, ресурспаки и шейдеры попадают в свои папки.":
+    "Mods, resource packs and shaders go into their correct folders.",
+  "Недостающие файлы подхватываются из «Загрузок» после проверки контрольной суммы.":
+    "Missing files are picked up from Downloads after checksum verification.",
+  "Удаление исходных загрузок включается отдельно; по умолчанию файлы сохраняются.":
+    "Removing source downloads is optional; files are kept by default.",
+  "Карточки сборок и языки": "Instance cards and languages",
+  "Библиотека сборок": "Instance library",
+  "Компактные горизонтальные карточки с плавным узором.":
+    "Compact horizontal cards with a flowing pattern.",
+  "При перетаскивании карточка следует за курсором.":
+    "Cards follow the cursor while dragging.",
+  "Меню карточки: папка, переименование, проверка установки и удаление с подтверждением.":
+    "Card menu: open folder, rename, verify installation and confirm removal.",
+  Интерфейс: "Interface",
+  "Значки языков встроены в лаунчер и работают без загрузки из сети.":
+    "Language icons are bundled with the launcher and need no network download.",
+  "Порядок сборок и ручные загрузки": "Instance ordering and manual downloads",
+  "Свой порядок сохраняется после перетаскивания; новые сборки появляются первыми.":
+    "Custom ordering survives dragging; new instances appear first.",
+  "Можно переключаться между своим порядком, названием и датой добавления.":
+    "Switch between custom order, name and date added.",
+  "Импорт модпаков": "Modpack imports",
+  "Импорт продолжается, даже если часть модов нужно скачать вручную.":
+    "Imports continue when some mods require a manual download.",
+  "Недостающие файлы собраны в отдельный список со ссылками и проверкой версии.":
+    "Missing files have a separate list with links and version verification.",
+  "Прогресс установки показывает название сборки.":
+    "Installation progress shows the instance name.",
+  "Хостинг и недавние серверы": "Hosting and recent servers",
+  "Локальный хостинг": "Local hosting",
+  "Серверные профили, консоль, игроки, файлы и настройки Java.":
+    "Server profiles, console, players, files and Java settings.",
+  "Сеть серверов запускается одной кнопкой; доступен запуск доверенного скрипта Windows.":
+    "Start a server network with one button, including a trusted Windows script.",
+  "Установка Paper, Purpur, Folia, Velocity и Vanilla; Spigot — через официальный BuildTools.":
+    "Install Paper, Purpur, Folia, Velocity and Vanilla; use official BuildTools for Spigot.",
+  "Исправлены список игроков Velocity и сохранение оформления сети.":
+    "Fixed Velocity player tracking and saving network appearance.",
+  "Запуск и серверы": "Launch and servers",
+  "На главной — пять недавних серверов за неделю с проверкой онлайна и быстрым входом.":
+    "Home shows five recent servers from the past week, with status checks and quick join.",
+  "Проверка Java и нативные библиотеки кэшируются; изменённые файлы проверяются заново.":
+    "Java checks and native libraries are cached; changed files are checked again.",
+  "Аккаунты и скины": "Accounts and skins",
+  "Аккаунты Microsoft": "Microsoft accounts",
+  "Исправлено сохранение длинных сессий Microsoft.":
+    "Fixed saving long Microsoft sessions.",
+  "Окно входа подготавливается в фоне и используется повторно.":
+    "The sign-in window is prepared in the background and reused.",
+  "Скины и внешний вид": "Skins and appearance",
+  "Вместо иконок аккаунтов отображаются головы из текущих скинов.":
+    "Account icons show heads from the current skins.",
+  "Библиотека скинов прокручивается отдельно; предпросмотр и кнопки остаются видны.":
+    "The skin library scrolls separately, keeping the preview and actions visible.",
+  "Папки сборок и просмотр проектов": "Instance folders and project previews",
+  "Данные и проекты": "Data and projects",
+  "Папки сборок называются по имени профиля; прежние данные переносятся автоматически.":
+    "Instance folders use profile names; existing data migrates automatically.",
+  "Возврат из карточки проекта сохраняет список модов и позицию прокрутки.":
+    "Returning from a project preserves the mod list and scroll position.",
+  "Галереи используют оригинальные изображения; исправлена загрузка картинок в описаниях.":
+    "Galleries use original images; description image loading is fixed.",
+  "Каталоги модпаков и установка": "Modpack catalogs and installation",
+  "Каталоги и контент": "Catalogs and content",
+  "Публичные модпаки ATLauncher, FTB и Technic без входа в сервис.":
+    "Public ATLauncher, FTB and Technic modpacks without a service login.",
+  "Список и адаптивные плитки, анимация установки и удаление прямо из карточки.":
+    "List and responsive tiles, installation animation and removal directly from a card.",
+  "Импорт скинов Modrinth с сохранением модели рук и пропуском дубликатов.":
+    "Import Modrinth skins, preserving arm models and skipping duplicates.",
+  "Ошибки входа Minecraft Services показывают причину и идентификатор запроса.":
+    "Minecraft Services sign-in errors show the reason and request ID.",
 };
 export const homeRussian = Object.fromEntries(
   Object.keys(homeEnglish).map((key) => [key, key]),

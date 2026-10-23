@@ -153,12 +153,10 @@ test("home has account and factual release panels, working actions and both them
   ).toHaveCount(0);
   await expect(page.locator(".home-account-card")).toContainText("CozyPlayer");
   await expect(page.locator(".home-news-card")).toContainText("Aurum 0.4.6");
-  await expect(page.locator(".home-news-card")).toContainText(
-    "Головы из скинов",
-  );
-  await expect(page.locator(".home-news-card")).toContainText("Окно Microsoft");
-  await expect(page.locator(".home-news-card")).toContainText(
-    "Сохранение входа Microsoft",
+  await expect(page.locator(".home-news-version")).toHaveCount(3);
+  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.4.5");
+  await expect(page.locator(".home-news-card")).not.toContainText(
+    "Aurum 0.4.2",
   );
   await expect(page.locator(".home-sidebar img")).toHaveCount(0);
   await expect(page.locator(".sidebar-pattern")).toHaveCount(1);
@@ -191,22 +189,31 @@ test("home has account and factual release panels, working actions and both them
   await page
     .getByRole("button", { name: "Все изменения", exact: true })
     .click();
-  const notes = page.getByRole("dialog", { name: "Изменения Aurum 0.4.6" });
-  await expect(notes).toContainText("В Aurum 0.4.6:");
-  await expect(notes).toContainText("локальный хостинг");
-  await expect(notes).not.toContainText("В разработке:");
-  await expect(notes).toContainText(
-    "исправлена ошибка сохранения сессии Microsoft",
+  const notes = page.getByRole("dialog", { name: "История версий" });
+  await expect(notes.locator(".release-section")).toHaveCount(11);
+  await expect(notes.locator(".release-section[open]")).toHaveCount(1);
+  await expect(notes.locator(".release-section[open]")).toContainText(
+    "Aurum 0.4.6",
   );
-  await expect(notes).toContainText(
-    "Перед установкой проверяется подпись обновления.",
+  await expect(notes.locator(".release-section[open]")).toContainText(
+    "Импорт CurseForge",
   );
-  await expect(notes).toContainText("В этой сборке: компактный список модов");
-  await expect(notes).toContainText(
-    "ярлыки Aurum на рабочем столе и в меню «Пуск» автоматически перенаправляются",
-  );
+  await expect(notes).not.toContainText("В этой сборке:");
+  await notes.locator("summary").filter({ hasText: "Aurum 0.4.3" }).click();
+  await expect(
+    notes.getByRole("heading", { name: "Локальный хостинг", exact: true }),
+  ).toBeVisible();
+  await notes.screenshot({ path: ".test-data/screenshots/changelog-dark.png" });
   await page.keyboard.press("Escape");
   await expect(notes).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Подробнее о версии 0.4.5", exact: true })
+    .click();
+  await expect(notes.locator(".release-section[open]")).toHaveCount(1);
+  await expect(notes.locator(".release-section[open]")).toContainText(
+    "Aurum 0.4.5",
+  );
+  await page.keyboard.press("Escape");
   await page
     .getByRole("button", { name: "Все изменения", exact: true })
     .click();
@@ -285,12 +292,9 @@ test("home adapts to minimum window size and translates the new panels", async (
     page.getByRole("heading", { name: "What's new", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".home-news-card")).toContainText("Aurum 0.4.6");
-  await expect(page.locator(".home-news-card")).toContainText("Skin heads");
+  await expect(page.locator(".home-news-version")).toHaveCount(3);
   await expect(page.locator(".home-news-card")).toContainText(
-    "Microsoft window",
-  );
-  await expect(page.locator(".home-news-card")).toContainText(
-    "Saving Microsoft sign-in",
+    "Quick launch and imports",
   );
   await page.setViewportSize({ width: 960, height: 680 });
   expect(
@@ -312,17 +316,19 @@ test("home adapts to minimum window size and translates the new panels", async (
     animations: "disabled",
   });
   await page.getByRole("button", { name: "All changes", exact: true }).click();
-  const notes = page.getByRole("dialog", { name: "Aurum 0.4.6 changes" });
-  await expect(notes).toContainText("In Aurum 0.4.6:");
-  await expect(notes).toContainText("local hosting");
-  await expect(notes).not.toContainText("In development:");
-  await expect(notes).toContainText("fixes Microsoft session saving failures");
-  await expect(notes).toContainText(
-    "The update signature is verified before installation.",
+  const notes = page.getByRole("dialog", { name: "Version history" });
+  await expect(notes.locator(".release-section[open]")).toHaveCount(1);
+  await expect(notes.locator(".release-section[open]")).toContainText(
+    "CurseForge imports",
   );
-  await expect(notes).toContainText(
-    "Updates automatically redirect Aurum Desktop and Start menu shortcuts",
-  );
+  await expect(notes).not.toContainText("In this build:");
+  await notes.screenshot({
+    path: ".test-data/screenshots/changelog-light-small.png",
+  });
+  await notes.locator("summary").filter({ hasText: "Aurum 0.4.2" }).click();
+  await expect(
+    notes.getByRole("heading", { name: "Microsoft accounts", exact: true }),
+  ).toBeVisible();
   await expect(
     notes.getByRole("button", { name: "Update settings", exact: true }),
   ).toBeInViewport();
