@@ -54,6 +54,8 @@ pub struct ModrinthImportResult {
     pub imported_sources: Vec<String>,
     pub failed: Vec<ImportFailure>,
     pub cancelled: bool,
+    pub removed_sources: Vec<String>,
+    pub cleanup_warnings: Vec<ImportFailure>,
 }
 
 pub fn default_directories() -> Vec<PathBuf> {
@@ -420,6 +422,17 @@ impl Engine {
         selected: Vec<String>,
         task: &Task,
     ) -> Result<ModrinthImportResult> {
+        self.import_modrinth_with_cleanup(roots, selected, false, task)
+            .await
+    }
+
+    pub async fn import_modrinth_with_cleanup(
+        &self,
+        roots: Vec<PathBuf>,
+        selected: Vec<String>,
+        remove_source: bool,
+        task: &Task,
+    ) -> Result<ModrinthImportResult> {
         if selected.is_empty() || selected.len() > 100 {
             bail!("Выберите от 1 до 100 сборок")
         }
@@ -452,8 +465,49 @@ impl Engine {
                 0,
                 0,
             );
+            let snapshot = if remove_source {
+                let path = source.path.clone();
+                match tokio::task::spawn_blocking(move || {
+                    crate::import_cleanup::ImportSnapshot::capture(&path)
+                })
+                .await?
+                {
+                    Ok(snapshot) => Some(snapshot),
+                    Err(error) => {
+                        result.failed.push(ImportFailure {
+                            name: source.name.clone(),
+                            message: format!("{error:#}"),
+                        });
+                        continue;
+                    }
+                }
+            } else {
+                None
+            };
             match self.copy_modrinth_profile(source, task).await {
                 Ok(p) => {
+                    if let Some(snapshot) = snapshot {
+                        let destination = self.instance(&p.id)?;
+                        let cancel = task.cancel.clone();
+                        if task.check().is_ok() {
+                            match tokio::task::spawn_blocking(move || {
+                                snapshot.recycle(&destination, skip_file, &cancel)
+                            })
+                            .await?
+                            {
+                                Ok(()) => result.removed_sources.push(key.clone()),
+                                Err(error) => result.cleanup_warnings.push(ImportFailure {
+                                    name: source.name.clone(),
+                                    message: format!("{error:#}"),
+                                }),
+                            }
+                        } else {
+                            result.cleanup_warnings.push(ImportFailure {
+                                name: source.name.clone(),
+                                message: "Удаление оригинала отменено; обе копии сохранены".into(),
+                            });
+                        }
+                    }
                     result.imported.push(p);
                     result.imported_sources.push(key.clone());
                 }

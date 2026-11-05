@@ -6,7 +6,10 @@ mod directories;
 pub mod horizon;
 pub mod horizon_mods;
 pub mod hosting;
+mod import_cleanup;
+mod java_runtime;
 mod launch_cache;
+pub mod storage;
 pub use directories::default_data_directory;
 pub mod microsoft_oauth;
 pub mod migration;
@@ -131,6 +134,8 @@ impl Engine {
         };
         engine.recover_running().await?;
         engine.migrate_instance_directories().await?;
+        // Best effort: only validated installation archives, never game files or caches.
+        let _ = engine.clean_java_archives().await;
         Ok(engine)
     }
     pub async fn snapshot(&self) -> Snapshot {

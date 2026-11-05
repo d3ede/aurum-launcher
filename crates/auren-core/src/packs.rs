@@ -473,6 +473,23 @@ impl Engine {
         lv: Option<String>,
         task: &Task,
     ) -> Result<String> {
+        Ok(self
+            .import_folder_with_cleanup(path, name, mc, loader, lv, false, task)
+            .await?
+            .id)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn import_folder_with_cleanup(
+        &self,
+        path: &Path,
+        name: String,
+        mc: String,
+        loader: Loader,
+        lv: Option<String>,
+        remove_source: bool,
+        task: &Task,
+    ) -> Result<FolderImportResult> {
         crate::store::validate_name(&name)?;
         crate::store::validate_version(&mc)?;
         if loader != Loader::Vanilla {
@@ -483,22 +500,43 @@ impl Engine {
         if source.starts_with(&root) || root.starts_with(&source) {
             bail!("Выберите внешнюю папку игры")
         }
+        let snapshot = if remove_source {
+            let source = path.to_path_buf();
+            Some(
+                tokio::task::spawn_blocking(move || {
+                    crate::import_cleanup::ImportSnapshot::capture(&source)
+                })
+                .await??,
+            )
+        } else {
+            None
+        };
         let id = uuid::Uuid::new_v4().to_string();
         let stage = self.root.join("staging").join(&task.id).join("folder");
         tokio::fs::create_dir_all(&stage).await?;
         let result: Result<()> = async {
-            for kind in [
-                "mods",
-                "config",
-                "resourcepacks",
-                "shaderpacks",
-                "saves",
-                "defaultconfigs",
-                "scripts",
-                "kubejs",
-                "options.txt",
-                "servers.dat",
-            ] {
+            let kinds: Vec<std::ffi::OsString> = if remove_source {
+                std::fs::read_dir(&source)?
+                    .map(|e| e.map(|e| e.file_name()))
+                    .collect::<std::io::Result<_>>()?
+            } else {
+                [
+                    "mods",
+                    "config",
+                    "resourcepacks",
+                    "shaderpacks",
+                    "saves",
+                    "defaultconfigs",
+                    "scripts",
+                    "kubejs",
+                    "options.txt",
+                    "servers.dat",
+                ]
+                .iter()
+                .map(std::ffi::OsString::from)
+                .collect()
+            };
+            for kind in kinds {
                 let source = source.join(kind);
                 if !source.exists() {
                     continue;
@@ -546,8 +584,37 @@ impl Engine {
         .await;
         let _ = tokio::fs::remove_dir_all(self.root.join("staging").join(&task.id)).await;
         result?;
-        Ok(id)
+        let mut response = FolderImportResult {
+            id: id.clone(),
+            source_removed: false,
+            warning: None,
+        };
+        if let Some(snapshot) = snapshot {
+            if task.check().is_ok() {
+                let destination = self.instance(&id)?;
+                let cancel = task.cancel.clone();
+                match tokio::task::spawn_blocking(move || {
+                    snapshot.recycle(&destination, |_| false, &cancel)
+                })
+                .await?
+                {
+                    Ok(()) => response.source_removed = true,
+                    Err(error) => response.warning = Some(format!("{error:#}")),
+                }
+            } else {
+                response.warning = Some("Удаление оригинала отменено; обе копии сохранены".into());
+            }
+        }
+        Ok(response)
     }
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FolderImportResult {
+    pub id: String,
+    pub source_removed: bool,
+    pub warning: Option<String>,
 }
 
 #[cfg(test)]

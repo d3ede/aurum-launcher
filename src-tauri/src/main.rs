@@ -2,6 +2,7 @@
 mod hosting;
 mod microsoft_window;
 mod server_shortcuts;
+mod uninstall;
 use auren_core::Engine;
 use serde_json::{json, Value};
 use tauri::{Emitter, Manager};
@@ -42,6 +43,27 @@ async fn rpc(
         return hosting::rpc(&action, &payload, &e, &app).await;
     }
     match action.as_str() {
+        "uninstall" => {
+            let _guard = e
+                .busy
+                .try_lock()
+                .map_err(|_| "Дождитесь завершения операции".to_string())?;
+            if !e.running.lock().await.is_empty() || !e.hosting_running().is_empty() {
+                return Err("Сначала остановите игру и локальные серверы".into());
+            }
+            let executable = std::env::current_exe().map_err(err)?;
+            let uninstaller = executable
+                .parent()
+                .ok_or("Нет папки программы")?
+                .join("uninstall.exe");
+            if !uninstaller.is_file() {
+                return Err("Деинсталлятор доступен после установки Aurum через установщик".into());
+            }
+            std::process::Command::new(uninstaller)
+                .spawn()
+                .map_err(err)?;
+            Ok(Value::Null)
+        }
         "restart" => {
             if !e.hosting_running().is_empty() {
                 return Err("Сначала остановите локальные серверы".into());
@@ -88,6 +110,7 @@ async fn rpc(
                 let temp = config.join("data-location.json.tmp");
                 std::fs::write(&temp, serde_json::to_vec(&path)?)?;
                 std::fs::rename(temp, config.join("data-location.json"))?;
+                uninstall::register(&path, &app.config().identifier)?;
                 app.state::<Relocation>()
                     .0
                     .store(true, std::sync::atomic::Ordering::Relaxed);
@@ -547,9 +570,10 @@ async fn rpc(
                         let mut roots = auren_core::modrinth_import::default_directories();
                         roots.extend(extra);
                         Ok(json!(
-                            e.import_modrinth(
+                            e.import_modrinth_with_cleanup(
                                 roots,
                                 param(&payload, "selected").map_err(anyhow::Error::msg)?,
+                                payload["removeSource"].as_bool().unwrap_or(false),
                                 &task
                             )
                             .await?
@@ -665,7 +689,7 @@ async fn rpc(
                                 .into_path()
                                 .map_err(|e| anyhow::anyhow!(e.to_string()))?;
                             Ok(json!(
-                                e.import_folder(
+                                e.import_folder_with_cleanup(
                                     &path,
                                     payload["name"]
                                         .as_str()
@@ -674,6 +698,7 @@ async fn rpc(
                                     payload["minecraft"].as_str().unwrap_or("").into(),
                                     serde_json::from_value(payload["loader"].clone())?,
                                     payload["loaderVersion"].as_str().map(String::from),
+                                    payload["removeSource"].as_bool().unwrap_or(false),
                                     &task
                                 )
                                 .await?
@@ -720,6 +745,9 @@ async fn choose_file(
     path.map(|p| p.into_path().map_err(err)).transpose()
 }
 fn main() {
+    if let Some(code) = uninstall::command() {
+        std::process::exit(code);
+    }
     let shortcuts = server_shortcuts::Shortcuts::default();
     shortcuts.enqueue(&std::env::args().collect::<Vec<_>>());
     tauri::Builder::default()
@@ -761,6 +789,7 @@ fn main() {
                 let _ = handle.emit("auren:event", event);
             }))?;
             app.manage(engine.clone());
+            uninstall::register(&engine.root, &app.config().identifier)?;
             app.manage(Relocation(std::sync::atomic::AtomicBool::new(false)));
             // Creation-time centering uses the requested client size. Center again
             // after Windows has applied the actual resize frame, then show once.

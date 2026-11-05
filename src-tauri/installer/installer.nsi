@@ -79,6 +79,7 @@ Var OldMainBinaryName
 !define MUI_BGCOLOR E3E5DC
 !define MUI_TEXTCOLOR 2D392F
 !define MUI_CUSTOMFUNCTION_GUIINIT AurumGuiInit
+!define MUI_CUSTOMFUNCTION_UNGUIINIT un.AurumGuiInit
 SetFont "Segoe UI" 10
 Name "${PRODUCTNAME}"
 BrandingText "${COPYRIGHT}"
@@ -184,50 +185,15 @@ Function RunMainBinary
   nsis_tauri_utils::RunAsUser "$INSTDIR\${MAINBINARYNAME}.exe" ""
 FunctionEnd
 
-; Uninstaller Pages
-; 1. Confirm uninstall page
+; Uninstaller uses the same Aurum presentation as setup. All data deletion is opt-in.
 Var DeleteAppDataCheckbox
 Var DeleteAppDataCheckboxState
-!define /ifndef WS_EX_LAYOUTRTL         0x00400000
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW un.ConfirmShow
-Function un.ConfirmShow ; Add add a `Delete app data` check box
-  ; $1 inner dialog HWND
-  ; $2 window DPI
-  ; $3 style
-  ; $4 x
-  ; $5 y
-  ; $6 width
-  ; $7 height
-  FindWindow $1 "#32770" "" $HWNDPARENT ; Find inner dialog
-  System::Call "user32::GetDpiForWindow(p r1) i .r2"
-  ${If} $(^RTL) = 1
-    StrCpy $3 "${__NSD_CheckBox_EXSTYLE} | ${WS_EX_LAYOUTRTL}"
-    IntOp $4 50 * $2
-  ${Else}
-    StrCpy $3 "${__NSD_CheckBox_EXSTYLE}"
-    IntOp $4 0 * $2
-  ${EndIf}
-  IntOp $5 100 * $2
-  IntOp $6 400 * $2
-  IntOp $7 25 * $2
-  IntOp $4 $4 / 96
-  IntOp $5 $5 / 96
-  IntOp $6 $6 / 96
-  IntOp $7 $7 / 96
-  System::Call 'user32::CreateWindowEx(i r3, w "${__NSD_CheckBox_CLASS}", w "$(deleteAppData)", i ${__NSD_CheckBox_STYLE}, i r4, i r5, i r6, i r7, p r1, i0, i0, i0) i .s'
-  Pop $DeleteAppDataCheckbox
-  SendMessage $HWNDPARENT ${WM_GETFONT} 0 0 $1
-  SendMessage $DeleteAppDataCheckbox ${WM_SETFONT} $1 1
-FunctionEnd
-!define MUI_PAGE_CUSTOMFUNCTION_LEAVE un.ConfirmLeave
-Function un.ConfirmLeave
-  SendMessage $DeleteAppDataCheckbox ${BM_GETCHECK} 0 0 $DeleteAppDataCheckboxState
-FunctionEnd
-!define MUI_PAGE_CUSTOMFUNCTION_PRE un.SkipIfPassive
-!insertmacro MUI_UNPAGE_CONFIRM
-
-; 2. Uninstalling Page
+Var AurumUninstallRoots
+Var AurumUninstallRootsText
+UninstPage custom un.AurumConfirm un.AurumConfirmLeave
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW un.AurumProgressShow
 !insertmacro MUI_UNPAGE_INSTFILES
+UninstPage custom un.AurumFinish
 
 ;Languages
 {{#each languages}}
@@ -658,6 +624,10 @@ Section Install
 
   ; Create uninstaller
   WriteUninstaller "$INSTDIR\uninstall.exe"
+  ; Claim legacy/default data only when a valid launcher database exists.
+  ${If} ${FileExists} "$APPDATA\${PRODUCTNAME}\state.json"
+    ExecWait '$\"$INSTDIR\${MAINBINARYNAME}.exe$\" --register-data $\"${BUNDLEID}$\" $\"$APPDATA\${PRODUCTNAME}$\"' $0
+  ${EndIf}
 
   ; Save $INSTDIR in registry for future installations
   WriteRegStr SHCTX "${MANUPRODUCTKEY}" "" $INSTDIR
@@ -684,8 +654,11 @@ Section Install
   WriteRegStr SHCTX "${UNINSTKEY}" "DisplayIcon" "$\"$INSTDIR\${MAINBINARYNAME}.exe$\""
   WriteRegStr SHCTX "${UNINSTKEY}" "DisplayVersion" "${VERSION}"
   WriteRegStr SHCTX "${UNINSTKEY}" "Publisher" "${MANUFACTURER}"
-  WriteRegStr SHCTX "${UNINSTKEY}" "InstallLocation" "$\"$INSTDIR$\""
+  WriteRegStr SHCTX "${UNINSTKEY}" "InstallLocation" "$INSTDIR"
   WriteRegStr SHCTX "${UNINSTKEY}" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
+  WriteRegStr SHCTX "${UNINSTKEY}" "QuietUninstallString" "$\"$INSTDIR\uninstall.exe$\" /S"
+  DeleteRegValue SHCTX "${UNINSTKEY}" "SystemComponent"
+  DeleteRegValue SHCTX "${UNINSTKEY}" "NoRemove"
   WriteRegDWORD SHCTX "${UNINSTKEY}" "NoModify" "1"
   WriteRegDWORD SHCTX "${UNINSTKEY}" "NoRepair" "1"
 
@@ -727,6 +700,7 @@ Function .onInstSuccess
 FunctionEnd
 
 Function un.onInit
+  StrCpy $DeleteAppDataCheckboxState 0
   !insertmacro SetContext
 
   !if "${INSTALLMODE}" == "both"
@@ -734,6 +708,7 @@ Function un.onInit
   !endif
 
   !insertmacro MUI_UNGETLANGUAGE
+  StrCpy $AurumProgressTitle "$(AurumUninstallTitle)"
 
   ${GetOptions} $CMDLINE "/P" $PassiveMode
   ${IfNot} ${Errors}
@@ -753,6 +728,18 @@ Section Uninstall
   !endif
 
   !insertmacro CheckIfAppIsRunning "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
+
+  ; This must run BEFORE deleting the executable or uninstall registration.
+  ${If} $DeleteAppDataCheckboxState = 1
+  ${AndIf} $UpdateMode <> 1
+    ExecWait '$\"$INSTDIR\${MAINBINARYNAME}.exe$\" --uninstall-data $\"${BUNDLEID}$\"' $0
+    ${If} $0 <> 0
+      MessageBox MB_ICONEXCLAMATION "$(AurumUninstallError)"
+      SetErrorLevel 1
+      Abort
+    ${EndIf}
+  ${EndIf}
+
 
   ; Delete the app directory and its content from disk
   ; Copy main executable
@@ -787,6 +774,12 @@ Section Uninstall
   {{/each}}
 
 
+  Delete "$INSTDIR\aurum-data-roots.json"
+  !insertmacro IsShortcutTarget "$SMPROGRAMS\${PRODUCTNAME} Uninstall.lnk" "$INSTDIR\uninstall.exe"
+  Pop $0
+  ${If} $0 = 1
+    Delete "$SMPROGRAMS\${PRODUCTNAME} Uninstall.lnk"
+  ${EndIf}
   ; Delete uninstaller
   Delete "$INSTDIR\uninstall.exe"
 

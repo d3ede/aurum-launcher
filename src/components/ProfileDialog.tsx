@@ -21,6 +21,7 @@ import { PackManualNotice } from "./PackManualDownloads";
 import { Select } from "./Select";
 import { HorizonMods } from "./HorizonMods";
 import { LoaderLogo } from "./LoaderLogo";
+import { ImportCopyNotice } from "./ImportCopyNotice";
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
 import { ru } from "../lib/i18n";
@@ -34,7 +35,8 @@ export function CreateProfile({
   folderImport?: boolean;
   onCreated?: (profile: Profile) => void;
 }) {
-  const { data, operation, busy, refresh } = useApp();
+  const { data, operation, busy, refresh, notify } = useApp();
+  const [removeSource, setRemoveSource] = useState(false);
   const [name, setName] = useState("");
   const [mc, setMc] = useState("");
   const [loader, setLoader] = useState<Loader>("vanilla");
@@ -112,6 +114,7 @@ export function CreateProfile({
       const result = await operation(
         (operationId) =>
           rpc("importFolder", {
+            removeSource,
             name: name.trim() || `Minecraft ${mc}`,
             minecraft: mc,
             loader,
@@ -120,6 +123,11 @@ export function CreateProfile({
           }),
         t("Папка игры импортирована"),
       );
+      if (result?.warning) {
+        onClose();
+        notify(result.warning);
+        return;
+      }
       if (result) onClose();
       return;
     }
@@ -147,7 +155,7 @@ export function CreateProfile({
       subtitle={
         folderImport
           ? t(
-              "Будут скопированы миры, моды и настройки. Исходная папка сохранится.",
+              "Импорт создаёт копию, а не переносит сборку. Оригинал останется на диске и продолжит занимать место.",
             )
           : undefined
       }
@@ -286,6 +294,13 @@ export function CreateProfile({
             )}
           </>
         )}
+        {folderImport && (
+          <ImportCopyNotice
+            checked={removeSource}
+            onChange={setRemoveSource}
+            disabled={busy}
+          />
+        )}
         {!folderImport && (
           <div className="field">
             <span>{t("Значок сборки")}</span>
@@ -310,7 +325,7 @@ export function CreateProfile({
                   "Horizon и ресурсы установятся автоматически. Подготовка первого запуска займёт несколько минут.",
                 )
               : t(
-                  "Minecraft и подходящая Java установятся сразу после создания сборки.",
+                  "Minecraft и Java используются повторно, если совместимая версия уже установлена. Остальные файлы скачаются при необходимости.",
                 )}
         </div>
         <div className="modal-actions">

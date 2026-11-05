@@ -9,7 +9,6 @@ import {
   Layers3,
   RefreshCw,
   Search,
-  ShieldCheck,
   Square,
   X,
 } from "lucide-react";
@@ -20,6 +19,7 @@ import { ru } from "../lib/i18n";
 import type { ModrinthImportResult, ModrinthScan } from "../types";
 import { ErrorBox, Loading, Modal } from "./ui";
 import { ProfileIcon } from "./ProfileIcon";
+import { ImportCopyNotice } from "./ImportCopyNotice";
 export function ModrinthImport({ onClose }: { onClose: () => void }) {
   const { operation, busy, progress } = useApp();
   const [scan, setScan] = useState<ModrinthScan | null>(null);
@@ -28,6 +28,7 @@ export function ModrinthImport({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
+  const [removeSource, setRemoveSource] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<ModrinthImportResult | null>(null);
   const [retry, setRetry] = useState(0);
@@ -100,6 +101,7 @@ export function ModrinthImport({ onClose }: { onClose: () => void }) {
             directories,
             selected: [...selected],
             operationId,
+            removeSource,
           });
         } catch (e) {
           setError(e instanceof Error ? e.message : String(e));
@@ -326,6 +328,18 @@ export function ModrinthImport({ onClose }: { onClose: () => void }) {
                 <X size={14} /> {p.name}: {p.message}
               </p>
             ))}
+            {result.cleanupWarnings?.map((p, i) => (
+              <p className="import-warning" key={`cleanup-${i}`}>
+                {p.name}: {p.message}
+              </p>
+            ))}
+            {!!result.removedSources?.length && (
+              <p>
+                {t("Оригиналы в корзине Windows: {{v1}}", {
+                  v1: result.removedSources.length,
+                })}
+              </p>
+            )}
             {result.cancelled && (
               <p>
                 {t(
@@ -335,14 +349,11 @@ export function ModrinthImport({ onClose }: { onClose: () => void }) {
             )}
           </div>
         )}
-        <div className="import-preservation">
-          <ShieldCheck size={17} />
-          <span>
-            {t(
-              "Создаём отдельные копии. Ваши сборки в Modrinth останутся на месте.",
-            )}
-          </span>
-        </div>
+        <ImportCopyNotice
+          checked={removeSource}
+          onChange={setRemoveSource}
+          disabled={busy || importing}
+        />
       </div>
       <div className="modal-actions import-modal-actions">
         {importing && (
@@ -353,7 +364,9 @@ export function ModrinthImport({ onClose }: { onClose: () => void }) {
                 <progress max={progress.total} value={progress.done} />
                 <div className="progress-meta">
                   <span>{progressAmount(progress)}</span>
-                  <span>{Math.round((progress.done / progress.total) * 100)}%</span>
+                  <span>
+                    {Math.round((progress.done / progress.total) * 100)}%
+                  </span>
                 </div>
               </>
             )}

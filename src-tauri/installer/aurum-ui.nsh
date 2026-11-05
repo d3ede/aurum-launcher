@@ -7,6 +7,7 @@
 !define AURUM_MUTED 65715F
 !include "${__FILEDIR__}\language-selection.nsh"
 !include "${__FILEDIR__}\install-path.nsh"
+Var AurumProgressTitle
 Var AurumDialog
 Var AurumImage
 Var AurumImageHandle
@@ -36,52 +37,20 @@ Var AurumLayoutReady
   SetCtlColors $0 ${color} ${AURUM_BG}
 !macroend
 
-Function AurumInit
-  ; Interactive/fresh installs never place application files in a drive root.
-  ; Automatic updates retain the registered installation location.
-  ${If} $UpdateMode <> 1
-    StrCpy $0 $INSTDIR
-    Call AurumNormalizeInstallPath
-    StrCpy $INSTDIR $0
-  ${EndIf}
-  StrCpy $AurumDesktopChoice 1
-  StrCpy $AurumStartChoice 1
-  StrCpy $AurumRunChoice 1
-  StrCpy $AppStartMenuFolder "${STARTMENUFOLDER}"
-  ReadRegStr $0 SHCTX "${MANUPRODUCTKEY}" ""
-  ${If} $0 != ""
-    ClearErrors
-    ReadRegDWORD $AurumDesktopChoice SHCTX "${MANUPRODUCTKEY}" "DesktopShortcut"
-    ${If} ${Errors}
-      StrCpy $AurumDesktopChoice 0
-      ${IfThen} ${FileExists} "$DESKTOP\${PRODUCTNAME}.lnk" ${|} StrCpy $AurumDesktopChoice 1 ${|}
-    ${EndIf}
-    ClearErrors
-    ReadRegDWORD $AurumStartChoice SHCTX "${MANUPRODUCTKEY}" "StartMenuShortcut"
-    ${If} ${Errors}
-      StrCpy $AurumStartChoice 0
-      ${IfThen} ${FileExists} "$SMPROGRAMS\${PRODUCTNAME}.lnk" ${|} StrCpy $AurumStartChoice 1 ${|}
-      ${IfThen} ${FileExists} "$SMPROGRAMS\$AppStartMenuFolder\${PRODUCTNAME}.lnk" ${|} StrCpy $AurumStartChoice 1 ${|}
-    ${EndIf}
-  ${ElseIf} $NoShortcutMode = 1
-    StrCpy $AurumDesktopChoice 0
-    StrCpy $AurumStartChoice 0
-  ${EndIf}
-  ; Include a conservative allowance for the generated uninstaller.
-  IntOp $0 ${ESTIMATEDSIZE} + 512
-  IntOp $0 $0 * 1024
-  IntOp $0 $0 / 100000
-  IntOp $1 $0 % 10
-  IntOp $0 $0 / 10
-  StrCpy $AurumSizeMB "$0.$1"
-  InitPluginsDir
-  File /oname=$PLUGINSDIR\aurum-sidebar.bmp "${__FILEDIR__}\sidebar.bmp"
-  File /oname=$PLUGINSDIR\LICENSE.txt "${__FILEDIR__}\..\..\LICENSE"
-  File /oname=$PLUGINSDIR\NOTICE.txt "${__FILEDIR__}\..\..\NOTICE"
-  File /oname=$PLUGINSDIR\TAURI-MIT-LICENSE.txt "${__FILEDIR__}\TAURI-MIT-LICENSE"
-FunctionEnd
+!macro AurumMove handle x y w h
+  IntOp $R0 ${x} * $AurumDpi
+  IntOp $R0 $R0 / 96
+  IntOp $R1 ${y} * $AurumDpi
+  IntOp $R1 $R1 / 96
+  IntOp $R2 ${w} * $AurumDpi
+  IntOp $R2 $R2 / 96
+  IntOp $R3 ${h} * $AurumDpi
+  IntOp $R3 $R3 / 96
+  System::Call 'user32::MoveWindow(p ${handle},i $R0,i $R1,i $R2,i $R3,i1)'
+!macroend
 
-Function AurumLayout
+!macro AurumPresentation prefix
+Function ${prefix}AurumLayout
   System::Call 'user32::GetDpiForWindow(p $HWNDPARENT) i .r0'
   StrCpy $AurumDpi $0
   ${IfThen} $AurumDpi < 96 ${|} StrCpy $AurumDpi 96 ${|}
@@ -149,15 +118,19 @@ Function AurumLayout
   SendMessage $mui.Button.Next ${WM_SETFONT} $AurumFontAction 1
 FunctionEnd
 
-Function AurumGuiInit
+Function ${prefix}AurumGuiInit
+  !if "${prefix}" == "un."
+    InitPluginsDir
+    File /oname=$PLUGINSDIR\aurum-sidebar.bmp "${__FILEDIR__}\sidebar.bmp"
+  !endif
   CreateFont $AurumFontTitle "Segoe UI" 20 650
   CreateFont $AurumFontBody "Segoe UI" 10 400
   CreateFont $AurumFontAction "Segoe UI" 10 650
-  Call AurumLayout
+  Call ${prefix}AurumLayout
 FunctionEnd
 
-Function AurumPageBase
-  Call AurumLayout
+Function ${prefix}AurumPageBase
+  Call ${prefix}AurumLayout
   nsDialogs::Create 1018
   Pop $AurumDialog
   ; The newly created page otherwise covers part of the close control.
@@ -168,6 +141,87 @@ Function AurumPageBase
   ${NSD_SetStretchedBitmap} $AurumImage "$PLUGINSDIR\aurum-sidebar.bmp" $AurumImageHandle
   AurumUI::DragPane /NOUNLOAD "$AurumImage"
 FunctionEnd
+
+Function ${prefix}AurumProgressShow
+  Call ${prefix}AurumLayout
+  SetCtlColors $mui.InstFilesPage ${AURUM_INK} ${AURUM_BG}
+  !insertmacro AurumMove $mui.InstFilesPage 20 20 688 384
+  System::Call 'user32::CreateWindowExW(i0,w "STATIC",w "",i 0x5000000E,i0,i0,i228,i480,p $mui.InstFilesPage,p0,p0,p0)p .r0'
+  StrCpy $AurumImage $0
+  !insertmacro AurumMove $AurumImage 0 0 186 384
+  ${NSD_SetStretchedBitmap} $AurumImage "$PLUGINSDIR\aurum-sidebar.bmp" $AurumImageHandle
+  AurumUI::DragPane /NOUNLOAD "$AurumImage"
+  System::Call 'user32::CreateWindowExW(i0,w "STATIC",w "$(AurumStep) 2 / 3",i 0x50000000,i270,i10,i530,i30,p $mui.InstFilesPage,p0,p0,p0)p .r0'
+  !insertmacro AurumMove $0 220 10 447 28
+  SendMessage $0 ${WM_SETFONT} $AurumFontBody 1
+  SetCtlColors $0 ${AURUM_MUTED} ${AURUM_BG}
+  System::Call 'user32::CreateWindowExW(i0,w "STATIC",w "$AurumProgressTitle",i 0x50000000,i270,i50,i530,i50,p $mui.InstFilesPage,p0,p0,p0)p .r0'
+  !insertmacro AurumMove $0 220 50 447 40
+  SendMessage $0 ${WM_SETFONT} $AurumFontTitle 1
+  SetCtlColors $0 ${AURUM_INK} ${AURUM_BG}
+  !insertmacro AurumMove $mui.InstFilesPage.Text 220 100 447 30
+  SetCtlColors $mui.InstFilesPage.Text ${AURUM_MUTED} ${AURUM_BG}
+  !insertmacro AurumMove $mui.InstFilesPage.ProgressBar 220 148 447 18
+  !insertmacro AurumMove $mui.InstFilesPage.Log 220 192 447 148
+  !insertmacro AurumMove $mui.InstFilesPage.ShowLogButton 220 350 180 30
+  AurumUI::Button /NOUNLOAD "$mui.InstFilesPage.ShowLogButton" "2"
+  System::Call 'user32::SetWindowPos(p $mui.Button.Cancel,p0,i0,i0,i0,i0,i3)'
+FunctionEnd
+!macroend
+!insertmacro AurumPresentation ""
+!insertmacro AurumPresentation "un."
+
+Function AurumInit
+  StrCpy $AurumProgressTitle "$(AurumTitle)"
+  ; Interactive/fresh installs never place application files in a drive root.
+  ; Automatic updates retain the registered installation location.
+  ${If} $UpdateMode <> 1
+    StrCpy $0 $INSTDIR
+    Call AurumNormalizeInstallPath
+    StrCpy $INSTDIR $0
+  ${EndIf}
+  StrCpy $AurumDesktopChoice 1
+  StrCpy $AurumStartChoice 1
+  StrCpy $AurumRunChoice 1
+  StrCpy $AppStartMenuFolder "${STARTMENUFOLDER}"
+  ReadRegStr $0 SHCTX "${MANUPRODUCTKEY}" ""
+  ${If} $0 != ""
+    ClearErrors
+    ReadRegDWORD $AurumDesktopChoice SHCTX "${MANUPRODUCTKEY}" "DesktopShortcut"
+    ${If} ${Errors}
+      StrCpy $AurumDesktopChoice 0
+      ${IfThen} ${FileExists} "$DESKTOP\${PRODUCTNAME}.lnk" ${|} StrCpy $AurumDesktopChoice 1 ${|}
+    ${EndIf}
+    ClearErrors
+    ReadRegDWORD $AurumStartChoice SHCTX "${MANUPRODUCTKEY}" "StartMenuShortcut"
+    ${If} ${Errors}
+      StrCpy $AurumStartChoice 0
+      ${IfThen} ${FileExists} "$SMPROGRAMS\${PRODUCTNAME}.lnk" ${|} StrCpy $AurumStartChoice 1 ${|}
+      ${IfThen} ${FileExists} "$SMPROGRAMS\$AppStartMenuFolder\${PRODUCTNAME}.lnk" ${|} StrCpy $AurumStartChoice 1 ${|}
+    ${EndIf}
+  ${ElseIf} $NoShortcutMode = 1
+    StrCpy $AurumDesktopChoice 0
+    StrCpy $AurumStartChoice 0
+  ${EndIf}
+  ; Include a conservative allowance for the generated uninstaller.
+  IntOp $0 ${ESTIMATEDSIZE} + 512
+  IntOp $0 $0 * 1024
+  IntOp $0 $0 / 100000
+  IntOp $1 $0 % 10
+  IntOp $0 $0 / 10
+  StrCpy $AurumSizeMB "$0.$1"
+  InitPluginsDir
+  File /oname=$PLUGINSDIR\aurum-sidebar.bmp "${__FILEDIR__}\sidebar.bmp"
+  File /oname=$PLUGINSDIR\LICENSE.txt "${__FILEDIR__}\..\..\LICENSE"
+  File /oname=$PLUGINSDIR\NOTICE.txt "${__FILEDIR__}\..\..\NOTICE"
+  File /oname=$PLUGINSDIR\TAURI-MIT-LICENSE.txt "${__FILEDIR__}\TAURI-MIT-LICENSE"
+FunctionEnd
+
+
+
+
+
+
 
 Function AurumSetup
   Call SkipIfPassive
@@ -295,46 +349,14 @@ Function AurumFinishLeave
   ${IfThen} $AurumRunChoice = 1 ${|} Call RunMainBinary ${|}
 FunctionEnd
 
-!macro AurumMove handle x y w h
-  IntOp $R0 ${x} * $AurumDpi
-  IntOp $R0 $R0 / 96
-  IntOp $R1 ${y} * $AurumDpi
-  IntOp $R1 $R1 / 96
-  IntOp $R2 ${w} * $AurumDpi
-  IntOp $R2 $R2 / 96
-  IntOp $R3 ${h} * $AurumDpi
-  IntOp $R3 $R3 / 96
-  System::Call 'user32::MoveWindow(p ${handle},i $R0,i $R1,i $R2,i $R3,i1)'
-!macroend
 
-Function AurumProgressShow
-  Call AurumLayout
-  SetCtlColors $mui.InstFilesPage ${AURUM_INK} ${AURUM_BG}
-  !insertmacro AurumMove $mui.InstFilesPage 20 20 688 384
-  System::Call 'user32::CreateWindowExW(i0,w "STATIC",w "",i 0x5000000E,i0,i0,i228,i480,p $mui.InstFilesPage,p0,p0,p0)p .r0'
-  StrCpy $AurumImage $0
-  !insertmacro AurumMove $AurumImage 0 0 186 384
-  ${NSD_SetStretchedBitmap} $AurumImage "$PLUGINSDIR\aurum-sidebar.bmp" $AurumImageHandle
-  AurumUI::DragPane /NOUNLOAD "$AurumImage"
-  System::Call 'user32::CreateWindowExW(i0,w "STATIC",w "$(AurumStep) 2 / 3",i 0x50000000,i270,i10,i530,i30,p $mui.InstFilesPage,p0,p0,p0)p .r0'
-  !insertmacro AurumMove $0 220 10 447 28
-  SendMessage $0 ${WM_SETFONT} $AurumFontBody 1
-  SetCtlColors $0 ${AURUM_MUTED} ${AURUM_BG}
-  System::Call 'user32::CreateWindowExW(i0,w "STATIC",w "$(AurumTitle)",i 0x50000000,i270,i50,i530,i50,p $mui.InstFilesPage,p0,p0,p0)p .r0'
-  !insertmacro AurumMove $0 220 50 447 40
-  SendMessage $0 ${WM_SETFONT} $AurumFontTitle 1
-  SetCtlColors $0 ${AURUM_INK} ${AURUM_BG}
-  !insertmacro AurumMove $mui.InstFilesPage.Text 220 100 447 30
-  SetCtlColors $mui.InstFilesPage.Text ${AURUM_MUTED} ${AURUM_BG}
-  !insertmacro AurumMove $mui.InstFilesPage.ProgressBar 220 148 447 18
-  !insertmacro AurumMove $mui.InstFilesPage.Log 220 192 447 148
-  !insertmacro AurumMove $mui.InstFilesPage.ShowLogButton 220 350 180 30
-  AurumUI::Button /NOUNLOAD "$mui.InstFilesPage.ShowLogButton" "2"
-  System::Call 'user32::SetWindowPos(p $mui.Button.Cancel,p0,i0,i0,i0,i0,i3)'
-FunctionEnd
+
+
 
 Function AurumShortcuts
+  ; A distinct uninstall link remains discoverable even when the launcher shortcut is disabled.
   ${If} $NoShortcutMode <> 1
+    CreateShortcut "$SMPROGRAMS\${PRODUCTNAME} Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0 SW_SHOWNORMAL "" "$(AurumUninstallTitle)"
     ; An updater can be launched from an old preview/portable copy. Repair
     ; existing product-owned links even when their saved checkbox is off.
     ; Missing links and links to other products are left untouched.
@@ -377,3 +399,6 @@ Function AurumShortcuts
 FunctionEnd
 
 !include "${__FILEDIR__}\languages.nsh"
+!include "${__FILEDIR__}\uninstall-languages.nsh"
+
+!include "${__FILEDIR__}\uninstall-ui.nsh"

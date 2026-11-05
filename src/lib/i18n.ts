@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { storageEnglish, storageRussian } from "../locales/storage";
 import type { Kind, Loader, Route } from "../types";
 import englishMessages from "../locales/messages/en.json";
 import russianMessages from "../locales/messages/ru.json";
@@ -31,6 +32,7 @@ import {
 } from "../locales/horizon-mods";
 type Dictionary = Record<string, string>;
 const english: Dictionary = {
+  ...storageEnglish,
   ...horizonModsEnglish,
   ...englishMessages,
   ...microsoftEnglish,
@@ -45,6 +47,7 @@ const english: Dictionary = {
   ...contentManagerEnglish,
 };
 const russian: Dictionary = {
+  ...storageRussian,
   ...horizonModsRussian,
   ...russianMessages,
   ...microsoftRussian,

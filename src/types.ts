@@ -111,6 +111,8 @@ export interface ModrinthScan {
   warnings: string[];
 }
 export interface ModrinthImportResult {
+  removedSources?: string[];
+  cleanupWarnings?: { name: string; message: string }[];
   imported: Profile[];
   importedSources: string[];
   failed: { name: string; message: string }[];

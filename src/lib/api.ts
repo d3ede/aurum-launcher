@@ -131,6 +131,7 @@ interface Contract {
     {
       directories: string[];
       selected: string[];
+      removeSource?: boolean;
       operationId: string;
     },
     ModrinthImportResult,
@@ -342,13 +343,14 @@ interface Contract {
   ];
   importFolder: [
     {
+      removeSource?: boolean;
       name: string;
       minecraft: string;
       loader: Loader;
       loaderVersion: string | null;
       operationId: string;
     },
-    string | null,
+    { id: string; sourceRemoved: boolean; warning: string | null } | null,
   ];
   loginMicrosoft: [
     {
@@ -375,6 +377,7 @@ interface Contract {
     string | null,
   ];
   restart: [Empty, never];
+  uninstall: [Empty, void];
   openUrl: [
     {
       url: string;

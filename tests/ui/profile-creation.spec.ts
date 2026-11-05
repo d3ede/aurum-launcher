@@ -136,7 +136,7 @@ async function create(page: Page) {
   });
   await expect(
     dialog.getByText(
-      "Minecraft и подходящая Java установятся сразу после создания сборки.",
+      "Minecraft и Java используются повторно, если совместимая версия уже установлена. Остальные файлы скачаются при необходимости.",
     ),
   ).toBeVisible();
   await dialog

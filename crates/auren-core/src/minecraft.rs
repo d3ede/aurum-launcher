@@ -481,10 +481,13 @@ impl Engine {
         let runtime = self.root.join("runtimes").join(format!("java-{major}"));
         if runtime.exists() {
             if let Some(path) = find_java(&runtime) {
-                if self.cached_java_version(&path).await? >= major {
+                if self.cached_java_version(&path).await.ok() == Some(major) {
                     return Ok(path);
                 }
             }
+        }
+        if let Some(path) = self.installed_java(major).await {
+            return Ok(path);
         }
         if !cfg!(windows) {
             bail!("Автоматическая Java сейчас доступна на Windows. Укажите путь к Java {major} в настройках")
@@ -516,7 +519,11 @@ impl Engine {
         .await?;
         extract_zip(&zip, &runtime, None, task)?;
         let path = find_java(&runtime).context("Java не найдена после распаковки")?;
-        self.cached_java_version(&path).await?;
+        if self.cached_java_version(&path).await? != major {
+            bail!("Скачанная Java не соответствует требуемой версии {major}")
+        }
+        // Extraction and executable verification must both succeed first.
+        let _ = tokio::fs::remove_file(&zip).await;
         Ok(path)
     }
     async fn install_forge(&self, p: &Profile, java: &Path, task: &Task) -> Result<Value> {
@@ -1037,7 +1044,14 @@ pub async fn java_version(path: &Path) -> Result<u32> {
     let mut command = Command::new(path);
     command.arg("-version");
     hide(&mut command);
-    let out = command.output().await.context("Java не найдена")?;
+    command.kill_on_drop(true);
+    let out = tokio::time::timeout(std::time::Duration::from_secs(10), command.output())
+        .await
+        .context("Java не отвечает")?
+        .context("Java не найдена")?;
+    if !out.status.success() {
+        bail!("Java завершилась с ошибкой")
+    }
     let output = format!(
         "{}{}",
         String::from_utf8_lossy(&out.stderr),

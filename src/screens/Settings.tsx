@@ -255,6 +255,26 @@ export function Settings() {
               {t(" Открыть")}
             </button>
           </div>
+          <p className="dialog-note">
+            {t(
+              "Игровые файлы, Java и сборки занимают дополнительное место сверх размера самого приложения. Установочные архивы Java удаляются после проверки рабочей среды; игровые данные сохраняются.",
+            )}
+          </p>
+          <div className="field">
+            <button
+              type="button"
+              className="button secondary"
+              disabled={busy}
+              onClick={() => void run(() => rpc("uninstall", {}))}
+            >
+              {t("Удалить Aurum")}
+            </button>
+            <small>
+              {t(
+                "Откроется деинсталлятор. Удаление сборок, миров и остальных данных выбирается отдельно.",
+              )}
+            </small>
+          </div>
           <div className="field">
             <button
               type="button"

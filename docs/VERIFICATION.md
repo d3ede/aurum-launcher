@@ -410,6 +410,18 @@ Public installer size: 8,280,763 bytes. SHA256: `1a565025628506cc07fe2539c3797a2
 
 The public installer was not executed during this publication check. The installed launcher, real server processes and user game data were not changed. The ignored local `Aurum-Launcher-Setup.exe` copy contains the verified public installer. This record is a subsequent documentation-only commit.
 
+## Storage and uninstall — November 5, 2026
+
+Local development build 0.5.1; not a public release. Java selection reuses an exact-major managed runtime or a matching-architecture installed runtime. Validated installation ZIPs are discarded without removing working runtimes or game files. Imports explain copying and provide an unchecked option to recycle originals only after source/content verification, with cancellation checked again immediately before disposal.
+
+Uninstall uses setup's shared presentation, an unchecked data-removal option, registered custom data roots, a Start menu uninstall shortcut and complete Windows uninstall registration. Owned-data removal validates ownership and boundaries, rejects linked targets, protects running processes and preserves unrelated top-level files. Silent removal and updates preserve game data.
+
+Checks passed: production frontend build, 19 frontend unit tests, regular Rust workspace tests, all-target Clippy and 13 targeted Playwright scenarios covering import, explicit disposal selection and profile creation. New Rust checks cover runtime-version/architecture matching, validated archive cleanup, incomplete/broken-runtime preservation, changed/missing copies, cancellation and owned-data boundaries. QA installer checks cover shortcut combinations, update/no-shortcut modes, custom roots, mismatched identifiers, explicit data cleanup, unrelated-file preservation, Windows registration and silent data preservation.
+
+The normal local NSIS installer was built and installed over the existing user installation. All 4,897 instance files retained their paths, sizes and modification times; `state.json` retained its SHA-256. A validated 205,073,461-byte Java ZIP was removed, and its absence plus the uninstall shortcut were checked after reopening Aurum. The working Java runtimes and user worlds/mod data were preserved. Computer Use blocked launching the QA uninstaller, so its native window's final visual layout was not manually verified; its shared presentation compiles and its functional paths were checked separately.
+
+Local installer: 8,464,118 bytes. SHA-256: `BD1ECBE415D2A0B38AA83038F5BB731CF208EFCA7B0E1942D7E7BAF3851F2319`. It was not published or signed as an update package.
+
 ## Public release 0.4.6 — October 21, 2026
 
 Release [v0.4.6](https://github.com/d3ede/aurum-launcher/releases/tag/v0.4.6) is published as the latest stable release from source commit `1447834ff7e771df5ee65174a72572d85c038762`. The [Windows release workflow](https://github.com/d3ede/aurum-launcher/actions/runs/39606430254) passed frontend/native checks, all 111 UI scenarios, the signed installer build and installer regression checks before publishing all four update assets.

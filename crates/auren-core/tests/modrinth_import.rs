@@ -63,6 +63,35 @@ fn modern(root: &Path, data: &Path) {
 }
 
 #[tokio::test]
+async fn cancellation_with_disposal_selected_preserves_the_original() {
+    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.test-data/import-disposal");
+    std::fs::create_dir_all(&fixtures).unwrap();
+    let root = tempfile::tempdir_in(fixtures).unwrap();
+    let src = root.path().join("Modrinth");
+    let original = legacy(&src, "one", "Original", "vanilla");
+    let selected = scan(std::slice::from_ref(&src)).profiles[0].id.clone();
+    let engine = Engine::new(root.path().join("Aurum"), |_| {})
+        .await
+        .unwrap();
+    let result = engine
+        .import_modrinth_with_cleanup(
+            vec![src],
+            vec![selected],
+            true,
+            &task(Arc::new(AtomicBool::new(true))),
+        )
+        .await
+        .unwrap();
+    assert!(result.cancelled);
+    assert!(result.removed_sources.is_empty());
+    assert!(result.imported.is_empty());
+    assert_eq!(
+        std::fs::read(original.join("saves/My world/level.dat")).unwrap(),
+        b"world"
+    );
+}
+
+#[tokio::test]
 async fn multi_import_copies_worlds_settings_disabled_mods_and_custom_folders() {
     let root = tempfile::tempdir().unwrap();
     let src = root.path().join("Modrinth");

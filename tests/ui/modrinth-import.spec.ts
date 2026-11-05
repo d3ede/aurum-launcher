@@ -326,3 +326,36 @@ test("empty discovery offers a custom directory and rescans after picking it", a
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
 });
+
+test("source disposal is off by default and sent only after explicit selection", async ({
+  page,
+}) => {
+  await fixture(page);
+  const dialog = await openImport(page);
+  await expect(
+    dialog.getByText(
+      "Импорт создаёт копию, а не переносит сборку. Оригинал останется на диске и продолжит занимать место.",
+    ),
+  ).toBeVisible();
+  const disposal = dialog.getByRole("checkbox", {
+    name: "После успешной проверки копии отправить оригинал в корзину Windows",
+  });
+  await expect(disposal).not.toBeChecked();
+  await disposal.check();
+  await dialog
+    .getByRole("checkbox", { name: "Импортировать Уютный мир" })
+    .check();
+  await dialog
+    .getByRole("button", { name: "Импортировать · 1", exact: true })
+    .click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as any).fixtureRequests.find(
+            (r: any) => r.action === "importModrinth",
+          )?.payload.removeSource,
+      ),
+    )
+    .toBe(true);
+});

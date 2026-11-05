@@ -1,4 +1,9 @@
 export const homeEnglish: Record<string, string> = {
+  "Место на диске и удаление": "Disk space and uninstall",
+  "Проверенная Java без архивов, явное копирование сборок и выбор данных при удалении.":
+    "Validated Java without leftover archives, explicit instance copying and optional data removal.",
+  "В этой тестовой сборке: Java нужной основной версии используется повторно, а её ZIP удаляется только после проверки рабочей среды. Импорт объясняет дополнительное место и предлагает отдельную выключенную галочку отправки оригинала в корзину Windows после проверки копии. Деинсталлятор доступен из настроек, Пуска и списка приложений Windows; игровые данные удаляются только по отдельному выбору.":
+    "In this test build: Java with the required major version is reused, and its ZIP is removed only after validating the runtime. Import explains the extra disk space and offers a separate unchecked option to recycle the original after verifying the copy. The uninstaller is available from Settings, Start and Windows installed apps; game data is removed only by a separate choice.",
   "Моды Horizon": "Horizon mods",
   "Каталог исходников, компиляция и выбор перед запуском.":
     "Source catalog, compilation and a choice before playing.",
