@@ -459,3 +459,15 @@ The isolated 0.5.5 QA installer passed installation, shortcut combinations, upda
 The actual 0.5.5 Tauri executable passed the Horizon smoke test: six branded loader choices, persisted engine/icon settings, owner rejection before engine downloads, real public native catalog/source installation, explicit compilation trust, the prelaunch choice dialog and the fast skin-preview RPC. Complete authenticated Horizon gameplay and native mod compilation remain manual verification items.
 
 README previews were captured from the current English interface in both themes using a local Player account, Forge quick launch and separate Fabric/Horizon demonstration instances. All four real Modrinth project images and loader masks were decoded before capture; screenshots contain no installed account or instance data.
+
+## Public release 0.5.5 — November 5, 2026
+
+Release [v0.5.5](https://github.com/d3ede/aurum-launcher/releases/tag/v0.5.5) is published as the latest stable release from source commit `dca6fa689c6904724235b175c1fd25951d8a34b1`. The [Windows release workflow](https://github.com/d3ede/aurum-launcher/actions/runs/42104397946) passed frontend/native checks, all 127 UI scenarios, the signed production installer build and both installer/storage regression groups before publication. Production update assets were frozen before building the separately identified QA installer.
+
+All four public release assets are present. The public latest-download links were downloaded and checked against GitHub asset digests and `SHA256SUMS.txt`; the checksum file's own GitHub digest was checked separately. Independent Ed25519/minisign verification passed for the installer and its version-bound trusted comment using the production updater public key. The manifest reports 0.5.5, matches the detached signature and points to the immutable v0.5.5 installer URL. The downloaded package identifies itself as Aurum Launcher 0.5.5, not the QA product.
+
+Public installer: 8,607,601 bytes. SHA-256: `c98ca601cf0395705d42452e18812aaec0a60d344949c6398d63d7b3faa4542a`.
+
+The public source tree, README and both English theme previews were verified against the tagged source. README links and the deployed public catalog gateway were also checked. Personal account/instance data, local agent instructions, toolchains, private keys and build output are excluded from the source tree. This subsequent documentation-only record does not move the release tag.
+
+Authenticated Horizon gameplay, full native mod compilation and a clean-machine Windows installation remain manual verification items as described above and in the release notes.
