@@ -236,6 +236,13 @@ test("native catalog downloads sources only; explicit build shows progress and m
   await fixture(page, false);
   await openProfile(page);
   await expect(page.locator(".native-mod-notice")).toContainText("20–30");
+  const notice = page.locator(".native-mod-notice");
+  await expect(notice.locator(":scope > p")).toHaveCount(1);
+  await expect(notice.locator("details")).not.toHaveAttribute("open");
+  await notice.getByText("Подробнее", { exact: true }).click();
+  await expect(notice.locator(".native-code-trust")).toBeVisible();
+  await notice.getByText("Подробнее", { exact: true }).click();
+  await expect(notice.locator(".native-code-trust")).not.toBeVisible();
   await page
     .getByRole("button", { name: "Найти моды Horizon", exact: true })
     .click();
@@ -413,6 +420,7 @@ test("native mod controls fit the minimum light English window", async ({
     page.getByRole("button", { name: "Compile", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".native-mod-notice")).toContainText("several GB");
+  await expect(page.locator(".native-mod-notice summary")).toHaveText("Details");
   expect(
     await page
       .locator(".content-scroll")

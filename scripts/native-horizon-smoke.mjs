@@ -184,7 +184,9 @@ try {
   await page.getByRole("button", { name: "Мои сборки", exact: true }).click();
   await page.getByText("Native Horizon check", { exact: true }).click();
   await page.locator(".horizon-mods").waitFor();
-  await page.getByRole("button", { name: "Играть", exact: true }).click();
+  await page
+    .getByRole("button", { name: /^(Играть|Установить и играть)$/ })
+    .click();
   const prompt = page.getByRole("dialog", {
     name: "Моды ещё не скомпилированы",
     exact: true,

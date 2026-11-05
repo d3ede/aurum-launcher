@@ -1,4 +1,10 @@
 export const horizonModsEnglish: Record<string, string> = {
+  Подробнее: "Details",
+  "После установки моды нужно скомпилировать. В первый раз это может занять 20–30 минут или дольше и потребовать несколько ГБ.":
+    "Compile mods after installing them. The first build may take 20–30 minutes or longer and need several GB.",
+  "Aurum скачает исходники, сборщик, Rust и библиотеки; повторные сборки используют кэш.":
+    "Aurum downloads the sources, builder, Rust and libraries; later builds reuse the cache.",
+  "Сначала установите Horizon": "Install Horizon first",
   "Моды Horizon": "Horizon mods",
   "Версии модов должны поддерживать вашу версию Horizon и запуск из Aurum.":
     "Mod versions must support your Horizon version and launching from Aurum.",

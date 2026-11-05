@@ -2685,6 +2685,15 @@ kbd {
 .native-mod-notice .native-code-trust {
   color: var(--danger);
 }
+.native-mod-notice details {
+  margin-top: 10px;
+  font-size: 12px;
+}
+.native-mod-notice summary {
+  cursor: pointer;
+  color: var(--secondary);
+  width: fit-content;
+}
 .native-build-state {
   display: flex;
   align-items: center;

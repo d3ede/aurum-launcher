@@ -410,11 +410,6 @@ export function Provider({
           }}
           closeDisabled={busy}
         >
-          <p className="dialog-note">
-            {t(
-              "Выбранные изменения пока не входят в игру. Можно собрать их сейчас или отложить и запустить Horizon без пользовательских модов.",
-            )}
-          </p>
           <ul className="native-pending-names">
             {nativePrompt.status.mods
               .filter((m) => m.enabled)

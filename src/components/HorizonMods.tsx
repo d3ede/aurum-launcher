@@ -78,11 +78,6 @@ export function HorizonMods({
       <div className="native-mod-toolbar">
         <div>
           <h2>{t("Моды Horizon")}</h2>
-          <p>
-            {t(
-              "Исходники и скомпилированная игра хранятся отдельно для вашей сборки.",
-            )}
-          </p>
         </div>
         <button className="button primary" onClick={onFind}>
           <Compass size={16} />
@@ -110,23 +105,15 @@ export function HorizonMods({
               <b>
                 {building
                   ? t("Компилируем моды…")
-                  : status.needsBuild
-                    ? t("Изменения ещё не скомпилированы")
-                    : status.enabled
-                      ? t("Сборка модов готова")
-                      : t("Пользовательские моды выключены")}
+                  : !profile.installedVersion
+                    ? t("Сначала установите Horizon")
+                    : status.needsBuild
+                      ? t("Изменения ещё не скомпилированы")
+                      : status.enabled
+                        ? t("Сборка модов готова")
+                        : t("Пользовательские моды выключены")}
               </b>
-              <p>
-                {building
-                  ? progress?.message
-                  : status.needsBuild
-                    ? t(
-                        "Перед игрой с этими модами нужна компиляция. Можно отложить её и запустить обычный Horizon.",
-                      )
-                    : t(
-                        "Игра запускается только с проверенной сборкой выбранных модов.",
-                      )}
-              </p>
+              {building && <p>{progress?.message}</p>}
             </div>
             <button
               className="button primary"
@@ -144,13 +131,6 @@ export function HorizonMods({
             </button>
           </div>
           {status.error && <ErrorBox error={status.error} />}
-          {!profile.installedVersion && (
-            <p className="dialog-note">
-              {t(
-                "Сначала установите Horizon. Затем можно скомпилировать моды.",
-              )}
-            </p>
-          )}
           <div className="native-mod-list">
             {status.mods.map((mod) => (
               <article className="native-mod-row" key={mod.id}>
