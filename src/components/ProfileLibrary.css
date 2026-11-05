@@ -22,11 +22,16 @@
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-image: url("../assets/branding/library-pattern.svg");
-  background-size: 1000px 520px;
-  background-position: 0 80px;
-  background-attachment: fixed;
-  opacity: 0.16;
+  background-image:
+    radial-gradient(
+      ellipse at 100% 0%,
+      color-mix(in srgb, var(--gold) 7%, transparent),
+      transparent 65%
+    ),
+    linear-gradient(180deg, #ffffff03, transparent 70%);
+  background-size: 100% 100%;
+  background-position: center;
+  opacity: 0.8;
 }
 .instance-card-row .instance-card-grip {
   grid-column: 1;
@@ -225,8 +230,7 @@
   pointer-events: none;
 }
 .profile-drag-preview .instance-card-row::before {
-  background-attachment: scroll;
-  background-position: var(--pattern-x) var(--pattern-y);
+  background-position: center;
 }
 @keyframes profile-pickup {
   from {
@@ -277,4 +281,23 @@
     transition: none;
     transform: none;
   }
+}
+
+/* Soft metallic finish for the primary launch action. */
+.instance-card-row .instance-card-play.primary {
+  background-image: linear-gradient(
+    180deg,
+    #f6d98b 0%,
+    #e9c56c 48%,
+    #e3b954 100%
+  );
+  border: 1px solid #c69b46;
+  box-shadow:
+    inset 0 1px 0 #fff5cfbb,
+    inset 0 -1px 0 #91642133,
+    0 2px 4px #00000014;
+  color: #382b12;
+}
+.instance-card-row .instance-card-play.primary:hover:not(:disabled) {
+  filter: brightness(1.06);
 }

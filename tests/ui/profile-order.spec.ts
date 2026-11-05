@@ -413,34 +413,27 @@ test("delete requires confirmation and destructive menu actions are disabled whi
   await expect(page.locator(".library .instance-card")).toHaveCount(3);
 });
 
-test("six cards show continuous curves, an unframed menu and a clickable trailing arrow", async ({
+test("six cards use a card-local matte finish, an unframed menu and a clickable trailing arrow", async ({
   page,
 }) => {
   await fixture(page, "ru", true);
   await page.setViewportSize({ width: 1280, height: 900 });
   const first = page.locator(".library .instance-card").first();
-  const pattern = await first.evaluate(async (element) => {
-    const image = getComputedStyle(element, "::before").backgroundImage;
-    const url = image.slice(5, -2);
-    const svg = new DOMParser().parseFromString(
-      await (await fetch(url)).text(),
-      "image/svg+xml",
-    );
-    const paths = [...svg.querySelectorAll("path")];
+  const pattern = await first.evaluate((element) => {
+    const style = getComputedStyle(element, "::before");
     return {
-      count: paths.length,
-      noInteriorEnds: paths.every(
-        (path) =>
-          !/z/i.test(path.getAttribute("d")!) &&
-          path.getPointAtLength(0).y < 0 &&
-          path.getPointAtLength(path.getTotalLength()).y > 520,
-      ),
-      noSquares: svg.querySelectorAll("rect").length === 0,
+      image: style.backgroundImage,
+      attachment: style.backgroundAttachment,
+      size: style.backgroundSize,
     };
   });
-  expect(pattern.count).toBeGreaterThan(0);
-  expect(pattern.noInteriorEnds).toBe(true);
-  expect(pattern.noSquares).toBe(true);
+  expect(pattern.image).toContain("radial-gradient");
+  expect(pattern.image).not.toContain("repeating-linear-gradient");
+  expect(pattern.image).not.toContain("url(");
+  expect(
+    pattern.attachment.split(",").every((value) => value.trim() === "scroll"),
+  ).toBe(true);
+  expect(pattern.size).toContain("100%");
   for (const theme of ["light", "dark"]) {
     if (theme === "dark")
       await page.getByRole("button", { name: "Переключить тему" }).click();

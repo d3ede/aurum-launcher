@@ -302,6 +302,9 @@ svg {
   text-align: left;
 }
 .titlebar-brand b {
+  line-height: 1;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
   font-size: 23px;
   font-weight: 730;
   letter-spacing: -0.9px;
@@ -816,7 +819,9 @@ textarea {
   font-size: 12px;
 }
 @media (max-width: 600px) {
-  .icon-editor-colors { grid-template-columns: 1fr; }
+  .icon-editor-colors {
+    grid-template-columns: 1fr;
+  }
 }
 .instance-back {
   margin-bottom: 20px;

@@ -699,3 +699,44 @@ button.lightbox-image:not(:disabled) {
     animation: none;
   }
 }
+
+.catalog-project-artwork {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+.catalog-project-source {
+  position: absolute;
+  inset-inline-end: -4px;
+  bottom: -4px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--surface);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.catalog-source-warning {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--gold-soft);
+  color: var(--secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.catalog-source-warning .text-button {
+  flex-shrink: 0;
+}
+.catalog-filter-note {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}

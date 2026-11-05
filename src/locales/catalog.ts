@@ -1,4 +1,13 @@
 export const catalogEnglish: Record<string, string> = {
+  "Все источники": "All sources",
+  "Источник: {{name}}": "Source: {{name}}",
+  "Недоступны: {{sources}}. Показаны результаты остальных источников.":
+    "Unavailable: {{sources}}. Showing results from the other sources.",
+  "Не удалось загрузить каталоги. Повторите попытку.":
+    "Could not load the catalogs. Try again.",
+  "Technic не поддерживает фильтр версии Minecraft и не включён в этот поиск.":
+    "Technic does not support Minecraft version filtering and is excluded from this search.",
+
   "Скачайте недостающие файлы по ссылкам. Пока это окно открыто, лаунчер проверяет папку «Загрузки» и добавляет файлы нужных версий в сборку. Файл из другой папки можно выбрать вручную.":
     "Download the missing files using the links. While this window is open, the launcher checks Downloads and imports the required versions into the instance. You can select files from other folders manually.",
   "Удалять найденные файлы из «Загрузок» после успешного импорта":

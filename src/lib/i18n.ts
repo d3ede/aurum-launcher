@@ -209,7 +209,7 @@ export const ru = {
       home: "Главная",
       profiles: "Мои сборки",
       catalog: "Каталог проектов",
-      accounts: "Аккаунты и скины",
+      accounts: "Профили",
       skins: "Скины и плащи",
       hosting: "Хостинг",
       settings: "Настройки",

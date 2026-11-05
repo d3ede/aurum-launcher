@@ -30,7 +30,7 @@ export function Accounts() {
   return (
     <>
       <div className="page-heading">
-        <h1>{t("Аккаунты и скины")}</h1>
+        <h1>{t("Профили")}</h1>
         <p>{t("Выберите аккаунт для игры и настройте скин.")}</p>
       </div>
       <div className="accounts-layout">

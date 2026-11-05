@@ -1,6 +1,6 @@
-# Horizon integration — 0.5.1 test build
+# Horizon integration
 
-This is a local test build, not a published release. Horizon is an optional
+Horizon is available in Aurum 0.5.5 as an optional
 native engine selected in the new-instance loader menu. Existing profiles
 default to the Java engine without a migration. Horizon currently targets
 Minecraft Java Edition 26.3 on Windows x64; the selected Microsoft account must

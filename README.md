@@ -19,35 +19,34 @@ An independent Windows launcher with a warm light theme and a graphite dark them
 
 ---
 
-<img src="docs/launcher-en.png" alt="Aurum Launcher 0.3.6 — English interface" width="1280">
+**Light theme**
 
-*English interface preview with demonstration data.*
+<img src="docs/launcher-en.png" alt="Aurum Launcher 0.5.5 in English, light theme: Player, Forge quick launch, Fabric and Horizon instances, Modrinth artwork" width="1440">
+
+**Dark theme**
+
+<img src="docs/launcher-en-dark.png" alt="Aurum Launcher 0.5.5 in English, dark theme with the same demonstration instances and Modrinth artwork" width="1440">
+
+*English interface with demonstration instances and a local Player profile. Project artwork is loaded from Modrinth.*
 
 ## What Aurum offers
 
 | | Features |
 | --- | --- |
 | **Instances** | Separate Minecraft instances with their own mods, worlds, settings, and icons. Creating an instance starts installing the game and the appropriate Java runtime. |
-| **Loaders** | Vanilla, Fabric, Forge, NeoForge, and Quilt, with compatible loader versions to choose from. |
-| **Mods and content** | Browse Modrinth mods, modpacks, resource packs, and shaders. Manage installed content with project icons, separate versions, search, sorting, and filters. Identify imported files, check compatible updates, update all, toggle mods, and move files to trash. CurseForge API support with your own API key. |
-| **Import** | Import from Modrinth App, `.mrpack` files, CurseForge ZIP archives, or existing game folders. Modrinth imports preserve the original instance. |
+| **Engines and loaders** | Java with Vanilla, Fabric, Forge, NeoForge or Quilt. Optional Horizon instances for Minecraft 26.3, downloaded separately. Original loader logos and tintable instance symbols. |
+| **Mods and content** | Modrinth and CurseForge, plus public ATLauncher, FTB and Technic modpacks. Search one source or multiple compatible sources together. Install, inspect, update, toggle and remove content. CurseForge needs no personal API key. |
+| **Horizon mods** | A separate native source catalog, explicit compilation, progress, logs and cancellation. Play offers compilation or launching without user mods when the selection has changed. |
+| **Import** | Modrinth App, `.mrpack`, CurseForge ZIP and existing game folders. Originals are kept by default; recycling after a verified copy is a separate option. |
 | **Accounts** | Microsoft sign-in in a dedicated window, encrypted token storage with keys in the OS credential vault, and local offline profiles. |
-| **Skins and capes** | A PNG skin library, nine default characters, wide and slim arms, and animated 3D previews. Apply skins and owned capes to a Microsoft account. |
+| **Skins and capes** | PNG library, nine default characters, wide/slim arms and animated 3D previews. Cached skins appear independently of cape downloads. Apply skins and owned capes to a Microsoft account. |
 | **Local hosting** | Import server folders and proxy networks, install official server distributions, use console and player controls, and manage a network with one launch button. See [local hosting](docs/local-hosting.md). |
 | **Recent servers** | A weekly server history with status checks, matching-instance launches and Windows desktop shortcuts. See [recent servers](docs/recent-servers.md). |
 | **Interface** | 41 languages, language search, RTL support, light and dark themes, and settings for memory, Java, and game data. |
 
-**In this development build:** browse and install public ATLauncher, FTB and
-Technic modpacks from the project-source dropdown, without a service login.
-See [modpack catalogs](docs/MODPACK-CATALOGS.md) for supported formats and verification limits.
+**New in 0.5.5:** Horizon and native mod compilation, loader branding, faster skin previews, validated Java archive cleanup and explicit import/uninstall choices. Read the [release notes](docs/releases/v0.5.5.md).
 
-**Local test build 0.5.1:** optional Horizon (Rust) instances for Minecraft 26.3,
-original loader marks and tintable instance icons. Horizon downloads on demand
-and requires a Microsoft account owning Java Edition. Java mods do not run in
-Horizon. See [integration and verification limits](docs/HORIZON.md). This build
-has not been published as a public release.
-
-**New in 0.4.6:** corrected CurseForge content folders, checksum-verified imports from Downloads and a tidier Home quick launch without duplicate instances. Read the [release notes](docs/releases/v0.4.6.md).
+Horizon is experimental and requires a Microsoft account owning Java Edition. Java mods do not run in Horizon. Native mods compile into the game; the first build downloads its tools and may take 20–30 minutes or longer and several GB. Compile only trusted sources. See [compatibility and verification limits](docs/HORIZON.md).
 
 Hosting is local, not a hosted service; keep Aurum open while its servers run. Launch caching reduces repeated preparation work, not Minecraft or mod initialization time.
 
@@ -59,11 +58,10 @@ Hosting is local, not a hosted service; keep Aurum open while its servers run. L
 
 **Requirements:** Windows 10/11 x64, an internet connection to download the game, and Microsoft Edge WebView2 Runtime. The installer downloads WebView2 automatically if it is missing.
 
-The installer includes the complete launcher and its interface. Minecraft, Java, loaders, and mods are downloaded separately as you set up instances. Players do not need Node.js or Rust.
+The installer includes the launcher and its interface. Minecraft, Java, engines, loaders and mods download separately. No manual Node.js or Rust setup is needed; optional Horizon mod compilation downloads its own toolchain.
 
 The application executable's size is **not** its total disk footprint. Instances,
-worlds, mod data, assets and Java can occupy several gigabytes. In the current
-development build, verified Java archives are cleaned up, imports explicitly
+worlds, mod data, assets and Java can occupy several gigabytes. Verified Java archives are cleaned up, imports explicitly
 explain copying, and the uninstaller offers optional game-data removal. See
 [storage and removal](docs/STORAGE.md).
 
@@ -79,10 +77,10 @@ Get-FileHash .\Aurum-Launcher_x64-setup.exe -Algorithm SHA256
 
 ## Your first instance
 
-1. Open **Accounts and skins** and sign in with Microsoft or add a local profile.
+1. Open **Profiles** and sign in with Microsoft or add a local profile.
 2. Click **New instance** and choose a Minecraft version, loader, and loader version. Aurum starts installing the game files and Java.
 3. Open the instance and click **Find projects** to browse content compatible with its game version and loader.
-4. Launch the game when installation finishes. Memory, JVM options, and the game window size are available in the instance settings.
+4. Launch when installation finishes. Instance settings include the game window size; Java instances also offer memory and JVM options.
 
 Already using Modrinth App? Choose **Import → From Modrinth** on the home screen or in your library, then select your instances. Aurum copies worlds, mods, configuration, and resource packs. Add your accounts separately.
 
@@ -101,13 +99,14 @@ Already using Modrinth App? Choose **Import → From Modrinth** on the home scre
 
 ## Project status
 
-Aurum is under active development. The verified target runtime is **Windows x64**. Installation and launch with all five loaders have been tested on Minecraft 1.21.1; compatibility with every historical version is not claimed.
+Aurum is under active development. The verified target runtime is **Windows x64**. Java installation and launch with all five loaders have been tested on Minecraft 1.21.1; compatibility with every historical version or Horizon mod is not claimed.
 
 | Area | Current status |
 | --- | --- |
 | **Microsoft** | OAuth with PKCE, the sign-in window, and token storage are implemented. A complete sign-in with a real account and the application's Minecraft Services access still need manual verification. |
-| **CurseForge** | An official API key is required. Requests with a real key have not been verified yet; author restrictions on third-party downloads are respected. |
-| **Installer** | The NSIS package builds successfully. Installation and removal on a clean Windows machine still need separate verification. |
+| **CurseForge** | Uses Aurum API with the project key stored on the server. Catalog, real mod installation, metadata/update checks and CurseForge ZIP import passed a native core smoke test against the deployed gateway. Author restrictions on third-party downloads are respected. |
+| **Horizon** | Signed downloads, owner/Launch API gates, public native source installation, build-state checks and compilation cancellation are tested. Complete authenticated gameplay and full native game compilation still need manual verification. |
+| **Storage and removal** | Exact-major Java reuse, verified archive cleanup, import-copy checks and optional game-data removal. Isolated installer tests cover registered custom roots and preservation of unrelated files. A clean Windows machine remains a separate verification target. |
 | **Other platforms** | macOS/Linux builds have not been verified. Automatic Java downloads currently target Windows. |
 | **Launcher updates** | Automatic checks, signed downloads, and in-app installation through GitHub Releases. Finish running games and launcher tasks before installing. |
 | **Not yet implemented** | Modpack export. |
@@ -118,7 +117,7 @@ See **[VERIFICATION.md](docs/VERIFICATION.md)** for test results and their limit
 
 **Stack:** Tauri 2 · Rust · React 19 · TypeScript · Vite.
 
-For a standard Windows build, install Node.js 22.12+, stable Rust 1.90+, and Visual Studio C++ Build Tools with the Windows SDK.
+For a standard Windows build, install Node.js 22.12+, stable Rust, and Visual Studio C++ Build Tools with the Windows SDK.
 
 ```powershell
 git clone https://github.com/d3ede/aurum-launcher.git
@@ -175,6 +174,8 @@ and is not included in source commits or installers.
 
 ### Repository layout
 
+The Cloudflare API lives in [`services/aurum-api`](services/aurum-api/README.md), including local checks, the HTTP contract, and deployment instructions. All CurseForge operations use Aurum API; the project key stays in Workers secrets. The public `AURUM_API_URL` is configured in [`.env.example`](.env.example). Copy it to `.env` for a local override. Builds read `.env.example`, then `.env`, then the build environment; a process environment override takes priority at runtime. Only the public origin is embedded, and HTTPS is required. An empty origin disables CurseForge without affecting other providers or local operations.
+
 ```text
 src/                 React interface, components, and localization
 src-tauri/           Tauri application and desktop commands
@@ -189,6 +190,9 @@ The Rust crate name `auren-core` and identifier `app.auren.launcher` are retaine
 
 ## Documentation and feedback
 
+- [Horizon and native mods](docs/HORIZON.md)
+- [Storage, imports and uninstall](docs/STORAGE.md)
+- [Modpack catalogs](docs/MODPACK-CATALOGS.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Microsoft sign-in setup and verification](docs/MICROSOFT-LOGIN.md)
 - [Localization and 41 languages](docs/LOCALIZATION.md)

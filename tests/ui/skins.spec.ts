@@ -8,6 +8,7 @@ async function fixture(
   kind: "offline" | "microsoft" = "offline",
   theme = "light",
   importMode: "normal" | "empty" | "partial" | "error" = "normal",
+  waitForPreview = true,
   slowAppearance = false,
 ) {
   await page.addInitScript(
@@ -55,10 +56,9 @@ async function fixture(
           },
         ],
         capes: [],
-        selections: slowAppearance
-          ? {}
-          : { "skin-user": { skinId: "saved-a", capeId: null } },
+        selections: { "skin-user": { skinId: "saved-a", capeId: null } },
       };
+      if (w.noSelection) delete library.selections[account.id];
       const state = {
         profiles: [],
         accounts: [account],
@@ -133,17 +133,27 @@ async function fixture(
                 w.showPreview = () =>
                   resolve({ texture: texture(ari), model: "alex", capes: [] });
               });
-            return { texture: texture(ari), model: "alex", capes: [] };
-          }
-          if (action === "accountAppearance" && slowAppearance)
-            return new Promise((resolve) => {
-              w.showAppearance = () =>
-                resolve({ texture: texture(ari), model: "alex", capes: [] });
-            });
-          if (action === "accountAppearance")
+            if (w.holdAppearance || w.appearanceFailure) return null;
             return {
-              texture: texture(ari),
-              model: "alex",
+              texture: texture(w.useSteve ? steve : ari),
+              model: w.useSteve ? "steve" : "alex",
+              capes: [],
+            };
+          }
+          if (action === "accountAppearance") {
+            if (slowAppearance)
+              return new Promise((resolve) => {
+                w.showAppearance = () =>
+                  resolve({ texture: texture(ari), model: "alex", capes: [] });
+              });
+            if (w.holdAppearance)
+              await new Promise<void>((resolve) => {
+                w.releaseAppearance = resolve;
+              });
+            if (w.appearanceFailure) throw new Error("Appearance unavailable");
+            return {
+              texture: texture(w.useSteve ? steve : ari),
+              model: w.useSteve ? "steve" : "alex",
               capes:
                 kind === "microsoft"
                   ? [
@@ -156,6 +166,7 @@ async function fixture(
                     ]
                   : [],
             };
+          }
           if (action === "saveSettings") {
             state.settings = payload.settings;
             return null;
@@ -225,11 +236,11 @@ async function fixture(
   await expect(
     page.getByRole("heading", { name: "Скины и плащи", exact: true }),
   ).toBeVisible();
-  if (!slowAppearance)
-    await expect(page.locator(".wardrobe-character canvas")).toHaveAttribute(
-      "data-ready",
-      "true",
-    );
+  if (!waitForPreview) return;
+  await expect(page.locator(".wardrobe-character canvas")).toHaveAttribute(
+    "data-ready",
+    "true",
+  );
 }
 for (const kind of ["offline", "microsoft"] as const) {
   test(`${kind} wardrobe keeps preview and Apply visible while the library scrolls`, async ({
@@ -640,33 +651,90 @@ test("owned Microsoft capes are selectable, local capes stay previews, small edi
   ).toBeDisabled();
 });
 
-test("wardrobe waits for the actual skin, displays cached texture before capes, and never flashes Steve on navigation", async ({
+test("cold wardrobe waits for appearance; warm navigation remembers the preview", async ({
   page,
 }) => {
-  await fixture(page, "microsoft", "dark", "normal", true);
-  const canvas = page.locator(".wardrobe-character canvas");
-  await expect(canvas).toHaveAttribute("data-ready", "false");
-  await expect(canvas).toHaveCSS("opacity", "0");
+  await page.addInitScript(() => {
+    (window as any).holdAppearance = true;
+  });
+  await fixture(page, "offline", "light", "normal", false);
+  await expect(page.locator(".wardrobe-layout")).toBeHidden();
+  await expect(page.locator(".wardrobe-character canvas")).toHaveCount(0);
   await expect(
-    page.locator(".wardrobe-character .appearance-loading"),
+    page.getByText("Получаем образ Minecraft…").first(),
   ).toBeVisible();
-  await expect(page.locator(".wardrobe-tile").first()).toBeVisible();
-  await page.evaluate(() => (window as any).showPreview());
-  await expect(canvas).toHaveAttribute("data-ready", "true");
-  await expect(canvas).toHaveCSS("opacity", "1");
-  await expect(
-    page.getByRole("button", { name: "Сохранить образ", exact: true }),
-  ).toBeDisabled();
-  await page.getByRole("button", { name: "Главная", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Скины и плащи", exact: true })
-    .click();
+  await expect
+    .poll(() => page.evaluate(() => typeof (window as any).releaseAppearance))
+    .toBe("function");
+  await page.evaluate(() => {
+    (window as any).holdAppearance = false;
+    (window as any).releaseAppearance();
+  });
+  await expect(page.locator(".wardrobe-layout")).toBeVisible();
+  const zuri = page.getByRole("button", {
+    name: "Выбрать скин Zuri",
+    exact: true,
+  });
+  await zuri.click();
+  await expect(zuri).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator(".wardrobe-character canvas")).toHaveAttribute(
     "data-ready",
     "true",
   );
-  await expect(
-    page.locator(".wardrobe-character .appearance-loading"),
-  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Главная", exact: true }).click();
+  await page.evaluate(() => {
+    (window as any).holdAppearance = true;
+  });
+  await page
+    .getByRole("button", { name: "Скины и плащи", exact: true })
+    .click();
+  await expect(page.locator(".wardrobe-layout")).toBeVisible();
+  await expect(zuri).toHaveAttribute("aria-pressed", "true");
+});
+
+test("Steve is a valid loaded appearance and first-load failures can be retried", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    (window as any).appearanceFailure = true;
+    (window as any).useSteve = true;
+    (window as any).noSelection = true;
+  });
+  await fixture(page, "offline", "light", "normal", false);
+  await expect(page.getByRole("alert")).toContainText("Appearance unavailable");
+  await expect(page.locator(".wardrobe-layout")).toBeHidden();
+  await page.evaluate(() => {
+    (window as any).appearanceFailure = false;
+  });
+  await page
+    .getByRole("button", { name: "Попробовать снова", exact: true })
+    .click();
+  await expect(page.locator(".wardrobe-layout")).toBeVisible();
+  await expect(page.locator(".wardrobe-character canvas")).toHaveAttribute(
+    "data-ready",
+    "true",
+  );
+});
+
+test("cached native texture is visible before the full cape response", async ({
+  page,
+}) => {
+  await fixture(page, "microsoft", "dark", "normal", false, true);
+  await expect(page.locator(".wardrobe-layout")).toBeHidden();
+  await expect(page.locator(".wardrobe-character canvas")).toHaveCount(0);
+  await expect
+    .poll(() => page.evaluate(() => typeof (window as any).showPreview))
+    .toBe("function");
+  await page.evaluate(() => (window as any).showPreview());
+  await expect(page.locator(".wardrobe-layout")).toBeVisible();
+  await expect(page.locator(".wardrobe-character canvas")).toHaveAttribute(
+    "data-ready",
+    "true",
+  );
+  await page.getByRole("button", { name: "Главная", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Скины и плащи", exact: true })
+    .click();
+  await expect(page.locator(".wardrobe-layout")).toBeVisible();
   await page.evaluate(() => (window as any).showAppearance());
 });

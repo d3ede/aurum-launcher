@@ -1,0 +1,26 @@
+{
+  "name": "aurum-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "cf dev",
+    "build": "cf build",
+    "check": "tsc --noEmit",
+    "test": "node --import tsx --test test/*.test.ts",
+    "deploy:preview": "cf deploy --mode staging",
+    "deploy": "cf deploy --mode production",
+    "dry-run": "cf deploy --dry-run --mode production"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^2.0.0-beta.v.4",
+    "@cloudflare/workers-types": "5.20261023.1",
+    "@types/node": "^24.0.0",
+    "cf": "1.0.0-beta.21",
+    "esbuild": "^0.25.0",
+    "miniflare": "^5.20261019.2-beta",
+    "tsx": "^4.20.0",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.0"
+  }
+}

@@ -3,9 +3,10 @@ import { randomUUID } from "node:crypto";
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
 import { strict as assert } from "node:assert";
-import { mkdirSync, existsSync, writeFileSync } from "node:fs";
+import { mkdirSync, existsSync, writeFileSync, readFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 
+const appVersion = JSON.parse(readFileSync("package.json", "utf8")).version;
 const root = resolve(".test-data", `native-horizon-${Date.now()}`);
 mkdirSync(root, { recursive: true });
 writeFileSync(
@@ -60,7 +61,7 @@ try {
     .pages()
     .find((p) => /tauri\.localhost/.test(p.url()));
   assert(page, "Main Tauri page not found");
-  await page.getByText("0.5.1", { exact: false }).first().waitFor();
+  await page.getByText(appVersion, { exact: false }).first().waitFor();
   const rpc = (action, payload = {}) =>
     page.evaluate(
       ({ action, payload }) =>
@@ -210,7 +211,7 @@ try {
   assert(preview.texture.startsWith("data:image/png;base64,"));
   console.log(
     JSON.stringify({
-      nativeVersion: "0.5.1",
+      nativeVersion: appVersion,
       brandedOptions: 6,
       nativeProfileSaved: true,
       ownerGate: true,

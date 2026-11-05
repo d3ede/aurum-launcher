@@ -332,8 +332,6 @@ export function ProfileLibrary({
                 top: preview.top,
                 width: preview.width,
                 transform: `translate3d(${preview.x}px, ${preview.y}px, 0)`,
-                "--pattern-x": `${-preview.left}px`,
-                "--pattern-y": `${80 - preview.top}px`,
               } as CSSProperties
             }
           >

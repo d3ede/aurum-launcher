@@ -14,7 +14,17 @@ import {
 import { useApp } from "../context";
 import { native, rpc } from "../lib/api";
 import { ru, formatNumber } from "../lib/i18n";
-import type { CatalogSource, CatalogTarget, Kind, Project } from "../types";
+import type {
+  CatalogSource,
+  CatalogTarget,
+  Kind,
+  Project,
+  SearchQuery,
+} from "../types";
+import {
+  searchAllSources,
+  type CatalogSearchSource,
+} from "../lib/catalog-search";
 import { catalogSources, packSource } from "../lib/catalog-sources";
 import { ProjectIcon } from "./Catalog";
 import { Select } from "../components/Select";
@@ -42,7 +52,7 @@ export function Catalog({
     profileId: string;
     action: "installing" | "removing";
   } | null>(null);
-  const [source, setSource] = useState<CatalogSource>(() =>
+  const [source, setSource] = useState<CatalogSearchSource>(() =>
     data.profiles.find((p) => p.id === target.profileId)?.engine === "horizon"
       ? "horizon"
       : "modrinth",
@@ -83,6 +93,8 @@ export function Catalog({
   const [offset, setOffset] = useState(0);
   const [results, setResults] = useState<Project[]>([]);
   const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [failedSources, setFailedSources] = useState<CatalogSource[]>([]);
   const [error, setError] = useState("");
   const [filterError, setFilterError] = useState("");
   const [loading, setLoading] = useState(native);
@@ -116,7 +128,7 @@ export function Catalog({
     setCategory("");
     setCategories([]);
     setFilterError("");
-    if (!native || source === "curseforge" || packsOnly) return;
+    if (!native || packsOnly || source === "all") return;
     let live = true;
     rpc("catalogCategories", { source, kind })
       .then((v) => {
@@ -149,39 +161,55 @@ export function Catalog({
           : loader
       : "";
   useEffect(() => {
-    if (!native || needsLoader || source === "curseforge") return;
+    if (!native || needsLoader) return;
     let live = true;
     setLoading(true);
-    const timer = setTimeout(() => {
-      setError("");
-      rpc("search", {
-        query: {
+    const timer = setTimeout(
+      () => {
+        setError("");
+        setFailedSources([]);
+        const request: Omit<SearchQuery, "source"> = {
           query,
-          source,
           kind,
           minecraft: effectiveMc || null,
           loader: effectiveLoader || null,
           category: category || null,
           sort,
           offset,
-        },
-      })
-        .then((r) => {
-          if (live) {
+        };
+        const work =
+          source === "all"
+            ? searchAllSources(request, (query) => rpc("search", { query }))
+            : rpc("search", { query: { ...request, source } }).then(
+                (result) => ({
+                  ...result,
+                  hasMore: offset + 24 < result.total,
+                  failed: [] as CatalogSource[],
+                  allFailed: false,
+                }),
+              );
+        work
+          .then((r) => {
+            if (!live) return;
             setResults(r.projects);
             setTotal(r.total);
-          }
-        })
-        .catch((e) => {
-          if (live) {
-            setError(e.message);
-            setResults([]);
-          }
-        })
-        .finally(() => {
-          if (live) setLoading(false);
-        });
-    }, 250);
+            setHasMore(r.hasMore);
+            setFailedSources(r.failed);
+            if (r.allFailed)
+              setError(t("Не удалось загрузить каталоги. Повторите попытку."));
+          })
+          .catch((e) => {
+            if (live) {
+              setError(e.message);
+              setResults([]);
+            }
+          })
+          .finally(() => {
+            if (live) setLoading(false);
+          });
+      },
+      source === "all" ? 400 : 250,
+    );
     return () => {
       live = false;
       clearTimeout(timer);
@@ -264,7 +292,7 @@ export function Catalog({
     setSort(
       source === "atlauncher"
         ? "name"
-        : source === "technic"
+        : source === "technic" || source === "all"
           ? "relevance"
           : "downloads",
     );
@@ -304,7 +332,10 @@ export function Catalog({
         <p className="catalog-provider-note">
           {t(
             "Сборки {{source}} устанавливаются как отдельные профили. Вход для публичного каталога не нужен.",
-            { source: catalogSources[source] },
+            {
+              source:
+                source === "all" ? t("Все источники") : catalogSources[source],
+            },
           )}
         </p>
       )}
@@ -333,25 +364,32 @@ export function Catalog({
               aria-label={t("Сортировка проектов")}
               value={sort}
               onValueChange={setSort}
-              options={[
-                { value: "downloads", label: t("По загрузкам") },
-                ...(source === "modrinth" || source === "technic"
+              options={
+                source === "all"
                   ? [{ value: "relevance", label: t("По соответствию") }]
-                  : []),
-                ...(source !== "technic"
-                  ? [
-                      { value: "updated", label: t("Недавно обновлённые") },
-                      { value: "newest", label: t("Новые проекты") },
-                    ]
-                  : []),
-                ...(source === "atlauncher"
-                  ? [{ value: "name", label: t("По названию") }]
-                  : []),
-              ].filter(
-                (o) =>
-                  (source !== "atlauncher" && source !== "technic") ||
-                  o.value !== "downloads",
-              )}
+                  : [
+                      { value: "downloads", label: t("По загрузкам") },
+                      ...(source === "modrinth" || source === "technic"
+                        ? [{ value: "relevance", label: t("По соответствию") }]
+                        : []),
+                      ...(source !== "technic"
+                        ? [
+                            {
+                              value: "updated",
+                              label: t("Недавно обновлённые"),
+                            },
+                            { value: "newest", label: t("Новые проекты") },
+                          ]
+                        : []),
+                      ...(source === "atlauncher"
+                        ? [{ value: "name", label: t("По названию") }]
+                        : []),
+                    ].filter(
+                      (o) =>
+                        (source !== "atlauncher" && source !== "technic") ||
+                        o.value !== "downloads",
+                    )
+              }
             />
             <div
               className="catalog-view-switch"
@@ -380,15 +418,30 @@ export function Catalog({
               </button>
             </div>
           </div>
-          {source === "curseforge" ? (
-            <EmptyState
-              icon={<CatalogSourceLogo source="curseforge" size={34} />}
-              title={t("Ожидается в скором времени")}
-              text={t(
-                "Каталог CurseForge появится в одном из следующих обновлений.",
-              )}
-            />
-          ) : !native ? (
+          {source === "all" &&
+            failedSources.length > 0 &&
+            !error &&
+            !loading && (
+              <div className="catalog-source-warning" role="status">
+                <span>
+                  {t(
+                    "Недоступны: {{sources}}. Показаны результаты остальных источников.",
+                    {
+                      sources: failedSources
+                        .map((s) => catalogSources[s])
+                        .join(", "),
+                    },
+                  )}
+                </span>
+                <button
+                  className="text-button"
+                  onClick={() => setRetry((n) => n + 1)}
+                >
+                  {t("Попробовать снова ")}
+                </button>
+              </div>
+            )}
+          {!native ? (
             <EmptyState
               icon={<Compass size={30} />}
               title={t("Каталог ждёт в desktop-приложении")}
@@ -412,7 +465,10 @@ export function Catalog({
           ) : loading ? (
             <Loading
               label={t("Поиск в {{v1}}\u2026", {
-                v1: catalogSources[source],
+                v1:
+                  source === "all"
+                    ? t("Все источники")
+                    : catalogSources[source],
               })}
             />
           ) : error ? (
@@ -450,7 +506,31 @@ export function Catalog({
                         className="catalog-card"
                         onClick={() => onProject(project)}
                       >
-                        <ProjectIcon project={project} />
+                        <span className="catalog-project-artwork">
+                          <ProjectIcon project={project} />
+                          {source === "all" && (
+                            <span
+                              className="catalog-project-source"
+                              role="img"
+                              aria-label={t("Источник: {{name}}", {
+                                name:
+                                  catalogSources[
+                                    project.source as CatalogSource
+                                  ] || project.source,
+                              })}
+                              title={
+                                catalogSources[
+                                  project.source as CatalogSource
+                                ] || project.source
+                              }
+                            >
+                              <CatalogSourceLogo
+                                source={project.source}
+                                size={16}
+                              />
+                            </span>
+                          )}
+                        </span>
                         <div>
                           <div className="catalog-project-heading">
                             <h3>{project.title}</h3>
@@ -499,7 +579,7 @@ export function Catalog({
                 <span>{Math.floor(offset / 24) + 1}</span>
                 <button
                   className="button secondary"
-                  disabled={offset + 24 >= total}
+                  disabled={!hasMore}
                   onClick={() => setOffset((v) => v + 24)}
                 >
                   {t("Далее ")}
@@ -532,7 +612,7 @@ export function Catalog({
               aria-label={t("Источник проектов")}
               value={source}
               onValueChange={(value) => {
-                setSource(value as CatalogSource);
+                setSource(value as CatalogSearchSource);
                 if (value === "horizon")
                   setTarget({
                     profileId: profile?.engine === "horizon" ? profile.id : "",
@@ -548,14 +628,17 @@ export function Catalog({
                 setSort(
                   value === "atlauncher"
                     ? "name"
-                    : value === "technic"
+                    : value === "technic" || value === "all"
                       ? "relevance"
                       : "downloads",
                 );
                 if (packSource(value))
                   setTarget({ profileId: "", kind: "modpack" });
               }}
-              options={Object.entries(catalogSources).map(([value, label]) => ({
+              options={[
+                ["all", t("Все источники")],
+                ...Object.entries(catalogSources),
+              ].map(([value, label]) => ({
                 value,
                 label,
                 icon: <CatalogSourceLogo source={value} />,
@@ -605,6 +688,13 @@ export function Catalog({
               />
             </fieldset>
           )}
+          {source === "all" && kind === "modpack" && effectiveMc && (
+            <p className="catalog-filter-note">
+              {t(
+                "Technic не поддерживает фильтр версии Minecraft и не включён в этот поиск.",
+              )}
+            </p>
+          )}
           {kind === "mod" && source !== "horizon" && (
             <fieldset>
               <legend>{t("Загрузчик")}</legend>
@@ -622,7 +712,7 @@ export function Catalog({
               />
             </fieldset>
           )}
-          {!packsOnly && (
+          {!packsOnly && source !== "all" && (
             <fieldset>
               <legend>{t("Категория")}</legend>
               <Select

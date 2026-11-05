@@ -1,6 +1,6 @@
 # Storage and removal
 
-These changes belong to the local development build; they are not a published release.
+These storage and removal controls are included in Aurum 0.5.5.
 
 ## Disk usage
 

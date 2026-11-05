@@ -93,6 +93,22 @@ jobs:
           ./scripts/test-installer-language.ps1
           ./scripts/build-installer-ui.ps1 -Test
           ./scripts/test-installer-shortcuts.ps1
+      - name: Check isolated install and data removal
+        shell: pwsh
+        run: |
+          # Production update assets are already frozen in target/publish.
+          # This separate identity cannot register or remove production data.
+          @{
+            productName = 'Aurum Installer QA'
+            identifier = 'app.aurum.installer.qa'
+            bundle = @{ publisher = 'AurumInstallerQA'; createUpdaterArtifacts = $false }
+          } | ConvertTo-Json -Depth 4 | Set-Content .test-data/installer-qa.json -Encoding utf8
+          npm run tauri build -- --config .test-data/installer-qa.json --no-sign
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $setup = (Resolve-Path "target/release/bundle/nsis/Aurum Installer QA_${version}_x64-setup.exe").Path
+          ./scripts/test-installer.ps1 -SetupPath $setup
+          ./scripts/test-storage-uninstall.ps1 -SetupPath $setup
       - name: Upload and publish release
         shell: pwsh
         env:

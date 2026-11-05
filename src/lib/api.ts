@@ -192,12 +192,6 @@ interface Contract {
     },
     void,
   ];
-  setCurseforgeKey: [
-    {
-      key: string;
-    },
-    void,
-  ];
   addOffline: [
     {
       name: string;
