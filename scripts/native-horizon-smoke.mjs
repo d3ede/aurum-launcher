@@ -26,16 +26,20 @@ writeFileSync(
     },
   }),
 );
-const child = spawn(resolve("target/release/aurum.exe"), [], {
-  windowsHide: true,
-  env: {
-    ...process.env,
-    AURUM_DATA_DIR: root,
-    WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS:
-      "--remote-debugging-port=9246 --remote-debugging-address=127.0.0.1",
+const child = spawn(
+  resolve(process.env.AURUM_SMOKE_EXE || "target/release/aurum.exe"),
+  [],
+  {
+    windowsHide: true,
+    env: {
+      ...process.env,
+      AURUM_DATA_DIR: root,
+      WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS:
+        "--remote-debugging-port=9246 --remote-debugging-address=127.0.0.1",
+    },
+    stdio: "ignore",
   },
-  stdio: "ignore",
-});
+);
 let browser;
 try {
   let connected = false;
@@ -125,6 +129,83 @@ try {
     !existsSync(join(root, "horizon")),
     "Unowned installation downloaded Horizon",
   );
+  const results = await rpc("search", {
+    query: {
+      source: "horizon",
+      kind: "mod",
+      query: "vein",
+      minecraft: "26.3",
+      loader: "horizon",
+      category: null,
+      sort: "downloads",
+      offset: 0,
+    },
+  });
+  assert(results.total > 0);
+  const project = results.projects[0];
+  assert.equal(project.source, "horizon");
+  const detail = await rpc("project", {
+    source: "horizon",
+    id: project.id,
+    minecraft: "26.3",
+  });
+  assert(detail.versions.length > 0);
+  await rpc("installContent", {
+    id: profile.id,
+    source: "horizon",
+    projectId: project.id,
+    versionId: detail.versions[0].id,
+    operationId: randomUUID(),
+  });
+  const status = await rpc("horizonModStatus", { id: profile.id });
+  assert.equal(status.mods.length, 1);
+  assert(status.needsBuild && !status.hasBuild && !status.error);
+  let trustRejected = false;
+  try {
+    await rpc("buildHorizonMods", {
+      id: profile.id,
+      operationId: randomUUID(),
+      trustNativeCode: false,
+    });
+  } catch (error) {
+    trustRejected = String(error).includes("Подтвердите");
+  }
+  assert(trustRejected, "Compilation requires an explicit trust action");
+  assert(
+    !existsSync(join(root, "horizon", "tools")),
+    "Source installation downloaded tools",
+  );
+  assert(
+    !existsSync(join(root, "horizon", "compiler")),
+    "Source installation started compilation",
+  );
+  await rpc("addOffline", { name: "NativeFixture" });
+  await page.reload();
+  await page.getByRole("button", { name: "Мои сборки", exact: true }).click();
+  await page.getByText("Native Horizon check", { exact: true }).click();
+  await page.locator(".horizon-mods").waitFor();
+  await page.getByRole("button", { name: "Играть", exact: true }).click();
+  const prompt = page.getByRole("dialog", {
+    name: "Моды ещё не скомпилированы",
+    exact: true,
+  });
+  await prompt.waitFor();
+  assert(
+    await prompt
+      .getByRole("button", { name: "Скомпилировать и играть", exact: true })
+      .isVisible(),
+  );
+  assert(
+    await prompt
+      .getByRole("button", { name: "Отложить и играть без модов", exact: true })
+      .isVisible(),
+  );
+  await page.screenshot({ path: join(root, "native-mod-launch-prompt.png") });
+  await prompt.getByRole("button", { name: "Отмена", exact: true }).click();
+  const preview = await rpc("accountSkinPreview", {
+    id: (await rpc("snapshot")).selectedAccount,
+  });
+  assert(preview.texture.startsWith("data:image/png;base64,"));
   console.log(
     JSON.stringify({
       nativeVersion: "0.5.1",
@@ -132,6 +213,11 @@ try {
       nativeProfileSaved: true,
       ownerGate: true,
       noUnownedDownloads: true,
+      realNativeCatalog: true,
+      sourceInstallWithoutCompilation: true,
+      explicitCompileTrust: true,
+      realPrelaunchPrompt: true,
+      fastSkinPreview: true,
       dataRoot: root,
     }),
   );

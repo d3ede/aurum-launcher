@@ -35,9 +35,50 @@ own Java Edition. Local offline accounts cannot install or start it.
 ## Compatibility and limits
 
 Horizon has its own mod system. Aurum does not install Java catalog mods into a
-native instance. Use the instance folder for compatible Horizon content and the
-game's resource-pack settings. Java memory/JVM options are hidden for native
-profiles. Existing Java modpacks cannot be switched to Horizon through settings.
+native instance. Java memory/JVM options are hidden for native profiles. Existing
+Java modpacks cannot be switched to Horizon through settings.
+
+## Native source mods
+
+The Horizon catalog reads the public [native mod registry](https://horizon-rust.github.io/horizon-mods/index.json).
+Only `native-mod` entries for the profile's game version are offered. Installing
+downloads a `.hnmod` source archive; it does not execute or compile that source.
+Aurum checks the registry SHA-256, size, bundle identity and revision pins, and
+verifies the author's Minisign signature when the project declares a key. Revoked
+versions are excluded. Sources live in each instance's `.aurum/horizon-mods` folder.
+
+The instance's Content tab lists the sources with enable/remove controls, a
+**Compile** action, build state and a build log. The catalog and launch prompt
+explain that the first build downloads tools and libraries, can use several GB,
+and may take 20–30 minutes or longer. Native mods and their build scripts have
+the user's permissions; compilation requires an explicit action acknowledging
+that only trusted mods should be built.
+
+Compilation uses the official signed Windows x64 Horizon launcher CLI 0.2.43.
+Its archive signature and SHA-256 are verified before use. The helper downloads
+its own portable Rust and linker on demand; Aurum does not change the system
+Rust installation. Its shared tool/source cache is under `horizon/compiler`.
+The upstream tool may also use an ASCII-only build directory under ProgramData
+on Windows when the launcher's data path contains spaces or non-ASCII characters.
+Prepared resources are reused from the installed Horizon engine. Installing and
+compiling the game still require an owning Microsoft account.
+
+The helper's revision pins and dependency checks are preserved. Aurum does not
+pass options to ignore pins or build through version mismatches. Strictly pinned
+mods from before the Launch API are rejected before downloading the compiler;
+the error asks for a newer mod version. Hook-based mods follow the official
+builder's revision selection. The resulting executable must support Launch API
+0.1.x and Minecraft 26.3 before it can become the selected mod build. Appearing
+in the registry alone does not guarantee a mod works with this integration.
+
+The selected build records the base engine, enabled sources and their hashes,
+plus the resulting client hash. Adding, updating, disabling or removing a mod
+invalidates the selection. Play then offers **Compile and play**, **Postpone and
+play without mods**, or cancellation. Postponing launches the base Horizon engine
+and leaves the sources untouched. With no enabled native mods, Play uses the base
+engine. A failed or cancelled compilation preserves the previous build record
+and never starts a stale mod build. Cancellation kills the owned Windows process
+tree, including compiler children. Output is available in `horizon-build.log`.
 
 The Launch API and upstream Nightlies remain experimental. Old Nightly downloads
 may disappear from GitHub; existing complete local installations remain usable.
@@ -52,7 +93,7 @@ account; automated tests do not sign in as a real user or touch their game data.
 See [upstream launch guide](https://github.com/horizon-rust/horizon/blob/main/docs/api/launch-guide.md)
 and [asset provenance](../src/assets/loaders/README.md).
 
-## Local verification — 2026-11-05
+## Initial integration verification — 2026-11-05
 
 - Production frontend build and 19 frontend unit tests passed.
 - Regular `cargo test --workspace` and Clippy with warnings denied passed.
@@ -77,3 +118,27 @@ and [asset provenance](../src/assets/loaders/README.md).
 Authenticated first-time resource preparation and playing a world with an owning
 Microsoft account remain manual verification items. The smoke test does not claim
 to cover authenticated gameplay.
+
+## Native mod and skin follow-up verification — 2026-11-05
+
+- Production frontend build, all 19 frontend unit tests, regular workspace Rust
+  tests and Clippy with warnings denied passed.
+- All 121 UI scenarios passed across the complete run and the focused rerun of
+  the source selector updated for Horizon's sixth catalog entry. Coverage includes
+  source-only installation, explicit compilation, log/progress display, both
+  launch choices, failed/cancelled builds, both themes and the minimum window size.
+- Delayed skin/cape tests confirm that the wardrobe hides the unresolved model,
+  displays the real cached texture independently of capes and retains the preview
+  across navigation. A Rust test checks disk-cache reuse without credentials.
+- Opt-in live tests downloaded a real registry mod, verified its author signature,
+  and separately downloaded and verified the official builder. The real helper
+  discovered Aurum's isolated instance through the configured homes. Neither test
+  compiled or ran third-party mod code or downloaded Rust.
+- Process tests check failure logs, preservation of the selected build record,
+  cancellation of the owned compiler process tree, changed source detection and
+  compiled executable integrity.
+
+A complete native game compilation and authenticated gameplay with mods have not
+been verified end to end. They remain manual checks with an owning account and
+compatible mod versions. Tests use isolated data and do not compile user mods or
+change real game instances.

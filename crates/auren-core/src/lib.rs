@@ -4,6 +4,7 @@ pub mod content;
 pub mod content_metadata;
 mod directories;
 pub mod horizon;
+pub mod horizon_mods;
 pub mod hosting;
 mod launch_cache;
 pub use directories::default_data_directory;

@@ -9,11 +9,13 @@ export function CatalogInstallButton({
   title,
   disabled,
   onClick,
+  nativeSource = false,
 }: {
   state: CatalogActionState;
   title: string;
   disabled: boolean;
   onClick: () => void;
+  nativeSource?: boolean;
 }) {
   const working = state === "installing" || state === "removing";
   const installed = state === "installed";
@@ -23,8 +25,12 @@ export function CatalogInstallButton({
       : state === "removing"
         ? t("Удаление…")
         : installed
-          ? t("Установлено")
-          : t("Установить");
+          ? nativeSource
+            ? t("Исходники скачаны")
+            : t("Установлено")
+          : nativeSource
+            ? t("Скачать исходники")
+            : t("Установить");
   return (
     <button
       type="button"

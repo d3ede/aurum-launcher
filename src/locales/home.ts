@@ -1,4 +1,12 @@
 export const homeEnglish: Record<string, string> = {
+  "Моды Horizon": "Horizon mods",
+  "Каталог исходников, компиляция и выбор перед запуском.":
+    "Source catalog, compilation and a choice before playing.",
+  "Скин без подмены": "Your skin while loading",
+  "Предпросмотр использует кэш и не показывает Стива во время загрузки.":
+    "The preview uses cached skins and does not show Steve while loading.",
+  "В тестовой Aurum 0.5.1: каталог нативных модов Horizon, отдельная компиляция с журналом и отменой, предупреждение перед запуском несобранных изменений. Можно скомпилировать моды или запустить обычный Horizon без пользовательских модов. Предпросмотр скина использует кэш аккаунта и загружается отдельно от плащей, без временной подмены Стивом.":
+    "Aurum 0.5.1 test build: a native Horizon mod catalog, explicit compilation with logs and cancellation, and a prompt before playing with uncompiled changes. Compile the mods or play base Horizon without user mods. Skin previews use the account cache and load independently of capes, without a temporary Steve replacement.",
   "Тестовая 0.5.1: отдельные профили Horizon со скачиванием по запросу.":
     "Test build 0.5.1: separate Horizon instances, downloaded on demand.",
   "Значки загрузчиков": "Loader icons",

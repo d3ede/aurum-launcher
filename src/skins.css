@@ -434,3 +434,13 @@
     margin-top: 12px;
   }
 }
+.appearance-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--secondary);
+  font-size: 13px;
+  background: var(--surface);
+  border-radius: inherit;
+}

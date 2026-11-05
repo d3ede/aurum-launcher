@@ -1,4 +1,5 @@
 import { t } from "./i18n";
+import type { HorizonModStatus } from "./horizon-mods";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
@@ -39,6 +40,13 @@ import type {
 export const native = isTauri();
 type Empty = Record<string, never>;
 interface Contract {
+  horizonModStatus: [{ id: string }, HorizonModStatus];
+  horizonBuildLog: [{ id: string }, string];
+  buildHorizonMods: [
+    { id: string; operationId: string; trustNativeCode: boolean },
+    void,
+  ];
+  accountSkinPreview: [{ id: string }, AccountAppearance];
   hostingProfiles: [Empty, HostingProfile[]];
   hostingFiles: [
     { id: string; path: string },
@@ -275,6 +283,7 @@ interface Contract {
     {
       id: string;
       server?: string;
+      skipHorizonMods?: boolean;
     },
     void,
   ];
@@ -443,11 +452,12 @@ export function compatible(
   kind: string,
 ) {
   return (
-    profile.engine !== "horizon" &&
     version.gameVersions.includes(profile.minecraft) &&
-    (kind !== "mod" ||
-      (profile.loader !== "vanilla" &&
-        version.loaders.includes(profile.loader)))
+    (profile.engine === "horizon"
+      ? kind === "mod" && version.loaders.includes("horizon")
+      : kind !== "mod" ||
+        (profile.loader !== "vanilla" &&
+          version.loaders.includes(profile.loader)))
   );
 }
 export function searchKey(q: SearchQuery) {

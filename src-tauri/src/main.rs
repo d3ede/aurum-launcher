@@ -150,6 +150,14 @@ async fn rpc(
             )
             .await
             .map_err(err),
+        "horizonModStatus" => Ok(json!(e
+            .horizon_mod_status(&param::<String>(&payload, "id")?)
+            .await
+            .map_err(err)?)),
+        "horizonBuildLog" => Ok(json!(e
+            .horizon_build_log(&param::<String>(&payload, "id")?)
+            .await
+            .map_err(err)?)),
         "versions" => e.minecraft_versions().await.map_err(err),
         "loaders" => Ok(json!(e
             .loader_versions(
@@ -254,6 +262,10 @@ async fn rpc(
             };
             Ok(json!(e.import_modrinth_skins(roots).await.map_err(err)?))
         }
+        "accountSkinPreview" => Ok(json!(e
+            .account_skin_preview(&param::<String>(&payload, "id")?)
+            .await
+            .map_err(err)?)),
         "accountAppearance" => Ok(json!(e
             .account_appearance(&param::<String>(&payload, "id")?)
             .await
@@ -444,7 +456,11 @@ async fn rpc(
         }
         "launch" => {
             let id = param::<String>(&payload, "id")?;
-            if let Some(address) = payload["server"].as_str() {
+            if payload["skipHorizonMods"].as_bool().unwrap_or(false) {
+                e.launch_without_horizon_mods(&id, payload["server"].as_str())
+                    .await
+                    .map_err(err)?;
+            } else if let Some(address) = payload["server"].as_str() {
                 e.launch_to_server(&id, address).await.map_err(err)?;
             } else {
                 e.launch(&id).await.map_err(err)?;
@@ -509,8 +525,9 @@ async fn rpc(
             .map_err(err)?;
             Ok(json!(String::from_utf8_lossy(&bytes)))
         }
-        "install" | "installContent" | "updateContent" | "updateAllContent" | "importPack"
-        | "downloadPack" | "importFolder" | "importModrinth" | "loginMicrosoft" => {
+        "install" | "buildHorizonMods" | "installContent" | "updateContent"
+        | "updateAllContent" | "importPack" | "downloadPack" | "importFolder"
+        | "importModrinth" | "loginMicrosoft" => {
             let _guard = e
                 .busy
                 .try_lock()
@@ -541,6 +558,15 @@ async fn rpc(
                     "install" => {
                         e.install(payload["id"].as_str().unwrap_or(""), &task)
                             .await?;
+                        Ok(Value::Null)
+                    }
+                    "buildHorizonMods" => {
+                        e.build_horizon_mods(
+                            &param::<String>(&payload, "id").map_err(anyhow::Error::msg)?,
+                            payload["trustNativeCode"].as_bool().unwrap_or(false),
+                            &task,
+                        )
+                        .await?;
                         Ok(Value::Null)
                     }
                     "installContent" => {

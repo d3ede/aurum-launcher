@@ -2641,3 +2641,168 @@ kbd {
 .horizon-instance-info .text-button {
   margin-top: 14px;
 }
+.horizon-mods {
+  padding-top: 22px;
+}
+.native-mod-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.native-mod-toolbar h2 {
+  font-size: 20px;
+}
+.native-mod-toolbar p {
+  color: var(--secondary);
+  margin-top: 6px;
+  font-size: 12px;
+}
+.native-mod-notice {
+  padding: 16px 18px;
+  margin-bottom: 18px;
+  border: 1px solid color-mix(in srgb, #9a86ff 30%, var(--border));
+  border-radius: 13px;
+  background: color-mix(in srgb, #9a86ff 6%, var(--surface));
+}
+.native-mod-notice strong {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+}
+.native-mod-notice p {
+  color: var(--secondary);
+  font-size: 12px;
+  line-height: 1.65;
+  margin-top: 8px;
+}
+.native-mod-notice p svg {
+  vertical-align: -3px;
+  margin-right: 7px;
+}
+.native-mod-notice .native-code-trust {
+  color: var(--danger);
+}
+.native-build-state {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 18px;
+  margin-bottom: 18px;
+}
+.native-build-state.pending {
+  border-color: var(--gold-border);
+  background: var(--gold-soft);
+}
+.native-build-state > svg {
+  flex-shrink: 0;
+}
+.native-build-state > div {
+  flex: 1;
+  min-width: 0;
+}
+.native-build-state p {
+  color: var(--secondary);
+  font-size: 12px;
+  line-height: 1.6;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+.native-mod-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  margin-bottom: 8px;
+}
+.native-mod-row img {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: contain;
+}
+.native-mod-row > div {
+  flex: 1;
+  min-width: 0;
+}
+.native-mod-row small {
+  display: block;
+  color: var(--secondary);
+  margin-top: 5px;
+}
+.native-mod-switch {
+  width: 36px;
+  height: 22px;
+  border-radius: 20px;
+  border: 1px solid var(--border-strong);
+  background: var(--input-soft);
+  padding: 3px;
+  flex-shrink: 0;
+}
+.native-mod-switch span {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--secondary);
+  transition: transform 0.15s;
+}
+.native-mod-switch.on {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.native-mod-switch.on span {
+  transform: translateX(14px);
+  background: #382d13;
+}
+.native-mod-empty {
+  text-align: center;
+  color: var(--secondary);
+  padding: 30px 20px;
+  line-height: 1.7;
+}
+.native-mod-empty p {
+  margin-top: 12px;
+  font-size: 13px;
+}
+.native-build-log {
+  max-height: 340px;
+  margin-top: 12px;
+}
+.horizon-mods > .text-button {
+  margin-top: 12px;
+  margin-right: 18px;
+}
+.native-launch-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.native-launch-actions .primary {
+  grid-column: 1 / -1;
+}
+.native-launch-actions .button {
+  white-space: normal;
+  font-size: 12px;
+}
+.native-pending-names {
+  padding-left: 20px;
+  line-height: 1.8;
+  margin-bottom: 18px;
+}
+@media (max-width: 1050px) {
+  .native-mod-toolbar,
+  .native-build-state {
+    flex-wrap: wrap;
+  }
+  .native-mod-toolbar .button {
+    flex-shrink: 0;
+  }
+}

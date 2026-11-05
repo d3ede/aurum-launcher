@@ -86,6 +86,8 @@ pub struct Content {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct ContentInfo {
+    pub sha256: String,
+    pub native_api: String,
     pub version_name: String,
     pub icon: Option<String>,
     pub author: String,

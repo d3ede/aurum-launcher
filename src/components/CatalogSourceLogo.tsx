@@ -1,10 +1,12 @@
 import modrinthLogo from "../assets/branding/modrinth.svg";
+import horizonLogo from "../assets/loaders/horizon.svg";
 import curseforgeLogo from "../assets/branding/curseforge.svg";
 import atlauncherLogo from "../assets/branding/atlauncher.svg";
 import ftbLogo from "../assets/branding/ftb.svg";
 import technicLogo from "../assets/branding/technic.png";
 
 const logos: Record<string, string> = {
+  horizon: horizonLogo,
   modrinth: modrinthLogo,
   curseforge: curseforgeLogo,
   atlauncher: atlauncherLogo,

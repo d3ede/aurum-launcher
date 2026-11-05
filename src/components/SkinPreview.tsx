@@ -29,6 +29,7 @@ export function SkinPreview({
   cape,
   motion = "idle",
   className = "",
+  loading = false,
 }: {
   bytes?: number[];
   texture?: string;
@@ -36,6 +37,7 @@ export function SkinPreview({
   cape?: string | null;
   motion?: SkinMotion;
   className?: string;
+  loading?: boolean;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const stage = useRef<HTMLDivElement>(null);
@@ -145,6 +147,7 @@ export function SkinPreview({
     let live = true;
     setReady(false);
     setError("");
+    if (loading) return;
     let url: string | undefined;
     const src =
       texture ||
@@ -159,8 +162,15 @@ export function SkinPreview({
     image.onload = () => {
       if (!live) return;
       try {
-        v.loadSkin(image, { model: model === "alex" ? "slim" : "default" });
-        setReady(true);
+        Promise.resolve(
+          v.loadSkin(image, { model: model === "alex" ? "slim" : "default" }),
+        )
+          .then(() => {
+            if (live) setReady(true);
+          })
+          .catch((e) => {
+            if (live) setError(String(e));
+          });
       } catch (e) {
         setError(String(e));
       }
@@ -173,7 +183,7 @@ export function SkinPreview({
       live = false;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [bytes, texture, model]);
+  }, [bytes, texture, model, loading]);
   useEffect(() => {
     const v = viewer.current;
     if (!v) return;
@@ -216,12 +226,18 @@ export function SkinPreview({
       <div className="skin-stage appearance-stage" ref={stage}>
         <canvas
           ref={canvas}
-          data-ready={ready}
+          data-ready={ready && !loading}
+          style={{ opacity: ready && !loading ? 1 : 0 }}
           data-auto-rotate="false"
           data-motion={motion}
-          aria-busy={!ready}
+          aria-busy={!ready || loading}
           aria-label={t("Предпросмотр скина")}
         />
+        {(!ready || loading) && !error && (
+          <div className="appearance-loading" role="status">
+            {t("Загружаем скин…")}
+          </div>
+        )}
         {error && (
           <p className="appearance-render-error" role="alert">
             {error}

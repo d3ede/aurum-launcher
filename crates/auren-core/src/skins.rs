@@ -472,6 +472,72 @@ impl Engine {
             capes,
         })
     }
+    /// The wardrobe's first frame must not wait for cape downloads or invent a default skin.
+    pub async fn account_skin_preview(&self, id: &str) -> Result<Appearance> {
+        let account = self
+            .db
+            .lock()
+            .await
+            .accounts
+            .iter()
+            .find(|a| a.id == id)
+            .cloned()
+            .context("Аккаунт не найден")?;
+        if account.kind != "microsoft" {
+            return Ok(Appearance {
+                texture: self.account_avatar(id).await?,
+                model: account.skin_model,
+                capes: vec![],
+            });
+        }
+        if let Ok(bytes) = tokio::fs::read(self.avatar_cache_path(id)).await {
+            if let Ok(cache) = serde_json::from_slice::<AvatarCache>(&bytes) {
+                if decode_texture(&cache.texture)
+                    .and_then(|b| validate_texture(&b, false))
+                    .is_ok()
+                {
+                    return Ok(Appearance {
+                        texture: cache.texture,
+                        model: account.skin_model,
+                        capes: vec![],
+                    });
+                }
+            }
+        }
+        tokio::time::timeout(std::time::Duration::from_secs(12), async {
+            let profile = self.minecraft_profile(id).await?;
+            let skin = profile["skins"]
+                .as_array()
+                .and_then(|s| s.iter().find(|s| s["state"] == "ACTIVE"));
+            let (texture, model) = if let Some(skin) = skin {
+                (
+                    self.minecraft_texture(
+                        skin["url"].as_str().context("Нет текстуры скина")?,
+                        false,
+                    )
+                    .await?,
+                    if skin["variant"] == "SLIM" {
+                        "alex"
+                    } else {
+                        "steve"
+                    }
+                    .to_string(),
+                )
+            } else {
+                (String::new(), account.skin_model)
+            };
+            if !texture.is_empty() {
+                let _ = self.write_avatar_cache(id, texture.clone()).await;
+            }
+            Ok(Appearance {
+                texture,
+                model,
+                capes: vec![],
+            })
+        })
+        .await
+        .context("Не удалось быстро получить скин. Повторите загрузку")?
+    }
     pub async fn apply_library_skin(
         &self,
         account_id: &str,
@@ -557,5 +623,30 @@ impl Engine {
             },
         );
         self.persist_skins(&library).await
+    }
+}
+
+#[cfg(test)]
+mod fast_preview_tests {
+    use super::*;
+    #[tokio::test]
+    async fn cached_preview_survives_reopening_and_never_needs_credentials_or_capes() {
+        let root = tempfile::tempdir().unwrap();
+        let engine = Engine::new(root.path().into(), |_| {}).await.unwrap();
+        let account = engine.add_offline("Preview".into()).await.unwrap();
+        let texture = default_texture("default:ari", "alex").unwrap();
+        engine.cache_account_avatar(&account.id, &texture).await;
+        {
+            let mut db = engine.db.lock().await;
+            let a = db.accounts.iter_mut().find(|a| a.id == account.id).unwrap();
+            a.kind = "microsoft".into();
+            a.skin_model = "alex".into();
+            crate::store::persist(&engine.root, &db).await.unwrap();
+        }
+        let reopened = Engine::new(root.path().into(), |_| {}).await.unwrap();
+        let preview = reopened.account_skin_preview(&account.id).await.unwrap();
+        assert_eq!(preview.texture, encode_texture(&texture));
+        assert_eq!(preview.model, "alex");
+        assert!(preview.capes.is_empty());
     }
 }

@@ -19,6 +19,9 @@ impl Engine {
             .await?)
     }
     pub async fn search(&self, query: Search) -> Result<SearchResult> {
+        if query.source == "horizon" {
+            return self.search_horizon_mods(query).await;
+        }
         if crate::pack_catalog::is_pack_source(&query.source) {
             return self.search_pack_catalog(query).await;
         }
@@ -123,6 +126,9 @@ impl Engine {
         }
     }
     pub async fn catalog_categories(&self, source: &str, kind: &str) -> Result<Value> {
+        if source == "horizon" {
+            return Ok(json!([]));
+        }
         if crate::pack_catalog::is_pack_source(source) {
             return Ok(json!([]));
         }
@@ -161,6 +167,9 @@ impl Engine {
         loader: Option<&str>,
     ) -> Result<ProjectDetail> {
         crate::store::validate_version(id)?;
+        if source == "horizon" {
+            return self.horizon_mod_detail(id, mc).await;
+        }
         if crate::pack_catalog::is_pack_source(source) {
             return self.pack_catalog_detail(source, id, mc).await;
         }

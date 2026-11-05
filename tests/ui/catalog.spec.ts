@@ -128,7 +128,9 @@ async function fixture(
           if (action === "project")
             return {
               project: projects.find((p) => p.id === payload.id) || projects[0],
-              body: w.projectBody ?? '<center><img src="https://media.example.test/description.svg" width="600" alt="Description screenshot" onerror="window.mediaUnsafe=true" /></center><script>window.mediaUnsafe=true</script>\n\n# Details\n\nNormal **Markdown** with HTML images.\n\n| Name | Value |\n| --- | --- |\n| Test | 1 |',
+              body:
+                w.projectBody ??
+                '<center><img src="https://media.example.test/description.svg" width="600" alt="Description screenshot" onerror="window.mediaUnsafe=true" /></center><script>window.mediaUnsafe=true</script>\n\n# Details\n\nNormal **Markdown** with HTML images.\n\n| Name | Value |\n| --- | --- |\n| Test | 1 |',
               gallery: [
                 "https://media.example.test/first.svg",
                 "https://media.example.test/second.svg",
@@ -285,7 +287,7 @@ test("source has original logos, animated options and localized coming-soon spac
       .getByRole("option", { name: "CurseForge", exact: true })
       .locator("img"),
   ).toBeVisible();
-  for (const name of ["ATLauncher", "FTB", "Technic"]) {
+  for (const name of ["ATLauncher", "FTB", "Technic", "Horizon"]) {
     const option = page.getByRole("option", { name, exact: true });
     await expect(option.locator(".catalog-source-logo img")).toBeVisible();
     await expect
@@ -335,17 +337,15 @@ test("source has original logos, animated options and localized coming-soon spac
           };
         }),
       );
-    expect(rows).toHaveLength(5);
+    expect(rows).toHaveLength(6);
     expect(new Set(rows.map((row) => row.labelOffset)).size).toBe(1);
     expect(rows.every((row) => row.width === 24 && row.height === 24)).toBe(
       true,
     );
-    await page
-      .getByRole("listbox")
-      .screenshot({
-        path: `target/branding-icons/source-menu-${theme}.png`,
-        animations: "disabled",
-      });
+    await page.getByRole("listbox").screenshot({
+      path: `target/branding-icons/source-menu-${theme}.png`,
+      animations: "disabled",
+    });
   }
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Переключить тему" }).click();
@@ -629,12 +629,10 @@ test("catalog installs, animates and removes only from the selected instance", a
   await page.mouse.move(0, 0);
   await expect(button).toHaveClass(/is-installed/);
   await expect(button).toBeEnabled();
-  await page
-    .locator(".catalog-workspace")
-    .screenshot({
-      path: "target/branding-icons/catalog-installed-light.png",
-      animations: "disabled",
-    });
+  await page.locator(".catalog-workspace").screenshot({
+    path: "target/branding-icons/catalog-installed-light.png",
+    animations: "disabled",
+  });
   await button.hover();
   await expect(button.locator(".catalog-action-remove")).toHaveCSS(
     "opacity",
@@ -734,12 +732,10 @@ test("large block tiles fit both themes and respect reduced motion", async ({
     if (theme === "dark")
       await page.getByRole("button", { name: "Переключить тему" }).click();
     await page.mouse.move(0, 0);
-    await page
-      .locator(".catalog-workspace")
-      .screenshot({
-        path: `target/branding-icons/catalog-actions-grid-${theme}.png`,
-        animations: "disabled",
-      });
+    await page.locator(".catalog-workspace").screenshot({
+      path: `target/branding-icons/catalog-actions-grid-${theme}.png`,
+      animations: "disabled",
+    });
   }
   await page.emulateMedia({ reducedMotion: "reduce" });
   const button = page.locator(".catalog-install-button").nth(1);
@@ -756,7 +752,9 @@ test("running instances disable catalog mutations and English action labels tran
   page,
 }) => {
   await fixture(page, "en", true, true);
-  await page.getByRole("combobox", { name: "Install into", exact: true }).click();
+  await page
+    .getByRole("combobox", { name: "Install into", exact: true })
+    .click();
   await page
     .getByRole("option", { name: "Radiance · 1.21.1 · Fabric", exact: true })
     .click();

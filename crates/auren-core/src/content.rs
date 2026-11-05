@@ -31,6 +31,11 @@ impl Engine {
         version_id: &str,
         task: &Task,
     ) -> Result<()> {
+        if source == "horizon" {
+            return self
+                .install_horizon_mod(profile_id, project_id, version_id, task)
+                .await;
+        }
         if self.running.lock().await.contains_key(profile_id) {
             bail!("Сначала остановите игру")
         }
@@ -114,6 +119,10 @@ impl Engine {
     }
     pub async fn list_content(&self, id: &str) -> Result<Vec<Content>> {
         let profile = self.profile(id).await?;
+        if profile.engine == Runtime::Horizon {
+            return Ok(profile.content);
+        }
+        let profile = self.profile(id).await?;
         let mut content = vec![];
         let instance = self.instance(id)?;
         for kind in ["mod", "shader", "resourcepack"] {
@@ -161,6 +170,9 @@ impl Engine {
         Ok(content)
     }
     pub async fn manage_content(&self, id: &str, content_id: &str, action: &str) -> Result<()> {
+        if self.profile(id).await?.engine == Runtime::Horizon {
+            return self.manage_horizon_mod(id, content_id, action).await;
+        }
         self.ensure_idle(id).await?;
         let list = self.list_content(id).await?;
         let item = list

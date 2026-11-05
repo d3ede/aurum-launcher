@@ -10,6 +10,9 @@ import {
 } from "react";
 import { browserSnapshot, events, native, rpc } from "./lib/api";
 import type { Snapshot, Progress, Profile, Route } from "./types";
+import { Modal } from "./components/ui";
+import { NativeModNotice } from "./components/NativeModNotice";
+import type { HorizonModStatus } from "./lib/horizon-mods";
 export interface MicrosoftLoginState {
   id: string;
   status: "active" | "cancelling" | "success" | "error" | "cancelled";
@@ -59,6 +62,11 @@ export function Provider({
   const [fatal, setFatal] = useState("");
   const [route, navigate] = useState<Route>("home");
   const [busy, setBusy] = useState(false);
+  const [nativePrompt, setNativePrompt] = useState<{
+    profile: Profile;
+    server?: string;
+    status: HorizonModStatus;
+  } | null>(null);
   const lock = useRef(false);
   const [microsoftLogin, setMicrosoftLogin] =
     useState<MicrosoftLoginState | null>(null);
@@ -280,6 +288,18 @@ export function Provider({
         notify(t("Добавьте аккаунт для запуска игры"));
         return;
       }
+      if (p.engine === "horizon") {
+        try {
+          const status = await rpc("horizonModStatus", { id: p.id });
+          if (status.needsBuild || status.error) {
+            setNativePrompt({ profile: p, server, status });
+            return;
+          }
+        } catch (error) {
+          notify(String(error), true);
+          return;
+        }
+      }
       await operation(async (operationId) => {
         if (!p.installedVersion)
           await rpc("install", { id: p.id, operationId });
@@ -288,6 +308,27 @@ export function Provider({
     },
     [data.selectedAccount, operation, notify],
   );
+  const nativeChoice = async (compile: boolean) => {
+    const request = nativePrompt;
+    if (!request) return;
+    const ok = await operation(async (operationId) => {
+      if (!request.profile.installedVersion)
+        await rpc("install", { id: request.profile.id, operationId });
+      if (compile)
+        await rpc("buildHorizonMods", {
+          id: request.profile.id,
+          operationId,
+          trustNativeCode: true,
+        });
+      await rpc("launch", {
+        id: request.profile.id,
+        ...(request.server ? { server: request.server } : {}),
+        skipHorizonMods: !compile,
+      });
+      return true;
+    }, t("Minecraft запущен"));
+    if (ok) setNativePrompt(null);
+  };
   useEffect(() => {
     if (!native || !loaded || busy || !data.serverManager) return;
     void rpc("takeServerShortcut", {})
@@ -360,6 +401,73 @@ export function Provider({
       }}
     >
       {children}
+      {nativePrompt && (
+        <Modal
+          title={t("Моды ещё не скомпилированы")}
+          subtitle={nativePrompt.profile.name}
+          onClose={() => {
+            if (!busy) setNativePrompt(null);
+          }}
+          closeDisabled={busy}
+        >
+          <p className="dialog-note">
+            {t(
+              "Выбранные изменения пока не входят в игру. Можно собрать их сейчас или отложить и запустить Horizon без пользовательских модов.",
+            )}
+          </p>
+          <ul className="native-pending-names">
+            {nativePrompt.status.mods
+              .filter((m) => m.enabled)
+              .map((m) => (
+                <li key={m.id}>
+                  {m.name} · {m.versionName || m.versionId}
+                </li>
+              ))}
+          </ul>
+          <NativeModNotice />
+          {nativePrompt.status.error && (
+            <p role="alert">{nativePrompt.status.error}</p>
+          )}
+          {busy && (
+            <p role="status">{progress?.message || t("Компилируем моды…")}</p>
+          )}
+          <div className="modal-actions native-launch-actions">
+            <button
+              className="button secondary"
+              disabled={busy}
+              onClick={() => setNativePrompt(null)}
+            >
+              {t("Отмена")}
+            </button>
+            <button
+              className="button secondary"
+              disabled={busy}
+              onClick={() => void nativeChoice(false)}
+            >
+              {t("Отложить и играть без модов")}
+            </button>
+            <button
+              className="button primary"
+              disabled={busy || !!nativePrompt.status.error}
+              onClick={() => void nativeChoice(true)}
+            >
+              {t("Скомпилировать и играть")}
+            </button>
+          </div>
+          {busy && progress?.id && (
+            <button
+              className="text-button danger"
+              onClick={() =>
+                void rpc("cancel", { operationId: progress.id }).catch((e) =>
+                  notify(String(e), true),
+                )
+              }
+            >
+              {t("Остановить компиляцию")}
+            </button>
+          )}
+        </Modal>
+      )}
       {toast && (
         <div
           className={`toast ${toast.error ? "error" : ""}`}

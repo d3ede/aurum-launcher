@@ -170,7 +170,7 @@ export interface Progress {
   total: number;
 }
 export type CatalogSource =
-  "modrinth" | "curseforge" | "atlauncher" | "ftb" | "technic";
+  "modrinth" | "curseforge" | "atlauncher" | "ftb" | "technic" | "horizon";
 export interface PackOptions {
   optional?: string[];
   manualFiles?: Record<string, string>;

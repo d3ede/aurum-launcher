@@ -22,7 +22,7 @@ use tokio::{
 
 pub const MINECRAFT: &str = "26.3";
 const RELEASE: &str = "https://api.github.com/repos/horizon-rust/horizon/releases/tags/nightly";
-const PUBLIC_KEY: &str = "MU4oiIQcCxkZvbwSjjXs7SySCuM6ywRQ3nGaJYZG0gw=";
+pub(crate) const PUBLIC_KEY: &str = "MU4oiIQcCxkZvbwSjjXs7SySCuM6ywRQ3nGaJYZG0gw=";
 const ARCHIVE: &str = "horizon-windows-x64.zip";
 
 fn build_complete(directory: &Path) -> bool {
@@ -142,7 +142,7 @@ async fn probe(program: &Path, directory: &Path) -> Result<Value> {
 }
 
 impl Engine {
-    async fn horizon_owner(&self) -> Result<(Account, String, String)> {
+    pub(crate) async fn horizon_owner(&self) -> Result<(Account, String, String)> {
         let account = {
             let db = self.db.lock().await;
             db.accounts
@@ -367,6 +367,7 @@ impl Engine {
         &self,
         profile: Profile,
         server: Option<crate::servers::ServerAddress>,
+        skip_native: bool,
     ) -> Result<()> {
         let version = profile
             .installed_version
@@ -377,8 +378,12 @@ impl Engine {
         if !build_complete(&directory) {
             bail!("Проверьте установку Horizon: файлы сборки отсутствуют")
         }
+        let game_directory = self
+            .native_launch_directory(&profile, skip_native)
+            .await?
+            .unwrap_or_else(|| directory.clone());
         let (account, token, xuid) = self.horizon_owner().await?;
-        let client = probe(&directory.join("horizon-client.exe"), &directory).await?;
+        let client = probe(&game_directory.join("horizon-client.exe"), &game_directory).await?;
         validate_api(
             &client,
             &[
@@ -408,7 +413,7 @@ impl Engine {
         }
         let settings = self.db.lock().await.settings.clone();
         let instance = self.profile_directory(&profile.id).await?;
-        let mut command = Command::new(directory.join("horizon-client.exe"));
+        let mut command = Command::new(game_directory.join("horizon-client.exe"));
         command
             .current_dir(&instance)
             .arg("--resources")

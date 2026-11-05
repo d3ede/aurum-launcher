@@ -22,6 +22,7 @@ import { native, rpc, compatible } from "../lib/api";
 import { ru, formatNumber } from "../lib/i18n";
 import type { Kind, Loader, Project, ProjectDetail } from "../types";
 import { Modal, Loading, ErrorBox, EmptyState, Field } from "../components/ui";
+import { NativeModNotice } from "../components/NativeModNotice";
 import { Select } from "../components/Select";
 import {
   catalogSources,
@@ -54,7 +55,13 @@ export function ProjectDialog({
 }) {
   const { data, operation, busy, run } = useApp();
   const [profileId, setProfileId] = useState(
-    initialProfileId || data.profiles[0]?.id || "",
+    initialProfileId ||
+      data.profiles.find((p) =>
+        project.source === "horizon"
+          ? p.engine === "horizon"
+          : p.engine !== "horizon",
+      )?.id ||
+      "",
   );
   const [detail, setDetail] = useState<ProjectDetail | null>(null);
   const [error, setError] = useState("");
@@ -149,7 +156,11 @@ export function ProjectDialog({
       },
       project.kind === "modpack"
         ? t("Модпак импортирован как новая сборка")
-        : t("Проект и необходимые зависимости установлены"),
+        : project.source === "horizon"
+          ? t(
+              "Исходники мода установлены. Скомпилируйте их в сборке перед игрой.",
+            )
+          : t("Проект и необходимые зависимости установлены"),
     );
     if (ok) {
       if (project.kind !== "modpack" && profile) onInstalled?.(profile.id);
@@ -205,6 +216,7 @@ export function ProjectDialog({
         detail && (
           <>
             <div className="project-install">
+              {project.source === "horizon" && <NativeModNotice />}
               <div className="form-grid">
                 {project.kind !== "modpack" && (
                   <Field label={t("Установить в сборку")}>
@@ -215,7 +227,10 @@ export function ProjectDialog({
                       options={[
                         { value: "", label: t("Выберите сборку") },
                         ...data.profiles.map((p) => ({
-                          disabled: p.engine === "horizon",
+                          disabled:
+                            project.source === "horizon"
+                              ? p.engine !== "horizon"
+                              : p.engine === "horizon",
                           value: p.id,
                           label: `${p.name} · ${p.minecraft} / ${p.engine === "horizon" ? "Horizon" : ru.loaders[p.loader]}`,
                         })),
@@ -251,7 +266,9 @@ export function ProjectDialog({
                 <PackagePlus size={16} />{" "}
                 {project.kind === "modpack"
                   ? t("Создать сборку из модпака")
-                  : t("Установить с зависимостями")}
+                  : project.source === "horizon"
+                    ? t("Скачать исходники")
+                    : t("Установить с зависимостями")}
               </button>
               {project.kind !== "modpack" && !profile && (
                 <small>{t("Сначала создайте игровую сборку.")}</small>

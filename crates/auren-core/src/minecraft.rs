@@ -643,16 +643,23 @@ impl Engine {
         }
     }
     pub async fn launch(&self, id: &str) -> Result<()> {
-        self.launch_target(id, None).await
+        self.launch_target(id, None, false).await
     }
     pub async fn launch_to_server(&self, id: &str, address: &str) -> Result<()> {
         let address = crate::servers::ServerAddress::parse(address)?;
-        self.launch_target(id, Some(address)).await
+        self.launch_target(id, Some(address), false).await
+    }
+    pub async fn launch_without_horizon_mods(&self, id: &str, server: Option<&str>) -> Result<()> {
+        let server = server
+            .map(crate::servers::ServerAddress::parse)
+            .transpose()?;
+        self.launch_target(id, server, true).await
     }
     async fn launch_target(
         &self,
         id: &str,
         server: Option<crate::servers::ServerAddress>,
+        skip_native: bool,
     ) -> Result<()> {
         self.refresh_recovered().await;
         let _guard = self
@@ -664,7 +671,7 @@ impl Engine {
         }
         let p = self.profile(id).await?;
         if p.engine == Runtime::Horizon {
-            return self.launch_horizon(p, server).await;
+            return self.launch_horizon(p, server, skip_native).await;
         }
         if p.installed_version.is_none() {
             bail!("Сначала установите Minecraft")

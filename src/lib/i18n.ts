@@ -15,15 +15,23 @@ import {
 import { updaterEnglish, updaterRussian } from "../locales/updater";
 import { catalogEnglish, catalogRussian } from "../locales/catalog";
 import { homeEnglish, homeRussian } from "../locales/home";
-import { profileOrderEnglish, profileOrderRussian } from "../locales/profile-order";
+import {
+  profileOrderEnglish,
+  profileOrderRussian,
+} from "../locales/profile-order";
 import { hostingEnglish, hostingRussian } from "../locales/hosting";
 import {
   contentManagerEnglish,
   contentManagerRussian,
 } from "../locales/content-manager";
 import { languages, resolveLanguage } from "../locales/registry";
+import {
+  horizonModsEnglish,
+  horizonModsRussian,
+} from "../locales/horizon-mods";
 type Dictionary = Record<string, string>;
 const english: Dictionary = {
+  ...horizonModsEnglish,
   ...englishMessages,
   ...microsoftEnglish,
   ...skinEnglish,
@@ -37,6 +45,7 @@ const english: Dictionary = {
   ...contentManagerEnglish,
 };
 const russian: Dictionary = {
+  ...horizonModsRussian,
   ...russianMessages,
   ...microsoftRussian,
   ...skinRussian,

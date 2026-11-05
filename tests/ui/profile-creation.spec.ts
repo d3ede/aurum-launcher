@@ -64,6 +64,15 @@ async function fixture(page: Page, theme = "light", owner = false) {
               versions: [{ id: "1.21.1", type: "release" }],
             };
           if (action === "content") return [];
+          if (action === "horizonModStatus")
+            return {
+              mods: [],
+              enabled: 0,
+              needsBuild: false,
+              hasBuild: false,
+              builtAt: null,
+              error: null,
+            };
           if (action === "loaders") return ["0.16.0"];
           if (action === "createProfile") {
             const profile = {
@@ -291,7 +300,7 @@ for (const theme of ["light", "dark"]) {
       expect(created.minecraft).toBe("26.3");
       expect(created.loaderVersion).toBeNull();
       expect(created.iconStyle.symbol).toBe("horizon");
-      await expect(page.locator(".horizon-instance-info")).toBeVisible();
+      await expect(page.locator(".horizon-mods")).toBeVisible();
       await page
         .getByRole("button", { name: "Параметры", exact: true })
         .click();

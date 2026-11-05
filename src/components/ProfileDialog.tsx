@@ -19,6 +19,7 @@ import { ProfileIcon, IconPicker } from "./ProfileIcon";
 import { InstanceContent } from "./InstanceContent";
 import { PackManualNotice } from "./PackManualDownloads";
 import { Select } from "./Select";
+import { HorizonMods } from "./HorizonMods";
 import { LoaderLogo } from "./LoaderLogo";
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
@@ -470,35 +471,10 @@ export function ProfileDialog({
         ))}
       </div>
       {tab === "content" && horizon && (
-        <div className="horizon-info horizon-instance-info">
-          <LoaderLogo brand="horizon" size={48} />
-          <div>
-            <strong>
-              Horizon · Rust <span>{t("Экспериментально")}</span>
-            </strong>
-            <p>
-              {t(
-                "Здесь работают моды Horizon. Обычные Java-моды и сборки Fabric/Forge несовместимы.",
-              )}
-            </p>
-            <p>
-              {t(
-                "Добавляйте совместимый контент в папку сборки. Ресурспаки выбираются в настройках игры.",
-              )}
-            </p>
-            <button
-              className="text-button"
-              onClick={() =>
-                void rpc("openFolder", { id: profile.id }).catch((e) =>
-                  notify(e.message, true),
-                )
-              }
-            >
-              <FolderOpen size={16} />
-              {t("Открыть папку сборки")}
-            </button>
-          </div>
-        </div>
+        <HorizonMods
+          profile={profile}
+          onFind={() => onFindProjects(profile, "mod")}
+        />
       )}
       {tab === "content" && !horizon && (
         <InstanceContent profile={profile} onFindProjects={onFindProjects} />

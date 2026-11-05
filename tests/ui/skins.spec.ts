@@ -8,9 +8,10 @@ async function fixture(
   kind: "offline" | "microsoft" = "offline",
   theme = "light",
   importMode: "normal" | "empty" | "partial" | "error" = "normal",
+  slowAppearance = false,
 ) {
   await page.addInitScript(
-    ({ steve, ari, zuri, kind, theme, importMode }) => {
+    ({ steve, ari, zuri, kind, theme, importMode, slowAppearance }) => {
       localStorage.setItem("aurum:language", "ru");
       const w = window as any;
       w.isTauri = true;
@@ -54,7 +55,9 @@ async function fixture(
           },
         ],
         capes: [],
-        selections: { "skin-user": { skinId: "saved-a", capeId: null } },
+        selections: slowAppearance
+          ? {}
+          : { "skin-user": { skinId: "saved-a", capeId: null } },
       };
       const state = {
         profiles: [],
@@ -124,6 +127,19 @@ async function fixture(
                 importMode === "partial" ? ["D:/Broken Modrinth/app.db"] : [],
             };
           }
+          if (action === "accountSkinPreview") {
+            if (slowAppearance)
+              return new Promise((resolve) => {
+                w.showPreview = () =>
+                  resolve({ texture: texture(ari), model: "alex", capes: [] });
+              });
+            return { texture: texture(ari), model: "alex", capes: [] };
+          }
+          if (action === "accountAppearance" && slowAppearance)
+            return new Promise((resolve) => {
+              w.showAppearance = () =>
+                resolve({ texture: texture(ari), model: "alex", capes: [] });
+            });
           if (action === "accountAppearance")
             return {
               texture: texture(ari),
@@ -200,7 +216,7 @@ async function fixture(
         },
       };
     },
-    { steve, ari, zuri, kind, theme, importMode },
+    { steve, ari, zuri, kind, theme, importMode, slowAppearance },
   );
   await page.goto("/");
   await page
@@ -209,10 +225,11 @@ async function fixture(
   await expect(
     page.getByRole("heading", { name: "Скины и плащи", exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".wardrobe-character canvas")).toHaveAttribute(
-    "data-ready",
-    "true",
-  );
+  if (!slowAppearance)
+    await expect(page.locator(".wardrobe-character canvas")).toHaveAttribute(
+      "data-ready",
+      "true",
+    );
 }
 for (const kind of ["offline", "microsoft"] as const) {
   test(`${kind} wardrobe keeps preview and Apply visible while the library scrolls`, async ({
@@ -621,4 +638,35 @@ test("owned Microsoft capes are selectable, local capes stay previews, small edi
   await expect(
     page.getByRole("button", { name: "Применить", exact: true }),
   ).toBeDisabled();
+});
+
+test("wardrobe waits for the actual skin, displays cached texture before capes, and never flashes Steve on navigation", async ({
+  page,
+}) => {
+  await fixture(page, "microsoft", "dark", "normal", true);
+  const canvas = page.locator(".wardrobe-character canvas");
+  await expect(canvas).toHaveAttribute("data-ready", "false");
+  await expect(canvas).toHaveCSS("opacity", "0");
+  await expect(
+    page.locator(".wardrobe-character .appearance-loading"),
+  ).toBeVisible();
+  await expect(page.locator(".wardrobe-tile").first()).toBeVisible();
+  await page.evaluate(() => (window as any).showPreview());
+  await expect(canvas).toHaveAttribute("data-ready", "true");
+  await expect(canvas).toHaveCSS("opacity", "1");
+  await expect(
+    page.getByRole("button", { name: "Сохранить образ", exact: true }),
+  ).toBeDisabled();
+  await page.getByRole("button", { name: "Главная", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Скины и плащи", exact: true })
+    .click();
+  await expect(page.locator(".wardrobe-character canvas")).toHaveAttribute(
+    "data-ready",
+    "true",
+  );
+  await expect(
+    page.locator(".wardrobe-character .appearance-loading"),
+  ).toHaveCount(0);
+  await page.evaluate(() => (window as any).showAppearance());
 });

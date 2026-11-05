@@ -42,7 +42,11 @@ export function Catalog({
     profileId: string;
     action: "installing" | "removing";
   } | null>(null);
-  const [source, setSource] = useState<CatalogSource>("modrinth");
+  const [source, setSource] = useState<CatalogSource>(() =>
+    data.profiles.find((p) => p.id === target.profileId)?.engine === "horizon"
+      ? "horizon"
+      : "modrinth",
+  );
   const packsOnly = packSource(source);
   const [view, setView] = useState<"list" | "grid">(() =>
     localStorage.getItem("aurum:catalog-view") === "grid" ? "grid" : "list",
@@ -51,10 +55,18 @@ export function Catalog({
     setView(value);
     localStorage.setItem("aurum:catalog-view", value);
   };
-  const kind = packsOnly ? "modpack" : target.kind;
+  const kind = packsOnly
+    ? "modpack"
+    : source === "horizon"
+      ? "mod"
+      : target.kind;
   const profile = data.profiles.find((p) => p.id === target.profileId);
   const bound = !!profile && kind !== "modpack";
-  const needsLoader = bound && kind === "mod" && profile.loader === "vanilla";
+  const needsLoader =
+    bound &&
+    kind === "mod" &&
+    profile.loader === "vanilla" &&
+    profile.engine !== "horizon";
   const [mc, setMc] = useState(profile?.minecraft || "");
   const [loader, setLoader] = useState(
     profile?.loader === "vanilla" ? "" : profile?.loader || "",
@@ -123,9 +135,19 @@ export function Catalog({
   useEffect(() => {
     setOffset(0);
   }, [query, source, kind, mc, loader, category, sort, profile?.id]);
+  useEffect(() => {
+    if (profile?.engine === "horizon") setSource("horizon");
+    else if (profile && source === "horizon") setSource("modrinth");
+  }, [profile?.id, profile?.engine]);
   const effectiveMc = bound ? profile.minecraft : mc;
   const effectiveLoader =
-    kind === "mod" ? (bound ? profile.loader : loader) : "";
+    kind === "mod"
+      ? source === "horizon"
+        ? "horizon"
+        : bound
+          ? profile.loader
+          : loader
+      : "";
   useEffect(() => {
     if (!native || needsLoader || source === "curseforge") return;
     let live = true;
@@ -264,12 +286,19 @@ export function Catalog({
               { value: "", label: t("Без привязки к сборке") },
               ...data.profiles.map((p) => ({
                 value: p.id,
-                label: `${p.name} · ${p.minecraft} · ${ru.loaders[p.loader]}`,
+                label: `${p.name} · ${p.minecraft} · ${p.engine === "horizon" ? "Horizon" : ru.loaders[p.loader]}`,
               })),
             ]}
           />
           {bound && <span>{t("Только совместимые проекты")}</span>}
         </div>
+      )}
+      {source === "horizon" && (
+        <p className="catalog-provider-note">
+          {t(
+            "Нативные моды Horizon на Rust. Каталог устанавливает исходники; компиляция запускается отдельно в сборке.",
+          )}
+        </p>
       )}
       {packsOnly && (
         <p className="catalog-provider-note">
@@ -399,7 +428,9 @@ export function Catalog({
                 {results.map((project) => {
                   const installed = bound
                     ? profile.content.find(
-                        (c) => c.source === project.source && c.projectId === project.id,
+                        (c) =>
+                          c.source === project.source &&
+                          c.projectId === project.id,
                       )
                     : undefined;
                   const action =
@@ -407,7 +438,9 @@ export function Catalog({
                     pending.source === project.source &&
                     pending.profileId === profile?.id
                       ? pending.action
-                      : installed ? "installed" : "available";
+                      : installed
+                        ? "installed"
+                        : "available";
                   return (
                     <article
                       className="catalog-result"
@@ -422,7 +455,9 @@ export function Catalog({
                           <div className="catalog-project-heading">
                             <h3>{project.title}</h3>
                             {project.author && (
-                              <span>{t("от {{author}}", { author: project.author })}</span>
+                              <span>
+                                {t("от {{author}}", { author: project.author })}
+                              </span>
                             )}
                           </div>
                           <p>{project.description}</p>
@@ -435,12 +470,16 @@ export function Catalog({
                         </div>
                       </button>
                       <CatalogInstallButton
+                        nativeSource={project.source === "horizon"}
                         state={action}
                         title={project.title}
-                        disabled={busy || (bound && data.running.includes(profile.id))}
+                        disabled={
+                          busy || (bound && data.running.includes(profile.id))
+                        }
                         onClick={() => {
                           if (!bound) onProject(project);
-                          else if (installed) void remove(project, installed.id);
+                          else if (installed)
+                            void remove(project, installed.id);
                           else void install(project);
                         }}
                       />
@@ -494,6 +533,13 @@ export function Catalog({
               value={source}
               onValueChange={(value) => {
                 setSource(value as CatalogSource);
+                if (value === "horizon")
+                  setTarget({
+                    profileId: profile?.engine === "horizon" ? profile.id : "",
+                    kind: "mod",
+                  });
+                else if (profile?.engine === "horizon")
+                  setTarget({ profileId: "", kind: target.kind });
                 setOffset(0);
                 setResults([]);
                 setCategory("");
@@ -520,7 +566,11 @@ export function Catalog({
             <legend>{t("Тип проекта")}</legend>
             <div className="filter-options">
               {Object.entries(ru.kinds)
-                .filter(([value]) => !packsOnly || value === "modpack")
+                .filter(([value]) =>
+                  source === "horizon"
+                    ? value === "mod"
+                    : !packsOnly || value === "modpack",
+                )
                 .map(([value, label]) => (
                   <button
                     key={value}
@@ -555,7 +605,7 @@ export function Catalog({
               />
             </fieldset>
           )}
-          {kind === "mod" && (
+          {kind === "mod" && source !== "horizon" && (
             <fieldset>
               <legend>{t("Загрузчик")}</legend>
               <Select

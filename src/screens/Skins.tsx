@@ -35,6 +35,8 @@ import type {
 } from "../types";
 
 const emptyLibrary: SkinLibrary = { skins: [], capes: [], selections: {} };
+// Account-scoped, in-memory previews survive navigation without storing skin data in localStorage.
+const appearanceCache = new Map<string, AccountAppearance>();
 const motions: { value: SkinMotion; label: string }[] = [
   { value: "idle", label: "Ожидание" },
   { value: "still", label: "Без анимации" },
@@ -158,6 +160,8 @@ export function Skins() {
   const account = data.accounts.find((a) => a.id === accountId);
   const [library, setLibrary] = useState<SkinLibrary>(emptyLibrary);
   const [appearance, setAppearance] = useState<AccountAppearance | null>(null);
+  const [appearanceAccount, setAppearanceAccount] = useState(accountId);
+  const visibleAppearance = appearanceAccount === accountId ? appearance : null;
   const [chosen, setChosen] = useState("");
   const [capeId, setCapeId] = useState<string | null>(null);
   const [motion, setMotion] = useState<SkinMotion>("idle");
@@ -180,7 +184,9 @@ export function Skins() {
     let live = true;
     setError("");
     setProfileError("");
-    setAppearance(null);
+    const cached = appearanceCache.get(accountId) || null;
+    setAppearance(cached);
+    setAppearanceAccount(accountId);
     setChosen("");
     setCapeId(null);
     if (!native) {
@@ -188,41 +194,51 @@ export function Skins() {
       return;
     }
     setLoading(true);
-    Promise.allSettled([
-      rpc("skinLibrary", {}),
-      accountId
-        ? rpc("accountAppearance", { id: accountId })
-        : Promise.resolve(null),
-    ])
-      .then(([lib, result]) => {
-        if (!live) return;
-        if (lib.status === "fulfilled") {
-          setLibrary(lib.value);
-          const selected = lib.value.selections[accountId];
+    let selectedInLibrary = false;
+    let authoritative = false;
+    if (accountId && !cached)
+      void rpc("accountSkinPreview", { id: accountId })
+        .then((preview) => {
+          if (live && !authoritative && preview) {
+            appearanceCache.set(accountId, preview);
+            setAppearance(preview);
+          }
+        })
+        .catch(() => {});
+    const libraryRequest = rpc("skinLibrary", {})
+      .then((lib) => {
+        if (live) {
+          setLibrary(lib);
+          const selected = lib.selections[accountId];
+          selectedInLibrary = !!selected;
           if (selected) {
             setChosen(selected.skinId);
             setCapeId(selected.capeId);
           }
-        } else
-          setError(
-            lib.reason instanceof Error
-              ? lib.reason.message
-              : String(lib.reason),
-          );
-        if (result.status === "fulfilled") {
-          setAppearance(result.value);
-          if (lib.status === "fulfilled" && !lib.value.selections[accountId])
-            setCapeId(result.value?.capes.find((c) => c.active)?.id || null);
-        } else
-          setProfileError(
-            result.reason instanceof Error
-              ? result.reason.message
-              : String(result.reason),
-          );
+        }
       })
-      .finally(() => {
-        if (live) setLoading(false);
+      .catch((e) => {
+        if (live) setError(String(e.message || e));
       });
+    const appearanceRequest = accountId
+      ? rpc("accountAppearance", { id: accountId })
+          .then((result) => {
+            if (!live) return;
+            authoritative = true;
+            appearanceCache.set(accountId, result);
+            setAppearance(result);
+            void libraryRequest.then(() => {
+              if (live && !selectedInLibrary)
+                setCapeId(result.capes.find((c) => c.active)?.id || null);
+            });
+          })
+          .catch((e) => {
+            if (live) setProfileError(String(e.message || e));
+          })
+      : Promise.resolve();
+    Promise.allSettled([libraryRequest, appearanceRequest]).finally(() => {
+      if (live) setLoading(false);
+    });
     return () => {
       live = false;
     };
@@ -231,14 +247,15 @@ export function Skins() {
   const current: SavedSkin = {
     id: "current",
     name: t("Текущий скин"),
-    model: appearance?.model || account?.skinModel || "steve",
-    texture: appearance?.texture || defaultSkinImage("default:steve", "steve"),
+    model: visibleAppearance?.model || account?.skinModel || "steve",
+    texture:
+      visibleAppearance?.texture || defaultSkinImage("default:steve", "steve"),
     capeId,
   };
   const skin =
     all.find((s) => s.id === chosen) ||
-    (appearance?.texture ? current : defaultSkins[0]);
-  const capes = [...(appearance?.capes || []), ...library.capes];
+    (visibleAppearance?.texture ? current : defaultSkins[0]);
+  const capes = [...(visibleAppearance?.capes || []), ...library.capes];
   const selectedCape = capes.find((c) => c.id === capeId);
   const activeKey = library.selections[accountId]?.skinId;
   const choose = (s: SavedSkin) => {
@@ -365,7 +382,14 @@ export function Skins() {
         throw e;
       }
     }, t("Образ применён"));
-    if (ok) setError("");
+    if (ok) {
+      appearanceCache.set(accountId, {
+        texture: skin.texture,
+        model: skin.model,
+        capes: visibleAppearance?.capes || [],
+      });
+      setError("");
+    }
   };
   const localCape = !!capeId && !capeId.startsWith("owned:");
   return (
@@ -418,6 +442,13 @@ export function Skins() {
             )}
           </div>
           <SkinPreview
+            loading={
+              native &&
+              !!account &&
+              !chosen &&
+              !visibleAppearance &&
+              !profileError
+            }
             texture={skin.texture}
             model={skin.model}
             cape={selectedCape?.texture}
