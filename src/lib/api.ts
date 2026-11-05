@@ -143,6 +143,7 @@ interface Contract {
   ];
   createProfile: [
     {
+      engine?: "java" | "horizon";
       name: string;
       minecraft: string;
       loader: Loader;
@@ -442,6 +443,7 @@ export function compatible(
   kind: string,
 ) {
   return (
+    profile.engine !== "horizon" &&
     version.gameVersions.includes(profile.minecraft) &&
     (kind !== "mod" ||
       (profile.loader !== "vanilla" &&

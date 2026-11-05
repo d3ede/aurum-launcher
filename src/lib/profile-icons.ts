@@ -17,6 +17,14 @@ import {
   Gamepad2,
 } from "lucide-react";
 import type { ProfileIconStyle } from "../types";
+import {
+  FabricGlyph,
+  ForgeGlyph,
+  NeoForgeGlyph,
+  QuiltGlyph,
+  VanillaGlyph,
+  HorizonGlyph,
+} from "../components/LoaderLogo";
 
 export const iconSymbols = [
   { id: "box", label: "Куб", Icon: Box },
@@ -35,6 +43,12 @@ export const iconSymbols = [
   { id: "ghost", label: "Призрак", Icon: Ghost },
   { id: "rocket", label: "Ракета", Icon: Rocket },
   { id: "gamepad", label: "Геймпад", Icon: Gamepad2 },
+  { id: "vanilla", label: "Vanilla", Icon: VanillaGlyph },
+  { id: "fabric", label: "Fabric", Icon: FabricGlyph },
+  { id: "forge", label: "Forge", Icon: ForgeGlyph },
+  { id: "neoforge", label: "NeoForge", Icon: NeoForgeGlyph },
+  { id: "quilt", label: "Quilt", Icon: QuiltGlyph },
+  { id: "horizon", label: "Horizon", Icon: HorizonGlyph },
 ] as const;
 
 export const iconColors = [

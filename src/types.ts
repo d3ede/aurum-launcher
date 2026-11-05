@@ -38,6 +38,7 @@ export interface ContentUpdateResult {
   cancelled: boolean;
 }
 export interface Profile {
+  engine?: "java" | "horizon";
   id: string;
   name: string;
   minecraft: string;

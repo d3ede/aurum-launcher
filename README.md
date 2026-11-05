@@ -41,6 +41,12 @@ An independent Windows launcher with a warm light theme and a graphite dark them
 Technic modpacks from the project-source dropdown, without a service login.
 See [modpack catalogs](docs/MODPACK-CATALOGS.md) for supported formats and verification limits.
 
+**Local test build 0.5.1:** optional Horizon (Rust) instances for Minecraft 26.3,
+original loader marks and tintable instance icons. Horizon downloads on demand
+and requires a Microsoft account owning Java Edition. Java mods do not run in
+Horizon. See [integration and verification limits](docs/HORIZON.md). This build
+has not been published as a public release.
+
 **New in 0.4.6:** corrected CurseForge content folders, checksum-verified imports from Downloads and a tidier Home quick launch without duplicate instances. Read the [release notes](docs/releases/v0.4.6.md).
 
 Hosting is local, not a hosted service; keep Aurum open while its servers run. Launch caching reduces repeated preparation work, not Minecraft or mod initialization time.

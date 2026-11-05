@@ -33,8 +33,34 @@ impl Engine {
         loader_version: Option<String>,
         cover: u8,
     ) -> Result<Profile> {
+        self.create_profile_with_engine(
+            name,
+            minecraft,
+            loader,
+            loader_version,
+            cover,
+            Runtime::Java,
+        )
+        .await
+    }
+    pub async fn create_profile_with_engine(
+        &self,
+        name: String,
+        minecraft: String,
+        loader: Loader,
+        loader_version: Option<String>,
+        cover: u8,
+        engine: Runtime,
+    ) -> Result<Profile> {
         validate_name(&name)?;
         validate_version(&minecraft)?;
+        if engine == Runtime::Horizon
+            && (minecraft != crate::horizon::MINECRAFT
+                || loader != Loader::Vanilla
+                || loader_version.is_some())
+        {
+            bail!("Horizon требует Minecraft 26.3 без Java-загрузчика")
+        }
         if loader != Loader::Vanilla {
             validate_version(
                 loader_version
@@ -43,6 +69,7 @@ impl Engine {
             )?;
         }
         let p = Profile {
+            engine,
             id: uuid::Uuid::new_v4().to_string(),
             name: name.trim().into(),
             minecraft,
@@ -284,6 +311,12 @@ pub fn validate_profile_icon_style(value: &ProfileIconStyle) -> Result<ProfileIc
             | "ghost"
             | "rocket"
             | "gamepad"
+            | "fabric"
+            | "forge"
+            | "neoforge"
+            | "quilt"
+            | "vanilla"
+            | "horizon"
     ) {
         bail!("Неизвестный символ значка")
     }

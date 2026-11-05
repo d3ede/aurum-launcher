@@ -1,15 +1,17 @@
 import { test, expect, type Page } from "@playwright/test";
 
-async function fixture(page: Page, theme = "light") {
+async function fixture(page: Page, theme = "light", owner = false) {
   await page.addInitScript(
-    ({ theme }) => {
+    ({ theme, owner }) => {
       localStorage.setItem("aurum:language", "ru");
       const w = window as any;
       w.isTauri = true;
       const state = {
         profiles: [] as any[],
-        accounts: [],
-        selectedAccount: null,
+        accounts: owner
+          ? [{ id: "owner", uuid: "1234", name: "Owner", kind: "microsoft" }]
+          : [],
+        selectedAccount: owner ? "owner" : null,
         settings: {
           language: "ru",
           theme,
@@ -62,6 +64,7 @@ async function fixture(page: Page, theme = "light") {
               versions: [{ id: "1.21.1", type: "release" }],
             };
           if (action === "content") return [];
+          if (action === "loaders") return ["0.16.0"];
           if (action === "createProfile") {
             const profile = {
               ...payload,
@@ -105,7 +108,7 @@ async function fixture(page: Page, theme = "light") {
         },
       };
     },
-    { theme },
+    { theme, owner },
   );
   await page.goto("/");
   await expect(
@@ -232,3 +235,110 @@ for (const theme of ["light", "dark"]) {
     });
   });
 }
+
+for (const theme of ["light", "dark"]) {
+  test(
+    "Horizon profile uses native engine and branded selector in " + theme,
+    async ({ page }) => {
+      await fixture(page, theme, true);
+      await page
+        .getByRole("button", { name: "Создать сборку", exact: true })
+        .first()
+        .click();
+      const dialog = page.getByRole("dialog", {
+        name: "Новая сборка",
+        exact: true,
+      });
+      await dialog
+        .getByRole("combobox", { name: "Загрузчик", exact: true })
+        .click();
+      const options = page.getByRole("option");
+      await expect(options).toHaveCount(6);
+      await expect(page.locator(".select-menu img.loader-logo")).toHaveCount(6);
+      await page.screenshot({
+        path: "target/branding-icons/loaders-" + theme + ".png",
+      });
+      await page
+        .getByRole("option", { name: "Horizon · Rust", exact: true })
+        .click();
+      await expect(
+        dialog.getByRole("combobox", { name: "Версия Minecraft", exact: true }),
+      ).toBeDisabled();
+      await expect(
+        dialog.getByRole("combobox", { name: "Версия Minecraft", exact: true }),
+      ).toContainText("26.3");
+      await expect(dialog.locator(".horizon-info")).toContainText(
+        "Java Edition",
+      );
+      await dialog
+        .getByRole("button", { name: "Создать сборку", exact: true })
+        .scrollIntoViewIfNeeded();
+      await page.screenshot({
+        path: "target/branding-icons/horizon-create-" + theme + ".png",
+      });
+      await dialog
+        .getByRole("button", { name: "Создать сборку", exact: true })
+        .click();
+      await expect(
+        page.getByRole("heading", { name: "Horizon 26.3", exact: true }),
+      ).toBeVisible();
+      const requests = await page.evaluate(() => (window as any).requests);
+      const created = requests.find(
+        (r: any) => r.action === "createProfile",
+      ).payload;
+      expect(created.engine).toBe("horizon");
+      expect(created.loader).toBe("vanilla");
+      expect(created.minecraft).toBe("26.3");
+      expect(created.loaderVersion).toBeNull();
+      expect(created.iconStyle.symbol).toBe("horizon");
+      await expect(page.locator(".horizon-instance-info")).toBeVisible();
+      await page
+        .getByRole("button", { name: "Параметры", exact: true })
+        .click();
+      await expect(
+        page.getByRole("textbox", { name: "Дополнительные JVM-аргументы" }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("spinbutton", { name: "Память, МБ" }),
+      ).toHaveCount(0);
+      await page.evaluate(() => (window as any).finishInstall());
+    },
+  );
+}
+
+test("Horizon explains account requirement and switching back restores Java version", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page
+    .getByRole("button", { name: "Создать сборку", exact: true })
+    .first()
+    .click();
+  const dialog = page.getByRole("dialog", {
+    name: "Новая сборка",
+    exact: true,
+  });
+  await dialog
+    .getByRole("combobox", { name: "Загрузчик", exact: true })
+    .click();
+  await page
+    .getByRole("option", { name: "Horizon · Rust", exact: true })
+    .click();
+  await expect(dialog.locator(".horizon-account-note")).toBeVisible();
+  await expect(
+    dialog.getByRole("button", { name: "Создать сборку", exact: true }),
+  ).toBeDisabled();
+  await dialog
+    .getByRole("combobox", { name: "Загрузчик", exact: true })
+    .click();
+  await page.getByRole("option", { name: "Vanilla", exact: true }).click();
+  await expect(
+    dialog.getByRole("combobox", { name: "Версия Minecraft", exact: true }),
+  ).toBeEnabled();
+  await expect(
+    dialog.getByRole("combobox", { name: "Версия Minecraft", exact: true }),
+  ).toContainText("1.21.1");
+  await expect(
+    dialog.getByRole("button", { name: "Создать сборку", exact: true }),
+  ).toBeEnabled();
+});

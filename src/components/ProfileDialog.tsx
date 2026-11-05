@@ -19,6 +19,7 @@ import { ProfileIcon, IconPicker } from "./ProfileIcon";
 import { InstanceContent } from "./InstanceContent";
 import { PackManualNotice } from "./PackManualDownloads";
 import { Select } from "./Select";
+import { LoaderLogo } from "./LoaderLogo";
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
 import { ru } from "../lib/i18n";
@@ -36,6 +37,12 @@ export function CreateProfile({
   const [name, setName] = useState("");
   const [mc, setMc] = useState("");
   const [loader, setLoader] = useState<Loader>("vanilla");
+  const [engine, setEngine] = useState<"java" | "horizon">("java");
+  const [javaMc, setJavaMc] = useState("");
+  const horizon = engine === "horizon";
+  const owner = data.accounts.some(
+    (a) => a.id === data.selectedAccount && a.kind === "microsoft",
+  );
   const [lv, setLv] = useState("");
   const [versions, setVersions] = useState<string[]>([]);
   const [loaders, setLoaders] = useState<string[]>([]);
@@ -60,6 +67,7 @@ export function CreateProfile({
               .map((v) => v.id),
           );
           setMc(m.latest.release);
+          setJavaMc(m.latest.release);
           setError("");
         }
       })
@@ -77,7 +85,7 @@ export function CreateProfile({
     setLv("");
     setLoaders([]);
     setLoaderLoading(false);
-    if (loader === "vanilla" || !mc) return;
+    if (horizon || loader === "vanilla" || !mc) return;
     let live = true;
     setLoaderLoading(true);
     rpc("loaders", { minecraft: mc, loader })
@@ -97,7 +105,7 @@ export function CreateProfile({
     return () => {
       live = false;
     };
-  }, [mc, loader]);
+  }, [mc, loader, horizon]);
   const submit = async () => {
     if (folderImport) {
       const result = await operation(
@@ -116,7 +124,8 @@ export function CreateProfile({
     }
     await operation(async (operationId) => {
       const created = await rpc("createProfile", {
-        name: name.trim() || `Minecraft ${mc}`,
+        engine,
+        name: name.trim() || `${horizon ? "Horizon" : "Minecraft"} ${mc}`,
         minecraft: mc,
         loader,
         loaderVersion: lv || null,
@@ -155,7 +164,7 @@ export function CreateProfile({
             maxLength={120}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={`Minecraft ${mc}`}
+            placeholder={`${horizon ? "Horizon" : "Minecraft"} ${mc}`}
           />
         </Field>
         {loading ? (
@@ -166,24 +175,87 @@ export function CreateProfile({
               <Field label={t("Версия Minecraft")}>
                 <Select
                   value={mc}
-                  onValueChange={setMc}
+                  onValueChange={(v) => {
+                    setMc(v);
+                    setJavaMc(v);
+                  }}
+                  disabled={horizon}
                   aria-label={t("Версия Minecraft")}
-                  options={versions.map((v) => ({ value: v, label: v }))}
+                  options={(horizon ? ["26.3"] : versions).map((v) => ({
+                    value: v,
+                    label: v,
+                  }))}
                 />
               </Field>
               <Field label={t("Загрузчик")}>
                 <Select
-                  value={loader}
+                  value={horizon ? "horizon" : loader}
                   aria-label={t("Загрузчик")}
-                  onValueChange={(v) => setLoader(v as Loader)}
-                  options={Object.entries(ru.loaders).map(([value, label]) => ({
-                    value,
-                    label,
-                  }))}
+                  onValueChange={(v) => {
+                    if (v === "horizon") {
+                      setJavaMc(mc);
+                      setMc("26.3");
+                      setEngine("horizon");
+                      setLoader("vanilla");
+                      if (!icon && !iconStyle)
+                        setIconStyle({
+                          symbol: "horizon",
+                          color: "#B5A3FF",
+                          background: "#302A46",
+                        });
+                    } else {
+                      if (horizon) setMc(javaMc || versions[0] || "");
+                      setEngine("java");
+                      setLoader(v as Loader);
+                    }
+                  }}
+                  options={[
+                    ...Object.entries(ru.loaders).map(([value, label]) => ({
+                      value,
+                      label,
+                      icon: <LoaderLogo brand={value as Loader} />,
+                    })),
+                    ...(!folderImport
+                      ? [
+                          {
+                            value: "horizon",
+                            label: "Horizon · Rust",
+                            icon: <LoaderLogo brand="horizon" />,
+                          },
+                        ]
+                      : []),
+                  ]}
                 />
               </Field>
             </div>
-            {loader !== "vanilla" && (
+            {horizon && (
+              <div className="horizon-info" role="note">
+                <LoaderLogo brand="horizon" size={38} />
+                <div>
+                  <strong>
+                    Horizon <span>{t("Экспериментально")}</span>
+                  </strong>
+                  <p>
+                    {t(
+                      "Minecraft на Rust. Скачивается только для этой сборки; миры хранятся отдельно.",
+                    )}
+                  </p>
+                  <p>
+                    {t(
+                      "Нужен Microsoft-аккаунт с Java Edition. Моды Fabric, Forge и Quilt не поддерживаются.",
+                    )}
+                  </p>
+                  {!owner && (
+                    <b className="horizon-account-note">
+                      {t(
+                        "Перед созданием выберите Microsoft-аккаунт в разделе «Аккаунты и скины».",
+                      )}
+                    </b>
+                  )}
+                </div>
+              </div>
+            )}
+            {!horizon && loader !== "vanilla" && (
               <Field
                 label={t("Версия {{v1}}", { v1: ru.loaders[loader] })}
                 hint={
@@ -232,9 +304,13 @@ export function CreateProfile({
         <div className="dialog-note">
           {folderImport
             ? t("Выберите папку .minecraft или папку игры из другого лаунчера.")
-            : t(
-                "Minecraft и подходящая Java установятся сразу после создания сборки.",
-              )}
+            : horizon
+              ? t(
+                  "Horizon и ресурсы установятся автоматически. Подготовка первого запуска займёт несколько минут.",
+                )
+              : t(
+                  "Minecraft и подходящая Java установятся сразу после создания сборки.",
+                )}
         </div>
         <div className="modal-actions">
           <button type="button" className="button secondary" onClick={onClose}>
@@ -247,6 +323,7 @@ export function CreateProfile({
               loading ||
               loaderLoading ||
               !mc ||
+              (horizon && !owner) ||
               (loader !== "vanilla" && !lv)
             }
           >
@@ -272,6 +349,7 @@ export function ProfileDialog({
   const { data, busy, run, operation, play, navigate, progress, notify } =
     useApp();
   const profile = data.profiles.find((p) => p.id === initial.id) || initial;
+  const horizon = profile.engine === "horizon";
   const [draft, setDraft] = useState(profile);
   const [tab, setTab] = useState<"content" | "settings" | "logs">(initialTab);
   const [error, setError] = useState("");
@@ -315,7 +393,8 @@ export function ProfileDialog({
         <div>
           <h1>{profile.name}</h1>
           <p>
-            Minecraft {profile.minecraft} · {ru.loaders[profile.loader]}
+            Minecraft {profile.minecraft} ·{" "}
+            {horizon ? "Horizon · Rust" : ru.loaders[profile.loader]}
             {profile.loaderVersion ? " " + profile.loaderVersion : ""}
           </p>
         </div>
@@ -390,7 +469,38 @@ export function ProfileDialog({
           </button>
         ))}
       </div>
-      {tab === "content" && (
+      {tab === "content" && horizon && (
+        <div className="horizon-info horizon-instance-info">
+          <LoaderLogo brand="horizon" size={48} />
+          <div>
+            <strong>
+              Horizon · Rust <span>{t("Экспериментально")}</span>
+            </strong>
+            <p>
+              {t(
+                "Здесь работают моды Horizon. Обычные Java-моды и сборки Fabric/Forge несовместимы.",
+              )}
+            </p>
+            <p>
+              {t(
+                "Добавляйте совместимый контент в папку сборки. Ресурспаки выбираются в настройках игры.",
+              )}
+            </p>
+            <button
+              className="text-button"
+              onClick={() =>
+                void rpc("openFolder", { id: profile.id }).catch((e) =>
+                  notify(e.message, true),
+                )
+              }
+            >
+              <FolderOpen size={16} />
+              {t("Открыть папку сборки")}
+            </button>
+          </div>
+        </div>
+      )}
+      {tab === "content" && !horizon && (
         <InstanceContent profile={profile} onFindProjects={onFindProjects} />
       )}
       {tab === "settings" && (
@@ -418,31 +528,37 @@ export function ProfileDialog({
               onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             />
           </Field>
-          <Field
-            label={t("Память, МБ")}
-            hint={t("Оставьте пустым, чтобы использовать общие настройки")}
-          >
-            <input
-              type="number"
-              min="512"
-              max="65536"
-              step="256"
-              value={draft.ramMb ?? ""}
-              onChange={(e) =>
-                setDraft({
-                  ...draft,
-                  ramMb: e.target.value ? Number(e.target.value) : null,
-                })
-              }
-            />
-          </Field>
-          <Field label={t("Дополнительные JVM-аргументы")}>
-            <input
-              value={draft.jvmArgs}
-              onChange={(e) => setDraft({ ...draft, jvmArgs: e.target.value })}
-              placeholder="-XX:+UseG1GC"
-            />
-          </Field>
+          {!horizon && (
+            <>
+              <Field
+                label={t("Память, МБ")}
+                hint={t("Оставьте пустым, чтобы использовать общие настройки")}
+              >
+                <input
+                  type="number"
+                  min="512"
+                  max="65536"
+                  step="256"
+                  value={draft.ramMb ?? ""}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      ramMb: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
+                />
+              </Field>
+              <Field label={t("Дополнительные JVM-аргументы")}>
+                <input
+                  value={draft.jvmArgs}
+                  onChange={(e) =>
+                    setDraft({ ...draft, jvmArgs: e.target.value })
+                  }
+                  placeholder="-XX:+UseG1GC"
+                />
+              </Field>
+            </>
+          )}
           <div className="modal-actions">
             <button
               type="button"

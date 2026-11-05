@@ -16,7 +16,8 @@ pub fn folder(kind: &str) -> Result<&'static str> {
     }
 }
 pub fn compatible(version: &ProjectVersion, p: &Profile, kind: &str) -> bool {
-    version.game_versions.contains(&p.minecraft)
+    p.engine != Runtime::Horizon
+        && version.game_versions.contains(&p.minecraft)
         && (kind != "mod"
             || (p.loader != Loader::Vanilla
                 && version.loaders.contains(&p.loader.key().to_string())))
@@ -36,6 +37,9 @@ impl Engine {
         crate::store::validate_version(project_id)?;
         crate::store::validate_version(version_id)?;
         let profile = self.profile(profile_id).await?;
+        if profile.engine == Runtime::Horizon {
+            bail!("Для Horizon добавляйте совместимый контент через папку сборки")
+        }
         let instance = self.instance(profile_id)?;
         let stage = self.root.join("staging").join(&task.id);
         tokio::fs::create_dir_all(&stage).await?;
@@ -214,6 +218,9 @@ impl Engine {
         Ok(())
     }
     pub async fn import_content(&self, id: &str, kind: &str, path: &std::path::Path) -> Result<()> {
+        if self.profile(id).await?.engine == Runtime::Horizon {
+            bail!("Для Horizon добавляйте совместимый контент через папку сборки")
+        }
         self.ensure_idle(id).await?;
         self.profile(id).await?;
         let name = path

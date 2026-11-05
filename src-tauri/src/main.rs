@@ -179,12 +179,14 @@ async fn rpc(
                 .transpose()
                 .map_err(err)?;
             let mut profile = e
-                .create_profile(
+                .create_profile_with_engine(
                     param(&payload, "name")?,
                     param(&payload, "minecraft")?,
                     param(&payload, "loader")?,
                     payload["loaderVersion"].as_str().map(String::from),
                     payload["cover"].as_u64().unwrap_or(0) as u8,
+                    serde_json::from_value(payload.get("engine").cloned().unwrap_or(json!("java")))
+                        .map_err(err)?,
                 )
                 .await
                 .map_err(err)?;

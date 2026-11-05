@@ -65,7 +65,10 @@ export function ProfileCard({
           <div>
             <h3>{profile.name}</h3>
             <p>
-              {ru.loaders[profile.loader]} · {profile.minecraft}
+              {profile.engine === "horizon"
+                ? "Horizon"
+                : ru.loaders[profile.loader]}{" "}
+              · {profile.minecraft}
             </p>
             <span
               className={`instance-card-status ${running ? "is-running" : installing ? "is-installing" : profile.installedVersion ? "is-installed" : "is-pending"}`}
@@ -98,7 +101,10 @@ export function ProfileCard({
         <div>
           <h3>{profile.name}</h3>
           <p>
-            {ru.loaders[profile.loader]} · {profile.minecraft}
+            {profile.engine === "horizon"
+              ? "Horizon"
+              : ru.loaders[profile.loader]}{" "}
+            · {profile.minecraft}
           </p>
         </div>
         <ChevronRight size={18} />

@@ -567,7 +567,7 @@ impl Engine {
                 Ok(())
             }).await??;
             task.check()?;
-            let p = Profile { id: id.clone(), name: source.name.clone(), minecraft: source.minecraft.clone(),
+            let p = Profile { engine: crate::model::Runtime::Java, id: id.clone(), name: source.name.clone(), minecraft: source.minecraft.clone(),
                 loader: source.loader.clone(), loader_version: source.loader_version.clone(), installed_version: None,
                 ram_mb: source.ram_mb, jvm_args: source.jvm_args.clone(), last_played: None, cover: 1,
                 icon: source.icon.clone(), icon_style: None, manual_downloads: vec![], content: vec![] };

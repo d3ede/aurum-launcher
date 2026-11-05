@@ -1,4 +1,11 @@
 export const homeEnglish: Record<string, string> = {
+  "Тестовая 0.5.1: отдельные профили Horizon со скачиванием по запросу.":
+    "Test build 0.5.1: separate Horizon instances, downloaded on demand.",
+  "Значки загрузчиков": "Loader icons",
+  "Оригинальные логотипы и перекрашиваемые значки сборок.":
+    "Original logos and tintable instance icons.",
+  "В тестовой Aurum 0.5.1: профили Horizon с проверкой подписи сборки, отдельными мирами и запуском через Microsoft-аккаунт с Java Edition. Horizon скачивается при установке профиля. В списке загрузчиков появились оригинальные логотипы, а в редакторе значка — перекрашиваемые символы Vanilla, Fabric, Forge, NeoForge, Quilt и Horizon. Публичный релиз не опубликован.":
+    "Aurum 0.5.1 test build: Horizon instances with signed-build verification, separate worlds and Microsoft sign-in for Java Edition owners. Horizon is downloaded when an instance is installed. The loader list has original logos; the icon editor has tintable Vanilla, Fabric, Forge, NeoForge, Quilt and Horizon symbols. No public release has been published.",
   "Импорт и быстрый запуск": "Imports and quick launch",
   "Быстрый запуск без дублей, ресурспаки и шейдеры в своих папках.":
     "Quick launch without duplicates, resource packs and shaders in their own folders.",

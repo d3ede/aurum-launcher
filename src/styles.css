@@ -2578,3 +2578,66 @@ kbd {
     justify-content: flex-start;
   }
 }
+/* Local brand assets work offline; tintable masks follow the instance's symbol color. */
+.loader-logo {
+  flex: 0 0 auto;
+  object-fit: contain;
+  border-radius: 5px;
+}
+.loader-glyph {
+  display: inline-block;
+  flex: 0 0 auto;
+  background-color: currentColor;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  -webkit-mask-position: center;
+}
+.horizon-info {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px;
+  margin: 6px 0 20px;
+  border: 1px solid color-mix(in srgb, #9a86ff 35%, var(--border));
+  border-radius: 14px;
+  background: color-mix(in srgb, #9a86ff 7%, var(--surface));
+}
+.horizon-info > div {
+  min-width: 0;
+}
+.horizon-info strong {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.horizon-info strong > span {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 7px;
+  border: 1px solid color-mix(in srgb, #9a86ff 40%, transparent);
+  border-radius: 6px;
+}
+.horizon-info p {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.horizon-account-note {
+  display: block;
+  font-size: 12px;
+  margin-top: 10px;
+  line-height: 1.5;
+}
+.horizon-instance-info {
+  margin-top: 24px;
+  max-width: 760px;
+  padding: 24px;
+}
+.horizon-instance-info .text-button {
+  margin-top: 14px;
+}

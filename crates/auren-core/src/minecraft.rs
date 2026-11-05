@@ -207,6 +207,13 @@ impl Engine {
     }
     pub async fn install(&self, id: &str, task: &Task) -> Result<()> {
         let profile = self.profile(id).await?;
+        if profile.engine == Runtime::Horizon {
+            return self.install_horizon(profile, task).await;
+        }
+        self.install_java_files(profile, task).await
+    }
+    pub(crate) async fn install_java_files(&self, profile: Profile, task: &Task) -> Result<()> {
+        let id = profile.id.as_str();
         if self.running.lock().await.contains_key(id) {
             bail!("Игра уже запущена")
         }
@@ -314,6 +321,9 @@ impl Engine {
             instance.join("launch.json"),
         )
         .await?;
+        if profile.engine == Runtime::Horizon {
+            return Ok(());
+        }
         let mut db = self.db.lock().await;
         let mut next = db.clone();
         next.profiles
@@ -653,6 +663,9 @@ impl Engine {
             bail!("Игра уже запущена")
         }
         let p = self.profile(id).await?;
+        if p.engine == Runtime::Horizon {
+            return self.launch_horizon(p, server).await;
+        }
         if p.installed_version.is_none() {
             bail!("Сначала установите Minecraft")
         }
@@ -903,7 +916,19 @@ impl Engine {
             .kill_on_drop(false);
         hide(&mut command);
         // No shell interpolation, no printed token-bearing command line.
-        let mut child = command.spawn().context("Не удалось запустить Java")?;
+        let child = command.spawn().context("Не удалось запустить Java")?;
+        self.supervise_game(&p, child, token, task, server).await
+    }
+    pub(crate) async fn supervise_game(
+        &self,
+        p: &Profile,
+        mut child: tokio::process::Child,
+        token: String,
+        task: Task,
+        server: Option<crate::servers::ServerAddress>,
+    ) -> Result<()> {
+        let id = p.id.as_str();
+        let instance = self.instance(id)?;
         let stop = Arc::new(AtomicBool::new(false));
         self.running.lock().await.insert(id.into(), stop.clone());
         if let Some(server) = &server {

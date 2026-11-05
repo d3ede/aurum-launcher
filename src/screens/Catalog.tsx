@@ -215,8 +215,9 @@ export function ProjectDialog({
                       options={[
                         { value: "", label: t("Выберите сборку") },
                         ...data.profiles.map((p) => ({
+                          disabled: p.engine === "horizon",
                           value: p.id,
-                          label: `${p.name} · ${p.minecraft} / ${ru.loaders[p.loader]}`,
+                          label: `${p.name} · ${p.minecraft} / ${p.engine === "horizon" ? "Horizon" : ru.loaders[p.loader]}`,
                         })),
                       ]}
                     />

@@ -1,3 +1,7 @@
+import { readFileSync } from "node:fs";
+const { version: APP_VERSION } = JSON.parse(
+  readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
+);
 import { test, expect, type Page } from "@playwright/test";
 
 async function fixture(
@@ -191,7 +195,9 @@ test("home has account and factual release panels, working actions and both them
   await page
     .getByRole("button", { name: "Все изменения", exact: true })
     .click();
-  const notes = page.getByRole("dialog", { name: "Изменения Aurum 0.4.6" });
+  const notes = page.getByRole("dialog", {
+    name: `Изменения Aurum ${APP_VERSION}`,
+  });
   await expect(notes).toContainText("В Aurum 0.4.6:");
   await expect(notes).toContainText("локальный хостинг");
   await expect(notes).not.toContainText("В разработке:");
@@ -312,7 +318,9 @@ test("home adapts to minimum window size and translates the new panels", async (
     animations: "disabled",
   });
   await page.getByRole("button", { name: "All changes", exact: true }).click();
-  const notes = page.getByRole("dialog", { name: "Aurum 0.4.6 changes" });
+  const notes = page.getByRole("dialog", {
+    name: `Aurum ${APP_VERSION} changes`,
+  });
   await expect(notes).toContainText("In Aurum 0.4.6:");
   await expect(notes).toContainText("local hosting");
   await expect(notes).not.toContainText("In development:");

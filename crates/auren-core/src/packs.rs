@@ -230,7 +230,7 @@ impl Engine {
             }
             let manual_downloads = remaining;
             task.check()?;
-            let p=Profile{id:id.clone(),name,minecraft:mc,loader,loader_version:lv,installed_version:None,ram_mb:None,jvm_args:String::new(),last_played:None,cover:0,icon:None,icon_style:None,manual_downloads,content:vec![]};
+            let p=Profile{engine:crate::model::Runtime::Java,id:id.clone(),name,minecraft:mc,loader,loader_version:lv,installed_version:None,ram_mb:None,jvm_args:String::new(),last_played:None,cover:0,icon:None,icon_style:None,manual_downloads,content:vec![]};
             self.publish_profile(p, Some(&stage)).await
         }.await;
         let _ = tokio::fs::remove_dir_all(self.root.join("staging").join(&task.id)).await;
@@ -525,6 +525,7 @@ impl Engine {
             }
             task.check()?;
             let p = Profile {
+                engine: crate::model::Runtime::Java,
                 icon: None,
                 icon_style: None,
                 id: id.clone(),

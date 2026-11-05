@@ -1,5 +1,13 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum Runtime {
+    #[default]
+    Java,
+    Horizon,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Loader {
@@ -31,6 +39,8 @@ pub struct ProfileIconStyle {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Profile {
+    #[serde(default)]
+    pub engine: Runtime,
     pub id: String,
     pub name: String,
     pub minecraft: String,

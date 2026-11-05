@@ -102,7 +102,7 @@ test("symbol and independent custom colors persist and render on cards", async (
     .click();
   await page.getByRole("button", { name: "Изменить значок сборки" }).click();
   const editor = page.locator(".icon-editor");
-  await expect(editor.locator(".icon-symbols button")).toHaveCount(16);
+  await expect(editor.locator(".icon-symbols button")).toHaveCount(22);
   await editor.getByRole("button", { name: "Ракета", exact: true }).click();
   await editor
     .getByRole("textbox", { name: "Цвет символа HEX" })
@@ -172,4 +172,54 @@ test("new instance submits selected symbol and colors", async ({ page }) => {
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+});
+
+test("loader symbols retain selected colors after saving and reopening", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Мои сборки", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Открыть Мир значков", exact: true })
+    .first()
+    .click();
+  await page.getByRole("button", { name: "Изменить значок сборки" }).click();
+  const editor = page.locator(".icon-editor");
+  for (const name of [
+    "Vanilla",
+    "Fabric",
+    "Forge",
+    "NeoForge",
+    "Quilt",
+    "Horizon",
+  ]) {
+    await editor.getByRole("button", { name, exact: true }).click();
+    await editor
+      .getByRole("textbox", { name: "Цвет символа HEX" })
+      .fill("#ABCDEF");
+    await editor
+      .getByRole("textbox", { name: "Цвет фона HEX" })
+      .fill("#123456");
+    await expect(editor.locator(".profile-icon .loader-glyph")).toHaveCSS(
+      "background-color",
+      "rgb(171, 205, 239)",
+    );
+    await expect(editor.locator(".profile-icon")).toHaveCSS(
+      "background-color",
+      "rgb(18, 52, 86)",
+    );
+  }
+  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await page.reload();
+  await page.getByRole("button", { name: "Мои сборки", exact: true }).click();
+  const icon = page
+    .getByRole("button", { name: "Открыть Мир значков", exact: true })
+    .first()
+    .locator(".profile-icon");
+  await expect(icon.locator(".loader-glyph")).toHaveCSS(
+    "background-color",
+    "rgb(171, 205, 239)",
+  );
+  await expect(icon).toHaveCSS("background-color", "rgb(18, 52, 86)");
 });

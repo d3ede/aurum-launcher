@@ -22,7 +22,7 @@ fn java_executable(path: &Path) -> bool {
     path.file_name().is_some_and(|name| {
         matches!(
             name.to_string_lossy().to_ascii_lowercase().as_str(),
-            "java" | "javaw" | "java.exe" | "javaw.exe"
+            "java" | "javaw" | "java.exe" | "javaw.exe" | "horizon-client" | "horizon-client.exe"
         )
     })
 }
@@ -30,10 +30,13 @@ fn java_executable(path: &Path) -> bool {
 fn game_directory(process: &Process) -> Option<PathBuf> {
     let mut args = process.cmd().iter();
     while let Some(arg) = args.next() {
-        if arg == "--gameDir" {
+        if arg == "--gameDir" || arg == "--game-dir" {
             return std::fs::canonicalize(Path::new(args.next()?)).ok();
         }
-        if let Some(value) = arg.to_str().and_then(|arg| arg.strip_prefix("--gameDir=")) {
+        if let Some(value) = arg.to_str().and_then(|arg| {
+            arg.strip_prefix("--gameDir=")
+                .or_else(|| arg.strip_prefix("--game-dir="))
+        }) {
             return std::fs::canonicalize(value).ok();
         }
     }

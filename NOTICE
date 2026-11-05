@@ -12,6 +12,10 @@ and notices. Minecraft textures and other Mojang/Microsoft content are not
 licensed under this project's PolyForm license. See src/assets/skins/README.md
 for the provenance of bundled default Minecraft skins.
 
+Loader and engine marks retain their owners' rights. Horizon identifying artwork
+is under MIT, Copyright (c) 2026 Ludovic Marie and the Horizon contributors.
+See src/assets/loaders/README.md and src/assets/loaders/HORIZON-LICENSE.
+
 PaperMC and Velocity selector marks retain their separate usage terms.
 See src/assets/hosting/README.md for their sources and restrictions.
 
