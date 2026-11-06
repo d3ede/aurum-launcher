@@ -378,7 +378,8 @@ impl Engine {
         })
         .await??;
         task.progress("social-invite", "Waiting for invitation receipt", 0, 1);
-        let until = tokio::time::Instant::now() + Duration::from_secs(45);
+        let until = tokio::time::Instant::now()
+            + Duration::from_secs(if sharing.with_pack { 180 } else { 45 });
         while self.social.delivery(&id) != Some(true) {
             if let Err(error) = task.check() {
                 let _ = self.social.cancel_offer(id);
@@ -945,7 +946,102 @@ impl Engine {
             missing: journal.profile.manual_downloads.len(),
         })
     }
+    pub async fn social_prepare(
+        &self,
+        invitation: &str,
+        profile_id: Option<&str>,
+        task: &Task,
+    ) -> Result<String> {
+        let _guard = self
+            .busy
+            .try_lock()
+            .context("Wait for the current operation")?;
+        validate_hash(invitation, 32)?;
+        task.check()?;
+        let incoming = self
+            .social
+            .snapshot()?
+            .invitations
+            .into_iter()
+            .find(|i| i.offer.id == invitation)
+            .context("Invitation expired")?;
+        incoming.offer.validate()?;
+        let world = incoming.offer.world;
+        let preparation = self
+            .root
+            .join("social/preparations")
+            .join(format!("{invitation}.json"));
+        let saved = if profile_id.is_none() && preparation.is_file() {
+            let bytes = tokio::fs::read(&preparation).await?;
+            if bytes.len() > 128 {
+                bail!("Invalid preparation journal");
+            }
+            let id: String = serde_json::from_slice(&bytes)?;
+            uuid::Uuid::parse_str(&id)?;
+            self.profile(&id).await.ok()
+        } else {
+            None
+        };
+        let p = if let Some(id) = profile_id {
+            self.profile(id).await?
+        } else if let Some(saved) = saved {
+            saved
+        } else {
+            let created = self
+                .create_profile(
+                    world.name.clone(),
+                    world.minecraft.clone(),
+                    serde_json::from_value(Value::String(world.loader.clone()))?,
+                    world.loader_version.clone(),
+                    0,
+                )
+                .await?;
+            tokio::fs::create_dir_all(preparation.parent().unwrap()).await?;
+            tokio::fs::write(&preparation, serde_json::to_vec(&created.id)?).await?;
+            created
+        };
+        if p.engine != Runtime::Java
+            || p.minecraft != world.minecraft
+            || p.loader.key() != world.loader
+            || p.loader_version != world.loader_version
+        {
+            bail!("Select a Java profile with the same Minecraft and loader version");
+        }
+        if !p.manual_downloads.is_empty() {
+            bail!("Add the missing files before joining this world");
+        }
+        if p.installed_version.is_none() {
+            task.progress("social-prepare", "Preparing Minecraft", 0, 1);
+            let engine = self.social_http()?;
+            let future = engine.install(&p.id, task);
+            tokio::pin!(future);
+            tokio::select! {result=&mut future=>result?,_=async{loop{if task.cancel.load(Ordering::Acquire)||!self.social.is_enabled(){break;}tokio::time::sleep(Duration::from_millis(20)).await;}}=>bail!("Social game setup cancelled")};
+        }
+        Ok(p.id)
+    }
     pub async fn social_join(&self, invitation: &str, profile_id: &str, task: &Task) -> Result<()> {
+        let result = self.social_join_inner(invitation, profile_id, task).await;
+        if result.is_err() {
+            let _ = self.social.abandon_join(invitation.into());
+        }
+        result
+    }
+    async fn social_join_inner(
+        &self,
+        invitation: &str,
+        profile_id: &str,
+        task: &Task,
+    ) -> Result<()> {
+        {
+            let db = self.db.lock().await;
+            if !db
+                .accounts
+                .iter()
+                .any(|a| Some(&a.id) == db.selected_account.as_ref())
+            {
+                bail!("Add and select a player account before joining");
+            }
+        }
         let incoming = self
             .social
             .snapshot()?
@@ -976,7 +1072,10 @@ impl Engine {
             tokio::select! {r=&mut installing=>r?,_=async{loop{if task.cancel.load(Ordering::Acquire)||!self.social.is_enabled(){break;}tokio::time::sleep(Duration::from_millis(20)).await;}}=>bail!("Social game setup cancelled")};
         }
         task.check()?;
-        self.social.join(invitation.into())?;
+        task.progress("social-connect", "Connecting to world", 0, 1);
+        let service = self.social.clone();
+        let join_id = invitation.to_string();
+        tokio::task::spawn_blocking(move || service.join(join_id)).await??;
         let deadline = tokio::time::Instant::now() + Duration::from_secs(100);
         let address = loop {
             task.check()?;
@@ -992,6 +1091,12 @@ impl Engine {
             if incoming.status == "unreachable" {
                 bail!(
                     "Direct connection failed; enable a compatible VPN on both computers and retry"
+                );
+            }
+            if incoming.status == "failed" {
+                bail!(
+                    "{}",
+                    incoming.error.unwrap_or_else(|| "Invitation failed".into())
                 );
             }
             if let Some(address) = incoming.join_address {
@@ -1014,6 +1119,7 @@ impl Engine {
         if !self.social.is_enabled() {
             bail!("Social was disabled");
         }
+        task.progress("social-launch", "Starting Minecraft", 0, 1);
         self.launch_social_server(profile_id, &address, task).await
     }
 }

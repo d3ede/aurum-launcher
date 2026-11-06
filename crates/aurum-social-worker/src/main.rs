@@ -71,7 +71,7 @@ async fn run() -> Result<()> {
         })
         .bind()
         .await?;
-    let game = transport::GameEndpoint::bind(ports[1], public_relays).await?;
+    let game = Arc::new(transport::GameEndpoint::bind(ports[1], public_relays).await?);
     if public_relays {
         let _ = timeout(Duration::from_secs(15), endpoint.online()).await;
     }
@@ -87,6 +87,9 @@ async fn run() -> Result<()> {
         })
         .await?;
     let permits = Arc::new(Semaphore::new(4));
+    let incoming_permits = Arc::new(Semaphore::new(8));
+    let send_permits = Arc::new(Semaphore::new(2));
+    let game_permits = Arc::new(Semaphore::new(2));
     let mut tasks = tokio::task::JoinSet::new();
     let mut streams: HashMap<u64, noq::SendStream> = HashMap::new();
     let mut game_connections: HashMap<u64, noq::Connection> = HashMap::new();
@@ -103,6 +106,7 @@ async fn run() -> Result<()> {
             command=commands.recv()=> {
                 let Some(command)=command else { break; };
                 if matches!(command, Command::Stop) { break; }
+                let operation=match &command{Command::Send{..}=>"send",Command::GameConnect{..}=>"game-connect",Command::Publish{..}=>"publish",Command::Resolve{..}=>"resolve",_=>"command"};
                 let result:Result<()>=async { match command {
                     Command::Refresh=>{output.send(Response::Ready{address:serde_json::to_string(&endpoint.addr())?,game_certificate:game.certificate.clone(),game_port:game.endpoint.local_addr()?.port(),game_external:game.external(),stun_error:game.stun_error.clone()}).await?;}
                     Command::ProbeSandbox{canary,parent_pid}=>{
@@ -123,20 +127,19 @@ async fn run() -> Result<()> {
                     Command::Send{address,bytes}=>{
                         if address.len()>4096 || bytes.len()>16384 {bail!("Social message exceeds limit");}
                         let address:EndpointAddr=serde_json::from_str(&address)?; validate_address(&address)?;
-                        let endpoint=endpoint.clone(); let tx=output.clone();let permit=permits.clone().try_acquire_owned().context("Worker is busy")?;
+                        let endpoint=endpoint.clone(); let tx=output.clone();let permit=send_permits.clone().try_acquire_owned().context("Worker is busy")?;
                         tasks.spawn(async move {let _permit=permit; let result:Result<()>=async {timeout(Duration::from_secs(15),async {let conn=endpoint.connect(address,SOCIAL_ALPN).await?;let (mut send,mut recv)=conn.open_bi().await?;send.write_all(&bytes).await?;send.finish()?; let reply=recv.read_to_end(1).await?; if reply!=[1] {bail!("Social receipt failed");} conn.close(0u32.into(),b"done"); Ok::<(),anyhow::Error>(())}).await??;Ok(())}.await;let _=tx.send(match result {Ok(())=>Response::Sent,Err(e)=>failure("send",e)}).await;});
                     }
                     Command::GameAuthorize{certificate}=>{game.authorize(&certificate)?;output.send(Response::GameAuthorized).await?;}
                     Command::GameRevoke{certificate_hash}=>{game.revoke(&certificate_hash)?;for connection in game_connections.values(){if let Some(certs)=connection.peer_identity().and_then(|i|i.downcast::<Vec<rustls::pki_types::CertificateDer<'static>>>().ok()){if certs.first().is_some_and(|cert|format!("{:x}",Sha256::digest(cert))==certificate_hash){connection.close(0u32.into(),b"authorization revoked");}}}}
                     Command::GameConnect{address,certificate}=>{
-                        let conn=game.connect(address,&certificate).await?;let (mut send,mut recv)=conn.open_bi().await?;
-                        // TLS 1.3 can complete on the client before the server has
-                        // validated its client certificate. Require an application
-                        // receipt from the authenticated server before broker Ready.
-                        timeout(Duration::from_secs(5),send.write_all(b"AUG1")).await??;
-                        let mut ack=[0u8;4];timeout(Duration::from_secs(5),recv.read_exact(&mut ack)).await??;
-                        if &ack!=b"AUG1"{bail!("Game endpoint did not confirm mutual authentication");}
-                        opened_tx.send((conn,send,recv)).await?;
+                        let game=game.clone();let tx=output.clone();let opened_tx=opened_tx.clone();let permit=game_permits.clone().try_acquire_owned().context("Game connector is busy")?;
+                        tasks.spawn(async move{let _permit=permit;let result:Result<()>=async{
+                          let conn=game.connect(address,&certificate).await?;let(mut send,mut recv)=conn.open_bi().await?;
+                          timeout(Duration::from_secs(5),send.write_all(b"AUG1")).await??;let mut ack=[0u8;4];timeout(Duration::from_secs(5),recv.read_exact(&mut ack)).await??;
+                          if &ack!=b"AUG1"{bail!("Game endpoint did not confirm mutual authentication");}
+                          opened_tx.send((conn,send,recv)).await?;Ok(())
+                        }.await;if let Err(error)=result{let _=tx.send(failure("game-connect",error)).await;}});
                     }
                     Command::GamePunch{address,nonce}=>{game.punch(address,nonce)?;}
                     Command::GameWrite{stream,bytes}=>{if bytes.len()>12*1024{bail!("Game IPC chunk exceeds limit");}let send=streams.get_mut(&stream).context("Unknown game stream")?;timeout(Duration::from_secs(5),send.write_all(&bytes)).await??;}
@@ -144,14 +147,14 @@ async fn run() -> Result<()> {
                     if let Some(mut send)=streams.remove(&stream){let _=send.finish();}}
                     Command::Start{..}|Command::Stop=>bail!("Invalid worker state"),
                 } Ok(()) }.await;
-                if let Err(error)=result {output.send(failure("command",error)).await?;}
+                if let Err(error)=result {output.send(failure(operation,error)).await?;}
             }
             Some(incoming)=endpoint.accept()=>{
-                if let Ok(permit)=permits.clone().try_acquire_owned(){ let tx=output.clone();tasks.spawn(async move {let _permit=permit;let result:Result<()>=async {let connection=timeout(Duration::from_secs(10),incoming).await??;let remote=*connection.remote_id().as_bytes(); let (mut send,mut recv)=timeout(Duration::from_secs(10),connection.accept_bi()).await??;let bytes=timeout(Duration::from_secs(10),recv.read_to_end(16384)).await??;tx.send(Response::Received{transport_key:remote,bytes}).await?;send.write_all(&[1]).await?;send.finish()?;let _=timeout(Duration::from_secs(2),connection.closed()).await;Ok(())}.await;if let Err(e)=result{let _=tx.send(failure("incoming",e)).await;}}); } else {incoming.refuse();}
+                if let Ok(permit)=incoming_permits.clone().try_acquire_owned(){ let tx=output.clone();tasks.spawn(async move {let _permit=permit;let result:Result<()>=async {let connection=timeout(Duration::from_secs(10),incoming).await??;let remote=*connection.remote_id().as_bytes(); let (mut send,mut recv)=timeout(Duration::from_secs(10),connection.accept_bi()).await??;let bytes=timeout(Duration::from_secs(10),recv.read_to_end(16384)).await??;tx.send(Response::Received{transport_key:remote,bytes}).await?;send.write_all(&[1]).await?;send.finish()?;let _=timeout(Duration::from_secs(2),connection.closed()).await;Ok(())}.await;if let Err(e)=result{let _=tx.send(failure("incoming",e)).await;}}); } else {incoming.refuse();}
             }
             Some(incoming)=game.endpoint.accept()=>{
                 if streams.len()>=8 {incoming.refuse();continue;}
-                let tx=opened_tx.clone();let permit=permits.clone().try_acquire_owned();
+                let tx=opened_tx.clone();let permit=incoming_permits.clone().try_acquire_owned();
                 if let Ok(permit)=permit {tasks.spawn(async move {let _permit=permit;if let Ok(Ok(conn))=timeout(Duration::from_secs(10),incoming).await{if let Ok(Ok((mut send,mut recv)))=timeout(Duration::from_secs(10),conn.accept_bi()).await{let mut preface=[0u8;4];if matches!(timeout(Duration::from_secs(5),recv.read_exact(&mut preface)).await,Ok(Ok(_)))&&&preface==b"AUG1"&&matches!(timeout(Duration::from_secs(5),send.write_all(b"AUG1")).await,Ok(Ok(_))){let _=tx.send((conn,send,recv)).await;}}}});}else{incoming.refuse();}
             }
             Some((conn,send,mut recv))=opened.recv()=>{

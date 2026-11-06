@@ -1,4 +1,8 @@
 export const homeEnglish: Record<string, string> = {
+  "Приглашения с аватарками и прогрессом загрузки.":
+    "Invitations with avatars and download progress.",
+  "Из приглашения можно создать сборку или игрока. Отправитель видит ожидание друга и подключение.":
+    "Create an instance or player from an invitation. The sender sees their friend waiting or connecting.",
   "Пять новых тем и плоские кнопки запуска.":
     "Five new themes and flat launch buttons.",
   "Добавлены темы «Графит», «Экспрессо», «Вулкан», «Полярное утро» и «Сакура». Кнопки запуска используют цвета темы без объёмного градиента, бликов и теней.":

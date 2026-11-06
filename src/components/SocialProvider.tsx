@@ -22,6 +22,7 @@ interface SocialContextValue {
   act: (job: () => Promise<unknown>) => Promise<boolean>;
   working: boolean;
   requestDisable: () => void;
+  chime: (kind: "sent" | "received") => void;
 }
 const Context = createContext<SocialContextValue | null>(null);
 export function useSocial() {
@@ -42,6 +43,33 @@ export function SocialProvider({ children }: { children: ReactNode }) {
   const [request, setRequest] = useState<SocialPerson | null>(null);
   const [link, setLink] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
+  const chime = useCallback(
+    (kind: "sent" | "received") => {
+      if (snapshot?.privacy.notifications === false) return;
+      const context = audio.current;
+      if (context?.state !== "running") return;
+      const notes = kind === "sent" ? [523.25, 783.99] : [659.25, 880];
+      for (const [i, frequency] of notes.entries()) {
+        const note = context.createOscillator(),
+          gain = context.createGain();
+        note.type = "sine";
+        note.frequency.value = frequency;
+        note.connect(gain);
+        gain.connect(context.destination);
+        const start = context.currentTime + i * 0.14;
+        gain.gain.setValueAtTime(0, start);
+        gain.gain.linearRampToValueAtTime(0.065, start + 0.025);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+        note.start(start);
+        note.stop(start + 0.36);
+        note.onended = () => {
+          note.disconnect();
+          gain.disconnect();
+        };
+      }
+    },
+    [snapshot?.privacy.notifications],
+  );
   useEffect(() => {
     const unlock = () => {
       audio.current ??= new AudioContext();
@@ -69,7 +97,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
           title: "@social.new.request",
         })),
       ...snapshot.invitations
-        .filter((i) => i.status !== "loading")
+        .filter((i) => i.status !== "failed")
         .map((i) => ({
           key: `invite:${i.offer.id}`,
           kind: "invite" as const,
@@ -94,28 +122,9 @@ export function SocialProvider({ children }: { children: ReactNode }) {
         russian: getLocale().startsWith("ru"),
         silent: context?.state === "running",
       }).catch(() => {});
-      if (context?.state === "running") {
-        for (const [i, frequency] of [659.25, 880].entries()) {
-          const note = context.createOscillator(),
-            gain = context.createGain();
-          note.type = "sine";
-          note.frequency.value = frequency;
-          note.connect(gain);
-          gain.connect(context.destination);
-          const start = context.currentTime + i * 0.14;
-          gain.gain.setValueAtTime(0, start);
-          gain.gain.linearRampToValueAtTime(0.08, start + 0.025);
-          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
-          note.start(start);
-          note.stop(start + 0.36);
-          note.onended = () => {
-            note.disconnect();
-            gain.disconnect();
-          };
-        }
-      }
+      chime("received");
     }
-  }, [snapshot, notify]);
+  }, [snapshot, notify, chime]);
   useEffect(() => {
     if (!native) return;
     let disposed = false;
@@ -247,6 +256,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
         act,
         working,
         requestDisable: () => setDisabling(true),
+        chime,
       }}
     >
       {children}

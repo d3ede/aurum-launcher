@@ -188,6 +188,37 @@ fn run() -> Result<()> {
         );
     }
     // These are two different AppContainers, without a loopback exemption.
+    if args.iter().any(|a| a == "--busy-discovery") {
+        for _ in 0..5 {
+            a.send(&Command::Resolve {
+                public_key: Identity::generate()?.public_key(),
+            })?;
+        }
+        let busy = a.receive(Duration::from_secs(5))?;
+        if !matches!(&busy,Response::Error{operation,message}if operation=="resolve"&&message.contains("busy"))
+        {
+            bail!("Expected a typed resolver saturation error");
+        }
+        report(
+            "Discovery saturation errors keep their operation type",
+            "PASS",
+            json!(busy),
+        );
+        a.send(&Command::Send {
+            address: address_b.into(),
+            bytes: b"control during discovery".to_vec(),
+        })?;
+        wait(&a, |r| matches!(r, Response::Sent), 15)?;
+        let reply = wait(&b, |r| matches!(r, Response::Received { .. }), 15)?;
+        if !matches!(reply,Response::Received{bytes,..}if bytes==b"control during discovery") {
+            bail!("Control transport failed during real DHT load");
+        }
+        report(
+            "Control transport survives four real outstanding DHT resolutions",
+            "PASS",
+            json!({"internetGameProof":false}),
+        );
+    }
     b.send(&Command::Send {
         address: address_a.into(),
         bytes: vec![255; 16384],
@@ -250,7 +281,7 @@ fn run() -> Result<()> {
     loop {
         let response = b.receive(deadline.saturating_duration_since(std::time::Instant::now()))?;
         match response {
-            Response::Error { operation, .. } if operation == "command" => break,
+            Response::Error { operation, .. } if operation == "game-connect" => break,
             Response::GameOpened { .. } => {
                 bail!("Untrusted client certificate opened a game connection")
             }
@@ -657,7 +688,7 @@ fn friends(root: &Path, worker: &Path) -> Result<()> {
             loader: "vanilla".into(),
             loader_version: None,
         };
-        let config = b"enabled=true".to_vec();
+        let config = b"enabled=true\n".repeat(180);
         let manifest = Manifest {
             version: 1,
             name: world.name.clone(),
@@ -691,11 +722,10 @@ fn friends(root: &Path, worker: &Path) -> Result<()> {
             })?;
             a.cancel_offer(plain.clone())?;
             until(&|| {
-                Ok(!b
-                    .snapshot()?
+                Ok(b.snapshot()?
                     .invitations
                     .iter()
-                    .any(|i| i.offer.id == plain))
+                    .any(|i| i.offer.id == plain && i.status == "failed" && i.error.is_some()))
             })?;
         }
         report(
@@ -751,6 +781,19 @@ fn friends(root: &Path, worker: &Path) -> Result<()> {
             "Locally accepted invitation opens the authorized TCP/QUIC bridge",
             "PASS",
             json!({"internetProof":false,"minecraftWorldProof":false}),
+        );
+        b.abandon_join(incoming.offer.id.clone())?;
+        until(&|| {
+            Ok(!b.has_active_tunnels()
+                && a.snapshot()?
+                    .outgoing
+                    .iter()
+                    .any(|i| i.id == incoming.offer.id && i.status == "waiting"))
+        })?;
+        report(
+            "Cancelled join closes only its bridge and returns the host to waiting",
+            "PASS",
+            json!({"socialStillEnabled":a.is_enabled()&&b.is_enabled()}),
         );
     }
     b.relationship(id_a.clone(), "block")?;

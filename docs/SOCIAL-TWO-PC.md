@@ -114,9 +114,18 @@ Minecraft requirements. The echo node must be stopped before enabling Social.
 Also check the updated UI on both PCs: select an avatar and Invisible, restore
 Online, and verify the friend's picture and status. Block/unblock and re-add;
 there must be no stale challenge banner. Test World only and With instance
-without pressing Review contents first, then check a Vanilla manifest explicitly.
+with no Review contents button. Check an empty Vanilla transfer and an instance
+whose manifest spans several fragments. Create a matching instance from inside
+the invitation; while it downloads, Join must stay disabled and progress visible.
+Test adding a player without obtaining another invitation. Retry a cancelled
+download and confirm that no duplicate instance is created. Confirm the sender's
+waiting/connecting status and the distinct send chime. Cancelling a join must
+keep Social enabled and release only that world bridge.
 The sender must see delivery success only after the receiving launcher has the
 invitation. Disconnect the receiver and verify a bounded undelivered result.
+Interrupt a manifest transfer and check that the error stays visible rather than
+the dialog disappearing. Test a failed direct route: no premature Java launch,
+no game traffic over public Social relays, and a visible retry/VPN explanation.
 Check the chime, in-app notification and (when Windows allows it) OS toast for
 both request types. Disable notifications and repeat; no sound or toast should
 appear. Back up an identity, try a wrong password while connected, then restore

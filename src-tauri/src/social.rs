@@ -251,6 +251,21 @@ pub async fn rpc(
                 .and_then(|installed| serde_json::to_value(installed).map_err(Into::into))
                 .map_err(err)
         }
+        "social.prepare" => {
+            let id: String = param(payload, "id")?;
+            let profile: Option<String> = param(payload, "profileId")?;
+            let task = e
+                .social_task(param(payload, "operationId")?)
+                .await
+                .map_err(err)?;
+            let result = e.social_prepare(&id, profile.as_deref(), &task).await;
+            let outcome = result
+                .as_ref()
+                .map(|_| ())
+                .map_err(|e| anyhow::anyhow!(e.to_string()));
+            e.finish_social_task(&task, &outcome).await;
+            Ok(json!(result.map_err(err)?))
+        }
         "social.join" => {
             let id: String = param(payload, "id")?;
             let profile: String = param(payload, "profileId")?;

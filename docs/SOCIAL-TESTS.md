@@ -155,6 +155,42 @@ input is rejected. The final release worker/lab repeated all 13 friend-flow
 checks and all 11 local isolation/transport checks successfully. The separate
 two-network gate remained explicitly NOT TESTED.
 
+## Invitation-flow correction (2026-11-06)
+
+The worker previously shared four permits across discovery, incoming streams and
+outgoing sends. A synchronous send-permit failure was labelled `command`, while
+the broker released its in-flight slot only for `send`. That left the outgoing
+queue stuck. Discovery, sends and accepts now have separate bounded pools;
+failures preserve their operation type. Direct game connection attempts also
+run as bounded asynchronous tasks, keeping control/shutdown responsive.
+
+The native `--busy-discovery` run occupied all four discovery slots using real
+Mainline resolutions. The fifth returned a typed `resolve` error, and real
+bidirectional iroh control traffic still completed. All 13 checks in that lab
+passed, including the OS isolation negatives, mutual-TLS denial, fixture bridge,
+revocation and oversized-IPC rejection. This is local transport evidence during
+real DHT work, not two-network gameplay proof.
+
+The final release `--friends` run passed all 14 checks. Its manifest now spans
+several 1 KiB fragments. Transfers request offsets, retry missing fragments and
+accept only identical retransmits; parser tests reject changed duplicates.
+Sender cancellation keeps an explicit receiver error. A scoped join cancellation
+closed the bridge and returned the host to waiting with both Social services
+still enabled. No isolated-network boundary or Firewall scope was loosened.
+
+The receiver UI now combines player/instance choice, setup, connection and launch
+in one guarded operation. It has a sender avatar, themed pattern, progress, retained
+errors and no off/review button. New-instance preparations persist their chosen
+profile ID for retries. The sender has a distinct chime and outgoing status cards.
+Theme-surface and checkbox checks cover custom palette colors.
+
+Build, 27 frontend unit tests, workspace all-feature Rust tests and all-target
+Clippy with warnings denied passed. The targeted UI run passed 41/42, with the
+restore-picker case interrupted by a live frontend reload; the final isolated
+Social rerun passed 17/17. Catalog, Microsoft login and home cases passed in the
+targeted run. UI fixtures do not count as network, actual Minecraft launch or
+two-computer evidence. Remote gameplay and OS-toast presentation remain unverified.
+
 ## Outstanding gates
 
 Not run: two physical computers on separate networks; direct NAT traversal and

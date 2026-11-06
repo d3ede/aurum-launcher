@@ -9,7 +9,6 @@ pub(super) struct OutgoingWorld {
     listener: Listener,
     offer: Offer,
     manifest: Vec<u8>,
-    offset: usize,
     last_offer: Instant,
 }
 pub(super) struct Bridge {
@@ -34,6 +33,7 @@ pub(super) struct GameState {
     pub streams: HashMap<u64, Bridge>,
     guest: Option<Guest>,
     last_validation: Instant,
+    joins: HashMap<String, Instant>,
 }
 impl GameState {
     pub fn new(
@@ -48,6 +48,7 @@ impl GameState {
             streams: HashMap::new(),
             guest: None,
             last_validation: Instant::now(),
+            joins: HashMap::new(),
         })
     }
     pub fn contact(
@@ -81,6 +82,31 @@ impl GameState {
     }
 }
 impl Actor {
+    pub(super) fn cancel_join(&mut self, id: &str) -> Result<()> {
+        self.game.joins.remove(id);
+        let peer = self.live.lock().ok().and_then(|l| {
+            l.invitations
+                .iter()
+                .find(|i| i.offer.id == id)
+                .map(|i| i.from.clone())
+        });
+        if let Some(peer) = peer {
+            let key = identity::decode_id(&peer)?;
+            if self.game.guest.as_ref().is_some_and(|g| g.id == id) {
+                self.revoke_game_transport(key)?;
+            }
+            self.update_live(|l| {
+                if let Some(i) = l.invitations.iter_mut().find(|i| i.offer.id == id) {
+                    i.join_address = None;
+                    if i.status == "connecting" || i.status == "readyToLaunch" {
+                        i.status = "pending".into();
+                    }
+                }
+            });
+            self.queue(key, PeerAction::Leave { id: id.into() })?;
+        }
+        Ok(())
+    }
     pub(super) fn revoke_game_transport(&mut self, peer: [u8; 32]) -> Result<()> {
         let hashes = self
             .game
@@ -186,12 +212,21 @@ impl Actor {
                 listener,
                 offer: offer.clone(),
                 manifest,
-                offset: 0,
                 last_offer: Instant::now(),
             },
         );
         self.update_live(|l| {
             l.deliveries.insert(id.clone(), false);
+            l.outgoing.retain(|i| i.expires > identity::now());
+            l.outgoing.push(crate::world::OutgoingInvitation {
+                id: id.clone(),
+                friend: identity::encode_id(&peer),
+                world: offer.world.clone(),
+                status: "delivering".into(),
+                expires: offer.expires,
+                transferred: 0,
+                total: offer.manifest_bytes,
+            });
         });
         if let Err(error) = self.queue(peer, PeerAction::Invite { offer }) {
             self.outgoing_worlds.remove(&id);
@@ -226,8 +261,11 @@ impl Actor {
         self.update_live(|l| {
             if let Some(i) = l.invitations.iter_mut().find(|i| i.offer.id == id) {
                 i.status = "connecting".into();
+                i.error = None;
+                i.join_address = None;
             }
         });
+        self.game.joins.insert(id.into(), Instant::now());
         self.queue(
             peer,
             PeerAction::Join {
@@ -259,6 +297,14 @@ impl Actor {
                     }
                     if !needs_manifest || existing.manifest.is_some() {
                         self.queue(peer, PeerAction::InviteReceived { id: receipt })?;
+                    } else if let Some(a) = self.assemblies.get(&receipt) {
+                        self.queue(
+                            peer,
+                            PeerAction::ManifestRequest {
+                                id: receipt,
+                                offset: a.received(),
+                            },
+                        )?;
                     }
                     return Ok(());
                 }
@@ -294,13 +340,44 @@ impl Actor {
                         manifest: None,
                         status,
                         join_address: None,
+                        error: None,
+                        received_bytes: 0,
                     })
                 });
                 if !needs_manifest {
                     self.queue(peer, PeerAction::InviteReceived { id: receipt })?;
+                } else {
+                    self.queue(
+                        peer,
+                        PeerAction::ManifestRequest {
+                            id: receipt,
+                            offset: 0,
+                        },
+                    )?;
                 }
             }
+            PeerAction::ManifestRequest { id, offset } => {
+                let world = self
+                    .outgoing_worlds
+                    .get(&id)
+                    .context("Invitation is no longer shared")?;
+                if world.peer != peer || offset >= world.manifest.len() {
+                    bail!("Invalid manifest request");
+                }
+                let bytes =
+                    world.manifest[offset..(offset + 1024).min(world.manifest.len())].to_vec();
+                self.queue(peer, PeerAction::ManifestChunk { id, offset, bytes })?;
+            }
             PeerAction::ManifestChunk { id, offset, bytes } => {
+                if self.live.lock().is_ok_and(|l| {
+                    l.invitations.iter().any(|i| {
+                        i.offer.id == id
+                            && i.from == identity::encode_id(&peer)
+                            && i.manifest.is_some()
+                    })
+                }) {
+                    return self.queue(peer, PeerAction::InviteReceived { id });
+                }
                 let assembly = self
                     .assemblies
                     .get_mut(&id)
@@ -308,7 +385,34 @@ impl Actor {
                 if assembly.peer != peer {
                     bail!("Manifest sender mismatch");
                 }
-                let done = assembly.push(offset, &bytes)?;
+                if offset > assembly.received() {
+                    let offset = assembly.received();
+                    return self.queue(peer, PeerAction::ManifestRequest { id, offset });
+                }
+                let done = match assembly.push(offset, &bytes) {
+                    Ok(done) => done,
+                    Err(error) => {
+                        self.assemblies.remove(&id);
+                        self.update_live(|l| {
+                            if let Some(i) = l.invitations.iter_mut().find(|i| i.offer.id == id) {
+                                i.status = "failed".into();
+                                i.error = Some("Instance contents failed verification".into());
+                            }
+                        });
+                        return Err(error);
+                    }
+                };
+                let assembly = self
+                    .assemblies
+                    .get_mut(&id)
+                    .context("Missing manifest assembly")?;
+                let received = assembly.received();
+                assembly.last_request = Instant::now();
+                self.update_live(|l| {
+                    if let Some(i) = l.invitations.iter_mut().find(|i| i.offer.id == id) {
+                        i.received_bytes = received;
+                    }
+                });
                 if let Some(manifest) = done {
                     self.assemblies.remove(&id);
                     self.update_live(|l| {
@@ -318,9 +422,14 @@ impl Actor {
                         }
                     });
                     self.queue(peer, PeerAction::InviteReceived { id: id.clone() })?;
-                }
-                if offset % (32 * 1024) == 0 {
-                    self.queue(peer, PeerAction::ManifestAck)?;
+                } else {
+                    self.queue(
+                        peer,
+                        PeerAction::ManifestRequest {
+                            id,
+                            offset: received,
+                        },
+                    )?;
                 }
             }
             PeerAction::ManifestAck => {}
@@ -331,7 +440,15 @@ impl Actor {
                     .is_some_and(|w| w.peer == peer)
                 {
                     self.update_live(|l| {
-                        l.deliveries.insert(id, true);
+                        l.deliveries.insert(id.clone(), true);
+                        if let Some(i) = l
+                            .outgoing
+                            .iter_mut()
+                            .find(|i| i.id == id && i.status == "delivering")
+                        {
+                            i.status = "waiting".into();
+                            i.transferred = i.total;
+                        }
                     });
                 }
             }
@@ -344,7 +461,15 @@ impl Actor {
                 if world.peer != peer || world.offer.expires < identity::now() {
                     bail!("Invitation does not authorize this friend");
                 }
-                world.listener.revalidate()?;
+                if world.listener.revalidate().is_err() {
+                    self.queue(peer, PeerAction::WorldUnavailable { id })?;
+                    return Ok(());
+                }
+                self.update_live(|l| {
+                    if let Some(i) = l.outgoing.iter_mut().find(|i| i.id == id) {
+                        i.status = "connecting".into();
+                    }
+                });
                 let listener = world.listener.clone();
                 let hash = format!("{:x}", Sha256::digest(&contact.certificate));
                 if self.game.authorized.len() >= 8 && !self.game.authorized.contains_key(&hash) {
@@ -370,6 +495,11 @@ impl Actor {
             }
             PeerAction::GameReady { id, contact } => {
                 contact.validate()?;
+                if self.game.guest.as_ref().is_some_and(|g| {
+                    g.id == id && g.peer == peer && g.contact.certificate == contact.certificate
+                }) {
+                    return Ok(());
+                }
                 let approved = self
                     .live
                     .lock()
@@ -385,6 +515,7 @@ impl Actor {
                 if !approved || self.game.guest.is_some() {
                     bail!("No local consent for this game connection");
                 }
+                self.game.joins.remove(&id);
                 self.game.guest = Some(Guest {
                     peer,
                     id,
@@ -396,6 +527,32 @@ impl Actor {
                     waiting: VecDeque::new(),
                 });
                 self.game_dial()?;
+            }
+            PeerAction::WorldUnavailable { id } => {
+                self.update_live(|l| {
+                    if let Some(i) = l
+                        .invitations
+                        .iter_mut()
+                        .find(|i| i.offer.id == id && i.from == identity::encode_id(&peer))
+                    {
+                        i.status = "failed".into();
+                        i.error = Some("Your friend closed this world".into());
+                    }
+                });
+            }
+            PeerAction::Leave { id } => {
+                if self
+                    .outgoing_worlds
+                    .get(&id)
+                    .is_some_and(|w| w.peer == peer)
+                {
+                    self.revoke_game_transport(peer)?;
+                    self.update_live(|l| {
+                        if let Some(i) = l.outgoing.iter_mut().find(|i| i.id == id) {
+                            i.status = "waiting".into();
+                        }
+                    });
+                }
             }
             PeerAction::InviteRevoked { id } => {
                 let owned = self
@@ -427,8 +584,18 @@ impl Actor {
                 }
                 let sender = identity::encode_id(&peer);
                 self.update_live(|l| {
-                    l.invitations
-                        .retain(|i| i.offer.id != id || i.from != sender)
+                    if let Some(i) = l
+                        .invitations
+                        .iter_mut()
+                        .find(|i| i.offer.id == id && i.from == sender)
+                    {
+                        i.status = "failed".into();
+                        i.error = Some("Invitation was cancelled by the host".into());
+                        i.join_address = None;
+                    }
+                    if let Some(i) = l.outgoing.iter_mut().find(|i| i.id == id) {
+                        i.status = "declined".into();
+                    }
                 });
             }
             _ => bail!("Invalid world action"),
@@ -473,6 +640,10 @@ impl Actor {
         self.update_live(|l| {
             if let Some(i) = l.invitations.iter_mut().find(|i| i.offer.id == id) {
                 i.status = "unreachable".into();
+                i.error = Some(
+                    "Direct connection failed; enable a compatible VPN on both computers and retry"
+                        .into(),
+                );
             }
         });
         Ok(false)
@@ -483,6 +654,13 @@ impl Actor {
             bail!("Game bridge limit reached");
         }
         if let Some((peer, listener)) = self.game.authorized.get(hash).cloned() {
+            self.update_live(|l| {
+                for i in &mut l.outgoing {
+                    if i.friend == identity::encode_id(&peer) && i.status == "connecting" {
+                        i.status = "connected".into();
+                    }
+                }
+            });
             if self.store.state(&identity::encode_id(&peer))?.as_deref() != Some("friend") {
                 self.worker.send(&Command::GameClose { stream })?;
                 return Ok(());
@@ -557,6 +735,65 @@ impl Actor {
         Ok(())
     }
     pub(super) fn game_tick(&mut self) -> Result<()> {
+        let retry_joins = self
+            .game
+            .joins
+            .iter()
+            .filter(|(_, at)| at.elapsed() > Duration::from_secs(6))
+            .map(|(id, _)| id.clone())
+            .collect::<Vec<_>>();
+        for id in retry_joins {
+            let peer = self.live.lock().ok().and_then(|l| {
+                l.invitations
+                    .iter()
+                    .find(|i| i.offer.id == id && i.status == "connecting")
+                    .map(|i| i.from.clone())
+            });
+            if let Some(peer) = peer {
+                self.game.joins.insert(id.clone(), Instant::now());
+                self.queue(
+                    identity::decode_id(&peer)?,
+                    PeerAction::Join {
+                        id,
+                        contact: self.game.local.clone(),
+                    },
+                )?;
+            } else {
+                self.game.joins.remove(&id);
+            }
+        }
+        let stalled = self
+            .assemblies
+            .iter()
+            .filter(|(_, a)| a.last_progress.elapsed() > Duration::from_secs(45))
+            .map(|(id, _)| id.clone())
+            .collect::<Vec<_>>();
+        for id in stalled {
+            self.assemblies.remove(&id);
+            self.update_live(|l| {
+                if let Some(i) = l.invitations.iter_mut().find(|i| i.offer.id == id) {
+                    i.status = "failed".into();
+                    i.error = Some(
+                        "Instance transfer stalled. Ask your friend to send a new invitation"
+                            .into(),
+                    );
+                }
+            });
+        }
+        if self.outbox.len() < 8 {
+            let requests = self
+                .assemblies
+                .iter()
+                .filter(|(_, a)| a.last_request.elapsed() > Duration::from_secs(3))
+                .map(|(id, a)| (id.clone(), a.peer, a.received()))
+                .collect::<Vec<_>>();
+            for (id, peer, offset) in requests {
+                if let Some(a) = self.assemblies.get_mut(&id) {
+                    a.last_request = Instant::now();
+                }
+                self.queue(peer, PeerAction::ManifestRequest { id, offset })?;
+            }
+        }
         self.assemblies
             .retain(|_, a| a.offer.expires >= identity::now());
         self.outgoing_worlds
@@ -567,6 +804,7 @@ impl Actor {
             .cloned()
             .collect::<std::collections::HashSet<_>>();
         self.update_live(|l| l.deliveries.retain(|id, _| active.contains(id)));
+        self.update_live(|l| l.outgoing.retain(|i| i.expires > identity::now()));
         let retries = self
             .outgoing_worlds
             .iter()
@@ -586,37 +824,6 @@ impl Actor {
             self.queue(peer, PeerAction::Invite { offer })?;
         }
         self.update_expired_invites();
-        if self.outbox.len() < 8 && self.inflight < 2 {
-            let next = self
-                .outgoing_worlds
-                .values()
-                .find(|w| {
-                    w.offset < w.manifest.len()
-                        && self.sessions.get(&w.peer).is_some_and(|s| s.ready)
-                })
-                .map(|w| {
-                    (
-                        w.offer.id.clone(),
-                        w.peer,
-                        w.offset,
-                        w.manifest[w.offset..(w.offset + 1024).min(w.manifest.len())].to_vec(),
-                    )
-                });
-            if let Some((id, peer, offset, bytes)) = next {
-                let len = bytes.len();
-                self.send_action(
-                    peer,
-                    PeerAction::ManifestChunk {
-                        id: id.clone(),
-                        offset,
-                        bytes,
-                    },
-                )?;
-                if let Some(w) = self.outgoing_worlds.get_mut(&id) {
-                    w.offset += len;
-                }
-            }
-        }
         if let Some(guest) = self.game.guest.as_mut() {
             if let Some(listener) = &guest.listener {
                 if let Ok((tcp, _)) = listener.accept() {

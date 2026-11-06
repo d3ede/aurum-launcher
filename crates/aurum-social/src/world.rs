@@ -99,11 +99,26 @@ pub struct Invitation {
     pub manifest: Option<Manifest>,
     pub status: String,
     pub join_address: Option<String>,
+    pub error: Option<String>,
+    pub received_bytes: usize,
+}
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutgoingInvitation {
+    pub id: String,
+    pub friend: String,
+    pub world: WorldSpec,
+    pub status: String,
+    pub expires: u64,
+    pub transferred: usize,
+    pub total: usize,
 }
 pub struct Assembly {
     pub peer: [u8; 32],
     pub offer: Offer,
     bytes: Vec<u8>,
+    pub last_request: std::time::Instant,
+    pub last_progress: std::time::Instant,
 }
 impl Assembly {
     pub fn new(peer: [u8; 32], offer: Offer) -> Result<Self> {
@@ -112,9 +127,23 @@ impl Assembly {
             peer,
             offer,
             bytes: Vec::new(),
+            last_request: std::time::Instant::now(),
+            last_progress: std::time::Instant::now(),
         })
     }
     pub fn push(&mut self, offset: usize, chunk: &[u8]) -> Result<Option<Manifest>> {
+        if !chunk.is_empty()
+            && chunk.len() <= 1024
+            && offset < self.bytes.len()
+            && offset
+                .checked_add(chunk.len())
+                .is_some_and(|end| end <= self.bytes.len())
+        {
+            if self.bytes[offset..offset + chunk.len()] != *chunk {
+                bail!("Repeated manifest fragment changed");
+            }
+            return Ok(None);
+        }
         if offset != self.bytes.len()
             || chunk.is_empty()
             || chunk.len() > 1024
@@ -123,6 +152,7 @@ impl Assembly {
             bail!("Invalid shared manifest fragment");
         }
         self.bytes.extend_from_slice(chunk);
+        self.last_progress = std::time::Instant::now();
         if self.bytes.len() != self.offer.manifest_bytes {
             return Ok(None);
         }
@@ -140,6 +170,9 @@ impl Assembly {
             bail!("Shared manifest differs from the invitation");
         }
         Ok(Some(manifest))
+    }
+    pub fn received(&self) -> usize {
+        self.bytes.len()
     }
 }
 #[cfg(test)]
@@ -177,6 +210,10 @@ mod tests {
         let (mut a, bytes) = assembly();
         assert!(a.push(1, &bytes[..1]).is_err());
         assert!(a.push(0, &bytes[..3]).unwrap().is_none());
+        assert!(a.push(0, &bytes[..3]).unwrap().is_none());
+        let mut changed = bytes[..3].to_vec();
+        changed[0] ^= 1;
+        assert!(a.push(0, &changed).is_err());
         assert!(a.push(0, &bytes[3..]).is_err());
         assert!(a.push(3, &bytes[3..]).unwrap().is_some());
         let (mut a, mut bytes) = assembly();

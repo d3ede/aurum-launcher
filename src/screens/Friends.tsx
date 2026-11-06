@@ -327,6 +327,28 @@ export function Friends() {
           <div className="social-layout">
             <div className="social-friends-list">
               <SocialRecovery />
+              {!!s.outgoing?.length && (
+                <section className="social-list-section">
+                  <h3>{t("@social.sent.title")}</h3>
+                  {s.outgoing.map((i) => (
+                    <article className="social-person" key={i.id}>
+                      <SocialAvatar
+                        id={i.friend}
+                        avatar={s.people.find((p) => p.id === i.friend)?.avatar}
+                      />
+                      <div className="social-person-details">
+                        <strong>
+                          {s.people.find((p) => p.id === i.friend)?.name ||
+                            t("@social.unknown")}
+                        </strong>
+                        <small>
+                          {i.world.name} · {t(`@social.sent.${i.status}`)}
+                        </small>
+                      </div>
+                    </article>
+                  ))}
+                </section>
+              )}
               {s.enabled && s.invitations?.length > 0 && (
                 <section className="social-list-section">
                   <h3>{t("@social.invitations")}</h3>

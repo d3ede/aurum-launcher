@@ -12,12 +12,13 @@ export function SocialAvatar({
   online?: boolean;
   size?: number;
 }) {
+  const [failed, setFailed] = useState<string | null>(null);
   let bits = 2166136261;
   for (const c of id) bits = Math.imul(bits ^ c.charCodeAt(0), 16777619);
   return (
     <span className="social-avatar" style={{ width: size, height: size }}>
-      {avatar?.startsWith("data:image/jpeg;base64,") ? (
-        <img src={avatar} alt="" />
+      {avatar?.startsWith("data:image/jpeg;base64,") && failed !== avatar ? (
+        <img src={avatar} alt="" onError={() => setFailed(avatar)} />
       ) : (
         <svg
           viewBox="0 0 7 7"

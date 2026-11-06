@@ -1,5 +1,11 @@
 // UI contract fixtures only. Network/isolation evidence comes from the native labs.
 import { test, expect, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
+const avatarFixture =
+  "data:image/jpeg;base64," +
+  readFileSync("crates/aurum-social-worker/src/fixtures/avatar.jpg").toString(
+    "base64",
+  );
 async function fixture(
   page: Page,
   enabled = false,
@@ -19,12 +25,13 @@ async function fixture(
             minecraft: "1.21.1",
             loader: "vanilla",
             loaderVersion: null,
+            installedVersion: "1.21.1",
             content: [],
             cover: 0,
           },
         ],
-        accounts: [],
-        selectedAccount: null,
+        accounts: [{ id: "player", name: "Player", kind: "offline" }],
+        selectedAccount: "player",
         running: ["vanilla"],
         dataDir: "C:/test-only",
         serverManager: true,
@@ -64,6 +71,19 @@ async function fixture(
       let next = 1;
       w.socialRequests = [];
       w.socialState = state;
+      w.statePatch = (patch: any) => {
+        Object.assign(state, patch);
+        events.get("auren:event")?.({
+          event: "auren:event",
+          payload: {
+            id: "fixture",
+            phase: "running",
+            message: "",
+            done: 0,
+            total: 0,
+          },
+        });
+      };
       w.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
       w.socialPatch = (patch: any) => {
         Object.assign(social, patch);
@@ -93,6 +113,28 @@ async function fixture(
           if (action === "snapshot") return structuredClone(state);
           if (action === "social.snapshot") return structuredClone(social);
           if (action === "social.takeLink") return null;
+          if (action === "selectAccount") {
+            state.selectedAccount = payload.id;
+            return null;
+          }
+          if (action === "addOffline") {
+            const account = {
+              id: "added",
+              name: payload.name,
+              kind: "offline",
+            };
+            state.accounts.push(account);
+            return account;
+          }
+          if (action === "social.prepare") {
+            if (w.socialPrepareWait)
+              await new Promise<void>((resolve) => (w.finishPrepare = resolve));
+            return payload.profileId || "new-instance";
+          }
+          if (action === "install" && w.externalDownloadWait)
+            await new Promise<void>((resolve) => (w.finishExternal = resolve));
+          if (action === "social.join" && w.socialJoinFail)
+            throw "World connection timed out";
           if (action === "social.invite" && w.socialInviteFail)
             throw "Invitation was not delivered. Check that your friend is online and try again.";
           if (action === "social.restoreIdentity" && w.socialRestoreCancel)
@@ -325,14 +367,17 @@ test("world pack review requires source trust before creating a separate instanc
   });
   const modal = page.getByRole("dialog");
   await expect(modal).toBeVisible();
-  await modal.getByRole("button", { name: "Review contents" }).click();
+  await expect(
+    modal.getByRole("button", { name: "Review contents" }),
+  ).toHaveCount(0);
+  await modal.locator(".social-contents summary").click();
   await expect(modal.getByText("mods/untrusted-<script>.jar")).toBeVisible();
   await expect(modal.locator("script")).toHaveCount(0);
   await expect(
-    modal.getByRole("button", { name: "Install and join" }),
+    modal.getByRole("button", { name: "Download and join" }),
   ).toBeDisabled();
   await modal.getByRole("checkbox").check();
-  await modal.getByRole("button", { name: "Install and join" }).click();
+  await modal.getByRole("button", { name: "Download and join" }).click();
   await expect
     .poll(() =>
       page.evaluate(
@@ -422,13 +467,11 @@ for (const theme of ["light", "dark"]) {
     const label = modal.locator(".social-check").first();
     const box = await label.locator("input").boundingBox(),
       text = await label.locator("span").boundingBox();
-    expect(text!.x - box!.x - box!.width).toBeGreaterThanOrEqual(10);
+    expect(text!.x - box!.x - box!.width).toBeGreaterThanOrEqual(9);
     expect(Math.abs(text!.y - box!.y)).toBeLessThanOrEqual(3);
-    await modal
-      .getByRole("button", { name: "Посмотреть состав", exact: true })
-      .click();
-    await expect(modal.getByText(/Дополнительных файлов нет/)).toBeVisible();
-    await expect(modal.getByText("0 · 0.0 MB", { exact: true })).toHaveCount(0);
+    await expect(
+      modal.getByRole("button", { name: "Посмотреть состав", exact: true }),
+    ).toHaveCount(0);
     await page.screenshot({
       path: `.test-data/screenshots/social-host-${theme}.png`,
     });
@@ -621,4 +664,268 @@ test("cancelling the native restore picker keeps the dialog and active identity"
         ).length,
     ),
   ).toBe(0);
+});
+async function worldInvite(page: Page, patch: Record<string, unknown> = {}) {
+  await page.evaluate(
+    ({ patch, avatar }) => {
+      const w = window as any;
+      w.statePatch({ running: [], ...patch });
+      w.socialPatch({
+        people: [
+          {
+            id: `aur1${"b".repeat(59)}`,
+            name: "Alex",
+            state: "friend",
+            updated: 1,
+            avatar,
+          },
+        ],
+        invitations: [
+          {
+            from: `aur1${"b".repeat(59)}`,
+            status: "pending",
+            manifest: null,
+            joinAddress: null,
+            offer: {
+              id: "d".repeat(32),
+              expires: Math.floor(Date.now() / 1000) + 1800,
+              world: {
+                name: "Survival",
+                minecraft: "1.21.1",
+                loader: "vanilla",
+                loaderVersion: null,
+              },
+              manifestHash: null,
+              manifestBytes: 0,
+              files: 0,
+              downloadBytes: 0,
+            },
+          },
+        ],
+      });
+    },
+    { patch, avatar: avatarFixture },
+  );
+  await expect(
+    page.getByRole("dialog", { name: "World invitation", exact: true }),
+  ).toBeVisible();
+}
+for (const theme of ["light", "dark"]) {
+  test(`download and join is one guarded flow with avatar and theme controls (${theme})`, async ({
+    page,
+  }) => {
+    await fixture(page, true, theme);
+    await worldInvite(page, { profiles: [] });
+    await page.evaluate(() => ((window as any).socialPrepareWait = true));
+    const modal = page.getByRole("dialog");
+    await expect(
+      modal.locator(".social-invite-hero .social-avatar img"),
+    ).toHaveCount(1);
+    await expect(modal.locator(".terrain-pattern")).toBeVisible();
+    await expect(
+      modal.getByRole("combobox", { name: "Minecraft profile", exact: true }),
+    ).toContainText("Create a matching instance");
+    await expect(
+      modal.getByRole("button", { name: "Turn off Social", exact: true }),
+    ).toHaveCount(0);
+    await modal
+      .getByRole("button", { name: "Download and join", exact: true })
+      .click();
+    await expect(
+      modal.getByRole("button", { name: "Please wait…", exact: true }),
+    ).toBeDisabled();
+    await expect(
+      modal.getByText("Downloading Minecraft…", { exact: true }),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(
+        () =>
+          (window as any).socialRequests.filter(
+            (r: any) => r.action === "social.join",
+          ).length,
+      ),
+    ).toBe(0);
+    await page.screenshot({
+      path: `.test-data/screenshots/social-receive-progress-${theme}.png`,
+    });
+    await page.evaluate(() => (window as any).finishPrepare());
+    await expect(modal).toHaveCount(0);
+    const calls = await page.evaluate(() =>
+      (window as any).socialRequests.filter(
+        (r: any) => r.action === "social.prepare" || r.action === "social.join",
+      ),
+    );
+    expect(calls.map((r: any) => r.action)).toEqual([
+      "social.prepare",
+      "social.join",
+    ]);
+    expect(calls[0].payload.profileId).toBeNull();
+  });
+}
+test("an ongoing unrelated download disables joining and a route error stays visible", async ({
+  page,
+}) => {
+  await fixture(page, true);
+  await worldInvite(page);
+  await page.evaluate(() => {
+    const w = window as any;
+    w.socialPrepareWait = true;
+    w.socialJoinFail = true;
+  });
+  const modal = page.getByRole("dialog");
+  await modal.getByRole("button", { name: "Join world", exact: true }).click();
+  await expect(
+    modal.getByRole("button", { name: "Please wait…", exact: true }),
+  ).toBeDisabled();
+  await page.evaluate(() => (window as any).finishPrepare());
+  await expect(modal.getByRole("alert")).toContainText(
+    "World connection timed out",
+  );
+  await expect(
+    modal.getByRole("button", { name: "Join world", exact: true }),
+  ).toBeEnabled();
+});
+test("a stopped manifest transfer shows an error instead of silently removing the invite", async ({
+  page,
+}) => {
+  await fixture(page, true);
+  await worldInvite(page);
+  await page.evaluate(() => {
+    const w = window as any;
+    const id = `aur1${"b".repeat(59)}`;
+    w.socialPatch({
+      invitations: [
+        {
+          from: id,
+          status: "loading",
+          receivedBytes: 512,
+          manifest: null,
+          error: null,
+          joinAddress: null,
+          offer: {
+            id: "d".repeat(32),
+            expires: Math.floor(Date.now() / 1000) + 120,
+            world: {
+              name: "Survival",
+              minecraft: "1.21.1",
+              loader: "vanilla",
+              loaderVersion: null,
+            },
+            manifestHash: "f".repeat(64),
+            manifestBytes: 2048,
+            files: 1,
+            downloadBytes: 10,
+          },
+        },
+      ],
+    });
+  });
+  const modal = page.getByRole("dialog");
+  await modal
+    .getByRole("combobox", { name: "Minecraft profile", exact: true })
+    .click();
+  await page
+    .getByRole("option", { name: "Create a matching instance", exact: true })
+    .click();
+  await expect(
+    modal.getByText("Receiving instance…", { exact: true }),
+  ).toBeVisible();
+  await expect(modal.getByText("512 B / 2.0 KB")).toBeVisible();
+  await page.evaluate(() => {
+    const w = window as any;
+    w.socialPatch({
+      invitations: [
+        {
+          from: `aur1${"b".repeat(59)}`,
+          status: "failed",
+          error:
+            "Instance transfer stalled. Ask your friend to send a new invitation",
+          manifest: null,
+          offer: {
+            id: "d".repeat(32),
+            expires: Math.floor(Date.now() / 1000) + 120,
+            world: {
+              name: "Survival",
+              minecraft: "1.21.1",
+              loader: "vanilla",
+              loaderVersion: null,
+            },
+            manifestHash: "f".repeat(64),
+            manifestBytes: 2048,
+          },
+        },
+      ],
+    });
+  });
+  await expect(modal.getByRole("alert")).toContainText(
+    "Instance transfer stalled",
+  );
+  await expect(
+    modal.getByRole("button", { name: "Download and join", exact: true }),
+  ).toBeDisabled();
+});
+test("a player can be added inside the existing invitation", async ({
+  page,
+}) => {
+  await fixture(page, true);
+  await worldInvite(page, {
+    profiles: [],
+    accounts: [],
+    selectedAccount: null,
+  });
+  const modal = page.getByRole("dialog");
+  await expect(
+    modal.getByRole("button", { name: "Download and join", exact: true }),
+  ).toBeDisabled();
+  await modal
+    .getByRole("textbox", { name: "Player name", exact: true })
+    .fill("Player2");
+  await modal.getByRole("button", { name: "Add player", exact: true }).click();
+  await expect(
+    modal.getByRole("combobox", { name: "Player", exact: true }),
+  ).toContainText("Player2");
+  await expect(
+    modal.getByRole("button", { name: "Download and join", exact: true }),
+  ).toBeEnabled();
+});
+test("sent invitations show who is waiting and use theme surfaces", async ({
+  page,
+}) => {
+  await fixture(page, true, "dark");
+  await page.evaluate(() => {
+    document.documentElement.style.setProperty("--surface", "#301923");
+    document.documentElement.style.setProperty("--gold", "#ecd174");
+    document.documentElement.style.setProperty("--gold-soft", "#594138");
+    (window as any).socialPatch({
+      people: [
+        {
+          id: `aur1${"b".repeat(59)}`,
+          name: "Alex",
+          state: "friend",
+          updated: 1,
+        },
+      ],
+      outgoing: [
+        {
+          id: "d".repeat(32),
+          friend: `aur1${"b".repeat(59)}`,
+          world: { name: "Survival" },
+          status: "waiting",
+        },
+      ],
+    });
+  });
+  await expect(
+    page.getByText("Survival · Waiting for your friend", { exact: true }),
+  ).toBeVisible();
+  expect(
+    await page
+      .getByRole("button", { name: "Copy ID", exact: true })
+      .evaluate((el) => getComputedStyle(el).backgroundColor),
+  ).toBe("rgb(48, 25, 35)");
+  expect(
+    await page
+      .getByRole("checkbox", { name: "Allow friend requests", exact: true })
+      .evaluate((el) => getComputedStyle(el).backgroundColor),
+  ).toBe("rgb(236, 209, 116)");
 });

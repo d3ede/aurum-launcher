@@ -49,6 +49,7 @@ pub struct Snapshot {
     pub active_tunnels: usize,
     pub invitations: Vec<Invitation>,
     pub deliveries: HashMap<String, bool>,
+    pub outgoing: Vec<crate::world::OutgoingInvitation>,
 }
 #[derive(Default)]
 struct Live {
@@ -62,6 +63,7 @@ struct Live {
     active_tunnels: usize,
     invitations: Vec<Invitation>,
     deliveries: HashMap<String, bool>,
+    outgoing: Vec<crate::world::OutgoingInvitation>,
     visible: HashMap<String, bool>,
 }
 type Notify = Arc<dyn Fn() + Send + Sync>;
@@ -97,6 +99,7 @@ pub struct Service {
 #[derive(Debug)]
 enum Local {
     CancelOffer(String),
+    CancelJoin(String),
     Add(String),
     Accept(String),
     Retry(String),
@@ -113,7 +116,10 @@ enum Local {
         manifest: Box<Option<Manifest>>,
         reply: SyncSender<std::result::Result<String, String>>,
     },
-    Join(String),
+    Join {
+        id: String,
+        reply: SyncSender<std::result::Result<(), String>>,
+    },
     Dismiss(String),
     Stop,
 }
@@ -179,6 +185,7 @@ impl Service {
                 .collect(),
             invitations: live.invitations.clone(),
             deliveries: live.deliveries.clone(),
+            outgoing: live.outgoing.clone(),
             activity: live
                 .activity
                 .iter()
@@ -266,6 +273,9 @@ impl Service {
                 state.activity.clear();
                 state.active_tunnels = 0;
                 state.invitations.clear();
+                state.outgoing.clear();
+                state.deliveries.clear();
+                state.visible.clear();
                 if let Err(e) = result {
                     state.error = Some(e.to_string());
                 }
@@ -434,7 +444,15 @@ impl Service {
         Ok(())
     }
     pub fn join(&self, id: String) -> Result<()> {
-        self.submit(Local::Join(id))
+        let (reply, answer) = mpsc::sync_channel(1);
+        self.submit(Local::Join { id, reply })?;
+        answer
+            .recv_timeout(Duration::from_secs(10))
+            .context("Join preparation timed out")?
+            .map_err(anyhow::Error::msg)
+    }
+    pub fn abandon_join(&self, id: String) -> Result<()> {
+        self.submit(Local::CancelJoin(id))
     }
     pub fn dismiss(&self, id: String) -> Result<()> {
         self.submit(Local::Dismiss(id))
@@ -550,6 +568,16 @@ enum PeerAction {
         bytes: Vec<u8>,
     },
     ManifestAck,
+    ManifestRequest {
+        id: String,
+        offset: usize,
+    },
+    Leave {
+        id: String,
+    },
+    WorldUnavailable {
+        id: String,
+    },
     Join {
         id: String,
         contact: GameContact,
@@ -879,6 +907,9 @@ impl Actor {
                 if let Some(world) = self.outgoing_worlds.remove(&id) {
                     self.update_live(|l| {
                         l.deliveries.remove(&id);
+                        if let Some(i) = l.outgoing.iter_mut().find(|i| i.id == id) {
+                            i.status = "failed".into();
+                        }
                     });
                     self.pending.retain(
                         |(_, action)| !matches!(action,PeerAction::Invite{offer}if offer.id==id),
@@ -886,6 +917,7 @@ impl Actor {
                     let _ = self.queue(world.peer, PeerAction::InviteRevoked { id });
                 }
             }
+            Local::CancelJoin(id) => self.cancel_join(&id)?,
             Local::Privacy(privacy) => {
                 self.store.set_privacy(&privacy)?;
                 self.broadcast_activity()?;
@@ -908,7 +940,10 @@ impl Actor {
                 let result = self.offer_world(peer, world, listener, *manifest);
                 let _ = reply.try_send(result.map_err(|e| e.to_string()));
             }
-            Local::Join(id) => self.join_world(&id)?,
+            Local::Join { id, reply } => {
+                let result = self.join_world(&id);
+                let _ = reply.try_send(result.map_err(|e| e.to_string()));
+            }
             Local::Dismiss(id) => {
                 let peer = self.live.lock().ok().and_then(|l| {
                     l.invitations
@@ -1190,7 +1225,7 @@ impl Actor {
                         }
                     }
                 }
-                if operation == "command" && self.game_retry()? {
+                if operation == "game-connect" && self.game_retry()? {
                     return Ok(());
                 }
                 self.error(format!(

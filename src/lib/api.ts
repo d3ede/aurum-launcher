@@ -106,6 +106,10 @@ interface Contract {
     { profileId: string; missing: number },
   ];
   "social.join": [{ id: string; profileId: string; operationId: string }, void];
+  "social.prepare": [
+    { id: string; profileId: string | null; operationId: string },
+    string,
+  ];
   horizonModStatus: [{ id: string }, HorizonModStatus];
   horizonBuildLog: [{ id: string }, string];
   buildHorizonMods: [

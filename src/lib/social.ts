@@ -49,6 +49,8 @@ export interface SocialInvitation {
   manifest: SharedManifest | null;
   status: string;
   joinAddress: string | null;
+  error?: string | null;
+  receivedBytes?: number;
 }
 export interface SocialPlanItem {
   path: string;
@@ -74,6 +76,15 @@ export interface SocialSnapshot {
   name: string;
   avatar: string | null;
   deliveries: Record<string, boolean>;
+  outgoing?: {
+    id: string;
+    friend: string;
+    world: SocialWorld;
+    status: string;
+    expires: number;
+    transferred: number;
+    total: number;
+  }[];
   contactLink: string | null;
   privacy: SocialPrivacy;
   people: SocialPerson[];

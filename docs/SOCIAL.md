@@ -37,15 +37,35 @@ To invite someone, start a **Java** instance and open its world to LAN. Aurum
 checks current kernel TCP listeners, their owning Java process and its creation
 time, then performs a Minecraft status ping. A log line is never sufficient.
 Select the current LAN port if there is more than one valid listener.
-The green Invite button offers **World only** or **With instance**. Reviewing
-outgoing contents is optional; it no longer gates sending. An empty Vanilla
+The green Invite button offers **World only** or **With instance**, without a
+separate outgoing review button. An empty Vanilla
 manifest means no additional files, not a zero-byte game: Minecraft and the
-loader install separately. Send waits up to 45 seconds for the receiver's signed
+loader install separately. Send waits up to 45 seconds (180 with an instance) for the receiver's signed
 receipt, including the complete manifest for a shared instance. A timeout is
 reported as undelivered instead of reporting a queued packet as success. This
 receipt confirms that the other launcher received the offer, not that the friend
 accepted it or that the game connection works. Both computers need this updated
 test build; earlier prototypes do not support these new message fields.
+The sender's page keeps an outgoing card with delivery, waiting, connecting,
+connected or declined state. A connected bridge is not proof that a player has
+finished entering the Minecraft world.
+
+The invitation shows the sender's avatar, a matching-instance selector, player
+selection and progress. A new matching instance or local player can be created
+there. Minecraft setup, content installation, direct connection and launch run
+as one guarded action; Join is disabled during another download. Microsoft
+sign-in can be opened while the invitation remains in the invitation list.
+Downloads can finish before the direct route is tested: this is preparation,
+not evidence that NAT traversal succeeded. A failed route leaves a visible
+error and can be retried; it does not claim that Minecraft was launched.
+
+Manifest fragments are requested by offset and retried. Identical retransmits
+are idempotent; changed bytes, metadata or hashes are rejected. After 45 seconds
+without progress the receiver keeps an explicit failure state. Cancellation by
+the sender also leaves an error instead of silently deleting the open dialog.
+Discovery, control sends and incoming connections have independent bounded
+permit pools. Busy/errors retain their operation type, and game connection
+attempts run asynchronously so they do not stop control delivery or shutdown.
 
 The receiver chooses an existing compatible instance or reviews a shared
 instance's complete file and dependency plan. Installation creates a separate

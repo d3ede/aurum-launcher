@@ -92,7 +92,7 @@ export function HomeSidebar() {
                 </span>
               </div>
               <p>{t("Пять новых тем и плоские кнопки запуска.")}</p>
-              <p>{t("@social.unreleased.hint")}</p>
+              <p>{t("Приглашения с аватарками и прогрессом загрузки.")}</p>
             </article>
             {releaseNotes.slice(0, 3).map((release) => (
               <article className="home-news-version" key={release.version}>
@@ -149,6 +149,11 @@ export function HomeSidebar() {
           >
             <section className="home-news-unreleased">
               <h3>{t("@social.unreleased")}</h3>
+              <p>
+                {t(
+                  "Из приглашения можно создать сборку или игрока. Отправитель видит ожидание друга и подключение.",
+                )}
+              </p>
               <p>{t("@social.unreleased.hint")}</p>
               <h3>{t("В разработке: персонализация")}</h3>
               <p>
