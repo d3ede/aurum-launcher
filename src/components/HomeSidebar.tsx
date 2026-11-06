@@ -17,7 +17,7 @@ function releaseDate(date: string) {
 }
 
 export function HomeSidebar() {
-  const { data, navigate } = useApp();
+  const { data, navigate, openSettings } = useApp();
   const [notes, setNotes] = useState(false);
   const [selectedVersion, setSelectedVersion] = useState(APP_VERSION);
   const account = data.accounts.find(
@@ -85,7 +85,19 @@ export function HomeSidebar() {
             tabIndex={0}
             aria-label={t("Новости лаунчера")}
           >
-            <article className="home-news-unreleased"><div className="home-news-version-head"><span className="release-version">{t("@social.unreleased")}</span></div><p>{t("@social.unreleased.hint")}</p></article>
+            <article className="home-news-unreleased">
+              <div className="home-news-version-head">
+                <span className="release-version">
+                  {t("@social.unreleased")}
+                </span>
+              </div>
+              <p>
+                {t(
+                  "Своя главная и оформление: порядок блоков, фон, новые палитры и редактор тем.",
+                )}
+              </p>
+              <p>{t("@social.unreleased.hint")}</p>
+            </article>
             {releaseNotes.slice(0, 3).map((release) => (
               <article className="home-news-version" key={release.version}>
                 <div className="home-news-version-head">
@@ -139,6 +151,14 @@ export function HomeSidebar() {
             tabIndex={0}
             aria-label={t("Все изменения")}
           >
+            <section className="home-news-unreleased">
+              <h3>{t("В разработке: персонализация")}</h3>
+              <p>
+                {t(
+                  "Настройте быстрый запуск сборки или сервера, число карточек и источник рекомендаций. Перемещайте блоки, добавляйте фон, создавайте темы и выбирайте шрифт. Удаление Aurum вынесено вниз основных настроек.",
+                )}
+              </p>
+            </section>
             {releaseNotes.map((release) => (
               <details
                 className="release-section"
@@ -190,7 +210,7 @@ export function HomeSidebar() {
               className="button primary"
               onClick={() => {
                 setNotes(false);
-                navigate("settings");
+                openSettings("general");
                 requestAnimationFrame(() =>
                   document
                     .querySelector(".launcher-updates")

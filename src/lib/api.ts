@@ -481,6 +481,15 @@ const savedTheme =
   typeof localStorage !== "undefined"
     ? localStorage.getItem("auren:theme")
     : null;
+const savedBrowserSettings = (() => {
+  try {
+    return JSON.parse(
+      localStorage.getItem("aurum:settings") || "null",
+    ) as Settings | null;
+  } catch {
+    return null;
+  }
+})();
 export const browserSnapshot: Snapshot = {
   profiles: [],
   accounts: [],
@@ -491,6 +500,7 @@ export const browserSnapshot: Snapshot = {
       savedTheme && ["light", "dark", "system"].includes(savedTheme)
         ? (savedTheme as Settings["theme"])
         : "light",
+    ...savedBrowserSettings,
   },
   dataDir: "",
   running: [],

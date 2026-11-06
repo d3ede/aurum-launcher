@@ -126,6 +126,7 @@ export interface ModrinthSkinImportResult {
   warnings: string[];
 }
 export interface Settings {
+  personalization?: import("./lib/personalization").Personalization | null;
   language: string;
   theme: "light" | "dark" | "system";
   javaPath: string;

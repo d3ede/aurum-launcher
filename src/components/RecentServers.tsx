@@ -35,7 +35,7 @@ function ServerMenu({
   children: (close: () => void) => ReactNode;
 }) {
   const trigger = useRef<HTMLButtonElement>(null);
-  const menuId=useId();
+  const menuId = useId();
   const menu = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{
     top: number;
@@ -109,7 +109,7 @@ function ServerMenu({
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={!!position}
-        aria-controls={position?menuId:undefined}
+        aria-controls={position ? menuId : undefined}
         onClick={() => {
           if (position) {
             close();
@@ -184,8 +184,10 @@ function relativeTime(timestamp: number, now: number) {
 
 export function RecentServers({
   onProfile,
+  limit = 5,
 }: {
   onProfile: (profile: Profile) => void;
+  limit?: number;
 }) {
   const { data, play, run, busy, notify } = useApp();
   const [servers, setServers] = useState<RecentServer[]>([]);
@@ -249,7 +251,7 @@ export function RecentServers({
         data.profiles.some((profile) => profile.id === server.profileId),
     )
     .sort((first, second) => second.lastPlayed - first.lastPlayed);
-  const visible = all ? recent : recent.slice(0, 5);
+  const visible = all ? recent : recent.slice(0, limit);
   const statusKey = visible.map((server) => server.id).join(";");
   useEffect(() => {
     if (!available) return;
@@ -428,7 +430,7 @@ export function RecentServers({
       <section className="recent-servers" aria-label={t("Недавние серверы")}>
         <div className="recent-servers-heading">
           <h2>{t("Недавние серверы")}</h2>
-          {recent.length > 5 && (
+          {recent.length > limit && (
             <button className="text-button" onClick={() => setAll(true)}>
               {t("Все серверы")}
               <ArrowRight size={15} />
@@ -443,7 +445,9 @@ export function RecentServers({
             </button>
           </div>
         ) : recent.length ? (
-          <div className="recent-server-list">{rows(recent.slice(0, 5))}</div>
+          <div className="recent-server-list">
+            {rows(recent.slice(0, limit))}
+          </div>
         ) : (
           <div className="recent-servers-empty">
             <Server size={19} />

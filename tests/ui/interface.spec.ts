@@ -34,9 +34,7 @@ test("honest browser state, navigation and persistent appearance", async ({
     page.getByRole("heading", { name: "Каталог ждёт в desktop-приложении" }),
   ).toBeVisible();
   await expect(page.locator(".catalog-card")).toHaveCount(0);
-  await page
-    .getByRole("button", { name: "Профили", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Профили", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Нет аккаунтов" }),
   ).toBeVisible();
@@ -51,14 +49,16 @@ test("honest browser state, navigation and persistent appearance", async ({
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.getByRole("button", { name: "Настройки", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Внешний вид" }),
+    page.getByRole("tab", { name: "Внешний вид", exact: true }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Aurum API" })).toHaveCount(0);
   await expect(page.locator('input[type="password"]')).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Сохранить ключ", exact: true }),
   ).toHaveCount(0);
+  await page.getByRole("tab", { name: "Внешний вид", exact: true }).click();
   await page.getByRole("button", { name: "Тёплый свет" }).click();
+  await page.getByRole("button", { name: "Сохранить оформление" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.screenshot({
     path: ".test-data/screenshots/settings.png",

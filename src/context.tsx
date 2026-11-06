@@ -9,7 +9,8 @@ import {
   type ReactNode,
 } from "react";
 import { browserSnapshot, events, native, rpc } from "./lib/api";
-import type { Snapshot, Progress, Profile, Route } from "./types";
+import type { Snapshot, Progress, Profile, Route, Settings } from "./types";
+import type { SettingsTab } from "./lib/personalization";
 import { Modal } from "./components/ui";
 import { NativeModNotice } from "./components/NativeModNotice";
 import type { HorizonModStatus } from "./lib/horizon-mods";
@@ -21,6 +22,9 @@ export interface MicrosoftLoginState {
   name?: string;
 }
 interface AppState {
+  settingsTab: SettingsTab;
+  openSettings: (tab: SettingsTab) => void;
+  saveSettings: (settings: Settings) => Promise<boolean>;
   microsoftLogin: MicrosoftLoginState | null;
   startMicrosoftLogin: () => Promise<void>;
   closeMicrosoftLogin: () => Promise<void>;
@@ -61,6 +65,12 @@ export function Provider({
   const [loaded, setLoaded] = useState(!native);
   const [fatal, setFatal] = useState("");
   const [route, navigate] = useState<Route>("home");
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("general");
+  const openSettings = (tab: SettingsTab) => {
+    setSettingsTab(tab);
+    navigate("settings");
+    document.querySelector(".content-scroll")?.scrollTo(0, 0);
+  };
   const [busy, setBusy] = useState(false);
   const [nativePrompt, setNativePrompt] = useState<{
     profile: Profile;
@@ -222,6 +232,18 @@ export function Provider({
       }, success),
     [run],
   );
+  const saveSettings = async (settings: Settings) => {
+    const saved = await run(async () => {
+      if (native) await rpc("saveSettings", { settings });
+      else {
+        localStorage.setItem("aurum:settings", JSON.stringify(settings));
+        localStorage.setItem("auren:theme", settings.theme);
+        setData((old) => ({ ...old, settings }));
+      }
+      return true;
+    }, t("Настройки сохранены"));
+    return saved === true;
+  };
   const startMicrosoftLogin = useCallback(async () => {
     if (lock.current) {
       notify(t("Дождитесь завершения текущего действия"));
@@ -383,6 +405,9 @@ export function Provider({
   return (
     <Context.Provider
       value={{
+        settingsTab,
+        openSettings,
+        saveSettings,
         microsoftLogin,
         startMicrosoftLogin,
         closeMicrosoftLogin,

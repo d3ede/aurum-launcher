@@ -138,6 +138,8 @@ pub struct Account {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
+    #[serde(default)]
+    pub personalization: Option<serde_json::Value>,
     #[serde(default = "legacy_language")]
     pub language: String,
     pub theme: String,
@@ -151,6 +153,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            personalization: None,
             language: "system".into(),
             theme: "light".into(),
             java_path: String::new(),

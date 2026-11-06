@@ -23,6 +23,28 @@ fn task() -> Task {
         emit: Arc::new(|_| {}),
     }
 }
+
+#[tokio::test]
+async fn personalization_preserves_legacy_settings_and_survives_restart() {
+    let mut legacy = serde_json::to_value(Settings::default()).unwrap();
+    legacy.as_object_mut().unwrap().remove("personalization");
+    let mut settings: Settings = serde_json::from_value(legacy).unwrap();
+    assert!(settings.personalization.is_none());
+    let preferences = json!({
+        "home": { "order": ["profiles", "launch", "servers", "discover"], "serverCount": 0 },
+        "appearance": { "themeId": "garnet", "font": "Georgia", "themes": [] }
+    });
+    settings.personalization = Some(preferences.clone());
+    let dir = tempfile::tempdir().unwrap();
+    let engine = Engine::new(dir.path().into(), |_| {}).await.unwrap();
+    engine.save_settings(settings).await.unwrap();
+    let restored = Engine::new(dir.path().into(), |_| {}).await.unwrap();
+    let mut saved = restored.snapshot().await.database.settings;
+    assert_eq!(saved.personalization, Some(preferences.clone()));
+    saved.ram_mb = 8192;
+    restored.save_settings(saved).await.unwrap();
+    assert_eq!(restored.snapshot().await.database.settings.personalization, Some(preferences));
+}
 #[test]
 fn archive_paths_cannot_escape() {
     for s in [

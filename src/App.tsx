@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Provider, useApp } from "./context";
 import { native, rpc } from "./lib/api";
+import { applyAppearance, applyFont, preferences } from "./lib/personalization";
 import { progressAmount } from "./lib/progress";
 import { WindowControls } from "./components/WindowControls";
 import { ru } from "./lib/i18n";
@@ -49,7 +50,9 @@ import { SidebarPattern } from "./components/TerrainPattern";
 import { AccountAvatar } from "./components/AccountAvatar";
 import { PackManualDownloads } from "./components/PackManualDownloads";
 import { SocialProvider } from "./components/SocialProvider";
-const Friends = lazy(() => import("./screens/Friends").then(module=>({default:module.Friends})));
+const Friends = lazy(() =>
+  import("./screens/Friends").then((module) => ({ default: module.Friends })),
+);
 const navigation = [
   ["home", HomeIcon],
   ["profiles", Layers3],
@@ -67,7 +70,20 @@ function Shell({
   creating: boolean;
   setCreating: (v: boolean) => void;
 }) {
-  const { data, route, navigate, run, busy, progress, logs, notify } = useApp();
+  const {
+    data,
+    route,
+    navigate,
+    run,
+    busy,
+    progress,
+    logs,
+    notify,
+    saveSettings,
+    openSettings,
+  } = useApp();
+  const appearance = preferences(data.settings).appearance;
+  const savedThemeColors = JSON.stringify(appearance.themes);
   const [query, setQuery] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileSection, setProfileSection] = useState<"content" | "settings">(
@@ -109,31 +125,34 @@ function Shell({
   useEffect(() => {
     const media = matchMedia("(prefers-color-scheme: dark)");
     const update = () => {
-      const theme = native
-        ? data.settings.theme
-        : localStorage.getItem("auren:theme") || data.settings.theme;
-      document.documentElement.dataset.theme =
-        theme === "system" ? (media.matches ? "dark" : "light") : theme;
+      applyAppearance(data.settings);
     };
     update();
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
-  }, [data.settings.theme]);
+  }, [
+    data.settings.theme,
+    appearance.themeId,
+    savedThemeColors,
+    appearance.font,
+    appearance.fontData,
+  ]);
+  useEffect(() => {
+    void applyFont(appearance.fontData).catch(() =>
+      notify(t("Не удалось загрузить шрифт"), true),
+    );
+  }, [appearance.fontData, notify]);
   const toggleTheme = () => {
     const theme =
       document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-    if (native)
-      void run(() =>
-        rpc("saveSettings", { settings: { ...data.settings, theme } }),
-      );
-    else {
-      localStorage.setItem("auren:theme", theme);
-      document.documentElement.dataset.theme = theme;
-    }
+    const personal = preferences(data.settings);
+    personal.appearance.themeId = theme;
+    void saveSettings({ ...data.settings, theme, personalization: personal });
   };
   const nav = (r: Route) => {
     setProfile(null);
-    navigate(r);
+    if (r === "settings") openSettings("general");
+    else navigate(r);
     document.querySelector(".content-scroll")?.scrollTo(0, 0);
   };
   const findProjects = (p: Profile, kind: Kind) => {
@@ -333,7 +352,11 @@ function Shell({
                     <Skins />
                   </Suspense>
                 )}
-                {route === "friends" && <Suspense fallback={null}><Friends /></Suspense>}
+                {route === "friends" && (
+                  <Suspense fallback={null}>
+                    <Friends />
+                  </Suspense>
+                )}
                 {route === "hosting" && (
                   <Suspense fallback={null}>
                     <Hosting />
@@ -448,7 +471,9 @@ export default function App() {
   return (
     <Provider onCreate={() => setCreating(true)}>
       <UpdateProvider>
-        <SocialProvider><Shell creating={creating} setCreating={setCreating} /></SocialProvider>
+        <SocialProvider>
+          <Shell creating={creating} setCreating={setCreating} />
+        </SocialProvider>
       </UpdateProvider>
     </Provider>
   );

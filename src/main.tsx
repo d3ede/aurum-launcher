@@ -10,6 +10,7 @@ import "./catalog.css";
 import "./content.css";
 import "./home.css";
 import "./servers.css";
+import "./personalization.css";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />

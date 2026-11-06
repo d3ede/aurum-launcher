@@ -4,9 +4,11 @@ import { LauncherUpdateSettings } from "../components/LauncherUpdate";
 import { APP_VERSION } from "../lib/version";
 import { useState } from "react";
 import {
-  Sun,
-  Moon,
-  Monitor,
+  SlidersHorizontal,
+  House,
+  Palette,
+  ArrowRight,
+  Trash2,
   FolderOpen,
   Cpu,
   Coffee,
@@ -14,93 +16,121 @@ import {
   Save,
 } from "lucide-react";
 import { useApp } from "../context";
-import { rpc, native } from "../lib/api";
+import { rpc } from "../lib/api";
 import { Field } from "../components/ui";
 import type { Settings as SettingsType } from "../types";
+import { HomeSettings, AppearanceSettings } from "./Personalization";
+
 export function Settings() {
-  const { data, run, operation, busy, notify } = useApp();
-  const [draft, setDraft] = useState(data.settings);
-  const [javaStatus, setJavaStatus] = useState("");
-  const [newPath, setNewPath] = useState("");
-  const set = <K extends keyof SettingsType>(k: K, v: SettingsType[K]) =>
-    setDraft((old) => ({ ...old, [k]: v }));
-  const theme = async (theme: SettingsType["theme"]) => {
-    set("theme", theme);
-    if (native)
-      await run(() =>
-        rpc("saveSettings", { settings: { ...data.settings, theme } }),
-      );
-    else {
-      localStorage.setItem("auren:theme", theme);
-      document.documentElement.dataset.theme =
-        theme === "system"
-          ? matchMedia("(prefers-color-scheme: dark)").matches
-            ? "dark"
-            : "light"
-          : theme;
-      notify(t("Тема сохранена"));
-    }
-  };
+  const { settingsTab, openSettings } = useApp();
   return (
     <>
       <div className="page-heading">
         <h1>{t("Настройки")}</h1>
         <p>{t("Java, память, интерфейс и интеграции.")}</p>
       </div>
+      <div
+        className="settings-tabs"
+        role="tablist"
+        aria-label={t("Разделы настроек")}
+      >
+        {(
+          [
+            ["general", "Основные", SlidersHorizontal],
+            ["home", "Главная страница", House],
+            ["appearance", "Внешний вид", Palette],
+          ] as const
+        ).map(([id, label, Icon]) => (
+          <button
+            key={id}
+            id={"settings-tab-" + id}
+            type="button"
+            role="tab"
+            tabIndex={settingsTab === id ? 0 : -1}
+            aria-selected={settingsTab === id}
+            aria-controls="settings-panel"
+            onClick={() => openSettings(id)}
+            onKeyDown={(event) => {
+              if (
+                !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)
+              )
+                return;
+              event.preventDefault();
+              const tabs = ["general", "home", "appearance"] as const;
+              const index = tabs.indexOf(id);
+              const next =
+                event.key === "Home"
+                  ? tabs[0]
+                  : event.key === "End"
+                    ? tabs[2]
+                    : tabs[(index + (event.key === "ArrowRight" ? 1 : 2)) % 3];
+              openSettings(next);
+              document.getElementById(`settings-tab-${next}`)?.focus();
+            }}
+          >
+            <Icon size={18} />
+            {t(label)}
+          </button>
+        ))}
+      </div>
+      <div
+        id="settings-panel"
+        role="tabpanel"
+        aria-labelledby={"settings-tab-" + settingsTab}
+      >
+        {settingsTab === "general" ? (
+          <GeneralSettings />
+        ) : settingsTab === "home" ? (
+          <HomeSettings />
+        ) : (
+          <AppearanceSettings />
+        )}
+      </div>
+    </>
+  );
+}
+function GeneralSettings() {
+  const { data, run, operation, busy, notify, saveSettings, openSettings } =
+    useApp();
+  const [draft, setDraft] = useState(data.settings);
+  const [javaStatus, setJavaStatus] = useState("");
+  const [newPath, setNewPath] = useState("");
+  const set = <K extends keyof SettingsType>(k: K, v: SettingsType[K]) =>
+    setDraft((old) => ({ ...old, [k]: v }));
+  return (
+    <>
       <form
         className="settings-form"
         onSubmit={(e) => {
           e.preventDefault();
-          void run(
-            () => rpc("saveSettings", { settings: draft }),
-            t("Настройки сохранены"),
-          );
+          void saveSettings({
+            ...data.settings,
+            ...draft,
+            personalization: data.settings.personalization,
+            theme: data.settings.theme,
+          });
         }}
       >
         <LanguagePicker onChange={(language) => set("language", language)} />
         <LauncherUpdateSettings />
-        <section className="settings-section">
-          <div className="settings-title">
+        <div className="settings-destinations">
+          <button type="button" onClick={() => openSettings("home")}>
+            <House size={24} />
             <span>
-              <Sun size={21} />
+              <b>{t("Главная страница")}</b>
+              <small>{t("Блоки, быстрый запуск и свой фон")}</small>
             </span>
-            <div>
-              <h2>{t("Внешний вид")}</h2>
-              <p>{t("Светлая, тёмная или вместе с системой")}</p>
-            </div>
-          </div>
-          <div className="theme-options">
-            {(
-              [
-                ["light", t("Тёплый свет"), Sun],
-                ["dark", t("Тихий вечер"), Moon],
-                ["system", t("Системная тема"), Monitor],
-              ] as const
-            ).map(([id, label, Icon]) => (
-              <button
-                type="button"
-                key={id}
-                aria-pressed={draft.theme === id}
-                className={`theme-option ${id} ${draft.theme === id ? "selected" : ""}`}
-                onClick={() => void theme(id)}
-              >
-                <div className="theme-mini">
-                  <span />
-                  <div>
-                    <i />
-                    <i />
-                    <i />
-                  </div>
-                </div>
-                <span>
-                  <Icon size={15} />
-                  {label}
-                  {draft.theme === id && <Check size={15} />}
-                </span>
-              </button>
-            ))}
-          </div>
-        </section>
+            <ArrowRight size={19} />
+          </button>
+          <button type="button" onClick={() => openSettings("appearance")}>
+            <Palette size={24} />
+            <span>
+              <b>{t("Внешний вид")}</b>
+              <small>{t("Темы, свои цвета и шрифт")}</small>
+            </span>
+            <ArrowRight size={19} />
+          </button>
+        </div>
         <section className="settings-section">
           <div className="settings-title">
             <span>
@@ -260,21 +290,6 @@ export function Settings() {
           <div className="field">
             <button
               type="button"
-              className="button secondary"
-              disabled={busy}
-              onClick={() => void run(() => rpc("uninstall", {}))}
-            >
-              {t("Удалить Aurum")}
-            </button>
-            <small>
-              {t(
-                "Откроется деинсталлятор. Удаление сборок, миров и остальных данных выбирается отдельно.",
-              )}
-            </small>
-          </div>
-          <div className="field">
-            <button
-              type="button"
               className="text-button"
               disabled={busy || !!newPath}
               onClick={async () => {
@@ -337,6 +352,25 @@ export function Settings() {
       <p className="page-footnote">
         Aurum {APP_VERSION} · PolyForm Noncommercial 1.0.0
       </p>
+      <section className="settings-uninstall">
+        <div>
+          <h2>{t("Удаление приложения")}</h2>
+          <p>
+            {t(
+              "Откроется деинсталлятор. Удаление сборок, миров и остальных данных выбирается отдельно.",
+            )}
+          </p>
+        </div>
+        <button
+          type="button"
+          className="button uninstall-button"
+          disabled={busy}
+          onClick={() => void run(() => rpc("uninstall", {}))}
+        >
+          <Trash2 size={17} />
+          {t("Удалить Aurum")}
+        </button>
+      </section>
     </>
   );
 }

@@ -1,4 +1,10 @@
 export const homeEnglish: Record<string, string> = {
+  "Своя главная и оформление: порядок блоков, фон, новые палитры и редактор тем.":
+    "Personalize home and appearance: block order, backgrounds, new palettes and a theme editor.",
+  "В разработке: персонализация": "In development: personalization",
+  "Настройте быстрый запуск сборки или сервера, число карточек и источник рекомендаций. Перемещайте блоки, добавляйте фон, создавайте темы и выбирайте шрифт. Удаление Aurum вынесено вниз основных настроек.":
+    "Choose an instance or server for quick launch, card counts and recommendations. Reorder blocks, add a background, create themes and choose fonts. Uninstall Aurum is now at the bottom of General settings.",
+
   "Horizon и управление данными": "Horizon and game data",
   "Horizon и моды": "Horizon and mods",
   "Отдельные сборки Horizon для Minecraft 26.3, оригинальные логотипы и перекрашиваемые значки.":
