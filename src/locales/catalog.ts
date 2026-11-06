@@ -1,4 +1,12 @@
 export const catalogEnglish: Record<string, string> = {
+  "Скачайте недостающие файлы по ссылкам. Лаунчер проверяет «Загрузки» и файлы в сборке по контрольной сумме, даже если имя изменено. Файл из другой папки можно выбрать вручную.":
+    "Download the missing files using the links. The launcher checks Downloads and files already in the instance by checksum, even if renamed. Files from other folders can be selected manually.",
+  "Переносить скачанные файлы в сборку после проверки":
+    "Move downloaded files into the instance after verification",
+  "Файл установлен, но оригинал изменился и сохранён":
+    "The file was installed, but the source changed and was preserved",
+  "Файл установлен, но не удалось удалить оригинал из папки загрузки":
+    "The file was installed, but its source could not be removed from the download folder",
   "Пакет пытается изменить служебные файлы лаунчера: {{v1}}":
     "The pack is trying to modify launcher runtime files: {{v1}}",
   "CurseForge ограничил частоту запросов. Ожидаем и продолжим автоматически.":

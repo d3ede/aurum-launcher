@@ -183,6 +183,16 @@ for (const [language, theme] of [
       .nth(1)
       .click();
     await expect(dialog.locator(".pack-missing-file")).toHaveCount(1);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as any).requests.find(
+              (r: any) => r.action === "importPackManualFile",
+            )?.payload.removeImported,
+        ),
+      )
+      .toBe(true);
     await expect(dialog).toContainText("Failed Download");
     await dialog.locator(".pack-manual-actions button").nth(1).click();
     await expect(dialog).toContainText(
@@ -235,19 +245,19 @@ test("cancelled picker and wrong versions retain the missing list", async ({
   await expect(dialog.locator(".pack-missing-file")).toHaveCount(2);
 });
 
-test("downloads are detected while the dialog is open and cleanup is optional", async ({
+test("downloads move by default and copying can be selected", async ({
   page,
 }) => {
   await fixture(page);
   const dialog = page.getByRole("dialog", { name: "Нужна ручная установка" });
   const cleanup = dialog.getByRole("checkbox");
-  await expect(cleanup).not.toBeChecked();
+  await expect(cleanup).toBeChecked();
   await page.evaluate(() => {
     (window as any).autoDownloadPath = "mods/restricted-1.2.jar";
   });
   await expect(dialog.locator(".pack-missing-file")).toHaveCount(1);
-  await cleanup.check();
-  await expect(cleanup).toBeChecked();
+  await cleanup.uncheck();
+  await expect(cleanup).not.toBeChecked();
   await page.evaluate(() => {
     (window as any).autoDownloadPath = "mods/failed-2.0.jar";
   });
@@ -261,7 +271,7 @@ test("downloads are detected while the dialog is open and cleanup is optional", 
             .at(-1)?.payload.removeImported,
       ),
     )
-    .toBe(true);
+    .toBe(false);
   const scans = await page.evaluate(
     () =>
       (window as any).requests.filter(

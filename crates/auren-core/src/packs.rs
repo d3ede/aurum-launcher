@@ -3,6 +3,9 @@ use anyhow::{bail, Context, Result};
 use serde_json::Value;
 use std::{io::Read, path::Path};
 
+pub(crate) type DownloadHashCache =
+    std::collections::HashMap<(std::path::PathBuf, String), (u64, std::time::SystemTime, String)>;
+
 async fn pack_cf<F, Fut>(
     cf: &mut F,
     path: &str,
@@ -403,6 +406,17 @@ impl Engine {
         file_path: &str,
         source: &Path,
     ) -> Result<()> {
+        self.import_pack_manual_file_with_cleanup(id, file_path, source, false)
+            .await
+    }
+
+    pub async fn import_pack_manual_file_with_cleanup(
+        &self,
+        id: &str,
+        file_path: &str,
+        source: &Path,
+        remove_source: bool,
+    ) -> Result<()> {
         let _guard = self
             .busy
             .try_lock()
@@ -449,6 +463,25 @@ impl Engine {
             profile.manual_downloads.retain(|f| f.path != file_path);
             crate::store::persist(&self.root, &next).await?;
             *db = next;
+            drop(db);
+            if remove_source {
+                // Cross-volume moves publish a verified copy first. Never delete
+                // a file selected from the instance itself or a changed source.
+                match tokio::fs::canonicalize(source).await {
+                    Ok(original) if original != tokio::fs::canonicalize(&dest).await? => {
+                        if !crate::net::verify(source, Some(manual_hash(missing))).await? {
+                            bail!("Файл установлен, но оригинал изменился и сохранён");
+                        }
+                        tokio::fs::remove_file(source).await.context(
+                            "Файл установлен, но не удалось удалить оригинал из папки загрузки",
+                        )?;
+                    }
+                    Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
+                        return Err(error.into())
+                    }
+                    _ => {}
+                }
+            }
             Ok(())
         }
         .await;
@@ -456,8 +489,34 @@ impl Engine {
         result
     }
 
-    /// Only inspect completed files matching the requested names, directly in Downloads.
-    /// Every candidate is verified again by import_pack_manual_file before publication.
+    async fn cached_download_matches(
+        &self,
+        source: &Path,
+        missing: &PackManualDownload,
+    ) -> Result<bool> {
+        let metadata = tokio::fs::metadata(source).await?;
+        let (algorithm, expected) = manual_hash(missing);
+        let Ok(modified) = metadata.modified() else {
+            return crate::net::verify(source, Some((algorithm, expected))).await;
+        };
+        let key = (source.to_path_buf(), algorithm.to_owned());
+        if let Some((length, time, hash)) = self.pack_download_hashes.lock().await.get(&key) {
+            if *length == metadata.len() && *time == modified {
+                return Ok(hash.eq_ignore_ascii_case(expected));
+            }
+        }
+        let hash = crate::net::file_hash(source, algorithm).await?;
+        let matches = hash.eq_ignore_ascii_case(expected);
+        let mut cache = self.pack_download_hashes.lock().await;
+        if cache.len() >= 2048 {
+            cache.clear();
+        }
+        cache.insert(key, (metadata.len(), modified, hash));
+        Ok(matches)
+    }
+
+    /// Inspect completed files by checksum, including browser-renamed archives.
+    /// The copied bytes are verified again before publication and source cleanup.
     pub async fn scan_pack_downloads(
         &self,
         id: &str,
@@ -468,45 +527,63 @@ impl Engine {
         if profile.manual_downloads.is_empty() {
             return Ok(0);
         }
-        let mut entries = match tokio::fs::read_dir(downloads).await {
-            Ok(entries) => entries,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(0),
-            Err(error) => return Err(error.into()),
-        };
+        let instance = self.instance(id)?;
+        let mut folders = vec![downloads.to_path_buf()];
+        for missing in &profile.manual_downloads {
+            let destination = crate::safe_join(&instance, &missing.path)?;
+            if let Some(parent) = destination.parent() {
+                if !folders.iter().any(|folder| folder == parent) {
+                    folders.push(parent.to_path_buf());
+                }
+            }
+        }
         let mut candidates = vec![];
-        while let Some(entry) = entries.next_entry().await? {
-            if entry.file_type().await?.is_file() {
-                candidates.push(entry.path());
+        for folder in folders {
+            let mut entries = match tokio::fs::read_dir(&folder).await {
+                Ok(entries) => entries,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+                Err(error) => return Err(error.into()),
+            };
+            while let Some(entry) = entries.next_entry().await? {
+                if entry.file_type().await?.is_file() {
+                    candidates.push(entry.path());
+                }
             }
         }
         let mut imported = 0;
         for missing in profile.manual_downloads {
             let expected = missing.path.rsplit('/').next().context("Нет имени файла")?;
-            for source in &candidates {
-                if !source
+            let expected_extension = Path::new(expected).extension();
+            candidates.sort_by_key(|source| {
+                !source
                     .file_name()
                     .and_then(|s| s.to_str())
                     .is_some_and(|name| download_name_matches(name, expected))
-                {
+            });
+            for source in &candidates {
+                let matching_extension = match (source.extension(), expected_extension) {
+                    (Some(actual), Some(expected)) => actual.eq_ignore_ascii_case(expected),
+                    (None, None) => true,
+                    _ => false,
+                };
+                if !matching_extension {
                     continue;
                 }
-                if !crate::net::verify(source, Some(manual_hash(&missing)))
+                if !self
+                    .cached_download_matches(source, &missing)
                     .await
                     .unwrap_or(false)
                 {
                     continue;
                 }
-                self.import_pack_manual_file(id, &missing.path, source)
-                    .await?;
+                self.import_pack_manual_file_with_cleanup(
+                    id,
+                    &missing.path,
+                    source,
+                    remove_imported && !source.starts_with(&instance),
+                )
+                .await?;
                 imported += 1;
-                // Cleanup is optional and happens only after the file and database are saved.
-                if remove_imported
-                    && crate::net::verify(source, Some(manual_hash(&missing)))
-                        .await
-                        .unwrap_or(false)
-                {
-                    let _ = tokio::fs::remove_file(source).await;
-                }
                 break;
             }
         }
@@ -1333,15 +1410,22 @@ mod tests {
         archive(&pack);
         prepare(&engine, &task).await;
         let id = engine
-            .import_pack_with(&pack, &task, metadata)
+            .import_pack_with(&pack, &task, |path| async move {
+                let mut raw = metadata(path.clone()).await?;
+                if path == "/mods/3/files/33" {
+                    raw["data"]["hashes"][0]["value"] =
+                        json!(format!("{:x}", Sha1::digest(b"third mod")));
+                }
+                Ok(raw)
+            })
             .await
             .unwrap();
         let downloads = dir.path().join("Downloads");
         std::fs::create_dir_all(&downloads).unwrap();
         std::fs::write(downloads.join("mod-1.jar"), b"wrong version").unwrap();
         std::fs::write(downloads.join("mod-1 (1).jar"), b"correct mod").unwrap();
-        std::fs::write(downloads.join("mod-3.jar.crdownload"), b"correct mod").unwrap();
-        std::fs::write(downloads.join("unrelated.jar"), b"correct mod").unwrap();
+        std::fs::write(downloads.join("mod-3.jar.crdownload"), b"third mod").unwrap();
+        std::fs::write(downloads.join("unrelated.jar"), b"unrelated mod").unwrap();
         assert_eq!(
             engine
                 .scan_pack_downloads(&id, &downloads, false)
@@ -1357,7 +1441,7 @@ mod tests {
                 .unwrap(),
             0
         );
-        std::fs::write(downloads.join("mod-3.jar"), b"correct mod").unwrap();
+        std::fs::write(downloads.join("mod-3.jar"), b"third mod").unwrap();
         assert_eq!(
             engine
                 .scan_pack_downloads(&id, &downloads, true)
@@ -1380,6 +1464,153 @@ mod tests {
             .instance(&id)
             .unwrap()
             .join("mods/mod-3.jar")
+            .exists());
+    }
+
+    async fn missing_resource(engine: &Engine, name: &str) -> Profile {
+        let mut profile = engine
+            .create_profile(name.into(), "1.21.1".into(), Loader::Vanilla, None, 0)
+            .await
+            .unwrap();
+        profile.manual_downloads = vec![PackManualDownload {
+            name: "Required resource pack".into(),
+            path: "resourcepacks/Required Pack.zip".into(),
+            url: "https://www.curseforge.com/minecraft/texture-packs/example/files/1".into(),
+            sha1: format!("{:x}", Sha1::digest(b"required resource pack")),
+            sha256: None,
+            reason: "restricted".into(),
+        }];
+        let mut db = engine.db.lock().await;
+        db.profiles
+            .iter_mut()
+            .find(|saved| saved.id == profile.id)
+            .unwrap()
+            .manual_downloads = profile.manual_downloads.clone();
+        crate::store::persist(&engine.root, &db).await.unwrap();
+        profile
+    }
+
+    #[tokio::test]
+    async fn renamed_resource_download_moves_only_the_verified_version() {
+        let (dir, _task) = fixture();
+        let engine = Engine::new(dir.path().join("data"), |_| {}).await.unwrap();
+        let profile = missing_resource(&engine, "Renamed resource").await;
+        let downloads = dir.path().join("Downloads");
+        std::fs::create_dir_all(&downloads).unwrap();
+        let wrong = downloads.join("Required Pack.zip");
+        std::fs::write(&wrong, b"different resource version").unwrap();
+        let partial = downloads.join("Required Pack.zip.crdownload");
+        std::fs::write(&partial, b"required resource pack").unwrap();
+        assert_eq!(
+            engine
+                .scan_pack_downloads(&profile.id, &downloads, true)
+                .await
+                .unwrap(),
+            0
+        );
+        let renamed = downloads.join("browser+renamed (2).ZIP");
+        std::fs::write(&renamed, b"required resource pack").unwrap();
+        assert_eq!(
+            engine
+                .scan_pack_downloads(&profile.id, &downloads, true)
+                .await
+                .unwrap(),
+            1
+        );
+        assert!(!renamed.exists());
+        assert!(wrong.exists());
+        assert!(partial.exists());
+        assert_eq!(
+            std::fs::read(
+                engine
+                    .instance(&profile.id)
+                    .unwrap()
+                    .join("resourcepacks/Required Pack.zip")
+            )
+            .unwrap(),
+            b"required resource pack"
+        );
+        assert!(engine
+            .profile(&profile.id)
+            .await
+            .unwrap()
+            .manual_downloads
+            .is_empty());
+    }
+
+    #[tokio::test]
+    async fn manually_placed_resource_is_recognized_and_never_deleted() {
+        let (dir, _task) = fixture();
+        let engine = Engine::new(dir.path().join("data"), |_| {}).await.unwrap();
+        let profile = missing_resource(&engine, "Already placed resource").await;
+        let game = engine.instance(&profile.id).unwrap();
+        std::fs::create_dir_all(game.join("resourcepacks")).unwrap();
+        let existing = game.join("resourcepacks/Required Pack.zip");
+        std::fs::write(&existing, b"wrong resource").unwrap();
+        let downloads = dir.path().join("absent-downloads");
+        assert_eq!(
+            engine
+                .scan_pack_downloads(&profile.id, &downloads, true)
+                .await
+                .unwrap(),
+            0
+        );
+        std::fs::write(&existing, b"required resource pack").unwrap();
+        assert_eq!(
+            engine
+                .scan_pack_downloads(&profile.id, &downloads, true)
+                .await
+                .unwrap(),
+            1
+        );
+        assert_eq!(std::fs::read(&existing).unwrap(), b"required resource pack");
+        assert!(engine
+            .profile(&profile.id)
+            .await
+            .unwrap()
+            .manual_downloads
+            .is_empty());
+    }
+
+    #[tokio::test]
+    async fn selected_manual_file_moves_after_publication_and_wrong_files_stay() {
+        let (dir, _task) = fixture();
+        let engine = Engine::new(dir.path().join("data"), |_| {}).await.unwrap();
+        let profile = missing_resource(&engine, "Selected resource").await;
+        let source = dir.path().join("Selected.zip");
+        std::fs::write(&source, b"different version").unwrap();
+        assert!(engine
+            .import_pack_manual_file_with_cleanup(
+                &profile.id,
+                "resourcepacks/Required Pack.zip",
+                &source,
+                true
+            )
+            .await
+            .is_err());
+        assert!(source.exists());
+        std::fs::write(&source, b"required resource pack").unwrap();
+        engine
+            .import_pack_manual_file_with_cleanup(
+                &profile.id,
+                "resourcepacks/Required Pack.zip",
+                &source,
+                true,
+            )
+            .await
+            .unwrap();
+        assert!(!source.exists());
+        let restored = Engine::new(engine.root.clone(), |_| {}).await.unwrap();
+        assert!(restored
+            .profile(&profile.id)
+            .await
+            .unwrap()
+            .manual_downloads
+            .is_empty());
+        assert!(restored
+            .instance(&profile.id)
+            .unwrap()
+            .join("resourcepacks/Required Pack.zip")
             .exists());
     }
 

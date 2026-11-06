@@ -411,9 +411,14 @@ async fn rpc(
             if let Some(path) =
                 choose_file(&app, "Downloaded modpack file", &["jar", "zip", "litemod"]).await?
             {
-                e.import_pack_manual_file(&id, &file_path, &path)
-                    .await
-                    .map_err(err)?;
+                e.import_pack_manual_file_with_cleanup(
+                    &id,
+                    &file_path,
+                    &path,
+                    payload["removeImported"].as_bool().unwrap_or(true),
+                )
+                .await
+                .map_err(err)?;
                 return Ok(json!(true));
             }
             Ok(json!(false))
@@ -422,7 +427,7 @@ async fn rpc(
             .scan_pack_downloads(
                 &param::<String>(&payload, "id")?,
                 &app.path().download_dir().map_err(err)?,
-                payload["removeImported"].as_bool().unwrap_or(false),
+                payload["removeImported"].as_bool().unwrap_or(true),
             )
             .await
             .map_err(err)?)),

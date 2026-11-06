@@ -15,7 +15,9 @@ export function PackManualDownloads({
 }) {
   const { busy, run, notify, refresh } = useApp();
   const files = profile.manualDownloads || [];
-  const [removeImported, setRemoveImported] = useState(false);
+  const [removeImported, setRemoveImported] = useState(
+    () => localStorage.getItem("aurum:move-pack-downloads") !== "false",
+  );
   const [scanError, setScanError] = useState("");
   const scanning = useRef(false);
   useEffect(() => {
@@ -55,7 +57,7 @@ export function PackManualDownloads({
     >
       <p className="dialog-note">
         {t(
-          "Скачайте недостающие файлы по ссылкам. Пока это окно открыто, лаунчер проверяет папку «Загрузки» и добавляет файлы нужных версий в сборку. Файл из другой папки можно выбрать вручную.",
+          "Скачайте недостающие файлы по ссылкам. Лаунчер проверяет «Загрузки» и файлы в сборке по контрольной сумме, даже если имя изменено. Файл из другой папки можно выбрать вручную.",
         )}
       </p>
       {!!files.length && (
@@ -63,9 +65,15 @@ export function PackManualDownloads({
           <input
             type="checkbox"
             checked={removeImported}
-            onChange={(event) => setRemoveImported(event.target.checked)}
+            onChange={(event) => {
+              setRemoveImported(event.target.checked);
+              localStorage.setItem(
+                "aurum:move-pack-downloads",
+                String(event.target.checked),
+              );
+            }}
           />
-          {t("Удалять найденные файлы из «Загрузок» после успешного импорта")}
+          {t("Переносить скачанные файлы в сборку после проверки")}
         </label>
       )}
       {scanError && (
@@ -84,8 +92,8 @@ export function PackManualDownloads({
                 {file.reason === "local"
                   ? t("@social.local.file")
                   : file.reason === "restricted"
-                  ? t("Автор разрешает скачивание только с сайта")
-                  : t("Не удалось скачать автоматически")}
+                    ? t("Автор разрешает скачивание только с сайта")
+                    : t("Не удалось скачать автоматически")}
               </small>
             </div>
             <div className="pack-manual-actions">
@@ -109,6 +117,7 @@ export function PackManualDownloads({
                     rpc("importPackManualFile", {
                       id: profile.id,
                       path: file.path,
+                      removeImported,
                     }),
                   );
                   if (added) notify(t("Файл добавлен в сборку"));

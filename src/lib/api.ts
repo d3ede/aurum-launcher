@@ -163,7 +163,10 @@ interface Contract {
     PackRequirements,
   ];
   choosePackFile: [Empty, string | null];
-  importPackManualFile: [{ id: string; path: string }, boolean];
+  importPackManualFile: [
+    { id: string; path: string; removeImported: boolean },
+    boolean,
+  ];
   scanPackDownloads: [{ id: string; removeImported: boolean }, number];
   skinLibrary: [Empty, SkinLibrary];
   importModrinthSkins: [{ directories: string[] }, ModrinthSkinImportResult];

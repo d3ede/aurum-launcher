@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Подготовлено исправление: пользовательские папки модов, перенос скачанных файлов и распознавание файлов по контрольной сумме.":
+    "Fix prepared: custom mod folders, moving downloaded files and checksum-based file detection.",
   "Подготовлено исправление: модпаки сохраняют пользовательские папки модов, включая fancymenu_data.":
     "Fix prepared: modpack imports preserve custom mod folders, including fancymenu_data.",
   "Импорт датапаков": "Datapack imports",

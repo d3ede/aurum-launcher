@@ -89,6 +89,12 @@ pub async fn verify(path: &Path, expected: Option<(&str, &str)>) -> Result<bool>
     let Some((algorithm, expected)) = expected else {
         return Ok(true);
     };
+    Ok(file_hash(path, algorithm)
+        .await?
+        .eq_ignore_ascii_case(expected))
+}
+
+pub(crate) async fn file_hash(path: &Path, algorithm: &str) -> Result<String> {
     let mut file = tokio::fs::File::open(path).await?;
     let mut buffer = vec![0u8; 65536];
     let mut sha1 = Sha1::new();
@@ -113,5 +119,5 @@ pub async fn verify(path: &Path, expected: Option<(&str, &str)>) -> Result<bool>
     } else {
         format!("{:x}", md5.finalize())
     };
-    Ok(actual.eq_ignore_ascii_case(expected))
+    Ok(actual)
 }

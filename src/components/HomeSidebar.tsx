@@ -9,7 +9,7 @@ import { Modal } from "./ui";
 import { releaseNotes } from "../lib/release-notes";
 
 const importPreview =
-  "Подготовлено исправление: модпаки сохраняют пользовательские папки модов, включая fancymenu_data.";
+  "Подготовлено исправление: пользовательские папки модов, перенос скачанных файлов и распознавание файлов по контрольной сумме.";
 
 function releaseDate(date: string) {
   return new Intl.DateTimeFormat(getLocale(), {
