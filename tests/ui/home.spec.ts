@@ -202,6 +202,9 @@ test("home has account and factual release panels, working actions and both them
   await expect(notes.locator(".home-news-unreleased")).toHaveCount(0);
   await expect(notes).not.toContainText("В разработке: персонализация");
   await expect(notes).not.toContainText("В следующем обновлении:");
+  await expect(notes).toContainText(
+    "Подготовлено исправление: модпаки сохраняют пользовательские папки модов, включая fancymenu_data.",
+  );
   await expect(notes.locator(".release-section[open] li")).toHaveCount(2);
   await notes.locator("summary").filter({ hasText: "Aurum 0.4.3" }).click();
   await expect(

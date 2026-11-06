@@ -1,4 +1,6 @@
 export const catalogEnglish: Record<string, string> = {
+  "Пакет пытается изменить служебные файлы лаунчера: {{v1}}":
+    "The pack is trying to modify launcher runtime files: {{v1}}",
   "CurseForge ограничил частоту запросов. Ожидаем и продолжим автоматически.":
     "CurseForge rate limit reached. Waiting to resume automatically.",
   "Все источники": "All sources",

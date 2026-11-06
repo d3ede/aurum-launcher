@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Подготовлено исправление: модпаки сохраняют пользовательские папки модов, включая fancymenu_data.":
+    "Fix prepared: modpack imports preserve custom mod folders, including fancymenu_data.",
   "Импорт датапаков": "Datapack imports",
   "Датапаки и пути файлов": "Datapacks and file paths",
   "При импорте сборки сохраняется папка datapacks.":

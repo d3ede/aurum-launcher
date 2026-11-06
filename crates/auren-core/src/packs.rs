@@ -108,25 +108,23 @@ fn loader(deps: &Value) -> Result<(Loader, Option<String>)> {
     Ok((Loader::Vanilla, None))
 }
 
+fn launcher_managed_path(path: &str) -> bool {
+    matches!(
+        path.split('/')
+            .next()
+            .unwrap_or("")
+            .to_ascii_lowercase()
+            .as_str(),
+        ".aurum" | "launch.json" | "launch.json.tmp" | "client" | "natives"
+    )
+}
+
 fn validate_pack_path(path: &str) -> Result<()> {
     crate::safe_join(Path::new("pack"), path)?;
-    let first = path.split('/').next().unwrap_or("");
-    if ![
-        "mods",
-        "config",
-        "resourcepacks",
-        "shaderpacks",
-        "datapacks",
-        "saves",
-        "defaultconfigs",
-        "scripts",
-        "kubejs",
-        "options.txt",
-        "servers.dat",
-    ]
-    .contains(&first)
-    {
-        bail!("Пакет пытается записать неподдерживаемый путь: {path}")
+    // Mods choose their own game-directory names. Protect only launcher-owned
+    // runtime files; confinement and ZIP link checks apply to every other path.
+    if launcher_managed_path(path) {
+        bail!("Пакет пытается изменить служебные файлы лаунчера: {path}");
     }
     Ok(())
 }
@@ -628,28 +626,14 @@ impl Engine {
         let stage = self.root.join("staging").join(&task.id).join("folder");
         tokio::fs::create_dir_all(&stage).await?;
         let result: Result<()> = async {
-            let kinds: Vec<std::ffi::OsString> = if remove_source {
-                std::fs::read_dir(&source)?
-                    .map(|e| e.map(|e| e.file_name()))
-                    .collect::<std::io::Result<_>>()?
-            } else {
-                [
-                    "mods",
-                    "config",
-                    "resourcepacks",
-                    "shaderpacks",
-                    "datapacks",
-                    "saves",
-                    "defaultconfigs",
-                    "scripts",
-                    "kubejs",
-                    "options.txt",
-                    "servers.dat",
-                ]
-                .iter()
-                .map(std::ffi::OsString::from)
-                .collect()
-            };
+            let kinds: Vec<std::ffi::OsString> = std::fs::read_dir(&source)?
+                .map(|entry| entry.map(|entry| entry.file_name()))
+                .collect::<std::io::Result<Vec<_>>>()?
+                .into_iter()
+                // Disposal requires a verified copy of every original file.
+                // Ordinary imports regenerate the launcher's runtime files.
+                .filter(|name| remove_source || !launcher_managed_path(&name.to_string_lossy()))
+                .collect();
             for kind in kinds {
                 let source = source.join(kind);
                 if !source.exists() {
@@ -806,10 +790,16 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn datapacks_survive_curseforge_modrinth_and_folder_imports() {
+    async fn custom_mod_data_survives_curseforge_modrinth_and_folder_imports() {
         let (dir, task) = fixture();
         let engine = Engine::new(dir.path().join("data"), |_| {}).await.unwrap();
         let datapack = "datapacks/datapacks/CWRecipeChanges/pack.mcmeta";
+        let custom_files = [
+            "fancymenu_data/buddy/buddy_leveling.json",
+            "patchouli_books/guide/book.json",
+            "custom_mod_folder/nested/file.bin",
+            "custom-root-settings.json",
+        ];
         for mr in [false, true] {
             let path = dir.path().join(if mr { "data.mrpack" } else { "data.zip" });
             let mut zip = zip::ZipWriter::new(std::fs::File::create(&path).unwrap());
@@ -840,6 +830,10 @@ mod tests {
                     .unwrap();
                 zip.write_all(br#"{"pack":{"pack_format":48,"description":"Recipes"}}"#)
                     .unwrap();
+                for file in custom_files {
+                    zip.start_file(format!("{prefix}/{file}"), options).unwrap();
+                    zip.write_all(b"custom mod data").unwrap();
+                }
             }
             zip.finish().unwrap();
             let id = engine.import_pack(&path, &task).await.unwrap();
@@ -848,11 +842,26 @@ mod tests {
                 std::fs::read(game.join(datapack)).unwrap(),
                 br#"{"pack":{"pack_format":48,"description":"Recipes"}}"#
             );
+            for file in custom_files {
+                assert_eq!(std::fs::read(game.join(file)).unwrap(), b"custom mod data");
+            }
         }
         let source = dir.path().join("game");
         let file = source.join(datapack);
         std::fs::create_dir_all(file.parent().unwrap()).unwrap();
         std::fs::write(&file, b"folder datapack").unwrap();
+        for relative in custom_files {
+            let file = source.join(relative);
+            std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+            std::fs::write(file, b"custom folder data").unwrap();
+        }
+        std::fs::write(source.join("launch.json"), b"old launch metadata").unwrap();
+        std::fs::create_dir_all(source.join(".aurum")).unwrap();
+        std::fs::write(
+            source.join(".aurum/native-build.json"),
+            b"old runtime metadata",
+        )
+        .unwrap();
         let id = engine
             .import_folder(
                 &source,
@@ -869,17 +878,37 @@ mod tests {
             b"folder datapack"
         );
         assert!(file.exists());
+        let game = engine.instance(&id).unwrap();
+        for relative in custom_files {
+            assert_eq!(
+                std::fs::read(game.join(relative)).unwrap(),
+                b"custom folder data"
+            );
+        }
+        assert!(!game.join("launch.json").exists());
+        assert!(!game.join(".aurum").exists());
     }
 
     #[tokio::test]
-    async fn unsupported_and_unsafe_overrides_fail_before_provider_requests() {
+    async fn managed_and_unsafe_overrides_fail_before_provider_requests() {
         let (dir, task) = fixture();
         let engine = Engine::new(dir.path().join("data"), |_| {}).await.unwrap();
         for relative in [
-            "unknown/file.txt",
+            "launch.json",
+            "LAUNCH.JSON",
+            "launch.json.tmp",
+            "client/game.jar",
+            "natives/unsafe.dll",
+            ".aurum/native-build.json",
+            ".AURUM/quickplay/world.json",
             "datapacks/../../escape.txt",
             "../escape.txt",
             "datapacks/C:/escape.txt",
+            "/absolute/path.json",
+            "fancymenu_data/../../escape.json",
+            "fancymenu_data/file.json:stream",
+            "fancymenu_data/CON.json",
+            "fancymenu_data/file.json.",
         ] {
             let path = dir.path().join("bad.zip");
             let mut zip = zip::ZipWriter::new(std::fs::File::create(&path).unwrap());
@@ -908,6 +937,66 @@ mod tests {
             assert!(engine.snapshot().await.database.profiles.is_empty());
             assert!(!engine.root.join("staging").join(&task.id).exists());
         }
+    }
+
+    #[tokio::test]
+    async fn custom_mrpack_index_paths_import_and_archive_symlinks_still_fail() {
+        let (dir, task) = fixture();
+        let engine = Engine::new(dir.path().join("data"), |_| {}).await.unwrap();
+        let file_path = "fancymenu_data/buddy/buddy_leveling.json";
+        let bytes = b"custom indexed data";
+        let staged = engine
+            .root
+            .join("staging")
+            .join(&task.id)
+            .join("pack")
+            .join(file_path);
+        std::fs::create_dir_all(staged.parent().unwrap()).unwrap();
+        std::fs::write(&staged, bytes).unwrap();
+        let path = dir.path().join("custom.mrpack");
+        let options = zip::write::SimpleFileOptions::default();
+        let mut zip = zip::ZipWriter::new(std::fs::File::create(&path).unwrap());
+        zip.start_file("modrinth.index.json", options).unwrap();
+        zip.write_all(
+            json!({"formatVersion":1,"game":"minecraft","name":"Indexed custom data",
+            "dependencies":{"minecraft":"1.21.1"},"files":[{"path":file_path,
+                "hashes":{"sha1":format!("{:x}", Sha1::digest(bytes))},
+                "downloads":["https://cdn.modrinth.com/not-requested"]}]})
+            .to_string()
+            .as_bytes(),
+        )
+        .unwrap();
+        zip.finish().unwrap();
+        let id = engine.import_pack(&path, &task).await.unwrap();
+        assert_eq!(
+            std::fs::read(engine.instance(&id).unwrap().join(file_path)).unwrap(),
+            bytes
+        );
+
+        let bad = dir.path().join("symlink.zip");
+        let mut zip = zip::ZipWriter::new(std::fs::File::create(&bad).unwrap());
+        zip.start_file("manifest.json", options).unwrap();
+        zip.write_all(
+            json!({"name":"Linked custom data","minecraft":{"version":"1.21.1"},
+            "files":[{"projectID":1,"fileID":11}]})
+            .to_string()
+            .as_bytes(),
+        )
+        .unwrap();
+        zip.add_symlink("overrides/fancymenu_data/link", "../../outside", options)
+            .unwrap();
+        zip.finish().unwrap();
+        let mut requests = 0;
+        let error = engine
+            .import_pack_with(&bad, &task, |_| {
+                requests += 1;
+                async { bail!("Provider should not be called") }
+            })
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("символическую ссылку"));
+        assert_eq!(requests, 0);
+        assert_eq!(engine.snapshot().await.database.profiles.len(), 1);
     }
 
     #[tokio::test]
