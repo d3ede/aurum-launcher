@@ -1,6 +1,37 @@
 body {
   font-family: var(--app-font, "Inter Variable", "Segoe UI", sans-serif);
 }
+.button.launch-button {
+  background-image: none;
+  box-shadow: none;
+  text-shadow: none;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+.button.launch-button.primary {
+  background: var(--gold-soft);
+  border-color: var(--gold-border);
+  color: var(--accent-ink);
+  box-shadow: none;
+}
+.button.launch-button.primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--gold) 20%, var(--surface));
+  border-color: var(--accent-ink);
+}
+.button.launch-button.primary:active:not(:disabled) {
+  background: color-mix(in srgb, var(--gold) 26%, var(--surface));
+}
+.button.launch-button:is(:hover, :active):not(:disabled) {
+  transform: none;
+  box-shadow: none;
+  filter: none;
+}
+.launch-button .lucide-play {
+  fill: currentColor;
+  stroke-width: 1;
+}
 .settings-page {
   width: 100%;
   max-width: 1000px;

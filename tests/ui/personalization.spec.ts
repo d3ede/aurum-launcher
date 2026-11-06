@@ -313,6 +313,11 @@ test("new palettes, named custom themes and fonts persist with live preview", as
     ["Весенний мох", "spring"],
     ["Персиковый рассвет", "peach"],
     ["Лавандовая ночь", "lavender"],
+    ["Графит", "graphite"],
+    ["Эспрессо", "espresso"],
+    ["Вулкан", "volcano"],
+    ["Полярное утро", "polar"],
+    ["Сакура", "sakura"],
   ]) {
     await page.getByRole("button", { name, exact: true }).click();
     await expect(page.locator("html")).toHaveAttribute("data-palette", id);
@@ -320,7 +325,11 @@ test("new palettes, named custom themes and fonts persist with live preview", as
     await expect(card.locator(".theme-card-name")).toHaveText(name);
     await expect(card.locator("small")).toHaveCount(0);
     await expect(
-      card.locator(id === "peach" ? ".lucide-sun" : ".lucide-moon"),
+      card.locator(
+        ["peach", "polar", "sakura"].includes(id)
+          ? ".lucide-sun"
+          : ".lucide-moon",
+      ),
     ).toHaveCount(1);
     await page.screenshot({
       path: `.test-data/screenshots/appearance-${id}.png`,

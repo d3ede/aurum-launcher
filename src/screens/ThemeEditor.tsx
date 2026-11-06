@@ -256,7 +256,7 @@ export function ThemeEditor({
                     <Sparkles size={26} />
                     <b>Minecraft</b>
                     <small>{t("Готова к запуску")}</small>
-                    <span className="button primary">
+                    <span className="button launch-button primary">
                       <Play size={14} />
                       {t("Играть")}
                     </span>

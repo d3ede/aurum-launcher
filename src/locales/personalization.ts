@@ -1,4 +1,9 @@
 export const personalizationEnglish: Record<string, string> = {
+  Графит: "Graphite",
+  Эспрессо: "Espresso",
+  Вулкан: "Volcano",
+  "Полярное утро": "Polar Morning",
+  Сакура: "Sakura",
   "Весенний мох": "Spring Moss",
   "Персиковый рассвет": "Peach Dawn",
   "Лавандовая ночь": "Lavender Night",

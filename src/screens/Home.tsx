@@ -181,7 +181,7 @@ export function Home({
                 </div>
               </div>
               <button
-                className={`button ${running ? "stop" : "primary"}`}
+                className={`button launch-button ${running ? "stop" : "primary"}`}
                 disabled={busy}
                 onClick={() =>
                   running

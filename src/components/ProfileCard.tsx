@@ -34,7 +34,7 @@ export function ProfileCard({
   const action = running ? t("Стоп") : t("Играть");
   const launch = (
     <button
-      className={`button ${running ? "stop" : "primary"}${layout === "row" ? " instance-card-play" : ""}`}
+      className={`button launch-button ${running ? "stop" : "primary"}${layout === "row" ? " instance-card-play" : ""}`}
       aria-label={action}
       title={`${action} · ${profile.name}`}
       disabled={busy}

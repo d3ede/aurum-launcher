@@ -282,22 +282,3 @@
     transform: none;
   }
 }
-
-/* Soft metallic finish for the primary launch action. */
-.instance-card-row .instance-card-play.primary {
-  background-image: linear-gradient(
-    180deg,
-    #f6d98b 0%,
-    #e9c56c 48%,
-    #e3b954 100%
-  );
-  border: 1px solid #c69b46;
-  box-shadow:
-    inset 0 1px 0 #fff5cfbb,
-    inset 0 -1px 0 #91642133,
-    0 2px 4px #00000014;
-  color: #382b12;
-}
-.instance-card-row .instance-card-play.primary:hover:not(:disabled) {
-  filter: brightness(1.06);
-}
