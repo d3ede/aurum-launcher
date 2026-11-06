@@ -145,7 +145,7 @@ export const builtInThemes: CustomTheme[] = [
   },
   {
     id: "espresso",
-    name: "Эспрессо",
+    name: "Экспрессо",
     base: "dark",
     colors: {
       bg: "#211915",
@@ -163,14 +163,14 @@ export const builtInThemes: CustomTheme[] = [
     name: "Вулкан",
     base: "dark",
     colors: {
-      bg: "#1f1a19",
-      surface: "#2d2422",
-      sidebar: "#261e1c",
-      text: "#fff0e9",
-      secondary: "#d9b8ab",
-      border: "#57413a",
-      accent: "#f0a080",
-      accentInk: "#ffc0a2",
+      bg: "#101113",
+      surface: "#1b1d21",
+      sidebar: "#151619",
+      text: "#f5f3f1",
+      secondary: "#b9bbc2",
+      border: "#36383c",
+      accent: "#ff6b35",
+      accentInk: "#ff8050",
     },
   },
   {

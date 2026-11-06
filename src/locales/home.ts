@@ -1,8 +1,8 @@
 export const homeEnglish: Record<string, string> = {
   "Пять новых тем и плоские кнопки запуска.":
     "Five new themes and flat launch buttons.",
-  "Добавлены темы «Графит», «Эспрессо», «Вулкан», «Полярное утро» и «Сакура». Кнопки запуска используют цвета темы без объёмного градиента, бликов и теней.":
-    "Added Graphite, Espresso, Volcano, Polar Morning and Sakura. Launch buttons use theme colors without raised gradients, highlights or shadows.",
+  "Добавлены темы «Графит», «Экспрессо», «Вулкан», «Полярное утро» и «Сакура». Кнопки запуска используют цвета темы без объёмного градиента, бликов и теней.":
+    "Added Graphite, Expresso, Volcano, Polar Morning and Sakura. Launch buttons use theme colors without raised gradients, highlights or shadows.",
   "Своя главная и оформление: порядок блоков, фон, новые палитры и редактор тем.":
     "Personalize home and appearance: block order, backgrounds, new palettes and a theme editor.",
   "Отдельные страницы настроек, подробный редактор тем и три новые палитры: зелёная, персиковая и лавандовая.":

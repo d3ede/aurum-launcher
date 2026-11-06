@@ -314,7 +314,7 @@ test("new palettes, named custom themes and fonts persist with live preview", as
     ["Персиковый рассвет", "peach"],
     ["Лавандовая ночь", "lavender"],
     ["Графит", "graphite"],
-    ["Эспрессо", "espresso"],
+    ["Экспрессо", "espresso"],
     ["Вулкан", "volcano"],
     ["Полярное утро", "polar"],
     ["Сакура", "sakura"],
