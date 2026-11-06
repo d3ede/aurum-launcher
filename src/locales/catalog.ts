@@ -1,4 +1,6 @@
 export const catalogEnglish: Record<string, string> = {
+  "CurseForge ограничил частоту запросов. Ожидаем и продолжим автоматически.":
+    "CurseForge rate limit reached. Waiting to resume automatically.",
   "Все источники": "All sources",
   "Источник: {{name}}": "Source: {{name}}",
   "Недоступны: {{sources}}. Показаны результаты остальных источников.":

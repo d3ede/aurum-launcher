@@ -3,6 +3,38 @@ use reqwest::{Client, Url};
 use serde::Deserialize;
 use std::time::{Duration, Instant};
 
+#[derive(Debug)]
+pub(crate) struct CurseForgeRateLimited {
+    pub(crate) retry_after: Duration,
+}
+
+impl std::fmt::Display for CurseForgeRateLimited {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Слишком много запросов CurseForge. Повторите через минуту")
+    }
+}
+
+impl std::error::Error for CurseForgeRateLimited {}
+
+fn retry_after(headers: &reqwest::header::HeaderMap) -> Duration {
+    let seconds = headers
+        .get(reqwest::header::RETRY_AFTER)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| {
+            value.parse::<u64>().ok().or_else(|| {
+                chrono::DateTime::parse_from_rfc2822(value)
+                    .ok()
+                    .map(|date| {
+                        (date.with_timezone(&chrono::Utc) - chrono::Utc::now())
+                            .num_seconds()
+                            .max(1) as u64
+                    })
+            })
+        })
+        .unwrap_or(60);
+    Duration::from_secs(seconds.clamp(1, 300))
+}
+
 #[derive(Default)]
 pub(crate) struct ApiStatus {
     checked: Option<(Instant, bool)>,
@@ -96,7 +128,12 @@ impl crate::Engine {
             .await
             .context("Не удалось связаться с сервисом CurseForge")?;
         match response.status().as_u16() {
-            429 => bail!("Слишком много запросов CurseForge. Повторите через минуту"),
+            429 => {
+                return Err(CurseForgeRateLimited {
+                    retry_after: retry_after(response.headers()),
+                }
+                .into())
+            }
             503 => bail!("Сервис CurseForge временно недоступен"),
             502 | 504 => bail!("Сервис CurseForge временно недоступен"),
             _ => {}
@@ -108,6 +145,19 @@ impl crate::Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn rate_limit_delay_is_bounded_and_defaults_to_one_minute() {
+        let mut headers = reqwest::header::HeaderMap::new();
+        assert_eq!(retry_after(&headers), Duration::from_secs(60));
+        for (value, expected) in [("2", 2), ("0", 1), ("999999", 300), ("invalid", 60)] {
+            headers.insert(reqwest::header::RETRY_AFTER, value.parse().unwrap());
+            assert_eq!(retry_after(&headers), Duration::from_secs(expected));
+        }
+        let date = (chrono::Utc::now() + chrono::Duration::seconds(120)).to_rfc2822();
+        headers.insert(reqwest::header::RETRY_AFTER, date.parse().unwrap());
+        assert!((118..=120).contains(&retry_after(&headers).as_secs()));
+    }
+
     #[test]
     fn validates_api_origin() {
         assert!(parse_base(" ").unwrap().is_none());

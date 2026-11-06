@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "В следующем обновлении: импорт и установка модпаков ожидают снятия лимита CurseForge и продолжаются автоматически.":
+    "Coming in the next update: modpack imports and installations wait for the CurseForge rate limit to reset and resume automatically.",
   "Друзья и оформление": "Friends and appearance",
   "Aurum Social · экспериментально": "Aurum Social · experimental",
   "Друзья, аватарки и приглашения в мир — с модами или без.":

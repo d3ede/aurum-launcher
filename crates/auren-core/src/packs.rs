@@ -2,8 +2,52 @@ use crate::{model::*, Engine, Task};
 use anyhow::{bail, Context, Result};
 use serde_json::Value;
 use std::{io::Read, path::Path};
+
+async fn pack_cf<F, Fut>(
+    cf: &mut F,
+    path: &str,
+    task: &Task,
+    pack_name: &str,
+    done: u64,
+    total: u64,
+) -> Result<Value>
+where
+    F: FnMut(String) -> Fut,
+    Fut: std::future::Future<Output = Result<Value>>,
+{
+    for attempt in 0..=3 {
+        task.check()?;
+        let result = cf(path.to_owned()).await;
+        let delay = match &result {
+            Err(error) if attempt < 3 => error
+                .downcast_ref::<crate::aurum_api::CurseForgeRateLimited>()
+                .map(|error| error.retry_after),
+            _ => None,
+        };
+        let Some(delay) = delay else { return result };
+        task.pack_progress(
+            pack_name,
+            "CurseForge ограничил частоту запросов. Ожидаем и продолжим автоматически.",
+            done,
+            total,
+        );
+        let deadline = tokio::time::Instant::now() + delay;
+        while tokio::time::Instant::now() < deadline {
+            task.check()?;
+            tokio::time::sleep_until(
+                deadline.min(tokio::time::Instant::now() + std::time::Duration::from_millis(100)),
+            )
+            .await;
+        }
+    }
+    unreachable!()
+}
+
 fn manual_hash(file: &PackManualDownload) -> (&str, &str) {
-    file.sha256.as_deref().map(|hash| ("sha256", hash)).unwrap_or(("sha1", &file.sha1))
+    file.sha256
+        .as_deref()
+        .map(|hash| ("sha256", hash))
+        .unwrap_or(("sha1", &file.sha1))
 }
 
 // Used only when the provider cannot identify a ZIP's project type.
@@ -189,9 +233,9 @@ impl Engine {
                     task.check()?;
                     let project=file["projectID"].as_u64().context("Нет projectID")?;
                     let version=file["fileID"].as_u64().context("Нет fileID")?;
-                    let raw=cf(format!("/mods/{project}/files/{version}")).await?;
+                    let raw=pack_cf(&mut cf,&format!("/mods/{project}/files/{version}"),task,&pack_name,i as u64,files.len() as u64).await?;
                     if let std::collections::hash_map::Entry::Vacant(entry) = projects.entry(project) {
-                        entry.insert(cf(format!("/mods/{project}")).await.ok());
+                        entry.insert(pack_cf(&mut cf,&format!("/mods/{project}"),task,&pack_name,i as u64,files.len() as u64).await.ok());
                     }
                     let info = projects.get(&project).and_then(Option::as_ref);
                     let folder = match info.and_then(|i| i["data"]["classId"].as_u64()) {
@@ -446,7 +490,15 @@ impl Engine {
                     .to_string(),
             )
         } else if source == "curseforge" {
-            let raw = self.cf(&format!("/mods/{project}/files/{version}")).await?;
+            let raw = pack_cf(
+                &mut |path: String| async move { self.cf(&path).await },
+                &format!("/mods/{project}/files/{version}"),
+                task,
+                "CurseForge",
+                0,
+                0,
+            )
+            .await?;
             let f = &raw["data"];
             (
                 f["downloadUrl"]
@@ -693,6 +745,128 @@ mod tests {
                 .await
                 .unwrap();
         }
+    }
+
+    #[tokio::test]
+    async fn rate_limited_import_retries_current_lookup_and_preserves_progress() {
+        let (dir, mut task) = fixture();
+        let events = Arc::new(std::sync::Mutex::new(vec![]));
+        let recorded = events.clone();
+        task.emit = Arc::new(move |event| recorded.lock().unwrap().push(event));
+        let engine = Engine::new(dir.path().join("data"), |_| {}).await.unwrap();
+        let pack = dir.path().join("pack.zip");
+        archive(&pack);
+        prepare(&engine, &task).await;
+        let mut calls = std::collections::HashMap::new();
+        let id = engine
+            .import_pack_with(&pack, &task, |path| {
+                let count = calls.entry(path.clone()).or_insert(0);
+                *count += 1;
+                let limited =
+                    *count == 1 && matches!(path.as_str(), "/mods/2/files/22" | "/mods/2");
+                async move {
+                    if limited {
+                        return Err(crate::aurum_api::CurseForgeRateLimited {
+                            retry_after: std::time::Duration::ZERO,
+                        }
+                        .into());
+                    }
+                    metadata(path).await
+                }
+            })
+            .await
+            .unwrap();
+        assert_eq!(calls["/mods/1/files/11"], 1);
+        assert_eq!(calls["/mods/2/files/22"], 2);
+        assert_eq!(calls["/mods/2"], 2);
+        let waits = events.lock().unwrap();
+        let waits: Vec<_> = waits
+            .iter()
+            .filter(|event| event.message.contains("Ожидаем"))
+            .collect();
+        assert_eq!(waits.len(), 2);
+        assert!(waits.iter().all(|event| event.done == 1
+            && event.total == 4
+            && event.pack_name.as_deref() == Some("Manual pack")));
+        assert_eq!(
+            std::fs::read(engine.instance(&id).unwrap().join("mods/mod-2.jar")).unwrap(),
+            b"correct mod"
+        );
+        assert!(engine
+            .instance(&id)
+            .unwrap()
+            .join("config/test.txt")
+            .exists());
+    }
+
+    #[tokio::test]
+    async fn rate_limit_wait_is_cancellable_and_persistent_failures_are_bounded() {
+        let (dir, mut task) = fixture();
+        let engine = Engine::new(dir.path().join("data"), |_| {}).await.unwrap();
+        let pack = dir.path().join("pack.zip");
+        archive(&pack);
+        let cancel = task.cancel.clone();
+        task.emit = Arc::new(move |event| {
+            if event.message.contains("Ожидаем") {
+                cancel.store(true, Ordering::Relaxed);
+            }
+        });
+        let started = std::time::Instant::now();
+        let error = engine
+            .import_pack_with(&pack, &task, |_| async {
+                Err(crate::aurum_api::CurseForgeRateLimited {
+                    retry_after: std::time::Duration::from_secs(60),
+                }
+                .into())
+            })
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("отменена"));
+        assert!(started.elapsed() < std::time::Duration::from_secs(2));
+        assert!(engine.snapshot().await.database.profiles.is_empty());
+        assert!(!engine.root.join("staging").join(&task.id).exists());
+
+        task.cancel.store(false, Ordering::Relaxed);
+        task.emit = Arc::new(|_| {});
+        let mut attempts = 0;
+        let error = engine
+            .import_pack_with(&pack, &task, |_| {
+                attempts += 1;
+                async {
+                    Err(crate::aurum_api::CurseForgeRateLimited {
+                        retry_after: std::time::Duration::ZERO,
+                    }
+                    .into())
+                }
+            })
+            .await
+            .unwrap_err();
+        assert!(error
+            .downcast_ref::<crate::aurum_api::CurseForgeRateLimited>()
+            .is_some());
+        assert_eq!(attempts, 4);
+        assert!(!engine.root.join("staging").join(&task.id).exists());
+    }
+
+    #[tokio::test]
+    async fn non_rate_limit_errors_are_not_retried() {
+        let (_dir, task) = fixture();
+        let mut attempts = 0;
+        let error = pack_cf(
+            &mut |_| {
+                attempts += 1;
+                async { bail!("Not found") }
+            },
+            "/mods/1",
+            &task,
+            "Pack",
+            0,
+            1,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(error.to_string(), "Not found");
+        assert_eq!(attempts, 1);
     }
 
     #[tokio::test]
