@@ -21,7 +21,8 @@ concurrency:
 jobs:
   release:
     runs-on: windows-latest
-    timeout-minutes: 35
+    # Cold native builds, full UI checks and installer QA can exceed 35 minutes.
+    timeout-minutes: 60
     env:
       RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:

@@ -52,7 +52,9 @@ verification. Social is optional and disabled until you enable it. Read the
 | **Recent servers** | A weekly server history with status checks, matching-instance launches and Windows desktop shortcuts. See [recent servers](docs/recent-servers.md). |
 | **Interface** | 41 languages, language search, RTL support, light and dark themes, and settings for memory, Java, and game data. |
 
-**New in 0.6.0:** opt-in experimental Social, friend and world invitations, customizable home layouts, five new themes and a color editor. Read the [release notes](docs/releases/v0.6.0.md).
+**New in 0.6.1:** modpack downloads wait and retry automatically after CurseForge rate limits, preserving progress and cancellation. [Release notes](docs/releases/v0.6.1.md).
+
+Version [0.6.0](docs/releases/v0.6.0.md) introduced opt-in experimental Social, customizable home layouts, five new themes and a color editor.
 
 Horizon is experimental and requires a Microsoft account owning Java Edition. Java mods do not run in Horizon. Native mods compile into the game; the first build downloads its tools and may take 20–30 minutes or longer and several GB. Compile only trusted sources. See [compatibility and verification limits](docs/HORIZON.md).
 

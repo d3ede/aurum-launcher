@@ -1,4 +1,10 @@
 export const homeEnglish: Record<string, string> = {
+  "Прогресс сохраняется, ожидание можно отменить.":
+    "Progress is preserved, and waiting can be cancelled.",
+  "При лимите CurseForge загрузка ждёт и повторяет запрос автоматически.":
+    "Downloads wait and retry automatically when CurseForge limits requests.",
+  "Установка модпаков": "Modpack installation",
+  "Загрузка сборок CurseForge": "CurseForge modpack downloads",
   "В следующем обновлении: импорт и установка модпаков ожидают снятия лимита CurseForge и продолжаются автоматически.":
     "Coming in the next update: modpack imports and installations wait for the CurseForge rate limit to reset and resume automatically.",
   "Друзья и оформление": "Friends and appearance",
