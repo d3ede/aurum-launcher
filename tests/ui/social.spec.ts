@@ -374,10 +374,10 @@ test("world pack review requires source trust before creating a separate instanc
   await expect(modal.getByText("mods/untrusted-<script>.jar")).toBeVisible();
   await expect(modal.locator("script")).toHaveCount(0);
   await expect(
-    modal.getByRole("button", { name: "Download and join" }),
+    modal.getByRole("button", { name: "Download and open" }),
   ).toBeDisabled();
   await modal.getByRole("checkbox").check();
-  await modal.getByRole("button", { name: "Download and join" }).click();
+  await modal.getByRole("button", { name: "Download and open" }).click();
   await expect
     .poll(() =>
       page.evaluate(
@@ -729,7 +729,7 @@ for (const theme of ["light", "dark"]) {
       modal.getByRole("button", { name: "Turn off Social", exact: true }),
     ).toHaveCount(0);
     await modal
-      .getByRole("button", { name: "Download and join", exact: true })
+      .getByRole("button", { name: "Download and open", exact: true })
       .click();
     await expect(
       modal.getByRole("button", { name: "Please wait…", exact: true }),
@@ -749,6 +749,11 @@ for (const theme of ["light", "dark"]) {
       path: `.test-data/screenshots/social-receive-progress-${theme}.png`,
     });
     await page.evaluate(() => (window as any).finishPrepare());
+    await expect(
+      modal.getByText("Minecraft is open", { exact: true }),
+    ).toBeVisible();
+    await expect(modal.getByText(/Open Multiplayer and choose/)).toBeVisible();
+    await modal.getByRole("button", { name: "Got it", exact: true }).click();
     await expect(modal).toHaveCount(0);
     const calls = await page.evaluate(() =>
       (window as any).socialRequests.filter(
@@ -773,7 +778,7 @@ test("an ongoing unrelated download disables joining and a route error stays vis
     w.socialJoinFail = true;
   });
   const modal = page.getByRole("dialog");
-  await modal.getByRole("button", { name: "Join world", exact: true }).click();
+  await modal.getByRole("button", { name: "Open Minecraft", exact: true }).click();
   await expect(
     modal.getByRole("button", { name: "Please wait…", exact: true }),
   ).toBeDisabled();
@@ -782,7 +787,7 @@ test("an ongoing unrelated download disables joining and a route error stays vis
     "World connection timed out",
   );
   await expect(
-    modal.getByRole("button", { name: "Join world", exact: true }),
+    modal.getByRole("button", { name: "Open Minecraft", exact: true }),
   ).toBeEnabled();
 });
 test("a stopped manifest transfer shows an error instead of silently removing the invite", async ({
@@ -861,7 +866,7 @@ test("a stopped manifest transfer shows an error instead of silently removing th
     "Instance transfer stalled",
   );
   await expect(
-    modal.getByRole("button", { name: "Download and join", exact: true }),
+    modal.getByRole("button", { name: "Download and open", exact: true }),
   ).toBeDisabled();
 });
 test("a player can be added inside the existing invitation", async ({
@@ -875,7 +880,7 @@ test("a player can be added inside the existing invitation", async ({
   });
   const modal = page.getByRole("dialog");
   await expect(
-    modal.getByRole("button", { name: "Download and join", exact: true }),
+    modal.getByRole("button", { name: "Download and open", exact: true }),
   ).toBeDisabled();
   await modal
     .getByRole("textbox", { name: "Player name", exact: true })
@@ -885,7 +890,7 @@ test("a player can be added inside the existing invitation", async ({
     modal.getByRole("combobox", { name: "Player", exact: true }),
   ).toContainText("Player2");
   await expect(
-    modal.getByRole("button", { name: "Download and join", exact: true }),
+    modal.getByRole("button", { name: "Download and open", exact: true }),
   ).toBeEnabled();
 });
 test("sent invitations show who is waiting and use theme surfaces", async ({

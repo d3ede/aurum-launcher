@@ -29,6 +29,7 @@ export function SocialIncomingInvite({
   >("idle");
   const [error, setError] = useState(""),
     [newName, setNewName] = useState("");
+  const [lanReady, setLanReady] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const planned = useRef(false),
     mounted = useRef(true);
@@ -163,7 +164,7 @@ export function SocialIncomingInvite({
             throw e;
           }
         });
-        if (done) onClose();
+        if (done) setLanReady(true);
       } finally {
         if (mounted.current) setStage("idle");
       }
@@ -180,213 +181,243 @@ export function SocialIncomingInvite({
         world={invite.offer.world}
       />
       <div className="social-invite-body">
-        <Field label={t("@social.profile")}>
-          <Select
-            value={choice}
-            disabled={pending || busy}
-            onValueChange={(value) => {
-              setSelected(value);
-              setError("");
-            }}
-            aria-label={t("@social.profile")}
-            options={[
-              ...compatible.map((p) => ({ value: p.id, label: p.name })),
-              { value: "new", label: t("@social.flow.new") },
-            ]}
-          />
-        </Field>
-        {data.accounts.length > 0 ? (
-          <Field label={t("@social.flow.player")}>
-            <Select
-              value={account}
-              disabled={pending || busy}
-              onValueChange={(id) =>
-                void act(() => rpc("selectAccount", { id }))
-              }
-              aria-label={t("@social.flow.player")}
-              options={data.accounts.map((a) => ({
-                value: a.id,
-                label: a.name,
-              }))}
-            />
-          </Field>
+        {lanReady ? (
+          <>
+            <div className="social-flow-status" role="status">
+              <Check size={22} />
+              <div>
+                <strong>{t("@social.lan.open")}</strong>
+                <span>
+                  {t("@social.lan.pick", { name: invite.offer.world.name })}
+                </span>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="button social-positive" onClick={onClose}>
+                {t("@social.lan.done")}
+              </button>
+            </div>
+          </>
         ) : (
-          <div className="social-player-add">
-            <Field label={t("@social.flow.nickname")}>
-              <input
-                value={newName}
-                maxLength={16}
+          <>
+            <Field label={t("@social.profile")}>
+              <Select
+                value={choice}
                 disabled={pending || busy}
-                onChange={(e) => setNewName(e.target.value)}
+                onValueChange={(value) => {
+                  setSelected(value);
+                  setError("");
+                }}
+                aria-label={t("@social.profile")}
+                options={[
+                  ...compatible.map((p) => ({ value: p.id, label: p.name })),
+                  { value: "new", label: t("@social.flow.new") },
+                ]}
               />
             </Field>
-            <button
-              className="button secondary"
-              disabled={pending || busy || !newName.trim()}
-              onClick={() =>
-                void act(async () => {
-                  const added = await rpc("addOffline", {
-                    name: newName.trim(),
-                  });
-                  await rpc("selectAccount", { id: added.id });
-                  await refresh();
-                })
-              }
-            >
-              <Plus size={16} />
-              {t("@social.flow.add.player")}
-            </button>
-            <button
-              className="text-button"
-              disabled={pending || busy}
-              onClick={() => {
-                onClose();
-                void startMicrosoftLogin();
-              }}
-            >
-              Microsoft
-            </button>
-          </div>
-        )}
-        {needsPlan && review && review.plan.items.length > 0 && (
-          <>
-            <details className="social-contents">
-              <summary>
-                {t("@social.flow.files", {
-                  count: review.plan.items.length,
-                  size: socialSize(
-                    review.plan.items.reduce((n, f) => n + f.bytes, 0),
-                  ),
-                })}
-              </summary>
-              <div className="social-plan-files">
-                {review.plan.items.map((f) => (
-                  <div key={f.path}>
-                    <code>{f.path}</code>
-                    <small>
-                      {f.source?.provider ||
-                        t(f.config ? "@social.configs" : "@social.manual")}
-                    </small>
-                  </div>
-                ))}
+            {data.accounts.length > 0 ? (
+              <Field label={t("@social.flow.player")}>
+                <Select
+                  value={account}
+                  disabled={pending || busy}
+                  onValueChange={(id) =>
+                    void act(() => rpc("selectAccount", { id }))
+                  }
+                  aria-label={t("@social.flow.player")}
+                  options={data.accounts.map((a) => ({
+                    value: a.id,
+                    label: a.name,
+                  }))}
+                />
+              </Field>
+            ) : (
+              <div className="social-player-add">
+                <Field label={t("@social.flow.nickname")}>
+                  <input
+                    value={newName}
+                    maxLength={16}
+                    disabled={pending || busy}
+                    onChange={(e) => setNewName(e.target.value)}
+                  />
+                </Field>
+                <button
+                  className="button secondary"
+                  disabled={pending || busy || !newName.trim()}
+                  onClick={() =>
+                    void act(async () => {
+                      const added = await rpc("addOffline", {
+                        name: newName.trim(),
+                      });
+                      await rpc("selectAccount", { id: added.id });
+                      await refresh();
+                    })
+                  }
+                >
+                  <Plus size={16} />
+                  {t("@social.flow.add.player")}
+                </button>
+                <button
+                  className="text-button"
+                  disabled={pending || busy}
+                  onClick={() => {
+                    onClose();
+                    void startMicrosoftLogin();
+                  }}
+                >
+                  Microsoft
+                </button>
               </div>
-            </details>
-            <SocialCheck
-              checked={accepted}
-              disabled={pending || busy}
-              onChange={setAccepted}
-              danger
-            >
-              {t("@social.flow.trust")}
-            </SocialCheck>
+            )}
+            {needsPlan && review && review.plan.items.length > 0 && (
+              <>
+                <details className="social-contents">
+                  <summary>
+                    {t("@social.flow.files", {
+                      count: review.plan.items.length,
+                      size: socialSize(
+                        review.plan.items.reduce((n, f) => n + f.bytes, 0),
+                      ),
+                    })}
+                  </summary>
+                  <div className="social-plan-files">
+                    {review.plan.items.map((f) => (
+                      <div key={f.path}>
+                        <code>{f.path}</code>
+                        <small>
+                          {f.source?.provider ||
+                            t(f.config ? "@social.configs" : "@social.manual")}
+                        </small>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+                <SocialCheck
+                  checked={accepted}
+                  disabled={pending || busy}
+                  onChange={setAccepted}
+                  danger
+                >
+                  {t("@social.flow.trust")}
+                </SocialCheck>
+              </>
+            )}
+            {needsPlan && review && !review.plan.items.length && (
+              <p className="social-invite-note">{t("@social.flow.vanilla")}</p>
+            )}
+            {(waiting || pending || busy) && (
+              <div className="social-flow-status" role="status">
+                <LoaderCircle size={20} className="spin" />
+                <div>
+                  <strong>
+                    {!pending && !waiting && busy
+                      ? t("@social.flow.other")
+                      : label}
+                  </strong>
+                  {waiting ? (
+                    <span>
+                      {socialSize(invite.receivedBytes || 0)} /{" "}
+                      {socialSize(invite.offer.manifestBytes)}
+                    </span>
+                  ) : (
+                    pct !== null && (
+                      <>
+                        <progress
+                          value={progress!.done}
+                          max={progress!.total}
+                        />
+                        <span>{pct}%</span>
+                      </>
+                    )
+                  )}
+                </div>
+              </div>
+            )}
+            {active && (
+              <ol className="social-flow-steps">
+                {[
+                  "@social.flow.step.prepare",
+                  "@social.flow.step.connect",
+                  "@social.flow.step.play",
+                ].map((key, i) => (
+                  <li
+                    key={key}
+                    className={
+                      i < phase ? "done" : i === phase ? "current" : ""
+                    }
+                  >
+                    <span>{i < phase ? <Check size={12} /> : i + 1}</span>
+                    {t(key)}
+                  </li>
+                ))}
+              </ol>
+            )}
+            {(error || failed || missing || alreadyRunning) && (
+              <div className="social-flow-error" role="alert">
+                <AlertCircle size={18} />
+                <span>
+                  {error ||
+                    t(
+                      invite.error ||
+                        (failed
+                          ? "@social.flow.failed"
+                          : missing
+                            ? "@social.flow.missing"
+                            : "@social.flow.running"),
+                    )}
+                </span>
+              </div>
+            )}
+            {error && needsPlan && !review && (
+              <button
+                className="text-button"
+                disabled={busy || pending}
+                onClick={() => {
+                  planned.current = false;
+                  setError("");
+                  setAttempt((n) => n + 1);
+                }}
+              >
+                {t("@social.retry")}
+              </button>
+            )}
+            <div className="modal-actions">
+              <button
+                className="button secondary"
+                disabled={working && !active}
+                onClick={() => {
+                  if ((active || stage === "planning") && progress)
+                    void rpc("cancel", { operationId: progress.id }).then(
+                      () => {
+                        if (stage === "planning") onClose();
+                      },
+                    );
+                  else
+                    void act(() => rpc("social.dismissInvite", { id })).then(
+                      (ok) => {
+                        if (ok) onClose();
+                      },
+                    );
+                }}
+              >
+                {t(active ? "@social.cancel" : "@social.decline")}
+              </button>
+              <button
+                className="button social-positive"
+                disabled={!allowed}
+                onClick={join}
+              >
+                <Play size={16} />
+                {t(
+                  active
+                    ? "@social.flow.wait"
+                    : choice === "new" || !profile?.installedVersion
+                      ? "@social.flow.download.join"
+                      : "@social.join",
+                )}
+              </button>
+            </div>
           </>
         )}
-        {needsPlan && review && !review.plan.items.length && (
-          <p className="social-invite-note">{t("@social.flow.vanilla")}</p>
-        )}
-        {(waiting || pending || busy) && (
-          <div className="social-flow-status" role="status">
-            <LoaderCircle size={20} className="spin" />
-            <div>
-              <strong>
-                {!pending && !waiting && busy ? t("@social.flow.other") : label}
-              </strong>
-              {waiting ? (
-                <span>
-                  {socialSize(invite.receivedBytes || 0)} /{" "}
-                  {socialSize(invite.offer.manifestBytes)}
-                </span>
-              ) : (
-                pct !== null && (
-                  <>
-                    <progress value={progress!.done} max={progress!.total} />
-                    <span>{pct}%</span>
-                  </>
-                )
-              )}
-            </div>
-          </div>
-        )}
-        {active && (
-          <ol className="social-flow-steps">
-            {[
-              "@social.flow.step.prepare",
-              "@social.flow.step.connect",
-              "@social.flow.step.play",
-            ].map((key, i) => (
-              <li
-                key={key}
-                className={i < phase ? "done" : i === phase ? "current" : ""}
-              >
-                <span>{i < phase ? <Check size={12} /> : i + 1}</span>
-                {t(key)}
-              </li>
-            ))}
-          </ol>
-        )}
-        {(error || failed || missing || alreadyRunning) && (
-          <div className="social-flow-error" role="alert">
-            <AlertCircle size={18} />
-            <span>
-              {error ||
-                t(
-                  invite.error ||
-                    (failed
-                      ? "@social.flow.failed"
-                      : missing
-                        ? "@social.flow.missing"
-                        : "@social.flow.running"),
-                )}
-            </span>
-          </div>
-        )}
-        {error && needsPlan && !review && (
-          <button
-            className="text-button"
-            disabled={busy || pending}
-            onClick={() => {
-              planned.current = false;
-              setError("");
-              setAttempt((n) => n + 1);
-            }}
-          >
-            {t("@social.retry")}
-          </button>
-        )}
-        <div className="modal-actions">
-          <button
-            className="button secondary"
-            disabled={working && !active}
-            onClick={() => {
-              if ((active || stage === "planning") && progress)
-                void rpc("cancel", { operationId: progress.id }).then(() => {
-                  if (stage === "planning") onClose();
-                });
-              else
-                void act(() => rpc("social.dismissInvite", { id })).then(
-                  (ok) => {
-                    if (ok) onClose();
-                  },
-                );
-            }}
-          >
-            {t(active ? "@social.cancel" : "@social.decline")}
-          </button>
-          <button
-            className="button social-positive"
-            disabled={!allowed}
-            onClick={join}
-          >
-            <Play size={16} />
-            {t(
-              active
-                ? "@social.flow.wait"
-                : choice === "new" || !profile?.installedVersion
-                  ? "@social.flow.download.join"
-                  : "@social.join",
-            )}
-          </button>
-        </div>
       </div>
     </Modal>
   );

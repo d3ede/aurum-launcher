@@ -4,6 +4,7 @@ pub mod discovery;
 #[cfg(windows)]
 pub mod firewall;
 pub mod identity;
+pub mod lan;
 #[cfg(windows)]
 pub mod listeners;
 pub mod manifest;

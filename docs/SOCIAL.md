@@ -59,6 +59,14 @@ Downloads can finish before the direct route is tested: this is preparation,
 not evidence that NAT traversal succeeded. A failed route leaves a visible
 error and can be retried; it does not claim that Minecraft was launched.
 
+For a Social world, Minecraft now starts normally. Open **Multiplayer** and
+choose **Aurum: world name** in its LAN list; leave Aurum running. Vanilla Quick
+Play constructs an ordinary-server entry, which differs from its LAN login
+handling and can produce Invalid Session where joining the native LAN entry
+works. The broker advertises only its approved IPv4 loopback listener by unicast
+to 127.0.0.1:4445. It does not advertise the world onto a physical network or
+modify Minecraft classes, authentication services, account tokens or server mode.
+
 Manifest fragments are requested by offset and retried. Identical retransmits
 are idempotent; changed bytes, metadata or hashes are rejected. After 45 seconds
 without progress the receiver keeps an explicit failure state. Cancellation by

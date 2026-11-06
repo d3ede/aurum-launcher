@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Мир друга появляется в LAN-списке Minecraft.":
+    "Your friend's world appears in Minecraft's LAN list.",
   "Приглашения с аватарками и прогрессом загрузки.":
     "Invitations with avatars and download progress.",
   "Из приглашения можно создать сборку или игрока. Отправитель видит ожидание друга и подключение.":

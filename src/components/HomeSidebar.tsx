@@ -92,7 +92,7 @@ export function HomeSidebar() {
                 </span>
               </div>
               <p>{t("Пять новых тем и плоские кнопки запуска.")}</p>
-              <p>{t("Приглашения с аватарками и прогрессом загрузки.")}</p>
+              <p>{t("Мир друга появляется в LAN-списке Minecraft.")}</p>
             </article>
             {releaseNotes.slice(0, 3).map((release) => (
               <article className="home-news-version" key={release.version}>

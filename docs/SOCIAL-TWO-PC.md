@@ -88,7 +88,8 @@ Minecraft requirements. The echo node must be stopped before enabling Social.
 - Enable Social explicitly on both sides; verify full IDs and complete the
   friend request. First test with empty Java Vanilla instances.
 - A starts a real world and opens it to LAN. Invite B from Friends. Verify the
-  displayed live LAN port, join with a compatible instance, play/move/chat in
+  displayed live LAN port, launch a compatible instance and select **Aurum: world
+  name** under Minecraft's native LAN list. Then play/move/chat in
   Minecraft itself, leave and reconnect. Keep records from both computers.
 - Test invite-with-instance using Fabric and a small known Modrinth mod, then
   the approved Forge/NeoForge/Quilt paths and one permitted CurseForge file.

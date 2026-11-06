@@ -658,7 +658,12 @@ impl Engine {
     }
     #[cfg(windows)]
     pub(crate) async fn launch_social_server(&self,id:&str,address:&str,task:&Task)->Result<()>{
-        self.launch_target(id,Some(crate::servers::ServerAddress::parse(address)?),false,Some(task.cancel.clone())).await
+        let target=crate::servers::ServerAddress::parse(address)?;
+        let ip:std::net::IpAddr=target.host.parse()?;if !ip.is_loopback(){bail!("Social target must be the local bridge");}
+        // Quick Play constructs ServerData.Type.OTHER. Social is an opened LAN
+        // world, so keep Minecraft's native LAN selection and login semantics.
+        // The broker advertises the approved bridge to the local LAN list.
+        self.launch_target(id,None,false,Some(task.cancel.clone())).await
     }
     pub async fn launch_without_horizon_mods(&self, id: &str, server: Option<&str>) -> Result<()> {
         let server = server

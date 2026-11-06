@@ -191,6 +191,36 @@ Social rerun passed 17/17. Catalog, Microsoft login and home cases passed in the
 targeted run. UI fixtures do not count as network, actual Minecraft launch or
 two-computer evidence. Remote gameplay and OS-toast presentation remain unverified.
 
+## Native LAN login correction (2026-11-06)
+
+The user reported Invalid Session through Social, then successful entry from the
+same running client by selecting the Radmin-discovered LAN world. Inspection of
+the installed Minecraft 26.3 bytecode confirmed that QuickPlay constructs
+`ServerData.Type.OTHER`; `ClientHandshakePacketListenerImpl` handles authentication
+failure differently when `ServerData.isLan()` is true. Saved server NBT does not
+persist a LAN type, so writing a normal saved server cannot fix that distinction.
+
+Social now launches Minecraft without ordinary-server QuickPlay arguments. The
+approved loopback bridge announces itself only to 127.0.0.1 UDP 4445, and the user
+selects `Aurum: world name` in the native LAN list. No game class, server mode,
+session token, licensing check or remote address is changed. Announcements stop
+when the guest bridge is dropped; no LAN broadcast or AppContainer exemption is
+installed. Names cannot inject LAN packet delimiters.
+
+`scripts/probe-minecraft-lan.ps1` compiled a small harness against the actual
+installed 26.3 client and its existing libraries. Its real
+`LanServerDetection.LanServerDetector` received the broker's localhost packet;
+the actual `ServerData` constructed for that LAN entry returned `isLan() == true`.
+The first harness run needed Minecraft's version bootstrap; after adding
+`SharedConstants.tryDetectVersion()`, it passed. The concurrent real AppContainer
+friend/fixture lab also passed. This proves native discovery and entry semantics,
+not a completed remote Minecraft login or gameplay session.
+
+The full all-feature workspace tests, warnings-denied Clippy, frontend build and
+27 unit tests passed. All 17 Social UI cases passed, including the retained LAN
+instructions after starting Minecraft. Retest actual login on both computers;
+the status remains NOT READY.
+
 ## Outstanding gates
 
 Not run: two physical computers on separate networks; direct NAT traversal and

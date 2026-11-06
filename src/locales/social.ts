@@ -1,4 +1,8 @@
 export const socialEnglish: Record<string, string> = {
+  "@social.lan.open": "Minecraft is open",
+  "@social.lan.pick":
+    "Open Multiplayer and choose “Aurum: {{name}}” under LAN worlds. Keep Aurum open.",
+  "@social.lan.done": "Got it",
   "@social.flow.title": "World invitation",
   "@social.flow.new": "Create a matching instance",
   "@social.flow.player": "Player",
@@ -18,7 +22,7 @@ export const socialEnglish: Record<string, string> = {
   "@social.flow.running":
     "This instance is already running. Close it or choose another.",
   "@social.flow.wait": "Please wait…",
-  "@social.flow.download.join": "Download and join",
+  "@social.flow.download.join": "Download and open",
   "@social.flow.step.prepare": "Minecraft",
   "@social.flow.step.connect": "Connection",
   "@social.flow.step.play": "Play",
@@ -116,7 +120,7 @@ export const socialEnglish: Record<string, string> = {
     "Choose a compatible local profile to join the world.",
   "@social.create.profile": "Create a compatible profile",
   "@social.install.join": "Install and join",
-  "@social.join": "Join world",
+  "@social.join": "Open Minecraft",
   "@social.invitations": "World invitations",
   "@social.title": "Friends",
   "@social.subtitle": "Invite friends and play together.",
@@ -181,6 +185,10 @@ export const socialEnglish: Record<string, string> = {
   "@social.network": "Configure network",
 };
 export const socialRussian: Record<string, string> = {
+  "@social.lan.open": "Minecraft открыт",
+  "@social.lan.pick":
+    "Откройте «Сетевая игра» и выберите LAN-мир «Aurum: {{name}}». Aurum оставьте открытым.",
+  "@social.lan.done": "Понятно",
   "Your friend closed this world":
     "Друг закрыл мир. Попросите его открыть мир для сети снова.",
   "Instance contents failed verification":
@@ -205,7 +213,7 @@ export const socialRussian: Record<string, string> = {
   "@social.flow.running":
     "Эта сборка уже запущена. Закройте её или выберите другую.",
   "@social.flow.wait": "Подождите…",
-  "@social.flow.download.join": "Скачать и войти",
+  "@social.flow.download.join": "Скачать и открыть",
   "@social.flow.step.prepare": "Minecraft",
   "@social.flow.step.connect": "Подключение",
   "@social.flow.step.play": "Игра",
@@ -320,7 +328,7 @@ export const socialRussian: Record<string, string> = {
     "Выберите совместимую локальную сборку для подключения к миру.",
   "@social.create.profile": "Создать совместимую сборку",
   "@social.install.join": "Установить и подключиться",
-  "@social.join": "Войти в мир",
+  "@social.join": "Открыть Minecraft",
   "@social.invitations": "Приглашения в мир",
   "@social.title": "Друзья",
   "@social.subtitle": "Приглашайте друзей и играйте вместе.",

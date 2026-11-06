@@ -766,6 +766,14 @@ fn friends(root: &Path, worker: &Path) -> Result<()> {
             .into_iter()
             .find_map(|i| i.join_address)
             .context("Missing local bridge")?;
+        if std::env::args().any(|arg| arg == "--lan-discovery") {
+            report(
+                "Loopback LAN bridge available to actual Minecraft detector",
+                "WAIT",
+                json!({"address":target,"minecraftWorldProof":false}),
+            );
+            std::thread::sleep(Duration::from_secs(8));
+        }
         let mut tcp = std::net::TcpStream::connect(target)?;
         tcp.set_read_timeout(Some(Duration::from_secs(10)))?;
         let payload = *b"Aurum direct QUIC fixture";

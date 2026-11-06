@@ -26,6 +26,7 @@ struct Guest {
     listener: Option<TcpListener>,
     available: VecDeque<u64>,
     waiting: VecDeque<TcpStream>,
+    advertisement: Option<crate::lan::Advertisement>,
 }
 pub(super) struct GameState {
     pub local: GameContact,
@@ -525,6 +526,7 @@ impl Actor {
                     listener: None,
                     available: VecDeque::new(),
                     waiting: VecDeque::new(),
+                    advertisement: None,
                 });
                 self.game_dial()?;
             }
@@ -690,6 +692,21 @@ impl Actor {
                     let listener = TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))?;
                     listener.set_nonblocking(true)?;
                     let address = listener.local_addr()?.to_string();
+                    let title = self
+                        .live
+                        .lock()
+                        .ok()
+                        .and_then(|l| {
+                            l.invitations
+                                .iter()
+                                .find(|i| i.offer.id == guest.id)
+                                .map(|i| i.offer.world.name.clone())
+                        })
+                        .unwrap_or_else(|| "Minecraft".into());
+                    guest.advertisement = Some(crate::lan::Advertisement::new(
+                        listener.local_addr()?,
+                        &title,
+                    )?);
                     let id = guest.id.clone();
                     guest.listener = Some(listener);
                     if let Ok(mut live) = self.live.lock() {
@@ -825,6 +842,9 @@ impl Actor {
         }
         self.update_expired_invites();
         if let Some(guest) = self.game.guest.as_mut() {
+            if let Some(advertisement) = &mut guest.advertisement {
+                advertisement.tick()?;
+            }
             if let Some(listener) = &guest.listener {
                 if let Ok((tcp, _)) = listener.accept() {
                     tcp.set_nonblocking(true)?;
