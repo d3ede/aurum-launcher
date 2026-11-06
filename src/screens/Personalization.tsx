@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -8,6 +14,9 @@ import {
   House,
   ImagePlus,
   LayoutTemplate,
+  Sun,
+  Moon,
+  Monitor,
   Palette,
   Pencil,
   Play,
@@ -33,8 +42,13 @@ import {
   readPersonalFile,
   type CustomTheme,
   type HomeBlock,
-  type ThemePalette,
 } from "../lib/personalization";
+
+import {
+  SettingsPageHeading,
+  scrollSettingsToTop,
+} from "../components/SettingsPageHeading";
+import { ThemeEditor } from "./ThemeEditor";
 
 const blocks = {
   launch: { label: "Быстрый запуск", Icon: Play },
@@ -416,23 +430,14 @@ export function HomeSettings() {
   );
 }
 
-const paletteLabels: Record<keyof ThemePalette, string> = {
-  bg: "Фон страницы",
-  surface: "Карточки",
-  sidebar: "Боковая панель",
-  text: "Основной текст",
-  secondary: "Вторичный текст",
-  border: "Границы",
-  accent: "Акцент",
-  accentInk: "Текст акцента",
-};
 export function AppearanceSettings() {
-  const { data, saveSettings, busy, notify } = useApp();
+  const { data, saveSettings, busy, notify, openSettings } = useApp();
   const [draft, setDraft] = useState(
     () => preferences(data.settings).appearance,
   );
   const [base, setBase] = useState(data.settings.theme);
   const [editor, setEditor] = useState<CustomTheme | null>(null);
+  useLayoutEffect(scrollSettingsToTop, [!!editor]);
   const [reading, setReading] = useState(false);
   const saved = useRef(data.settings);
   saved.current = data.settings;
@@ -494,368 +499,343 @@ export function AppearanceSettings() {
           },
     });
   };
+  if (editor)
+    return (
+      <ThemeEditor
+        theme={editor}
+        isNew={!draft.themes.some((item) => item.id === editor.id)}
+        busy={busy}
+        onChange={setEditor}
+        onBack={() => setEditor(null)}
+        onSave={async () => {
+          const theme = { ...editor, name: editor.name.trim() };
+          if (!theme.name) return;
+          const appearance = {
+            ...draft,
+            themeId: theme.id,
+            themes: [...draft.themes.filter((v) => v.id !== theme.id), theme],
+          };
+          if (
+            await saveSettings({
+              ...data.settings,
+              theme: theme.base,
+              personalization: { ...preferences(data.settings), appearance },
+            })
+          ) {
+            setDraft(appearance);
+            setBase(theme.base);
+            setEditor(null);
+          }
+        }}
+      />
+    );
   return (
-    <form
-      className="settings-form customization-form"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        await saveSettings({
-          ...data.settings,
-          theme: base,
-          personalization: { ...preferences(data.settings), appearance: draft },
-        });
-      }}
-    >
-      <section className="settings-section">
-        <Intro icon={<Palette size={22} />} title="Настроение лаунчера">
-          {t(
-            "Выберите готовую палитру или создайте свою. Изменения видны сразу.",
-          )}
-        </Intro>
-        <div className="appearance-theme-grid">
-          {(
-            [
-              { id: "light", name: "Тёплый свет", base: "light" },
-              { id: "dark", name: "Тихий вечер", base: "dark" },
-              { id: "system", name: "Системная тема", base: "system" },
-            ] as const
-          ).map((item) => (
-            <button
-              type="button"
-              key={item.id}
-              className={`theme-option ${item.id} ${draft.themeId === item.id ? "selected" : ""}`}
-              aria-pressed={draft.themeId === item.id}
-              onClick={() => choose(item.id, item.base)}
-            >
-              <div className="theme-mini">
-                <span />
-                <div>
-                  <i />
-                  <i />
-                  <i />
-                </div>
-              </div>
-              <span>
-                {t(item.name)}
-                {draft.themeId === item.id && <Check size={15} />}
-              </span>
-            </button>
-          ))}
-          {custom.map((item) => (
-            <div className="custom-theme-card" key={item.id}>
+    <div className="settings-page" data-settings-page="appearance">
+      <SettingsPageHeading
+        title="Внешний вид"
+        description="Темы, свои цвета и шрифт"
+        onBack={() => openSettings("general")}
+      />
+      <form
+        className="settings-form customization-form"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          await saveSettings({
+            ...data.settings,
+            theme: base,
+            personalization: {
+              ...preferences(data.settings),
+              appearance: draft,
+            },
+          });
+        }}
+      >
+        <section className="settings-section">
+          <Intro icon={<Palette size={22} />} title="Настроение лаунчера">
+            {t(
+              "Выберите готовую палитру или создайте свою. Изменения видны сразу.",
+            )}
+          </Intro>
+          <div className="appearance-theme-grid">
+            {(
+              [
+                { id: "light", name: "Тёплый свет", base: "light" },
+                { id: "dark", name: "Тихий вечер", base: "dark" },
+                { id: "system", name: "Системная тема", base: "system" },
+              ] as const
+            ).map((item) => (
               <button
                 type="button"
-                className={`theme-option ${draft.themeId === item.id ? "selected" : ""}`}
+                key={item.id}
+                className={`theme-option ${item.id} ${draft.themeId === item.id ? "selected" : ""}`}
                 aria-pressed={draft.themeId === item.id}
+                aria-label={t(item.name)}
+                aria-describedby={`theme-kind-${item.id}`}
                 onClick={() => choose(item.id, item.base)}
               >
-                <div
-                  className="palette-mini"
-                  style={{
-                    background: item.colors.bg,
-                    borderColor: item.colors.border,
-                  }}
-                >
-                  <span style={{ background: item.colors.sidebar }} />
+                <div className="theme-mini">
+                  <span />
                   <div>
-                    <b style={{ background: item.colors.accent }} />
-                    <div>
-                      {[0, 1, 2].map((i) => (
-                        <i
-                          key={i}
-                          style={{
-                            background: item.colors.surface,
-                            borderColor: item.colors.border,
-                          }}
-                        />
-                      ))}
-                    </div>
+                    <i />
+                    <i />
+                    <i />
                   </div>
                 </div>
                 <span>
-                  {builtInThemes.some((v) => v.id === item.id)
-                    ? t(item.name)
-                    : item.name}
-                  {draft.themeId === item.id && <Check size={15} />}
+                  {item.base === "light" ? (
+                    <Sun size={16} />
+                  ) : item.base === "dark" ? (
+                    <Moon size={16} />
+                  ) : (
+                    <Monitor size={16} />
+                  )}
+                  <span className="theme-card-name">
+                    {t(item.name)}
+                    <small id={`theme-kind-${item.id}`}>
+                      {t(
+                        item.base === "light"
+                          ? "Светлая"
+                          : item.base === "dark"
+                            ? "Тёмная"
+                            : "Автоматически",
+                      )}
+                    </small>
+                  </span>
+                  {draft.themeId === item.id && (
+                    <Check className="theme-selected-check" size={15} />
+                  )}
                 </span>
               </button>
-              {draft.themes.some((v) => v.id === item.id) && (
-                <div className="custom-theme-actions">
-                  <button
-                    className="text-button"
-                    type="button"
-                    aria-label={t("Изменить тему {{name}}", {
-                      name: item.name,
-                    })}
-                    onClick={() => setEditor(structuredClone(item))}
-                  >
-                    <Pencil size={13} />
-                    {t("Изменить")}
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-button danger"
-                    aria-label={t("Удалить тему {{name}}", { name: item.name })}
-                    onClick={() => {
-                      setDraft((old) => ({
-                        ...old,
-                        themes: old.themes.filter((v) => v.id !== item.id),
-                        themeId:
-                          old.themeId === item.id ? "light" : old.themeId,
-                      }));
-                      if (draft.themeId === item.id) setBase("light");
-                      if (editor?.id === item.id) setEditor(null);
+            ))}
+            {custom.map((item) => (
+              <div className="custom-theme-card" key={item.id}>
+                <button
+                  type="button"
+                  className={`theme-option ${draft.themeId === item.id ? "selected" : ""}`}
+                  aria-pressed={draft.themeId === item.id}
+                  aria-label={
+                    builtInThemes.some((v) => v.id === item.id)
+                      ? t(item.name)
+                      : item.name
+                  }
+                  aria-describedby={`theme-kind-${item.id}`}
+                  onClick={() => choose(item.id, item.base)}
+                >
+                  <div
+                    className="palette-mini"
+                    style={{
+                      background: item.colors.bg,
+                      borderColor: item.colors.border,
                     }}
                   >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-          <button
-            type="button"
-            className="create-theme-card"
-            onClick={createTheme}
-          >
-            <Plus size={38} strokeWidth={1.4} />
-            <b>{t("Создать свою тему")}</b>
-            <small>{t("Ваши цвета и название")}</small>
-          </button>
-        </div>
-      </section>
-      {editor && (
-        <section className="settings-section theme-editor">
-          <Intro icon={<Pencil size={21} />} title="Редактор темы">
-            {t("Настройте цвета и сохраните тему в свою коллекцию.")}
-          </Intro>
-          <div className="form-grid">
-            <Field label={t("Название темы")}>
-              <input
-                aria-label={t("Название темы")}
-                maxLength={48}
-                value={editor.name}
-                onChange={(e) => setEditor({ ...editor, name: e.target.value })}
-              />
-            </Field>
-            <Field label={t("Основа темы")}>
-              <Select
-                aria-label={t("Основа темы")}
-                value={editor.base}
-                onValueChange={(v) =>
-                  setEditor({ ...editor, base: v as "light" | "dark" })
-                }
-                options={[
-                  { value: "light", label: t("Светлая") },
-                  { value: "dark", label: t("Тёмная") },
-                ]}
-              />
-            </Field>
-          </div>
-          <div className="theme-color-grid">
-            {(Object.keys(paletteLabels) as (keyof ThemePalette)[]).map(
-              (key) => (
-                <label className="theme-color-field" key={key}>
-                  <input
-                    type="color"
-                    aria-label={t(paletteLabels[key])}
-                    value={editor.colors[key]}
-                    onChange={(e) =>
-                      setEditor({
-                        ...editor,
-                        colors: { ...editor.colors, [key]: e.target.value },
-                      })
-                    }
-                  />
+                    <span style={{ background: item.colors.sidebar }} />
+                    <div>
+                      <b style={{ background: item.colors.accent }} />
+                      <div>
+                        {[0, 1, 2].map((i) => (
+                          <i
+                            key={i}
+                            style={{
+                              background: item.colors.surface,
+                              borderColor: item.colors.border,
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                   <span>
-                    {t(paletteLabels[key])}
-                    <small>{editor.colors[key]}</small>
+                    {item.base === "light" ? (
+                      <Sun size={16} />
+                    ) : (
+                      <Moon size={16} />
+                    )}
+                    <span className="theme-card-name">
+                      {builtInThemes.some((v) => v.id === item.id)
+                        ? t(item.name)
+                        : item.name}
+                      <small id={`theme-kind-${item.id}`}>
+                        {t(item.base === "light" ? "Светлая" : "Тёмная")}
+                      </small>
+                    </span>
+                    {draft.themeId === item.id && (
+                      <Check className="theme-selected-check" size={15} />
+                    )}
                   </span>
-                </label>
-              ),
-            )}
-          </div>
-          <div className="theme-live-preview">
-            <span>
-              <Sparkles size={17} />
-              {t("Так будет выглядеть ваш Aurum")}
-            </span>
-            <h3>{editor.name || t("Моя тема")}</h3>
-            <p>{t("Сборки, серверы и любимые миры — в ваших цветах.")}</p>
-            <span className="button primary">
-              <Play size={16} />
-              {t("Играть")}
-            </span>
-            <span className="preview-secondary">{t("Настройки")}</span>
-          </div>
-          <div className="button-row">
+                </button>
+                {draft.themes.some((v) => v.id === item.id) && (
+                  <div className="custom-theme-actions">
+                    <button
+                      className="text-button"
+                      type="button"
+                      aria-label={t("Изменить тему {{name}}", {
+                        name: item.name,
+                      })}
+                      onClick={() => setEditor(structuredClone(item))}
+                    >
+                      <Pencil size={13} />
+                      {t("Изменить")}
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-button danger"
+                      aria-label={t("Удалить тему {{name}}", {
+                        name: item.name,
+                      })}
+                      onClick={() => {
+                        setDraft((old) => ({
+                          ...old,
+                          themes: old.themes.filter((v) => v.id !== item.id),
+                          themeId:
+                            old.themeId === item.id ? "light" : old.themeId,
+                        }));
+                        if (draft.themeId === item.id) setBase("light");
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
             <button
               type="button"
-              className="button primary"
-              disabled={!editor.name.trim() || busy || reading}
-              onClick={async () => {
-                const theme = { ...editor, name: editor.name.trim() };
-                const appearance = {
-                  ...draft,
-                  themeId: theme.id,
-                  themes: [
-                    ...draft.themes.filter((v) => v.id !== theme.id),
-                    theme,
-                  ],
-                };
-                if (
-                  await saveSettings({
-                    ...data.settings,
-                    theme: theme.base,
-                    personalization: {
-                      ...preferences(data.settings),
-                      appearance,
-                    },
-                  })
-                ) {
-                  setDraft(appearance);
-                  setBase(theme.base);
-                  setEditor(null);
-                }
-              }}
+              className="create-theme-card"
+              onClick={createTheme}
             >
-              <Check size={16} />
-              {t("Сохранить тему")}
-            </button>
-            <button
-              type="button"
-              className="button secondary"
-              onClick={() => setEditor(null)}
-            >
-              {t("Отмена")}
+              <Plus size={38} strokeWidth={1.4} />
+              <b>{t("Создать свою тему")}</b>
+              <small>{t("Ваши цвета и название")}</small>
             </button>
           </div>
         </section>
-      )}
-      <section className="settings-section">
-        <Intro icon={<Type size={22} />} title="Шрифт интерфейса">
-          {t("Выберите установленный шрифт или загрузите свой файл.")}
-        </Intro>
-        <Field label={t("Шрифт интерфейса")}>
-          <Select
-            aria-label={t("Шрифт интерфейса")}
-            value={
-              [
-                "",
-                "Segoe UI",
-                "Arial",
-                "Georgia",
-                "Verdana",
-                "Consolas",
-              ].includes(draft.font)
-                ? draft.font
-                : "custom"
-            }
-            onValueChange={(v) =>
-              setDraft({
-                ...draft,
-                font: v === "custom" ? "Inter Variable" : v,
-                fontData: "",
-              })
-            }
-            options={[
-              { value: "", label: t("По умолчанию · Inter") },
-              ...["Segoe UI", "Arial", "Georgia", "Verdana", "Consolas"].map(
-                (font) => ({ value: font, label: font }),
-              ),
-              { value: "custom", label: t("Другой шрифт") },
-            ]}
-          />
-        </Field>
-        <Field
-          label={t("Название установленного шрифта")}
-          hint={t(
-            "Шрифт должен быть установлен на компьютере. Иначе используется Inter.",
-          )}
-        >
-          <input
-            aria-label={t("Название установленного шрифта")}
-            placeholder="Inter, Manrope, Nunito…"
-            value={draft.font}
-            onChange={(e) =>
-              setDraft({
-                ...draft,
-                font: e.target.value.slice(0, 100),
-                fontData: "",
-              })
-            }
-          />
-        </Field>
-        <div className="button-row">
-          <label className="button secondary file-button">
-            <Upload size={16} />
-            {t("Загрузить шрифт")}
-            <input
-              type="file"
-              aria-label={t("Загрузить шрифт")}
-              accept=".woff,.woff2,.ttf,.otf"
-              disabled={reading}
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                setReading(true);
-                try {
-                  const fontData = await readPersonalFile(file, "font");
-                  await new FontFace(
-                    "Aurum Font Check",
-                    `url(${JSON.stringify(fontData)})`,
-                  ).load();
-                  setDraft({ ...draft, font: file.name, fontData });
-                } catch {
-                  notify(
-                    t(
-                      "Не удалось загрузить шрифт. Выберите WOFF, WOFF2, TTF или OTF до 2 МБ.",
-                    ),
-                    true,
-                  );
-                } finally {
-                  setReading(false);
-                  e.target.value = "";
-                }
-              }}
+        <section className="settings-section">
+          <Intro icon={<Type size={22} />} title="Шрифт интерфейса">
+            {t("Выберите установленный шрифт или загрузите свой файл.")}
+          </Intro>
+          <Field label={t("Шрифт интерфейса")}>
+            <Select
+              aria-label={t("Шрифт интерфейса")}
+              value={
+                [
+                  "",
+                  "Segoe UI",
+                  "Arial",
+                  "Georgia",
+                  "Verdana",
+                  "Consolas",
+                ].includes(draft.font)
+                  ? draft.font
+                  : "custom"
+              }
+              onValueChange={(v) =>
+                setDraft({
+                  ...draft,
+                  font: v === "custom" ? "Inter Variable" : v,
+                  fontData: "",
+                })
+              }
+              options={[
+                { value: "", label: t("По умолчанию · Inter") },
+                ...["Segoe UI", "Arial", "Georgia", "Verdana", "Consolas"].map(
+                  (font) => ({ value: font, label: font }),
+                ),
+                { value: "custom", label: t("Другой шрифт") },
+              ]}
             />
-          </label>
-          {(draft.font || draft.fontData) && (
-            <button
-              type="button"
-              className="text-button"
-              onClick={() => setDraft({ ...draft, font: "", fontData: "" })}
-            >
-              {t("Шрифт по умолчанию")}
-            </button>
-          )}
+          </Field>
+          <Field
+            label={t("Название установленного шрифта")}
+            hint={t(
+              "Шрифт должен быть установлен на компьютере. Иначе используется Inter.",
+            )}
+          >
+            <input
+              aria-label={t("Название установленного шрифта")}
+              placeholder="Inter, Manrope, Nunito…"
+              value={draft.font}
+              onChange={(e) =>
+                setDraft({
+                  ...draft,
+                  font: e.target.value.slice(0, 100),
+                  fontData: "",
+                })
+              }
+            />
+          </Field>
+          <div className="button-row">
+            <label className="button secondary file-button">
+              <Upload size={16} />
+              {t("Загрузить шрифт")}
+              <input
+                type="file"
+                aria-label={t("Загрузить шрифт")}
+                accept=".woff,.woff2,.ttf,.otf"
+                disabled={reading}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setReading(true);
+                  try {
+                    const fontData = await readPersonalFile(file, "font");
+                    await new FontFace(
+                      "Aurum Font Check",
+                      `url(${JSON.stringify(fontData)})`,
+                    ).load();
+                    setDraft({ ...draft, font: file.name, fontData });
+                  } catch {
+                    notify(
+                      t(
+                        "Не удалось загрузить шрифт. Выберите WOFF, WOFF2, TTF или OTF до 2 МБ.",
+                      ),
+                      true,
+                    );
+                  } finally {
+                    setReading(false);
+                    e.target.value = "";
+                  }
+                }}
+              />
+            </label>
+            {(draft.font || draft.fontData) && (
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => setDraft({ ...draft, font: "", fontData: "" })}
+              >
+                {t("Шрифт по умолчанию")}
+              </button>
+            )}
+          </div>
+          <p
+            className="font-preview"
+            style={{
+              fontFamily: draft.fontData
+                ? undefined
+                : draft.font
+                  ? `${JSON.stringify(draft.font)}, sans-serif`
+                  : undefined,
+            }}
+          >
+            Aurum · {t("Ваш следующий мир начинается здесь.")}
+            <small>Аа Бб Вв · Aa Bb Cc · 0123456789</small>
+          </p>
+        </section>
+        <div className="settings-save">
+          <span>
+            {t(
+              "Сохраните, чтобы использовать оформление при следующем запуске.",
+            )}
+          </span>
+          <button
+            className="button primary"
+            disabled={busy || reading || !!editor}
+          >
+            <Save size={17} />
+            {t("Сохранить оформление")}
+          </button>
         </div>
-        <p
-          className="font-preview"
-          style={{
-            fontFamily: draft.fontData
-              ? undefined
-              : draft.font
-                ? `${JSON.stringify(draft.font)}, sans-serif`
-                : undefined,
-          }}
-        >
-          Aurum · {t("Ваш следующий мир начинается здесь.")}
-          <small>Аа Бб Вв · Aa Bb Cc · 0123456789</small>
-        </p>
-      </section>
-      <div className="settings-save">
-        <span>
-          {t("Сохраните, чтобы использовать оформление при следующем запуске.")}
-        </span>
-        <button
-          className="button primary"
-          disabled={busy || reading || !!editor}
-        >
-          <Save size={17} />
-          {t("Сохранить оформление")}
-        </button>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }

@@ -2,9 +2,8 @@ import { t, formatDecimal } from "../lib/i18n";
 import { LanguagePicker } from "../components/LanguagePicker";
 import { LauncherUpdateSettings } from "../components/LauncherUpdate";
 import { APP_VERSION } from "../lib/version";
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import {
-  SlidersHorizontal,
   House,
   Palette,
   ArrowRight,
@@ -20,73 +19,30 @@ import { rpc } from "../lib/api";
 import { Field } from "../components/ui";
 import type { Settings as SettingsType } from "../types";
 import { HomeSettings, AppearanceSettings } from "./Personalization";
+import {
+  SettingsPageHeading,
+  scrollSettingsToTop,
+} from "../components/SettingsPageHeading";
 
 export function Settings() {
   const { settingsTab, openSettings } = useApp();
+  useLayoutEffect(scrollSettingsToTop, [settingsTab]);
+  if (settingsTab === "appearance") return <AppearanceSettings />;
   return (
-    <>
-      <div className="page-heading">
-        <h1>{t("Настройки")}</h1>
-        <p>{t("Java, память, интерфейс и интеграции.")}</p>
-      </div>
-      <div
-        className="settings-tabs"
-        role="tablist"
-        aria-label={t("Разделы настроек")}
-      >
-        {(
-          [
-            ["general", "Основные", SlidersHorizontal],
-            ["home", "Главная страница", House],
-            ["appearance", "Внешний вид", Palette],
-          ] as const
-        ).map(([id, label, Icon]) => (
-          <button
-            key={id}
-            id={"settings-tab-" + id}
-            type="button"
-            role="tab"
-            tabIndex={settingsTab === id ? 0 : -1}
-            aria-selected={settingsTab === id}
-            aria-controls="settings-panel"
-            onClick={() => openSettings(id)}
-            onKeyDown={(event) => {
-              if (
-                !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)
-              )
-                return;
-              event.preventDefault();
-              const tabs = ["general", "home", "appearance"] as const;
-              const index = tabs.indexOf(id);
-              const next =
-                event.key === "Home"
-                  ? tabs[0]
-                  : event.key === "End"
-                    ? tabs[2]
-                    : tabs[(index + (event.key === "ArrowRight" ? 1 : 2)) % 3];
-              openSettings(next);
-              document.getElementById(`settings-tab-${next}`)?.focus();
-            }}
-          >
-            <Icon size={18} />
-            {t(label)}
-          </button>
-        ))}
-      </div>
-      <div
-        id="settings-panel"
-        role="tabpanel"
-        aria-labelledby={"settings-tab-" + settingsTab}
-      >
-        {settingsTab === "general" ? (
-          <GeneralSettings />
-        ) : settingsTab === "home" ? (
-          <HomeSettings />
-        ) : (
-          <AppearanceSettings />
-        )}
-      </div>
-    </>
+    <div className="settings-page" data-settings-page={settingsTab}>
+      <SettingsPageHeading
+        title={settingsTab === "home" ? "Главная страница" : "Настройки"}
+        description={
+          settingsTab === "home"
+            ? "Настройте содержимое и расположение блоков на главной."
+            : "Java, память, интерфейс и интеграции."
+        }
+        onBack={
+          settingsTab === "home" ? () => openSettings("general") : undefined
+        }
+      />
+      {settingsTab === "home" ? <HomeSettings /> : <GeneralSettings />}
+    </div>
   );
 }
 function GeneralSettings() {
@@ -113,17 +69,31 @@ function GeneralSettings() {
       >
         <LanguagePicker onChange={(language) => set("language", language)} />
         <LauncherUpdateSettings />
-        <div className="settings-destinations">
-          <button type="button" onClick={() => openSettings("home")}>
-            <House size={24} />
+        <div className="settings-destinations" aria-label={t("Персонализация")}>
+          <button
+            type="button"
+            className="settings-destination"
+            aria-label={t("Главная страница")}
+            onClick={() => openSettings("home")}
+          >
+            <span className="settings-destination-icon">
+              <House size={25} />
+            </span>
             <span>
               <b>{t("Главная страница")}</b>
               <small>{t("Блоки, быстрый запуск и свой фон")}</small>
             </span>
             <ArrowRight size={19} />
           </button>
-          <button type="button" onClick={() => openSettings("appearance")}>
-            <Palette size={24} />
+          <button
+            type="button"
+            className="settings-destination"
+            aria-label={t("Внешний вид")}
+            onClick={() => openSettings("appearance")}
+          >
+            <span className="settings-destination-icon">
+              <Palette size={25} />
+            </span>
             <span>
               <b>{t("Внешний вид")}</b>
               <small>{t("Темы, свои цвета и шрифт")}</small>
@@ -282,11 +252,6 @@ function GeneralSettings() {
               {t(" Открыть")}
             </button>
           </div>
-          <p className="dialog-note">
-            {t(
-              "Игровые файлы, Java и сборки занимают дополнительное место сверх размера самого приложения. Установочные архивы Java удаляются после проверки рабочей среды; игровые данные сохраняются.",
-            )}
-          </p>
           <div className="field">
             <button
               type="button"

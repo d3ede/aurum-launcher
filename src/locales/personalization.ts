@@ -1,4 +1,48 @@
 export const personalizationEnglish: Record<string, string> = {
+  "Весенний мох": "Spring Moss",
+  "Персиковый рассвет": "Peach Dawn",
+  "Лавандовая ночь": "Lavender Night",
+  "Назад к настройкам": "Back to settings",
+  "Назад к внешнему виду": "Back to appearance",
+  Персонализация: "Personalization",
+  "Настройте содержимое и расположение блоков на главной.":
+    "Choose the content and layout of your home page.",
+  "Выберите язык интерфейса.": "Choose your interface language.",
+  "Создание своей темы": "Create your own theme",
+  "Редактирование темы": "Edit theme",
+  "Название, цвета и предпросмотр — всё оформление в одном месте.":
+    "Name, colors and preview — your whole theme in one place.",
+  "Ваша тема": "Your theme",
+  "Дайте теме имя, чтобы найти её в коллекции.":
+    "Give your theme a name to find it in your collection.",
+  "Например, Полярная ночь": "For example, Polar Night",
+  "Фон и поверхности": "Backgrounds and surfaces",
+  "Основа оформления: страница, карточки и навигация.":
+    "The foundation: pages, cards and navigation.",
+  "Пространство за карточками": "The space behind cards",
+  "Панели, поля и окна": "Panels, inputs and windows",
+  "Меню и верхняя панель": "Navigation and title bar",
+  "Контуры и разделители": "Outlines and separators",
+  "Текст и читаемость": "Text and readability",
+  "Текст должен хорошо читаться на выбранном фоне.":
+    "Keep text readable against your chosen background.",
+  "Заголовки и названия": "Headings and names",
+  "Подписи и описания": "Labels and descriptions",
+  "Акцентные цвета": "Accent colors",
+  "Кнопки, выбранные элементы и детали интерфейса.":
+    "Buttons, selected items and interface details.",
+  "Основные кнопки и выделение": "Primary buttons and highlights",
+  "Значки и акцентные подписи": "Icons and accent labels",
+  "HEX: {{name}}": "HEX: {{name}}",
+  "Взять цвета готовой темы": "Start with an existing palette",
+  "Предпросмотр темы": "Theme preview",
+  "В реальном времени": "Live",
+  "Готова к запуску": "Ready to play",
+  "Выбранный элемент": "Selected item",
+  "Цвета также применяются к окну лаунчера. Сохраните тему, чтобы оставить их.":
+    "Colors also preview in the launcher window. Save your theme to keep them.",
+  "Вернуть исходные цвета": "Reset colors",
+
   Основные: "General",
   "Главная страница": "Home page",
   "Разделы настроек": "Settings sections",

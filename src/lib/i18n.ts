@@ -84,10 +84,7 @@ const stored =
   typeof localStorage !== "undefined"
     ? localStorage.getItem("aurum:language")
     : null;
-let preference =
-  stored && ["system", ...languages.map((l) => l.code)].includes(stored)
-    ? stored
-    : "system";
+let preference = resolveLanguage(stored || "system");
 let locale = resolveLanguage(preference);
 let dictionary: Dictionary = cache.get(locale) || english;
 let revision = 0;
@@ -129,11 +126,7 @@ function applyDocument() {
     languages.find((l) => l.code === locale)?.direction || "ltr";
 }
 export async function setLanguagePreference(value: string) {
-  const nextPreference = ["system", ...languages.map((l) => l.code)].includes(
-    value,
-  )
-    ? value
-    : "system";
+  const nextPreference = resolveLanguage(value);
   const nextLocale = resolveLanguage(nextPreference);
   const ticket = ++revision;
   let next = cache.get(nextLocale);
@@ -153,11 +146,6 @@ export async function setLanguagePreference(value: string) {
   emit();
 }
 applyDocument();
-if (typeof window !== "undefined")
-  window.addEventListener("languagechange", () => {
-    if (preference === "system")
-      void setLanguagePreference("system").catch(() => {});
-  });
 if (!cache.has(locale))
   void setLanguagePreference(preference).catch(() => {
     locale = "en";

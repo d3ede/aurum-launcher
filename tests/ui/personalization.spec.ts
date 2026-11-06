@@ -135,8 +135,8 @@ async function customize(page: Page) {
     .getByRole("button", { name: "Настроить главную", exact: true })
     .click();
   await expect(
-    page.getByRole("tab", { name: "Главная страница" }),
-  ).toHaveAttribute("aria-selected", "true");
+    page.getByRole("heading", { name: "Главная страница", exact: true }),
+  ).toBeVisible();
 }
 async function saveHome(page: Page) {
   await page
@@ -145,7 +145,7 @@ async function saveHome(page: Page) {
 }
 async function appearance(page: Page) {
   await page.getByRole("button", { name: "Настройки", exact: true }).click();
-  await page.getByRole("tab", { name: "Внешний вид" }).click();
+  await page.getByRole("button", { name: "Внешний вид", exact: true }).click();
 }
 
 test("home customization saves counts, duplicate policy, source and block order", async ({
@@ -310,15 +310,34 @@ test("new palettes, named custom themes and fonts persist with live preview", as
   for (const [name, id] of [
     ["Гранатовый шёлк", "garnet"],
     ["Северная глубина", "navy"],
+    ["Весенний мох", "spring"],
+    ["Персиковый рассвет", "peach"],
+    ["Лавандовая ночь", "lavender"],
   ]) {
     await page.getByRole("button", { name, exact: true }).click();
     await expect(page.locator("html")).toHaveAttribute("data-palette", id);
+    const card = page.getByRole("button", { name, exact: true });
+    await expect(card).toContainText(id === "peach" ? "Светлая" : "Тёмная");
+    await expect(
+      card.locator(id === "peach" ? ".lucide-sun" : ".lucide-moon"),
+    ).toHaveCount(1);
     await page.screenshot({
       path: `.test-data/screenshots/appearance-${id}.png`,
       animations: "disabled",
     });
   }
   await page.getByRole("button", { name: "Создать свою тему" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Создание своей темы", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".appearance-theme-grid")).toHaveCount(0);
+  await expect(
+    page.getByRole("textbox", { name: "Название установленного шрифта" }),
+  ).toHaveCount(0);
+  await page.screenshot({
+    path: ".test-data/screenshots/theme-editor-page.png",
+    animations: "disabled",
+  });
   await page
     .getByRole("textbox", { name: "Название темы" })
     .fill("Океан и звёзды");
@@ -390,7 +409,10 @@ test("uploaded fonts persist, invalid files are rejected and failed saves retain
     "Не удалось загрузить шрифт",
   );
   await page
-    .getByRole("tab", { name: "Главная страница", exact: true })
+    .getByRole("button", { name: "Назад к настройкам", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Главная страница", exact: true })
     .click();
   await page.getByRole("spinbutton", { name: "Количество серверов" }).fill("0");
   await page.evaluate(() => {
@@ -425,7 +447,9 @@ test("running-game snapshots preserve the appearance preview", async ({
   const count = await snapshots();
   await expect.poll(snapshots).toBeGreaterThan(count);
   await expect(page.locator("html")).toHaveAttribute("data-palette", "navy");
-  await page.getByRole("tab", { name: "Основные", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Назад к настройкам", exact: true })
+    .click();
   await expect(page.locator("html")).toHaveAttribute("data-palette", "light");
 });
 
@@ -435,18 +459,23 @@ test("appearance fits minimum size, translates and discards unsaved preview; uni
   await fixture(page, "en");
   await page.setViewportSize({ width: 960, height: 680 });
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await page.getByRole("tab", { name: "Appearance", exact: true }).click();
+  await page.getByRole("button", { name: "Appearance", exact: true }).click();
   await page.getByRole("button", { name: "Garnet Silk", exact: true }).click();
   await page.getByRole("button", { name: "Create your own theme" }).click();
   await expect(
-    page.getByRole("heading", { name: "Theme editor" }),
+    page.getByRole("heading", { name: "Create your own theme", exact: true }),
   ).toBeVisible();
   expect(
     await page
       .locator(".content-scroll")
       .evaluate((el) => el.scrollWidth > el.clientWidth),
   ).toBe(false);
-  await page.getByRole("tab", { name: "General", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Back to appearance", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Back to settings", exact: true })
+    .click();
   await expect(page.locator("html")).toHaveAttribute("data-palette", "light");
   const uninstall = page.getByRole("button", {
     name: "Uninstall Aurum",
@@ -455,10 +484,84 @@ test("appearance fits minimum size, translates and discards unsaved preview; uni
   await expect(uninstall).toHaveClass(/uninstall-button/);
   expect(await uninstall.evaluate((el) => el.closest("form"))).toBe(null);
   expect(
-    await page.locator("#settings-panel > .settings-uninstall").count(),
+    await page.locator(".settings-page > .settings-uninstall").count(),
   ).toBe(1);
+  const saveBounds = await page
+    .getByRole("button", { name: "Save settings", exact: true })
+    .boundingBox();
+  const uninstallBounds = await uninstall.boundingBox();
+  expect(
+    Math.abs(
+      saveBounds!.x +
+        saveBounds!.width -
+        uninstallBounds!.x -
+        uninstallBounds!.width,
+    ),
+  ).toBeLessThanOrEqual(1);
   await page.locator(".settings-uninstall").scrollIntoViewIfNeeded();
   await page.screenshot({
     path: ".test-data/screenshots/settings-uninstall.png",
   });
+});
+
+test("settings destinations occupy separate rows and the page never scrolls outside the launcher", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.getByRole("button", { name: "Настройки", exact: true }).click();
+  await expect(page.getByRole("tablist")).toHaveCount(0);
+  await expect(
+    page.getByText(
+      "Игровые файлы, Java и сборки занимают дополнительное место",
+      { exact: false },
+    ),
+  ).toHaveCount(0);
+  const home = await page
+    .getByRole("button", { name: "Главная страница", exact: true })
+    .boundingBox();
+  const appearanceRow = await page
+    .getByRole("button", { name: "Внешний вид", exact: true })
+    .boundingBox();
+  expect(appearanceRow!.y - home!.y - home!.height).toBeGreaterThanOrEqual(14);
+  expect(appearanceRow!.width).toBe(home!.width);
+  await page
+    .getByRole("button", { name: "Главная страница", exact: true })
+    .click();
+  await page.locator(".content-scroll").evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  await page.mouse.move(700, 600);
+  await page.mouse.wheel(0, 4000);
+  await page.evaluate(() => window.scrollTo(0, 4000));
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  const shell = await page.locator(".app-shell").boundingBox();
+  expect(shell!.y).toBe(0);
+  expect(shell!.height).toBe(820);
+  await expect(
+    page.getByRole("button", { name: "Сохранить и открыть главную" }),
+  ).toBeInViewport();
+  await page
+    .getByRole("button", { name: "Назад к настройкам", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Внешний вид", exact: true }).click();
+  await page.locator(".content-scroll").evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  await page.getByRole("button", { name: "Создать свою тему" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Создание своей темы", exact: true }),
+  ).toBeInViewport();
+  expect(
+    await page.locator(".content-scroll").evaluate((el) => el.scrollTop),
+  ).toBe(0);
+  await page
+    .getByRole("textbox", { name: "HEX: Акцент", exact: true })
+    .fill("#112233");
+  await expect(page.getByLabel("Акцент", { exact: true })).toHaveValue(
+    "#112233",
+  );
+  await page.getByRole("button", { name: "Отмена", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Внешний вид", exact: true }),
+  ).toBeInViewport();
 });

@@ -44,17 +44,6 @@
   border-radius: 6px;
   font-size: 13px;
 }
-.language-format-preview {
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-  margin-top: 14px;
-  color: var(--secondary);
-  font-size: 13px;
-}
-.language-format-preview b {
-  font-weight: 550;
-}
 .language-modal {
   max-width: 760px;
 }

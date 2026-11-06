@@ -1,4 +1,35 @@
 import { test, expect } from "@playwright/test";
+
+test.describe("automatic language selection", () => {
+  test.use({ locale: "ru-RU" });
+  test("system language uses its ordinary list entry and bundled flag", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem("aurum:language", "system");
+    });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Настройки", exact: true }).click();
+    await expect(page.locator(".language-current")).toContainText("Русский");
+    const flag = await page
+      .locator(".language-current img")
+      .getAttribute("src");
+    await expect(page.getByText("Как в системе", { exact: true })).toHaveCount(
+      0,
+    );
+    await expect(page.locator(".language-format-preview")).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "Выбор языка", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Русский", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      page.getByRole("button", { name: "Русский", exact: true }).locator("img"),
+    ).toHaveAttribute("src", flag!);
+    await expect(page.locator(".system-language")).toHaveCount(0);
+  });
+});
 test("language picker, instant switch, persistence and RTL layout", async ({
   page,
   baseURL,

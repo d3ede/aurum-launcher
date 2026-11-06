@@ -83,6 +83,51 @@ export const builtInThemes: CustomTheme[] = [
       accentInk: "#b5e2ff",
     },
   },
+  {
+    id: "spring",
+    name: "Весенний мох",
+    base: "dark",
+    colors: {
+      bg: "#122a25",
+      surface: "#1b3c32",
+      sidebar: "#163229",
+      text: "#eef9e7",
+      secondary: "#b5d4be",
+      border: "#355b45",
+      accent: "#b8e779",
+      accentInk: "#cef29b",
+    },
+  },
+  {
+    id: "peach",
+    name: "Персиковый рассвет",
+    base: "light",
+    colors: {
+      bg: "#fff5ed",
+      surface: "#fffaf6",
+      sidebar: "#f6e7dc",
+      text: "#49352f",
+      secondary: "#796057",
+      border: "#e4cabe",
+      accent: "#edb39a",
+      accentInk: "#96503b",
+    },
+  },
+  {
+    id: "lavender",
+    name: "Лавандовая ночь",
+    base: "dark",
+    colors: {
+      bg: "#211d33",
+      surface: "#2d2845",
+      sidebar: "#262139",
+      text: "#f2edff",
+      secondary: "#c4b8db",
+      border: "#4d4267",
+      accent: "#c0a2f3",
+      accentInk: "#dcc7ff",
+    },
+  },
 ];
 export function preferences(settings: Settings): Personalization {
   const stored = settings.personalization;

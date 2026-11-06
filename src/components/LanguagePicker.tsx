@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Globe2, Languages, Search, ChevronDown } from "lucide-react";
+import { Check, Languages, Search, ChevronDown } from "lucide-react";
 import { useApp } from "../context";
 import { Modal } from "./ui";
 import { languages } from "../locales/registry";
 import {
   t,
   getLocale,
-  getFormatLocale,
   getLanguagePreference,
   setLanguagePreference,
   getLanguageName,
@@ -43,7 +42,12 @@ export function LanguagePicker({
   const preference = getLanguagePreference();
   const locale = getLocale();
   const current = languages.find((l) => l.code === locale)!;
-  useEffect(() => { if (open) document.querySelector<HTMLInputElement>(".language-search input")?.focus(); }, [open]);
+  useEffect(() => {
+    if (open)
+      document
+        .querySelector<HTMLInputElement>(".language-search input")
+        ?.focus();
+  }, [open]);
   const choices = useMemo(
     () =>
       languages.filter((l) =>
@@ -95,7 +99,7 @@ export function LanguagePicker({
         </span>
         <div>
           <h2>{t("Язык интерфейса")}</h2>
-          <p>{t("Выберите язык или используйте язык системы.")}</p>
+          <p>{t("Выберите язык интерфейса.")}</p>
         </div>
       </div>
       <button
@@ -105,39 +109,14 @@ export function LanguagePicker({
         disabled={busy || changing}
         aria-label={t("Выбор языка")}
       >
-        {preference === "system" ? (
-          <span className="language-symbol">
-            <Globe2 size={24} />
-          </span>
-        ) : (
-          <LanguageIcon code={locale} />
-        )}
+        <LanguageIcon code={locale} />
         <span>
-          <b dir="auto">
-            {preference === "system" ? t("Как в системе") : current.nativeName}
-          </b>
-          <small>
-            {preference === "system"
-              ? `${current.nativeName} · ${getLanguageName(locale)}`
-              : getLanguageName(locale)}
-          </small>
+          <b dir="auto">{current.nativeName}</b>
+          <small>{getLanguageName(locale)}</small>
         </span>
         <span className="language-count">{languages.length}</span>
         <ChevronDown size={18} />
       </button>
-      <div className="language-format-preview">
-        <span>{t("Пример форматов")}</span>
-        <b>
-          {new Intl.NumberFormat(getFormatLocale(), {
-            maximumFractionDigits: 2,
-          }).format(12345.67)}
-        </b>
-        <b>
-          {new Intl.DateTimeFormat(getFormatLocale(), {
-            dateStyle: "medium",
-          }).format(new Date(2026, 9, 13))}
-        </b>
-      </div>
       {open && (
         <Modal
           title={t("Выбор языка")}
@@ -156,7 +135,8 @@ export function LanguagePicker({
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();
-                  if (query && choices.length === 1) void choose(choices[0].code);
+                  if (query && choices.length === 1)
+                    void choose(choices[0].code);
                 }
               }}
               value={query}
@@ -166,24 +146,6 @@ export function LanguagePicker({
               dir="auto"
             />
           </div>
-          {!query && (
-            <button
-              type="button"
-              className={`language-option system-language ${preference === "system" ? "selected" : ""}`}
-              aria-pressed={preference === "system"}
-              disabled={changing}
-              onClick={() => void choose("system")}
-            >
-              <span className="language-symbol">
-                <Globe2 size={22} />
-              </span>
-              <span>
-                <b>{t("Как в системе")}</b>
-                <small dir="auto">{current.nativeName}</small>
-              </span>
-              {preference === "system" && <Check size={19} />}
-            </button>
-          )}
           <div className="language-groups">
             {["europe", "world"].map((region) => {
               const list = choices.filter((l) => l.region === region);
