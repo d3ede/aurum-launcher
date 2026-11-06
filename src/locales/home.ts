@@ -1,4 +1,10 @@
 export const homeEnglish: Record<string, string> = {
+  "Импорт датапаков": "Datapack imports",
+  "Датапаки и пути файлов": "Datapacks and file paths",
+  "При импорте сборки сохраняется папка datapacks.":
+    "Imports keep the datapacks folder.",
+  "Пути в архиве проверяются до скачивания модов.":
+    "Archive paths are checked before downloading mods.",
   "В следующем обновлении: поддержка datapacks в модпаках и проверка путей до начала загрузки модов.":
     "Coming in the next update: datapack support in modpacks and path checks before downloading mods.",
   "Прогресс сохраняется, ожидание можно отменить.":

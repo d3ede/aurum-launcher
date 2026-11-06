@@ -8,9 +8,6 @@ import { Modal } from "./ui";
 
 import { releaseNotes } from "../lib/release-notes";
 
-const importPreview =
-  "В следующем обновлении: поддержка datapacks в модпаках и проверка путей до начала загрузки модов.";
-
 function releaseDate(date: string) {
   return new Intl.DateTimeFormat(getLocale(), {
     day: "numeric",
@@ -88,7 +85,6 @@ export function HomeSidebar() {
             tabIndex={0}
             aria-label={t("Новости лаунчера")}
           >
-            <p>{t(importPreview)}</p>
             {releaseNotes.slice(0, 3).map((release) => (
               <article className="home-news-version" key={release.version}>
                 <div className="home-news-version-head">
@@ -142,7 +138,6 @@ export function HomeSidebar() {
             tabIndex={0}
             aria-label={t("Все изменения")}
           >
-            <p>{t(importPreview)}</p>
             {releaseNotes.map((release) => (
               <details
                 className="release-section"
