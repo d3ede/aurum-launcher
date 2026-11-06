@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "В следующем обновлении: поддержка datapacks в модпаках и проверка путей до начала загрузки модов.":
+    "Coming in the next update: datapack support in modpacks and path checks before downloading mods.",
   "Прогресс сохраняется, ожидание можно отменить.":
     "Progress is preserved, and waiting can be cancelled.",
   "При лимите CurseForge загрузка ждёт и повторяет запрос автоматически.":

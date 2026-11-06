@@ -116,6 +116,7 @@ fn validate_pack_path(path: &str) -> Result<()> {
         "config",
         "resourcepacks",
         "shaderpacks",
+        "datapacks",
         "saves",
         "defaultconfigs",
         "scripts",
@@ -129,6 +130,42 @@ fn validate_pack_path(path: &str) -> Result<()> {
     }
     Ok(())
 }
+
+fn check_pack_overrides(
+    zip: &mut zip::ZipArchive<std::fs::File>,
+    prefixes: &[String],
+    task: &Task,
+) -> Result<()> {
+    let mut total = 0u64;
+    for prefix in prefixes {
+        for index in 0..zip.len() {
+            task.check()?;
+            let file = zip.by_index(index)?;
+            let name = file.name()?;
+            let Some(relative) = name.strip_prefix(prefix) else {
+                continue;
+            };
+            if relative.is_empty() || file.is_dir() {
+                continue;
+            }
+            validate_pack_path(relative)?;
+            total = total
+                .checked_add(file.size())
+                .context("Слишком большой архив")?;
+            if total > 1_000_000_000 {
+                bail!("Слишком большой архив");
+            }
+            if file
+                .unix_mode()
+                .is_some_and(|mode| mode & 0o170000 == 0o120000)
+            {
+                bail!("Архив содержит символическую ссылку");
+            }
+        }
+    }
+    Ok(())
+}
+
 impl Engine {
     pub async fn import_pack(&self, path: &Path, task: &Task) -> Result<String> {
         self.import_pack_with(path, task, |path| async move { self.cf(&path).await })
@@ -201,6 +238,27 @@ impl Engine {
             .unwrap_or("Импортированная сборка")
             .to_string();
         crate::store::validate_name(&name)?;
+        let overrides = if mr {
+            vec!["overrides/".to_string(), "client-overrides/".to_string()]
+        } else {
+            vec![format!(
+                "{}/",
+                manifest["overrides"]
+                    .as_str()
+                    .unwrap_or("overrides")
+                    .trim_end_matches('/')
+            )]
+        };
+        // Reject unsupported or unsafe bundled paths before spending time on downloads.
+        check_pack_overrides(&mut zip, &overrides, task)?;
+        if mr {
+            for file in manifest["files"].as_array().context("Нет списка файлов")? {
+                task.check()?;
+                if file["env"]["client"] != "unsupported" {
+                    validate_pack_path(file["path"].as_str().context("Нет пути файла")?)?;
+                }
+            }
+        }
         let id = uuid::Uuid::new_v4().to_string();
         let stage = self.root.join("staging").join(&task.id).join("pack");
         tokio::fs::create_dir_all(&stage).await?;
@@ -263,7 +321,6 @@ impl Engine {
                     task.pack_progress(&pack_name,"Файлы CurseForge",i as u64+1,files.len() as u64);
                 }
             }
-            let overrides=if mr {vec!["overrides/".to_string(),"client-overrides/".to_string()]}else{vec![format!("{}/",manifest["overrides"].as_str().unwrap_or("overrides").trim_end_matches('/'))]};
             let mut total=0u64;
             for prefix in overrides { for i in 0..zip.len() {task.check()?;let mut f=zip.by_index(i)?;let name=f.name()?.into_owned();let Some(relative)=name.strip_prefix(&prefix)else{continue};if relative.is_empty() || f.is_dir(){continue}validate_pack_path(relative)?;total+=f.size();if total>1_000_000_000{bail!("Слишком большой архив")};if f.unix_mode().is_some_and(|m|m&0o170000==0o120000){bail!("Архив содержит символическую ссылку")};let path=crate::safe_join(&stage,relative)?;std::fs::create_dir_all(path.parent().unwrap())?;std::io::copy(&mut f,&mut std::fs::File::create(path)?)?; } }
             // Some packs bundle a restricted file in their overrides already.
@@ -581,6 +638,7 @@ impl Engine {
                     "config",
                     "resourcepacks",
                     "shaderpacks",
+                    "datapacks",
                     "saves",
                     "defaultconfigs",
                     "scripts",
@@ -744,6 +802,111 @@ mod tests {
             tokio::fs::write(mods.join(format!("mod-{project}.jar")), b"correct mod")
                 .await
                 .unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn datapacks_survive_curseforge_modrinth_and_folder_imports() {
+        let (dir, task) = fixture();
+        let engine = Engine::new(dir.path().join("data"), |_| {}).await.unwrap();
+        let datapack = "datapacks/datapacks/CWRecipeChanges/pack.mcmeta";
+        for mr in [false, true] {
+            let path = dir.path().join(if mr { "data.mrpack" } else { "data.zip" });
+            let mut zip = zip::ZipWriter::new(std::fs::File::create(&path).unwrap());
+            let options = zip::write::SimpleFileOptions::default();
+            zip.start_file(
+                if mr {
+                    "modrinth.index.json"
+                } else {
+                    "manifest.json"
+                },
+                options,
+            )
+            .unwrap();
+            let manifest = if mr {
+                json!({"formatVersion":1,"game":"minecraft","name":"Datapack mrpack",
+                    "dependencies":{"minecraft":"1.21.1"},"files":[]})
+            } else {
+                json!({"name":"Datapack CurseForge","minecraft":{"version":"1.21.1"},
+                    "overrides":"bundled","files":[]})
+            };
+            zip.write_all(manifest.to_string().as_bytes()).unwrap();
+            for prefix in if mr {
+                vec!["overrides", "client-overrides"]
+            } else {
+                vec!["bundled"]
+            } {
+                zip.start_file(format!("{prefix}/{datapack}"), options)
+                    .unwrap();
+                zip.write_all(br#"{"pack":{"pack_format":48,"description":"Recipes"}}"#)
+                    .unwrap();
+            }
+            zip.finish().unwrap();
+            let id = engine.import_pack(&path, &task).await.unwrap();
+            let game = engine.instance(&id).unwrap();
+            assert_eq!(
+                std::fs::read(game.join(datapack)).unwrap(),
+                br#"{"pack":{"pack_format":48,"description":"Recipes"}}"#
+            );
+        }
+        let source = dir.path().join("game");
+        let file = source.join(datapack);
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        std::fs::write(&file, b"folder datapack").unwrap();
+        let id = engine
+            .import_folder(
+                &source,
+                "Folder datapack".into(),
+                "1.21.1".into(),
+                Loader::Vanilla,
+                None,
+                &task,
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            std::fs::read(engine.instance(&id).unwrap().join(datapack)).unwrap(),
+            b"folder datapack"
+        );
+        assert!(file.exists());
+    }
+
+    #[tokio::test]
+    async fn unsupported_and_unsafe_overrides_fail_before_provider_requests() {
+        let (dir, task) = fixture();
+        let engine = Engine::new(dir.path().join("data"), |_| {}).await.unwrap();
+        for relative in [
+            "unknown/file.txt",
+            "datapacks/../../escape.txt",
+            "../escape.txt",
+            "datapacks/C:/escape.txt",
+        ] {
+            let path = dir.path().join("bad.zip");
+            let mut zip = zip::ZipWriter::new(std::fs::File::create(&path).unwrap());
+            let options = zip::write::SimpleFileOptions::default();
+            zip.start_file("manifest.json", options).unwrap();
+            zip.write_all(
+                json!({"name":"Bad paths","minecraft":{"version":"1.21.1"},
+                "files":[{"projectID":1,"fileID":11}]})
+                .to_string()
+                .as_bytes(),
+            )
+            .unwrap();
+            zip.start_file(format!("overrides/{relative}"), options)
+                .unwrap();
+            zip.write_all(b"bad override").unwrap();
+            zip.finish().unwrap();
+            let mut requests = 0;
+            let result = engine
+                .import_pack_with(&path, &task, |_| {
+                    requests += 1;
+                    async { bail!("Provider should not be called") }
+                })
+                .await;
+            assert!(result.is_err(), "{relative}");
+            assert_eq!(requests, 0, "{relative}");
+            assert!(engine.snapshot().await.database.profiles.is_empty());
+            assert!(!engine.root.join("staging").join(&task.id).exists());
         }
     }
 
