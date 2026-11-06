@@ -317,7 +317,8 @@ test("new palettes, named custom themes and fonts persist with live preview", as
     await page.getByRole("button", { name, exact: true }).click();
     await expect(page.locator("html")).toHaveAttribute("data-palette", id);
     const card = page.getByRole("button", { name, exact: true });
-    await expect(card).toContainText(id === "peach" ? "Светлая" : "Тёмная");
+    await expect(card.locator(".theme-card-name")).toHaveText(name);
+    await expect(card.locator("small")).toHaveCount(0);
     await expect(
       card.locator(id === "peach" ? ".lucide-sun" : ".lucide-moon"),
     ).toHaveCount(1);

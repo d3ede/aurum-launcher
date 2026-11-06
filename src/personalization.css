@@ -301,6 +301,7 @@ body {
   height: 100%;
 }
 .appearance-theme-grid .theme-option > span {
+  align-items: center;
   gap: 7px;
   min-width: 0;
   overflow-wrap: anywhere;
@@ -316,13 +317,6 @@ body {
 .theme-card-name {
   min-width: 0;
   flex: 1;
-}
-.theme-card-name small {
-  display: block;
-  margin-top: 3px;
-  color: var(--secondary);
-  font-size: 11px;
-  font-weight: 450;
 }
 .custom-theme-card {
   position: relative;

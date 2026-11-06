@@ -570,7 +570,6 @@ export function AppearanceSettings() {
                 className={`theme-option ${item.id} ${draft.themeId === item.id ? "selected" : ""}`}
                 aria-pressed={draft.themeId === item.id}
                 aria-label={t(item.name)}
-                aria-describedby={`theme-kind-${item.id}`}
                 onClick={() => choose(item.id, item.base)}
               >
                 <div className="theme-mini">
@@ -589,18 +588,7 @@ export function AppearanceSettings() {
                   ) : (
                     <Monitor size={16} />
                   )}
-                  <span className="theme-card-name">
-                    {t(item.name)}
-                    <small id={`theme-kind-${item.id}`}>
-                      {t(
-                        item.base === "light"
-                          ? "Светлая"
-                          : item.base === "dark"
-                            ? "Тёмная"
-                            : "Автоматически",
-                      )}
-                    </small>
-                  </span>
+                  <span className="theme-card-name">{t(item.name)}</span>
                   {draft.themeId === item.id && (
                     <Check className="theme-selected-check" size={15} />
                   )}
@@ -618,7 +606,6 @@ export function AppearanceSettings() {
                       ? t(item.name)
                       : item.name
                   }
-                  aria-describedby={`theme-kind-${item.id}`}
                   onClick={() => choose(item.id, item.base)}
                 >
                   <div
@@ -654,9 +641,6 @@ export function AppearanceSettings() {
                       {builtInThemes.some((v) => v.id === item.id)
                         ? t(item.name)
                         : item.name}
-                      <small id={`theme-kind-${item.id}`}>
-                        {t(item.base === "light" ? "Светлая" : "Тёмная")}
-                      </small>
                     </span>
                     {draft.themeId === item.id && (
                       <Check className="theme-selected-check" size={15} />
