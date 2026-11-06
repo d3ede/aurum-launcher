@@ -517,6 +517,92 @@ fn friends(root: &Path, worker: &Path) -> Result<()> {
         "PASS",
         json!({"internetProof":false}),
     );
+    for _ in 0..3 {
+        b.relationship(id_a.clone(), "block")?;
+        until(&|| {
+            Ok(b.snapshot()?
+                .people
+                .iter()
+                .any(|p| p.id == id_a && p.state == "blocked"))
+        })?;
+        b.relationship(id_a.clone(), "unblock")?;
+        until(&|| Ok(!b.snapshot()?.people.iter().any(|p| p.id == id_a)))?;
+        b.add(a.snapshot()?.contact_link.context("Missing A contact")?)?;
+        until(&|| {
+            Ok(b.snapshot()?
+                .people
+                .iter()
+                .any(|p| p.id == id_a && p.state == "friend"))
+        })?;
+        if b.snapshot()?
+            .error
+            .as_deref()
+            .is_some_and(|e| e.contains("challenge"))
+        {
+            bail!("Block/unblock left a stale challenge error");
+        }
+    }
+    report(
+        "Block/unblock and fresh authenticated session repeated three times",
+        "PASS",
+        json!({"internetProof":false}),
+    );
+    // Both users can send a request at once. Exercise the actual worker race.
+    a.relationship(id_b.clone(), "remove")?;
+    until(&|| {
+        Ok(!a.snapshot()?.people.iter().any(|p| p.id == id_b)
+            && !b.snapshot()?.people.iter().any(|p| p.id == id_a))
+    })?;
+    a.add(b.snapshot()?.contact_link.context("Missing B contact")?)?;
+    b.add(a.snapshot()?.contact_link.context("Missing A contact")?)?;
+    until(&|| {
+        Ok(a.snapshot()?
+            .people
+            .iter()
+            .any(|p| p.id == id_b && p.state == "friend")
+            && b.snapshot()?
+                .people
+                .iter()
+                .any(|p| p.id == id_a && p.state == "friend"))
+    })?;
+    report(
+        "Simultaneous friend requests settle on a fresh authenticated session",
+        "PASS",
+        json!({"internetProof":false}),
+    );
+    a.rename("Updated Lab A")?;
+    let avatar = {
+        use base64::Engine as _;
+        format!(
+            "data:image/jpeg;base64,{}",
+            base64::engine::general_purpose::STANDARD.encode(include_bytes!("fixtures/avatar.jpg"))
+        )
+    };
+    a.set_avatar(Some(avatar.clone()))?;
+    until(&|| {
+        Ok(b.snapshot()?.people.iter().any(|p| {
+            p.id == id_a && p.name == "Updated Lab A" && p.avatar.as_ref() == Some(&avatar)
+        }))
+    })?;
+    a.set_privacy(Privacy {
+        public_relays: false,
+        invisible: true,
+        share_activity: true,
+        ..Default::default()
+    })?;
+    until(&|| {
+        Ok(!b.snapshot()?.online.contains(&id_a) && !b.snapshot()?.activity.contains_key(&id_a))
+    })?;
+    a.set_privacy(Privacy {
+        public_relays: false,
+        ..Default::default()
+    })?;
+    until(&|| Ok(b.snapshot()?.online.contains(&id_a)))?;
+    report(
+        "Profile updates and invisible presence use signed peer messages",
+        "PASS",
+        json!({"internetProof":false}),
+    );
     a.activity(Some(aurum_social::world::WorldSpec {
         name: "Opt-in activity fixture".into(),
         minecraft: "1.21.1".into(),
@@ -586,13 +672,37 @@ fn friends(root: &Path, worker: &Path) -> Result<()> {
                 config: Some(config),
             }],
         };
-        a.invite(&id_b, world, owned, Some(manifest.clone()))?;
+        let invitation = a.invite(&id_b, world.clone(), owned.clone(), Some(manifest.clone()))?;
         until(&|| {
             Ok(b.snapshot()?
                 .invitations
                 .iter()
                 .any(|i| i.manifest.is_some()))
         })?;
+        until(&|| Ok(a.delivery(&invitation) == Some(true)))?;
+        for _ in 0..3 {
+            let plain = a.invite(&id_b, world.clone(), owned.clone(), None)?;
+            until(&|| {
+                Ok(a.delivery(&plain) == Some(true)
+                    && b.snapshot()?
+                        .invitations
+                        .iter()
+                        .any(|i| i.offer.id == plain))
+            })?;
+            a.cancel_offer(plain.clone())?;
+            until(&|| {
+                Ok(!b
+                    .snapshot()?
+                    .invitations
+                    .iter()
+                    .any(|i| i.offer.id == plain))
+            })?;
+        }
+        report(
+            "Pack receipt and repeated Vanilla invitation receipts reach the sender",
+            "PASS",
+            json!({"internetProof":false}),
+        );
         let incoming = b
             .snapshot()?
             .invitations
@@ -666,7 +776,23 @@ fn friends(root: &Path, worker: &Path) -> Result<()> {
         "PASS",
         json!({}),
     );
-    a.disable()?;
+    let backup = a.export_identity("local-integration-passphrase")?;
+    if a.restore_identity(&backup, "incorrect-passphrase", true)
+        .is_ok()
+        || !a.is_enabled()
+        || a.snapshot()?.id.as_deref() != Some(&id_a)
+    {
+        bail!("Failed restore changed the active identity");
+    }
+    a.restore_identity(&backup, "local-integration-passphrase", true)?;
+    if a.is_enabled() || a.snapshot()?.id.as_deref() != Some(&id_a) {
+        bail!("Live restore failed to stop the runtime and preserve the restored ID");
+    }
+    report(
+        "Live encrypted identity restore and wrong-password preservation",
+        "PASS",
+        json!({}),
+    );
     b.disable()?;
     if a.snapshot()?.enabled || b.snapshot()?.enabled {
         bail!("Social still enabled after shutdown");

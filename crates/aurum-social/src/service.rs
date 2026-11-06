@@ -29,6 +29,9 @@ use crate::{
 use sha2::{Digest, Sha256};
 
 const CONTACT_PREFIX: &str = "aurum://social/contact/";
+fn visible_default() -> bool {
+    true
+}
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Snapshot {
@@ -37,6 +40,7 @@ pub struct Snapshot {
     pub error: Option<String>,
     pub id: Option<String>,
     pub name: String,
+    pub avatar: Option<String>,
     pub contact_link: Option<String>,
     pub privacy: Privacy,
     pub people: Vec<Person>,
@@ -44,6 +48,7 @@ pub struct Snapshot {
     pub activity: HashMap<String, WorldSpec>,
     pub active_tunnels: usize,
     pub invitations: Vec<Invitation>,
+    pub deliveries: HashMap<String, bool>,
 }
 #[derive(Default)]
 struct Live {
@@ -56,6 +61,8 @@ struct Live {
     activity: HashMap<String, WorldSpec>,
     active_tunnels: usize,
     invitations: Vec<Invitation>,
+    deliveries: HashMap<String, bool>,
+    visible: HashMap<String, bool>,
 }
 type Notify = Arc<dyn Fn() + Send + Sync>;
 struct Notification {
@@ -89,6 +96,7 @@ pub struct Service {
 }
 #[derive(Debug)]
 enum Local {
+    CancelOffer(String),
     Add(String),
     Accept(String),
     Retry(String),
@@ -97,11 +105,13 @@ enum Local {
     Unblock(String),
     Privacy(Privacy),
     Activity(Option<WorldSpec>),
+    Profile,
     Invite {
         peer: [u8; 32],
         world: WorldSpec,
         listener: Listener,
         manifest: Box<Option<Manifest>>,
+        reply: SyncSender<std::result::Result<String, String>>,
     },
     Join(String),
     Dismiss(String),
@@ -154,16 +164,21 @@ impl Service {
             error: live.error.clone(),
             id: live.id.clone().or(s.value("publicId")?),
             name: s.value("name")?.unwrap_or_else(|| "Player".into()),
+            avatar: s.value("avatar")?.filter(|s| !s.is_empty()),
             contact_link: live.contact_link.clone(),
             privacy: s.privacy()?,
             people: s.people()?,
             online: live
                 .seen
                 .iter()
-                .filter(|(_, seen)| identity::now().saturating_sub(**seen) < 90)
+                .filter(|(id, seen)| {
+                    identity::now().saturating_sub(**seen) < 90
+                        && live.visible.get(*id).copied().unwrap_or(false)
+                })
                 .map(|(id, _)| id.clone())
                 .collect(),
             invitations: live.invitations.clone(),
+            deliveries: live.deliveries.clone(),
             activity: live
                 .activity
                 .iter()
@@ -371,6 +386,9 @@ impl Service {
     pub fn rename(&self, name: &str) -> Result<()> {
         crate::store::validate_name(name)?;
         self.store()?.set("name", name)?;
+        if self.is_enabled() {
+            self.submit(Local::Profile)?;
+        }
         signal(&self.notify);
         Ok(())
     }
@@ -380,18 +398,40 @@ impl Service {
         world: WorldSpec,
         listener: Listener,
         manifest: Option<Manifest>,
-    ) -> Result<()> {
+    ) -> Result<String> {
         world.validate()?;
         listener.revalidate()?;
         if let Some(m) = &manifest {
             m.validate()?;
         }
+        let (reply, answer) = mpsc::sync_channel(1);
         self.submit(Local::Invite {
             peer: identity::decode_id(id)?,
             world,
             listener,
             manifest: Box::new(manifest),
-        })
+            reply,
+        })?;
+        answer
+            .recv_timeout(Duration::from_secs(10))
+            .context("Invitation preparation timed out")?
+            .map_err(anyhow::Error::msg)
+    }
+    pub fn delivery(&self, id: &str) -> Option<bool> {
+        self.live.lock().ok()?.deliveries.get(id).copied()
+    }
+    pub fn cancel_offer(&self, id: String) -> Result<()> {
+        self.submit(Local::CancelOffer(id))
+    }
+    pub fn set_avatar(&self, avatar: Option<String>) -> Result<()> {
+        crate::profile::validate_avatar(&avatar)?;
+        self.store()?
+            .set("avatar", avatar.as_deref().unwrap_or(""))?;
+        if self.is_enabled() {
+            self.submit(Local::Profile)?;
+        }
+        signal(&self.notify);
+        Ok(())
     }
     pub fn join(&self, id: String) -> Result<()> {
         self.submit(Local::Join(id))
@@ -403,13 +443,16 @@ impl Service {
         Identity::load(&self.root.join("identity.dpapi"))?.export(password)
     }
     pub fn restore_identity(&self, bytes: &[u8], password: &str, replace: bool) -> Result<()> {
-        if self.snapshot()?.enabled {
-            bail!("Disable Social before restoring an identity");
-        }
         let identity = Identity::restore(bytes, password)?;
+        self.restore_prepared(identity, replace)
+    }
+    pub fn restore_prepared(&self, identity: Identity, replace: bool) -> Result<()> {
         let path = self.root.join("identity.dpapi");
         if path.exists() && !replace {
             bail!("Confirm replacement of the current identity");
+        }
+        if self.is_enabled() {
+            self.disable()?;
         }
         let temp = self.root.join("restore.dpapi");
         if temp.exists() {
@@ -487,6 +530,15 @@ enum PeerAction {
     Pong,
     Presence {
         world: Option<WorldSpec>,
+        #[serde(default = "visible_default")]
+        visible: bool,
+    },
+    Profile {
+        name: String,
+        avatar: Option<String>,
+    },
+    InviteReceived {
+        id: String,
     },
     Removed,
     Invite {
@@ -510,6 +562,7 @@ enum PeerAction {
         id: String,
     },
 }
+#[derive(Clone)]
 struct Session {
     address: String,
     transport: [u8; 32],
@@ -529,13 +582,15 @@ struct Actor {
     notify: Notifications,
     contact: Vec<u8>,
     sessions: HashMap<[u8; 32], Session>,
+    retired: HashMap<[u8; 32], VecDeque<Session>>,
+    resolving: HashMap<[u8; 32], Instant>,
     contacts: HashMap<[u8; 32], String>,
     pending: VecDeque<([u8; 32], PeerAction)>,
     unknown_window: Instant,
     unknown_count: u32,
     received_window: Instant,
     received_count: u32,
-    current_send_peer: Option<[u8; 32]>,
+    current_send_peer: Option<([u8; 32], [u8; 32])>,
     outbox: VecDeque<Command>,
     inflight: usize,
     outgoing_worlds: HashMap<String, game::OutgoingWorld>,
@@ -621,6 +676,8 @@ impl Actor {
             notify,
             contact,
             sessions: HashMap::new(),
+            retired: HashMap::new(),
+            resolving: HashMap::new(),
             contacts: HashMap::new(),
             pending: VecDeque::new(),
             unknown_window: Instant::now(),
@@ -677,6 +734,13 @@ impl Actor {
             actor
                 .sessions
                 .retain(|_, session| session.expires > Instant::now());
+            actor
+                .resolving
+                .retain(|_, at| at.elapsed() < Duration::from_secs(45));
+            for sessions in actor.retired.values_mut() {
+                sessions.retain(|s| s.expires > Instant::now());
+            }
+            actor.retired.retain(|_, s| !s.is_empty());
             if let Err(e) = actor.game_tick() {
                 actor.error(e);
             }
@@ -687,7 +751,7 @@ impl Actor {
                     if let Command::Send { bytes, .. } = &command {
                         actor.current_send_peer = serde_json::from_slice::<SignedMessage>(bytes)
                             .ok()
-                            .map(|m| m.recipient);
+                            .map(|m| (m.recipient, m.session));
                     }
                     actor.worker.send(&command)?;
                     actor.inflight += 1;
@@ -712,6 +776,7 @@ impl Actor {
                         identity::decode_id(&p.id)?,
                         PeerAction::Presence {
                             world: actor.shared_activity()?,
+                            visible: !actor.store.privacy()?.invisible,
                         },
                     );
                 }
@@ -790,6 +855,7 @@ impl Actor {
                     let _ = self.queue(peer, PeerAction::Removed);
                 }
                 self.sessions.remove(&peer);
+                self.retired.remove(&peer);
                 self.revoke_game_peer(peer)?;
                 self.update_live(|l| {
                     l.seen.remove(&id);
@@ -801,6 +867,7 @@ impl Actor {
                 self.revoke_game_peer(peer)?;
                 self.outbox.retain(|command|!matches!(command,Command::Send{bytes,..}if serde_json::from_slice::<SignedMessage>(bytes).is_ok_and(|m|m.recipient==peer)));
                 self.sessions.remove(&peer);
+                self.retired.remove(&peer);
                 self.contacts.remove(&peer);
                 self.pending.retain(|(p, _)| p != &peer);
                 self.update_live(|l| {
@@ -808,10 +875,22 @@ impl Actor {
                 });
             }
             Local::Unblock(id) => self.store.unblock(&id)?,
+            Local::CancelOffer(id) => {
+                if let Some(world) = self.outgoing_worlds.remove(&id) {
+                    self.update_live(|l| {
+                        l.deliveries.remove(&id);
+                    });
+                    self.pending.retain(
+                        |(_, action)| !matches!(action,PeerAction::Invite{offer}if offer.id==id),
+                    );
+                    let _ = self.queue(world.peer, PeerAction::InviteRevoked { id });
+                }
+            }
             Local::Privacy(privacy) => {
                 self.store.set_privacy(&privacy)?;
                 self.broadcast_activity()?;
             }
+            Local::Profile => self.broadcast_profile()?,
             Local::Activity(world) => {
                 if self.activity == world {
                     return Ok(());
@@ -824,7 +903,11 @@ impl Actor {
                 world,
                 listener,
                 manifest,
-            } => self.offer_world(peer, world, listener, *manifest)?,
+                reply,
+            } => {
+                let result = self.offer_world(peer, world, listener, *manifest);
+                let _ = reply.try_send(result.map_err(|e| e.to_string()));
+            }
             Local::Join(id) => self.join_world(&id)?,
             Local::Dismiss(id) => {
                 let peer = self.live.lock().ok().and_then(|l| {
@@ -843,6 +926,7 @@ impl Actor {
             }
             Local::Stop => {}
         }
+        self.update_live(|l| l.error = None);
         signal(&self.notify);
         Ok(())
     }
@@ -850,7 +934,8 @@ impl Actor {
         Ok(self.store.value("name")?.unwrap_or_else(|| "Player".into()))
     }
     fn shared_activity(&self) -> Result<Option<WorldSpec>> {
-        Ok(if self.store.privacy()?.share_activity {
+        let privacy = self.store.privacy()?;
+        Ok(if privacy.share_activity && !privacy.invisible {
             self.activity.clone()
         } else {
             None
@@ -869,10 +954,39 @@ impl Actor {
                 identity::decode_id(&p.id)?,
                 PeerAction::Presence {
                     world: world.clone(),
+                    visible: !self.store.privacy()?.invisible,
                 },
             );
         }
         Ok(())
+    }
+    fn own_profile(&self) -> Result<PeerAction> {
+        Ok(PeerAction::Profile {
+            name: self.name()?,
+            avatar: self.store.value("avatar")?.filter(|s| !s.is_empty()),
+        })
+    }
+    fn broadcast_profile(&mut self) -> Result<()> {
+        for p in self
+            .store
+            .people()?
+            .into_iter()
+            .filter(|p| p.state == "friend")
+            .take(128)
+        {
+            let _ = self.queue(identity::decode_id(&p.id)?, self.own_profile()?);
+        }
+        Ok(())
+    }
+    fn replace_session(&mut self, peer: [u8; 32], session: Session) {
+        if let Some(mut old) = self.sessions.insert(peer, session) {
+            old.expires = Instant::now() + Duration::from_secs(30);
+            let retired = self.retired.entry(peer).or_default();
+            if retired.len() >= 2 {
+                retired.pop_front();
+            }
+            retired.push_back(old);
+        }
     }
     fn cache_contact(&mut self, peer: [u8; 32], address: String) -> Result<()> {
         if self.contacts.len() >= 256 && !self.contacts.contains_key(&peer) {
@@ -903,12 +1017,20 @@ impl Actor {
             bail!("Social outgoing queue is full");
         }
         self.pending.push_back((peer, action));
-        if self.sessions.contains_key(&peer) {
+        if self
+            .sessions
+            .get(&peer)
+            .is_some_and(|s| s.expires > Instant::now())
+        {
             return Ok(());
         }
         if let Some(address) = self.contacts.get(&peer).cloned() {
             self.hello(peer, address)
         } else {
+            if self.resolving.contains_key(&peer) {
+                return Ok(());
+            }
+            self.resolving.insert(peer, Instant::now());
             self.worker.send(&Command::Resolve { public_key: peer })
         }
     }
@@ -918,7 +1040,7 @@ impl Actor {
         }
         let transport = transport_key(&address)?;
         let challenge = identity::random()?;
-        self.sessions.insert(
+        self.replace_session(
             peer,
             Session {
                 address: address.clone(),
@@ -1013,12 +1135,19 @@ impl Actor {
                     bail!("Invalid discovery response");
                 }
                 let peer: [u8; 32] = packet[..32].try_into()?;
+                self.resolving.remove(&peer);
                 if !self.pending.iter().any(|(p, _)| p == &peer) {
                     return Ok(());
                 }
                 let contact = discovery::verify(&peer, &packet)?;
                 self.cache_contact(peer, contact.endpoint.clone())?;
-                self.hello(peer, contact.endpoint)?;
+                if !self
+                    .sessions
+                    .get(&peer)
+                    .is_some_and(|s| s.expires > Instant::now())
+                {
+                    self.hello(peer, contact.endpoint)?;
+                }
             }
             Response::Received {
                 transport_key,
@@ -1051,9 +1180,14 @@ impl Actor {
             Response::Error { operation, message } => {
                 if operation == "send" {
                     self.inflight = self.inflight.saturating_sub(1);
-                    if let Some(peer) = self.current_send_peer.take() {
-                        self.contacts.remove(&peer);
-                        self.sessions.remove(&peer);
+                    if let Some((peer, nonce)) = self.current_send_peer.take() {
+                        if self.sessions.get(&peer).is_some_and(|s| {
+                            s.outgoing == Some(nonce)
+                                || (s.outgoing.is_none() && s.incoming == nonce)
+                        }) {
+                            self.contacts.remove(&peer);
+                            self.sessions.remove(&peer);
+                        }
                     }
                 }
                 if operation == "command" && self.game_retry()? {
@@ -1095,6 +1229,8 @@ impl Actor {
             bail!("Peer message exceeds limit");
         }
         let message: SignedMessage = serde_json::from_slice(bytes)?;
+        // Authenticate even stale messages before deciding to discard them.
+        message.verify(&self.identity.public_key(), &message.session, 0)?;
         let peer = message.sender;
         let id = identity::encode_id(&peer);
         if peer == self.identity.public_key() || self.store.blocked(&id) {
@@ -1128,9 +1264,22 @@ impl Actor {
                 if self.sessions.len() >= 128 && !self.sessions.contains_key(&peer) {
                     bail!("Peer session limit reached");
                 }
+                if let Some(current) = self.sessions.get(&peer) {
+                    if current.transport == transport && current.outgoing == Some(challenge) {
+                        return Ok(());
+                    }
+                    // Both peers may start discovery at the same time. The lower
+                    // root key wins initiation, without abandoning fresh challenges.
+                    if current.outgoing.is_none()
+                        && current.expires > Instant::now()
+                        && self.identity.public_key() < peer
+                    {
+                        return Ok(());
+                    }
+                }
                 let incoming = identity::random()?;
                 self.cache_contact(peer, c.endpoint.clone())?;
-                self.sessions.insert(
+                self.replace_session(
                     peer,
                     Session {
                         address: c.endpoint.clone(),
@@ -1155,6 +1304,13 @@ impl Actor {
                 )?;
             }
             Body::HelloAck { contact, challenge } => {
+                if !self
+                    .sessions
+                    .get(&peer)
+                    .is_some_and(|s| s.incoming == message.session && s.outgoing.is_none())
+                {
+                    return Ok(());
+                }
                 let session = self
                     .sessions
                     .get_mut(&peer)
@@ -1177,12 +1333,24 @@ impl Actor {
                 self.send(&address, peer, challenge, 1, Body::Confirm)?;
                 self.mark_online(&id);
                 self.flush(peer)?;
+                self.queue(peer, self.own_profile()?)?;
             }
             Body::Confirm | Body::Action { .. } => {
-                let session = self
+                let current = self
                     .sessions
-                    .get_mut(&peer)
-                    .context("Peer action has no fresh challenge")?;
+                    .get(&peer)
+                    .is_some_and(|s| s.incoming == message.session);
+                let session = if current {
+                    self.sessions.get_mut(&peer)
+                } else {
+                    self.retired.get_mut(&peer).and_then(|all| {
+                        all.iter_mut()
+                            .find(|s| s.incoming == message.session && s.expires > Instant::now())
+                    })
+                };
+                let Some(session) = session else {
+                    return Ok(());
+                };
                 if session.transport != transport {
                     bail!("Session transport changed");
                 }
@@ -1192,13 +1360,21 @@ impl Actor {
                     session.received,
                 )?;
                 session.received = message.sequence;
+                let newly_ready = !session.ready;
                 session.ready = true;
-                session.expires = Instant::now() + Duration::from_secs(180);
+                if current {
+                    session.expires = Instant::now() + Duration::from_secs(180);
+                }
                 self.mark_online(&id);
                 if let Body::Action { action } = body {
                     self.peer_action(&id, peer, action)?;
                 }
-                self.flush(peer)?;
+                if current {
+                    self.flush(peer)?;
+                    if newly_ready {
+                        self.queue(peer, self.own_profile()?)?;
+                    }
+                }
             }
         }
         Ok(())
@@ -1213,12 +1389,10 @@ impl Actor {
     fn peer_action(&mut self, id: &str, peer: [u8; 32], action: PeerAction) -> Result<()> {
         match action {
             PeerAction::Request { name } => match self.store.state(id)?.as_deref() {
-                Some("friend") => {
-                    self.send_action(peer, PeerAction::Accepted { name: self.name()? })?
-                }
+                Some("friend") => self.queue(peer, PeerAction::Accepted { name: self.name()? })?,
                 Some("outgoing") => {
                     self.store.accepted_by_peer(id, &name)?;
-                    self.send_action(peer, PeerAction::Accepted { name: self.name()? })?;
+                    self.queue(peer, PeerAction::Accepted { name: self.name()? })?;
                 }
                 _ => {
                     self.store.incoming(id, &name)?;
@@ -1231,11 +1405,14 @@ impl Actor {
             }
             PeerAction::Ping => {
                 if self.store.state(id)?.as_deref() == Some("friend") {
-                    self.send_action(peer, PeerAction::Pong)?;
+                    self.queue(peer, PeerAction::Pong)?;
                 }
             }
             PeerAction::Pong => {}
-            PeerAction::Presence { world } => {
+            PeerAction::Profile { name, avatar } => {
+                self.store.set_profile(id, &name, &avatar)?;
+            }
+            PeerAction::Presence { world, visible } => {
                 if self.store.state(id)?.as_deref() != Some("friend") {
                     bail!("Activity requires an accepted friend");
                 }
@@ -1243,7 +1420,11 @@ impl Actor {
                     world.validate()?;
                 }
                 self.update_live(|l| {
-                    if let Some(world) = world {
+                    l.visible.insert(id.into(), visible);
+                    if !visible {
+                        l.activity.remove(id);
+                    }
+                    if let Some(world) = world.filter(|_| visible) {
                         l.activity.insert(id.into(), world);
                     } else {
                         l.activity.remove(id);

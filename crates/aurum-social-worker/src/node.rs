@@ -60,17 +60,19 @@ pub fn run(root: &Path, executable: &Path) -> Result<()> {
                 ),
                 "add" => service.add(value.into())?,
                 "accept" | "block" => service.relationship(value.into(), command)?,
-                "invite" => service.invite(
-                    value,
-                    WorldSpec {
-                        name: "Direct QUIC echo fixture".into(),
-                        minecraft: "1.21.1".into(),
-                        loader: "vanilla".into(),
-                        loader_version: None,
-                    },
-                    listener.clone(),
-                    None,
-                )?,
+                "invite" => {
+                    service.invite(
+                        value,
+                        WorldSpec {
+                            name: "Direct QUIC echo fixture".into(),
+                            minecraft: "1.21.1".into(),
+                            loader: "vanilla".into(),
+                            loader_version: None,
+                        },
+                        listener.clone(),
+                        None,
+                    )?;
+                }
                 "join" => service.join(value.into())?,
                 "probe" => {
                     let state = service.snapshot()?;

@@ -22,6 +22,34 @@ use std::{
     time::Duration,
 };
 use tokio::io::AsyncWriteExt;
+pub fn normalize_avatar(bytes: &[u8]) -> Result<String> {
+    use base64::Engine as _;
+    if bytes.len() > 8 * 1024 * 1024 {
+        bail!("Avatar image exceeds 8 MiB");
+    }
+    let mut reader = image::ImageReader::new(std::io::Cursor::new(bytes)).with_guessed_format()?;
+    let mut limits = image::Limits::default();
+    limits.max_image_width = Some(8192);
+    limits.max_image_height = Some(8192);
+    limits.max_alloc = Some(128 * 1024 * 1024);
+    reader.limits(limits);
+    let image = reader
+        .decode()?
+        .resize_to_fill(64, 64, image::imageops::FilterType::Lanczos3)
+        .to_rgb8();
+    for quality in [80, 65, 45, 25, 10] {
+        let mut jpeg = Vec::new();
+        image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg, quality)
+            .encode_image(&image)?;
+        if jpeg.len() <= 2400 {
+            return Ok(format!(
+                "data:image/jpeg;base64,{}",
+                base64::engine::general_purpose::STANDARD.encode(jpeg)
+            ));
+        }
+    }
+    bail!("Avatar could not be compressed")
+}
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -332,17 +360,42 @@ impl Engine {
         if !self.social.is_enabled() {
             bail!("Social was disabled");
         }
-        self.social.invite(
-            friend,
-            WorldSpec {
-                name: p.name,
-                minecraft: p.minecraft,
-                loader: p.loader.key().into(),
-                loader_version: p.loader_version,
-            },
-            listeners.remove(0),
-            exported,
-        )
+        let social = self.social.clone();
+        let friend = friend.to_owned();
+        let listener = listeners.remove(0);
+        let id = tokio::task::spawn_blocking(move || {
+            social.invite(
+                &friend,
+                WorldSpec {
+                    name: p.name,
+                    minecraft: p.minecraft,
+                    loader: p.loader.key().into(),
+                    loader_version: p.loader_version,
+                },
+                listener,
+                exported,
+            )
+        })
+        .await??;
+        task.progress("social-invite", "Waiting for invitation receipt", 0, 1);
+        let until = tokio::time::Instant::now() + Duration::from_secs(45);
+        while self.social.delivery(&id) != Some(true) {
+            if let Err(error) = task.check() {
+                let _ = self.social.cancel_offer(id);
+                return Err(error);
+            }
+            if !self.social.is_enabled() {
+                bail!("Social was disabled");
+            }
+            if tokio::time::Instant::now() > until {
+                let _ = self.social.cancel_offer(id);
+                bail!(
+                    "Invitation was not delivered. Check that your friend is online and try again."
+                );
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+        Ok(())
     }
     pub async fn social_plan(&self, invitation: &str) -> Result<Review> {
         let incoming = self
@@ -1194,6 +1247,20 @@ async fn download_bounded(value: &str, path: &Path, item: &PlanItem, task: &Task
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn avatar_normalization_strips_metadata_and_bounds_peer_payload() {
+        let mut png = std::io::Cursor::new(Vec::new());
+        image::DynamicImage::ImageRgba8(image::RgbaImage::from_fn(128, 96, |x, y| {
+            image::Rgba([(x * 17) as u8, (y * 29) as u8, (x ^ y) as u8, 120])
+        }))
+        .write_to(&mut png, image::ImageFormat::Png)
+        .unwrap();
+        let avatar = super::normalize_avatar(png.get_ref()).unwrap();
+        aurum_social::profile::validate_avatar(&Some(avatar.clone())).unwrap();
+        assert!(avatar.len() <= 3250);
+        assert!(super::normalize_avatar(b"not an image").is_err());
+        assert!(super::normalize_avatar(&vec![0; 8 * 1024 * 1024 + 1]).is_err());
+    }
     use super::*;
     #[test]
     fn peer_urls_cannot_select_arbitrary_hosts() {
@@ -1264,3 +1331,4 @@ mod tests {
         );
     }
 }
+pub mod notification;

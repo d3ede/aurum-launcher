@@ -1,228 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { Package, Play, RefreshCw, Wifi } from "lucide-react";
+import { Package, Play, RefreshCw } from "lucide-react";
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
 import { t } from "../lib/i18n";
 import { useSocial } from "./SocialProvider";
 import { Modal, Field } from "./ui";
+import { SocialId, SocialCheck } from "./SocialIdentity";
+import { socialSize as size } from "../lib/social";
 import { Select } from "./Select";
-import type {
-  SocialInvitation,
-  SocialPerson,
-  SocialReview,
-} from "../lib/social";
-function size(bytes: number) {
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-export function SocialHostInvite({
-  friend,
-  withPack,
-  onClose,
-}: {
-  friend: SocialPerson;
-  withPack: boolean;
-  onClose: () => void;
-}) {
-  const { data, operation, busy } = useApp();
-  const { act, working } = useSocial();
-  const profiles = data.profiles.filter(
-    (p) => p.engine !== "horizon" && data.running.includes(p.id),
-  );
-  const [profileId, setProfileId] = useState(profiles[0]?.id || "");
-  const [ports, setPorts] = useState<number[]>([]);
-  const [port, setPort] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [configs, setConfigs] = useState(false);
-  const [sensitive, setSensitive] = useState(false);
-  const [summary, setSummary] = useState<{
-    files: number;
-    bytes: number;
-    excluded: string[];
-    secrets: string[];
-  } | null>(null);
-  const inspect = async () => {
-    if (!profileId) return;
-    setLoading(true);
-    setError("");
-    try {
-      const values = await rpc("social.lanListeners", { profileId });
-      const found = [
-        ...new Set(
-          values.map((v) =>
-            Number(v.address.slice(v.address.lastIndexOf(":") + 1)),
-          ),
-        ),
-      ];
-      setPorts(found);
-      setPort(found.length === 1 ? String(found[0]) : "");
-      if (!found.length) setError(t("@social.lan.hint"));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
-    }
-  };
-  useEffect(() => {
-    void inspect();
-    setSummary(null);
-  }, [profileId]);
-  useEffect(() => setSummary(null), [configs, sensitive]);
-  const review = () =>
-    void act(async () => {
-      const r = await operation((operationId) =>
-        rpc("social.exportManifest", {
-          profileId,
-          configs,
-          sensitive,
-          operationId,
-        }),
-      );
-      if (!r) return;
-      setSummary({
-        files: r.manifest.files.length,
-        bytes: r.manifest.files.reduce((n, f) => n + f.bytes, 0),
-        excluded: r.excluded,
-        secrets: r.potentialSecrets,
-      });
-    });
-  return (
-    <Modal
-      title={t(withPack ? "@social.invite.pack" : "@social.invite.world")}
-      subtitle={friend.name || friend.id.slice(0, 16)}
-      onClose={onClose}
-      closeDisabled={working || busy}
-    >
-      <p>{t("@social.lan.hint")}</p>
-      <Field label={t("@social.profile")}>
-        <Select
-          value={profileId}
-          onValueChange={setProfileId}
-          aria-label={t("@social.profile")}
-          options={profiles.map((p) => ({ value: p.id, label: p.name }))}
-        />
-      </Field>
-      <div className="social-port-row">
-        <Field label={t("@social.lan.port")}>
-          <Select
-            value={port}
-            onValueChange={setPort}
-            disabled={loading}
-            aria-label={t("@social.lan.port")}
-            options={ports.map((p) => ({
-              value: String(p),
-              label: `LAN · ${p}`,
-            }))}
-          />
-        </Field>
-        <button
-          className="icon-button"
-          disabled={loading || !profileId}
-          aria-label={t("@social.retry")}
-          onClick={() => void inspect()}
-        >
-          <RefreshCw size={18} />
-        </button>
-      </div>
-      {error && <p role="status">{error}</p>}
-      {withPack && (
-        <>
-          <label className="social-toggle">
-            <input
-              type="checkbox"
-              checked={configs}
-              onChange={(e) => setConfigs(e.target.checked)}
-            />
-            {t("@social.configs")}
-          </label>
-          {configs && (
-            <label className="social-toggle">
-              <input
-                type="checkbox"
-                checked={sensitive}
-                onChange={(e) => setSensitive(e.target.checked)}
-              />
-              {t("@social.sensitive")}
-            </label>
-          )}
-          <p>{t("@social.scan.hint")}</p>
-          <button
-            className="button"
-            disabled={!profileId || working}
-            onClick={review}
-          >
-            {t("@social.review")}
-          </button>
-          {summary && (
-            <div className="social-export-summary">
-              <p>
-                {summary.files} · {size(summary.bytes)}
-              </p>
-              {!!summary.excluded.length && (
-                <details>
-                  <summary>
-                    {t("@social.excluded")} ({summary.excluded.length})
-                  </summary>
-                  {summary.excluded.map((f) => (
-                    <code key={f}>{f}</code>
-                  ))}
-                </details>
-              )}
-              {!!summary.secrets.length && (
-                <p className="error-text">
-                  {t(
-                    sensitive
-                      ? "@social.secrets.included"
-                      : "@social.secrets.omitted",
-                  )}
-                </p>
-              )}
-            </div>
-          )}
-        </>
-      )}
-      <div className="modal-actions">
-        {(working || busy) && (
-          <button
-            className="button"
-            onClick={() => void act(() => rpc("social.disable", {}))}
-          >
-            {t("@social.disable")}
-          </button>
-        )}
-        <button className="button" disabled={working} onClick={onClose}>
-          {t("@social.cancel")}
-        </button>
-        <button
-          className="button primary"
-          disabled={
-            working || loading || !profileId || !port || (withPack && !summary)
-          }
-          onClick={() =>
-            void act(async () => {
-              const sent = await operation(async (operationId) => {
-                await rpc("social.invite", {
-                  profileId,
-                  friend: friend.id,
-                  port: Number(port),
-                  configs,
-                  sensitive,
-                  withPack,
-                  operationId,
-                });
-                return true;
-              });
-              if (sent) onClose();
-            })
-          }
-        >
-          {withPack ? <Package size={16} /> : <Wifi size={16} />}{" "}
-          {t("@social.send.invite")}
-        </button>
-      </div>
-    </Modal>
-  );
-}
+import type { SocialInvitation, SocialReview } from "../lib/social";
+export { SocialHostInvite } from "./SocialHostInvite";
 export function SocialIncomingInvite({
   id,
   onClose,
@@ -230,7 +17,7 @@ export function SocialIncomingInvite({
   id: string;
   onClose: () => void;
 }) {
-  const { snapshot: s, act, working } = useSocial();
+  const { snapshot: s, act, working, requestDisable } = useSocial();
   const { data, operation, refresh, create, busy } = useApp();
   const invite = s?.invitations.find((i) => i.offer.id === id);
   const [review, setReview] = useState<SocialReview | null>(null);
@@ -274,7 +61,7 @@ export function SocialIncomingInvite({
       onClose={onClose}
       closeDisabled={working || busy}
       wide={pack}
-      className="social-invitation"
+      className="social-dialog social-invitation"
     >
       <h3>{invite.offer.world.name}</h3>
       <p>
@@ -283,7 +70,7 @@ export function SocialIncomingInvite({
           ? ` ${invite.offer.world.loaderVersion}`
           : ""}
       </p>
-      <code className="social-full-id">{invite.from}</code>
+      <SocialId id={invite.from} />
       {pack ? (
         <>
           <p>{t("@social.install.hint")}</p>
@@ -336,15 +123,14 @@ export function SocialIncomingInvite({
                   ))}
                 </details>
               )}
-              <label className="social-toggle">
-                <input
-                  type="checkbox"
-                  checked={accepted}
-                  onChange={(e) => setAccepted(e.target.checked)}
-                  disabled={working || !!installed}
-                />
+              <SocialCheck
+                checked={accepted}
+                onChange={setAccepted}
+                disabled={working || !!installed}
+                danger
+              >
                 {t("@social.trust.code")}
-              </label>
+              </SocialCheck>
             </>
           )}
           {installed && <p role="status">{t("@social.manual.hint")}</p>}
@@ -369,10 +155,7 @@ export function SocialIncomingInvite({
       )}
       <div className="modal-actions">
         {(working || busy) && (
-          <button
-            className="button"
-            onClick={() => void act(() => rpc("social.disable", {}))}
-          >
+          <button className="button" onClick={requestDisable}>
             {t("@social.disable")}
           </button>
         )}
@@ -389,7 +172,7 @@ export function SocialIncomingInvite({
         </button>
         {pack ? (
           <button
-            className="button primary"
+            className="button social-positive"
             disabled={working || !review || !accepted || !!installed}
             onClick={() =>
               void act(async () => {
@@ -412,7 +195,7 @@ export function SocialIncomingInvite({
           </button>
         ) : (
           <button
-            className="button primary"
+            className="button social-positive"
             disabled={working || !profile}
             onClick={() => void act(() => join(profile))}
           >
@@ -487,7 +270,7 @@ export function SocialInvitationList({
   );
 }
 export function SocialRecovery() {
-  const { snapshot, act, working } = useSocial();
+  const { snapshot, act, working, requestDisable } = useSocial();
   const { operation, refresh, busy } = useApp();
   const [pending, setPending] = useState<SocialReview[]>([]);
   const [review, setReview] = useState<SocialReview | null>(null);
@@ -524,6 +307,7 @@ export function SocialRecovery() {
           onClose={() => setReview(null)}
           closeDisabled={working || busy}
           wide
+          className="social-dialog"
         >
           <p>{t("@social.resume.hint")}</p>
           <p>{t("@social.install.hint")}</p>
@@ -540,25 +324,17 @@ export function SocialRecovery() {
               </div>
             ))}
           </div>
-          <label className="social-toggle">
-            <input
-              type="checkbox"
-              checked={accepted}
-              onChange={(e) => setAccepted(e.target.checked)}
-            />
+          <SocialCheck checked={accepted} onChange={setAccepted} danger>
             {t("@social.trust.code")}
-          </label>
+          </SocialCheck>
           <div className="modal-actions">
             {busy && (
-              <button
-                className="button"
-                onClick={() => void act(() => rpc("social.disable", {}))}
-              >
+              <button className="button" onClick={requestDisable}>
                 {t("@social.disable")}
               </button>
             )}
             <button
-              className="button primary"
+              className="button social-positive"
               disabled={!accepted || working || busy}
               onClick={() =>
                 void act(async () => {

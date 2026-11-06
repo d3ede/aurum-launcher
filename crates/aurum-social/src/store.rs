@@ -4,10 +4,17 @@ use anyhow::{bail, Result};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+fn default_notifications() -> bool {
+    true
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Privacy {
+    #[serde(default)]
+    pub invisible: bool,
+    #[serde(default = "default_notifications")]
+    pub notifications: bool,
     pub incoming_requests: bool,
     pub share_activity: bool,
     pub public_relays: bool,
@@ -15,6 +22,8 @@ pub struct Privacy {
 impl Default for Privacy {
     fn default() -> Self {
         Self {
+            invisible: false,
+            notifications: true,
             incoming_requests: true,
             share_activity: false,
             public_relays: true,
@@ -28,6 +37,7 @@ pub struct Person {
     pub name: String,
     pub state: String,
     pub updated: u64,
+    pub avatar: Option<String>,
 }
 pub struct Store {
     db: Connection,
@@ -40,6 +50,9 @@ impl Store {
         let db = Connection::open(path)?;
         db.busy_timeout(std::time::Duration::from_secs(2))?;
         db.execute_batch("PRAGMA journal_mode=DELETE; PRAGMA foreign_keys=ON; CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS contacts(id TEXT PRIMARY KEY,name TEXT NOT NULL,state TEXT NOT NULL CHECK(state IN ('outgoing','incoming','friend','blocked')),updated INTEGER NOT NULL); PRAGMA user_version=1;")?;
+        db.execute_batch(
+            "CREATE TABLE IF NOT EXISTS contact_profiles(id TEXT PRIMARY KEY,avatar TEXT);",
+        )?;
         Ok(Self { db })
     }
     #[cfg(test)]
@@ -68,7 +81,7 @@ impl Store {
     }
     pub fn people(&self) -> Result<Vec<Person>> {
         let mut stmt = self.db.prepare(
-            "SELECT id,name,state,updated FROM contacts ORDER BY updated DESC,id LIMIT 2304",
+            "SELECT c.id,c.name,c.state,c.updated,p.avatar FROM contacts c LEFT JOIN contact_profiles p ON p.id=c.id ORDER BY c.updated DESC,c.id LIMIT 2304",
         )?;
         let rows = stmt.query_map([], |r| {
             Ok(Person {
@@ -76,6 +89,7 @@ impl Store {
                 name: r.get(1)?,
                 state: r.get(2)?,
                 updated: r.get(3)?,
+                avatar: r.get(4)?,
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
@@ -89,6 +103,21 @@ impl Store {
     }
     pub fn blocked(&self, id: &str) -> bool {
         self.state(id).ok().flatten().as_deref() == Some("blocked")
+    }
+    pub fn set_profile(&self, id: &str, name: &str, avatar: &Option<String>) -> Result<()> {
+        validate_name(name)?;
+        crate::profile::validate_avatar(avatar)?;
+        let id = encode_id(&decode_id(id)?);
+        if !matches!(
+            self.state(&id)?.as_deref(),
+            Some("friend" | "incoming" | "outgoing")
+        ) {
+            return Ok(());
+        }
+        self.db
+            .execute("UPDATE contacts SET name=?2 WHERE id=?1", params![id, name])?;
+        self.db.execute("INSERT INTO contact_profiles(id,avatar) VALUES(?1,?2) ON CONFLICT(id) DO UPDATE SET avatar=excluded.avatar",params![id,avatar])?;
+        Ok(())
     }
     fn count(&self, state: &str) -> Result<u32> {
         Ok(self.db.query_row(
@@ -150,20 +179,39 @@ impl Store {
         let id = encode_id(&decode_id(id)?);
         self.db.execute(
             "DELETE FROM contacts WHERE id=?1 AND state!='blocked'",
-            [id],
+            [&id],
         )?;
+        if self.state(&id)?.is_none() {
+            self.db
+                .execute("DELETE FROM contact_profiles WHERE id=?1", [&id])?;
+        }
         Ok(())
     }
     pub fn block(&self, id: &str) -> Result<()> {
         if self.count("blocked")? >= 2048 && !self.blocked(id) {
             bail!("Block list limit reached");
         }
-        self.put(id, "", "blocked")
+        let name = self
+            .db
+            .query_row(
+                "SELECT name FROM contacts WHERE id=?1",
+                [encode_id(&decode_id(id)?)],
+                |r| r.get::<_, String>(0),
+            )
+            .optional()?
+            .unwrap_or_default();
+        self.put(id, &name, "blocked")
     }
     pub fn unblock(&self, id: &str) -> Result<()> {
         let id = encode_id(&decode_id(id)?);
-        self.db
-            .execute("DELETE FROM contacts WHERE id=?1 AND state='blocked'", [id])?;
+        self.db.execute(
+            "DELETE FROM contacts WHERE id=?1 AND state='blocked'",
+            [&id],
+        )?;
+        if self.state(&id)?.is_none() {
+            self.db
+                .execute("DELETE FROM contact_profiles WHERE id=?1", [&id])?;
+        }
         Ok(())
     }
 }

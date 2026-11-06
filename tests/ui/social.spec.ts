@@ -1,16 +1,31 @@
 // UI contract fixtures only. Network/isolation evidence comes from the native labs.
 import { test, expect, type Page } from "@playwright/test";
-async function fixture(page: Page, enabled = false, theme = "dark",language="en") {
+async function fixture(
+  page: Page,
+  enabled = false,
+  theme = "dark",
+  language = "en",
+) {
   await page.addInitScript(
-    ({ enabled, theme,language }) => {
+    ({ enabled, theme, language }) => {
       localStorage.setItem("aurum:language", language);
       const w = window as any;
       w.isTauri = true;
       const state = {
-        profiles: [],
+        profiles: [
+          {
+            id: "vanilla",
+            name: "Vanilla test",
+            minecraft: "1.21.1",
+            loader: "vanilla",
+            loaderVersion: null,
+            content: [],
+            cover: 0,
+          },
+        ],
         accounts: [],
         selectedAccount: null,
-        running: [],
+        running: ["vanilla"],
         dataDir: "C:/test-only",
         serverManager: true,
         settings: {
@@ -35,6 +50,8 @@ async function fixture(page: Page, enabled = false, theme = "dark",language="en"
           incomingRequests: true,
           shareActivity: false,
           publicRelays: true,
+          invisible: false,
+          notifications: true,
         },
         people: [] as any[],
         online: [],
@@ -46,6 +63,7 @@ async function fixture(page: Page, enabled = false, theme = "dark",language="en"
       const events = new Map<string, Function>();
       let next = 1;
       w.socialRequests = [];
+      w.socialState = state;
       w.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
       w.socialPatch = (patch: any) => {
         Object.assign(social, patch);
@@ -75,8 +93,25 @@ async function fixture(page: Page, enabled = false, theme = "dark",language="en"
           if (action === "snapshot") return structuredClone(state);
           if (action === "social.snapshot") return structuredClone(social);
           if (action === "social.takeLink") return null;
+          if (action === "social.invite" && w.socialInviteFail)
+            throw "Invitation was not delivered. Check that your friend is online and try again.";
+          if (action === "social.restoreIdentity" && w.socialRestoreCancel)
+            return false;
           if (action === "takeServerShortcut") return null;
           if (action === "social.pending") return [];
+          if (action === "social.lanListeners")
+            return [{ pid: 123, creationTime: 1, address: "127.0.0.1:60413" }];
+          if (action === "social.exportManifest")
+            return {
+              manifest: { files: [] },
+              excluded: [],
+              potentialSecrets: [],
+            };
+          if (
+            action === "social.restoreIdentity" ||
+            action === "social.chooseAvatar"
+          )
+            return true;
           if (action === "social.configureFirewall") return null;
           if (action === "social.enable") {
             social.enabled = true;
@@ -126,12 +161,32 @@ async function fixture(page: Page, enabled = false, theme = "dark",language="en"
         },
       };
     },
-    { enabled, theme,language },
+    { enabled, theme, language },
   );
   await page.goto("/");
-  await page.getByRole("button", { name: language==="ru"?"Друзья":"Friends", exact: true }).click();
+  await page
+    .getByRole("button", {
+      name: language === "ru" ? "Друзья" : "Friends",
+      exact: true,
+    })
+    .click();
 }
-test("Russian Friends navigation stays translated",async({page})=>{await fixture(page,false,"light","ru");await expect(page.getByRole("navigation").getByRole("button",{name:"Друзья",exact:true})).toBeVisible();await expect(page.getByRole("navigation").getByRole("button",{name:"Friends",exact:true})).toHaveCount(0);await expect(page.getByRole("heading",{name:"Друзья",level:1})).toBeVisible();});
+test("Russian Friends navigation stays translated", async ({ page }) => {
+  await fixture(page, false, "light", "ru");
+  await expect(
+    page
+      .getByRole("navigation")
+      .getByRole("button", { name: "Друзья", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("navigation")
+      .getByRole("button", { name: "Friends", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Друзья", level: 1 }),
+  ).toBeVisible();
+});
 test("fresh install requires explicit P2P and scoped Firewall consent", async ({
   page,
 }) => {
@@ -152,11 +207,11 @@ test("fresh install requires explicit P2P and scoped Firewall consent", async ({
     .click();
   const modal = page.getByRole("dialog");
   await expect(
-    modal.getByRole("button", { name: "Configure network and enable" }),
+    modal.getByRole("button", { name: "Enable Social", exact: true }),
   ).toBeDisabled();
   await modal.getByRole("checkbox").check();
   await modal
-    .getByRole("button", { name: "Configure network and enable" })
+    .getByRole("button", { name: "Enable Social", exact: true })
     .click();
   await expect(
     page.getByRole("button", { name: "Turn off Social", exact: true }),
@@ -166,6 +221,13 @@ test("fresh install requires explicit P2P and scoped Firewall consent", async ({
     actions.indexOf("social.enable"),
   );
   await page
+    .getByRole("button", { name: "Turn off Social", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Turn off Social?" }),
+  ).toBeVisible();
+  await page
+    .getByRole("dialog")
     .getByRole("button", { name: "Turn off Social", exact: true })
     .click();
   await expect(
@@ -201,7 +263,9 @@ for (const theme of ["dark", "light"]) {
       modal.getByText("<img src=x onerror=alert(1)>", { exact: true }),
     ).toBeVisible();
     await expect(modal.locator("img")).toHaveCount(0);
-    expect(await page.locator("#root").evaluate((e) => (e as HTMLElement).inert)).toBe(true);
+    expect(
+      await page.locator("#root").evaluate((e) => (e as HTMLElement).inert),
+    ).toBe(true);
     await modal.getByRole("button", { name: "Accept", exact: true }).focus();
     await page.keyboard.press("Tab");
     await expect(
@@ -217,7 +281,9 @@ for (const theme of ["dark", "light"]) {
     ).toBeVisible();
     await modal.getByRole("button", { name: "Block", exact: true }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    expect(await page.locator("#root").evaluate((e) => (e as HTMLElement).inert)).toBe(false);
+    expect(
+      await page.locator("#root").evaluate((e) => (e as HTMLElement).inert),
+    ).toBe(false);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -285,4 +351,274 @@ test("world pack review requires source trust before creating a separate instanc
         ).payload.accepted,
     ),
   ).toBe(true);
+});
+for (const theme of ["light", "dark"]) {
+  test(`compact friends and invitation flow at 960px (${theme})`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 960, height: 780 });
+    await fixture(page, true, theme, "ru");
+    const id = `aur1${"b".repeat(59)}`;
+    await page.evaluate(
+      (id) =>
+        (window as any).socialPatch({
+          error: "Peer action has no fresh challenge",
+          people: [
+            {
+              id,
+              name: "Очень длинный ник друга проверяет переносы строк",
+              state: "friend",
+              updated: 1,
+            },
+          ],
+          online: [id],
+        }),
+      id,
+    );
+    await expect(
+      page.getByText("Peer action has no fresh challenge"),
+    ).toHaveCount(0);
+    await expect(page.locator(".social-id-value")).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "Показать Aurum ID", exact: true })
+      .click();
+    await expect(page.locator(".social-id-value")).toContainText("aur1");
+    await page
+      .getByRole("button", { name: "Скрыть Aurum ID", exact: true })
+      .click();
+    const row = page.locator("article.social-person");
+    await expect(row).not.toContainText(id);
+    await expect(
+      row.getByRole("button", { name: "Удалить друга" }),
+    ).toHaveCount(0);
+    const avatar = row.locator(".social-avatar");
+    expect((await row.boundingBox())!.height).toBeLessThan(110);
+    await expect(avatar.locator(".online")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Восстановить личность", exact: true }),
+    ).toBeEnabled();
+    await page.screenshot({
+      path: `.test-data/screenshots/social-compact-${theme}.png`,
+    });
+    await row.getByRole("button", { name: /Действия:/ }).click();
+    await expect(
+      page.getByRole("menuitem", { name: "Удалить друга" }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await row.getByRole("button", { name: "Пригласить", exact: true }).click();
+    const modal = page.getByRole("dialog");
+    await expect(
+      modal.getByRole("button", { name: "Отправить приглашение", exact: true }),
+    ).toBeEnabled();
+    await modal
+      .getByRole("button", { name: "Со сборкой", exact: true })
+      .click();
+    await expect(
+      modal.getByRole("button", { name: "Отправить приглашение", exact: true }),
+    ).toBeEnabled();
+    await modal
+      .getByRole("checkbox", { name: "Передать настройки модов", exact: true })
+      .check();
+    const label = modal.locator(".social-check").first();
+    const box = await label.locator("input").boundingBox(),
+      text = await label.locator("span").boundingBox();
+    expect(text!.x - box!.x - box!.width).toBeGreaterThanOrEqual(10);
+    expect(Math.abs(text!.y - box!.y)).toBeLessThanOrEqual(3);
+    await modal
+      .getByRole("button", { name: "Посмотреть состав", exact: true })
+      .click();
+    await expect(modal.getByText(/Дополнительных файлов нет/)).toBeVisible();
+    await expect(modal.getByText("0 · 0.0 MB", { exact: true })).toHaveCount(0);
+    await page.screenshot({
+      path: `.test-data/screenshots/social-host-${theme}.png`,
+    });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await modal
+      .getByRole("button", { name: "Отправить приглашение", exact: true })
+      .click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    expect(
+      await page.evaluate(
+        () =>
+          (window as any).socialRequests.filter(
+            (r: any) => r.action === "social.invite",
+          ).length,
+      ),
+    ).toBe(1);
+  });
+}
+test("presence, avatar picker and disabling preserve explicit user choices", async ({
+  page,
+}) => {
+  await fixture(page, true);
+  await page.getByRole("combobox", { name: "Status", exact: true }).click();
+  await page.getByRole("option", { name: "Invisible", exact: true }).click();
+  await expect(
+    page.getByRole("combobox", { name: "Status", exact: true }),
+  ).toContainText("Invisible");
+  expect(
+    await page.evaluate(
+      () =>
+        (window as any).socialRequests.find(
+          (r: any) => r.action === "social.privacy",
+        ).payload.privacy.invisible,
+    ),
+  ).toBe(true);
+  await page
+    .getByRole("button", { name: "Choose avatar", exact: true })
+    .click();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as any).socialRequests.filter(
+          (r: any) => r.action === "social.chooseAvatar",
+        ).length,
+    ),
+  ).toBe(1);
+  await page
+    .getByRole("button", { name: "Turn off Social", exact: true })
+    .click();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as any).socialRequests.filter(
+          (r: any) => r.action === "social.disable",
+        ).length,
+    ),
+  ).toBe(0);
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Turn off Social", exact: true }),
+  ).toBeVisible();
+});
+test("request notifications fire once and respect the notification preference", async ({
+  page,
+}) => {
+  await fixture(page, true);
+  const person = {
+    id: `aur1${"b".repeat(59)}`,
+    name: "Friend",
+    state: "incoming",
+    updated: 1,
+  };
+  await page.evaluate(
+    (person) => (window as any).socialPatch({ people: [person] }),
+    person,
+  );
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as any).socialRequests.filter(
+            (r: any) => r.action === "social.notify",
+          ).length,
+      ),
+    )
+    .toBe(1);
+  await page.evaluate(
+    (person) => (window as any).socialPatch({ people: [person] }),
+    person,
+  );
+  await page.waitForTimeout(600);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as any).socialRequests.filter(
+          (r: any) => r.action === "social.notify",
+        ).length,
+    ),
+  ).toBe(1);
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Decline", exact: true })
+    .click();
+  await page
+    .getByRole("checkbox", { name: "Sounds and notifications", exact: true })
+    .uncheck();
+  await page.evaluate(
+    (person) =>
+      (window as any).socialPatch({
+        people: [{ ...person, id: `aur1${"c".repeat(59)}` }],
+      }),
+    person,
+  );
+  await expect(page.getByRole("dialog")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as any).socialRequests.filter(
+          (r: any) => r.action === "social.notify",
+        ).length,
+    ),
+  ).toBe(1);
+});
+test("an undelivered invitation stays open for retry instead of showing success", async ({
+  page,
+}) => {
+  await fixture(page, true);
+  await page.evaluate(() => {
+    (window as any).socialInviteFail = true;
+    (window as any).socialPatch({
+      people: [
+        {
+          id: `aur1${"b".repeat(59)}`,
+          name: "Friend",
+          state: "friend",
+          updated: 1,
+        },
+      ],
+    });
+  });
+  await page.getByRole("button", { name: "Invite", exact: true }).click();
+  const modal = page.getByRole("dialog");
+  await modal
+    .getByRole("button", { name: "Send invitation", exact: true })
+    .click();
+  await expect(
+    page.getByText(
+      "Invitation was not delivered. Check that your friend is online and try again.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    modal.getByRole("button", { name: "Send invitation", exact: true }),
+  ).toBeEnabled();
+  await expect(
+    page.getByText("Invitation received by your friend’s launcher", {
+      exact: true,
+    }),
+  ).toHaveCount(0);
+});
+test("cancelling the native restore picker keeps the dialog and active identity", async ({
+  page,
+}) => {
+  await fixture(page, true);
+  await page.evaluate(() => ((window as any).socialRestoreCancel = true));
+  await page
+    .getByRole("button", { name: "Restore identity", exact: true })
+    .click();
+  const modal = page.getByRole("dialog");
+  await modal.getByRole("textbox").fill("test-passphrase");
+  await modal
+    .getByRole("button", { name: "Choose backup", exact: true })
+    .click();
+  await expect(modal).toBeVisible();
+  await expect(
+    modal.getByRole("button", { name: "Choose backup", exact: true }),
+  ).toBeEnabled();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as any).socialRequests.filter(
+          (r: any) => r.action === "social.disable",
+        ).length,
+    ),
+  ).toBe(0);
 });

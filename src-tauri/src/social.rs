@@ -93,6 +93,52 @@ pub async fn rpc(
         .await
         .map_err(err)?
         .map_err(err),
+        "social.notify" => {
+            let kind: String = param(payload, "kind")?;
+            let id: String = param(payload, "id")?;
+            let state = social.snapshot().map_err(err)?;
+            if !state.enabled || !state.privacy.notifications {
+                return Ok(json!(false));
+            }
+            let name = match kind.as_str() {
+                "request" => state
+                    .people
+                    .iter()
+                    .find(|p| p.id == id && p.state == "incoming")
+                    .map(|p| p.name.clone()),
+                "invite" => state
+                    .invitations
+                    .iter()
+                    .find(|i| i.offer.id == id && i.status != "loading")
+                    .and_then(|i| state.people.iter().find(|p| p.id == i.from))
+                    .map(|p| p.name.clone()),
+                _ => None,
+            }
+            .ok_or("Notification is no longer available")?;
+            let window = app
+                .get_webview_window("main")
+                .ok_or("Missing main window")?;
+            let focused = window.is_focused().unwrap_or(false);
+            if !focused {
+                let _ =
+                    window.request_user_attention(Some(tauri::UserAttentionType::Informational));
+            }
+            let russian: bool = param(payload, "russian")?;
+            let silent: bool = param(payload, "silent")?;
+            let title = match (kind.as_str(), russian) {
+                ("request", true) => "Новая заявка в друзья",
+                ("request", false) => "New friend request",
+                (_, true) => "Приглашение в мир",
+                _ => "World invitation",
+            }
+            .to_string();
+            let shown = tauri::async_runtime::spawn_blocking(move || {
+                auren_core::social::notification::show(&title, &name, silent).unwrap_or(false)
+            })
+            .await
+            .map_err(err)?;
+            Ok(json!(shown))
+        }
         "social.enable" => {
             let accepted: bool = param(payload, "accepted")?;
             let name: String = param(payload, "name")?;
@@ -242,6 +288,31 @@ pub async fn rpc(
                 .map_err(err)?;
             Ok(Value::Null)
         }
+        "social.chooseAvatar" => {
+            let handle = app.clone();
+            let changed = tauri::async_runtime::spawn_blocking(move || -> Result<bool, String> {
+                let Some(path) = handle
+                    .dialog()
+                    .file()
+                    .add_filter("Avatar", &["png", "jpg", "jpeg", "webp"])
+                    .blocking_pick_file()
+                else {
+                    return Ok(false);
+                };
+                let path = path.into_path().map_err(err)?;
+                if std::fs::metadata(&path).map_err(err)?.len() > 8 * 1024 * 1024 {
+                    return Err("Avatar image exceeds 8 MiB".into());
+                }
+                let avatar =
+                    auren_core::social::normalize_avatar(&std::fs::read(path).map_err(err)?)
+                        .map_err(err)?;
+                social.set_avatar(Some(avatar)).map_err(err)?;
+                Ok(true)
+            })
+            .await
+            .map_err(err)??;
+            Ok(json!(changed))
+        }
         "social.qr" => {
             let id = social
                 .snapshot()
@@ -297,27 +368,42 @@ pub async fn rpc(
             let password: String = param(payload, "password")?;
             let replace: bool = param(payload, "replace")?;
             let handle = app.clone();
-            let restored = tauri::async_runtime::spawn_blocking(move || -> Result<bool, String> {
-                let Some(path) = handle
-                    .dialog()
-                    .file()
-                    .add_filter("Encrypted Aurum identity", &["age"])
-                    .blocking_pick_file()
-                else {
-                    return Ok(false);
-                };
-                let path = path.into_path().map_err(err)?;
-                if std::fs::metadata(&path).map_err(err)?.len() > 4096 {
-                    return Err("Identity backup exceeds limit".into());
-                }
-                social
-                    .restore_identity(&std::fs::read(path).map_err(err)?, &password, replace)
-                    .map_err(err)?;
-                Ok(true)
-            })
+            let prepared = tauri::async_runtime::spawn_blocking(
+                move || -> Result<Option<aurum_social::identity::Identity>, String> {
+                    let Some(path) = handle
+                        .dialog()
+                        .file()
+                        .add_filter("Encrypted Aurum identity", &["age"])
+                        .blocking_pick_file()
+                    else {
+                        return Ok(None);
+                    };
+                    let path = path.into_path().map_err(err)?;
+                    if std::fs::metadata(&path).map_err(err)?.len() > 4096 {
+                        return Err("Identity backup exceeds limit".into());
+                    }
+                    Ok(Some(
+                        aurum_social::identity::Identity::restore(
+                            &std::fs::read(path).map_err(err)?,
+                            &password,
+                        )
+                        .map_err(|_| "Wrong backup password or damaged file".to_string())?,
+                    ))
+                },
+            )
             .await
             .map_err(err)??;
-            Ok(json!(restored))
+            let Some(identity) = prepared else {
+                return Ok(json!(false));
+            };
+            e.cancel_social_tasks().await;
+            tauri::async_runtime::spawn_blocking(move || {
+                social.restore_prepared(identity, replace)
+            })
+            .await
+            .map_err(err)?
+            .map_err(err)?;
+            Ok(json!(true))
         }
         _ => Err("Unknown Social command".into()),
     }

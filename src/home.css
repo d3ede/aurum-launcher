@@ -569,3 +569,22 @@
     font-size: 23px;
   }
 }
+
+.home-release-list .home-news-unreleased {
+  padding: 0 0 14px;
+  border-bottom: 1px solid var(--border);
+}
+.home-release-list .home-news-unreleased p {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--secondary);
+  margin: 7px 0 0;
+  overflow-wrap: anywhere;
+}
+.home-news-card .home-card-heading {
+  flex-wrap: wrap;
+}
+.home-release-list {
+  scrollbar-gutter: stable;
+  overflow-x: hidden;
+}

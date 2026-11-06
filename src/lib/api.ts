@@ -55,6 +55,16 @@ interface Contract {
   "social.add": [{ input: string }, void];
   "social.relationship": [{ id: string; action: string }, void];
   "social.privacy": [{ privacy: SocialPrivacy }, void];
+  "social.chooseAvatar": [Empty, boolean];
+  "social.notify": [
+    {
+      kind: "request" | "invite";
+      id: string;
+      russian: boolean;
+      silent: boolean;
+    },
+    boolean,
+  ];
   "social.rename": [{ name: string }, void];
   "social.configureFirewall": [{ accepted: boolean }, void];
   "social.exportIdentity": [{ password: string }, boolean];
@@ -454,13 +464,13 @@ export async function rpc<K extends keyof Contract>(
   try {
     return await invoke<Contract[K][1]>("rpc", { action, payload });
   } catch (e) {
-    throw new Error(
+    const message =
       typeof e === "string"
         ? e
         : e instanceof Error
           ? e.message
-          : t("Неизвестная ошибка"),
-    );
+          : t("Неизвестная ошибка");
+    throw new Error(action.startsWith("social.") ? t(message) : message);
   }
 }
 export async function events(callback: (event: Progress) => void) {

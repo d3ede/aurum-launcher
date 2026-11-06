@@ -2,10 +2,13 @@ export interface SocialPrivacy {
   incomingRequests: boolean;
   shareActivity: boolean;
   publicRelays: boolean;
+  invisible: boolean;
+  notifications: boolean;
 }
 export interface SocialPerson {
   id: string;
   name: string;
+  avatar?: string | null;
   state: "incoming" | "outgoing" | "friend" | "blocked";
   updated: number;
 }
@@ -69,6 +72,8 @@ export interface SocialSnapshot {
   error: string | null;
   id: string | null;
   name: string;
+  avatar: string | null;
+  deliveries: Record<string, boolean>;
   contactLink: string | null;
   privacy: SocialPrivacy;
   people: SocialPerson[];
@@ -76,4 +81,9 @@ export interface SocialSnapshot {
   activity: Record<string, SocialWorld>;
   activeTunnels: number;
   invitations: SocialInvitation[];
+}
+export function socialSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }

@@ -7,6 +7,7 @@ pub mod identity;
 #[cfg(windows)]
 pub mod listeners;
 pub mod manifest;
+pub mod profile;
 #[cfg(windows)]
 pub mod sandbox;
 #[cfg(windows)]

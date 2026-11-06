@@ -91,11 +91,7 @@ export function HomeSidebar() {
                   {t("@social.unreleased")}
                 </span>
               </div>
-              <p>
-                {t(
-                  "Своя главная и оформление: порядок блоков, фон, новые палитры и редактор тем.",
-                )}
-              </p>
+              <p>{t("@social.news.personalization")}</p>
               <p>{t("@social.unreleased.hint")}</p>
             </article>
             {releaseNotes.slice(0, 3).map((release) => (
@@ -118,7 +114,7 @@ export function HomeSidebar() {
                 <h3>{t(release.title)}</h3>
                 <ul>
                   {release.groups.map((group) => (
-                    <li key={group.title}>{t(group.items[0])}</li>
+                    <li key={group.title}>{t(group.title)}</li>
                   ))}
                 </ul>
                 <button
@@ -152,6 +148,8 @@ export function HomeSidebar() {
             aria-label={t("Все изменения")}
           >
             <section className="home-news-unreleased">
+              <h3>{t("@social.unreleased")}</h3>
+              <p>{t("@social.unreleased.hint")}</p>
               <h3>{t("В разработке: персонализация")}</h3>
               <p>
                 {t(

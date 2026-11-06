@@ -5,11 +5,12 @@ use std::{
     net::{SocketAddr, TcpListener, TcpStream},
 };
 pub(super) struct OutgoingWorld {
-    peer: [u8; 32],
+    pub(super) peer: [u8; 32],
     listener: Listener,
     offer: Offer,
     manifest: Vec<u8>,
     offset: usize,
+    last_offer: Instant,
 }
 pub(super) struct Bridge {
     peer: [u8; 32],
@@ -80,7 +81,7 @@ impl GameState {
     }
 }
 impl Actor {
-    pub(super) fn revoke_game_peer(&mut self, peer: [u8; 32]) -> Result<()> {
+    pub(super) fn revoke_game_transport(&mut self, peer: [u8; 32]) -> Result<()> {
         let hashes = self
             .game
             .authorized
@@ -108,6 +109,10 @@ impl Actor {
         if self.game.guest.as_ref().is_some_and(|g| g.peer == peer) {
             self.game.guest = None;
         }
+        Ok(())
+    }
+    pub(super) fn revoke_game_peer(&mut self, peer: [u8; 32]) -> Result<()> {
+        self.revoke_game_transport(peer)?;
         self.outgoing_worlds.retain(|_, w| w.peer != peer);
         self.assemblies.retain(|_, a| a.peer != peer);
         let id = identity::encode_id(&peer);
@@ -136,7 +141,7 @@ impl Actor {
         world: WorldSpec,
         listener: Listener,
         manifest: Option<Manifest>,
-    ) -> Result<()> {
+    ) -> Result<String> {
         if self.store.state(&identity::encode_id(&peer))?.as_deref() != Some("friend") {
             bail!("Invite an accepted friend first");
         }
@@ -175,16 +180,29 @@ impl Actor {
         };
         offer.validate()?;
         self.outgoing_worlds.insert(
-            id,
+            id.clone(),
             OutgoingWorld {
                 peer,
                 listener,
                 offer: offer.clone(),
                 manifest,
                 offset: 0,
+                last_offer: Instant::now(),
             },
         );
-        self.queue(peer, PeerAction::Invite { offer })
+        self.update_live(|l| {
+            l.deliveries.insert(id.clone(), false);
+        });
+        if let Err(error) = self.queue(peer, PeerAction::Invite { offer }) {
+            self.outgoing_worlds.remove(&id);
+            self.update_live(|l| {
+                l.deliveries.remove(&id);
+            });
+            self.pending
+                .retain(|(_, a)| !matches!(a,PeerAction::Invite{offer}if offer.id==id));
+            return Err(error);
+        }
+        Ok(id)
     }
     pub(super) fn join_world(&mut self, id: &str) -> Result<()> {
         let invitation = self
@@ -227,6 +245,23 @@ impl Actor {
         match action {
             PeerAction::Invite { offer } => {
                 offer.validate()?;
+                let receipt = offer.id.clone();
+                let needs_manifest = offer.manifest_hash.is_some();
+                let existing = self.live.lock().ok().and_then(|l| {
+                    l.invitations
+                        .iter()
+                        .find(|i| i.offer.id == offer.id && i.from == id)
+                        .cloned()
+                });
+                if let Some(existing) = existing {
+                    if existing.offer != offer {
+                        bail!("Invitation changed after receipt");
+                    }
+                    if !needs_manifest || existing.manifest.is_some() {
+                        self.queue(peer, PeerAction::InviteReceived { id: receipt })?;
+                    }
+                    return Ok(());
+                }
                 if self.manifest_reservation() + offer.manifest_bytes > 8 * 1024 * 1024 {
                     bail!("Shared manifest memory limit reached");
                 }
@@ -261,6 +296,9 @@ impl Actor {
                         join_address: None,
                     })
                 });
+                if !needs_manifest {
+                    self.queue(peer, PeerAction::InviteReceived { id: receipt })?;
+                }
             }
             PeerAction::ManifestChunk { id, offset, bytes } => {
                 let assembly = self
@@ -279,12 +317,24 @@ impl Actor {
                             i.status = "pending".into();
                         }
                     });
+                    self.queue(peer, PeerAction::InviteReceived { id: id.clone() })?;
                 }
                 if offset % (32 * 1024) == 0 {
-                    self.send_action(peer, PeerAction::ManifestAck)?;
+                    self.queue(peer, PeerAction::ManifestAck)?;
                 }
             }
             PeerAction::ManifestAck => {}
+            PeerAction::InviteReceived { id } => {
+                if self
+                    .outgoing_worlds
+                    .get(&id)
+                    .is_some_and(|w| w.peer == peer)
+                {
+                    self.update_live(|l| {
+                        l.deliveries.insert(id, true);
+                    });
+                }
+            }
             PeerAction::Join { id, contact } => {
                 contact.validate()?;
                 let world = self
@@ -360,7 +410,11 @@ impl Actor {
                 if !owned {
                     bail!("Invitation revocation does not belong to this friend");
                 }
-                self.revoke_game_peer(peer)?;
+                if self.game.guest.as_ref().is_some_and(|g| g.id == id)
+                    || self.outgoing_worlds.contains_key(&id)
+                {
+                    self.revoke_game_transport(peer)?;
+                }
                 if self.assemblies.get(&id).is_some_and(|a| a.peer == peer) {
                     self.assemblies.remove(&id);
                 }
@@ -507,6 +561,30 @@ impl Actor {
             .retain(|_, a| a.offer.expires >= identity::now());
         self.outgoing_worlds
             .retain(|_, w| w.offer.expires >= identity::now());
+        let active = self
+            .outgoing_worlds
+            .keys()
+            .cloned()
+            .collect::<std::collections::HashSet<_>>();
+        self.update_live(|l| l.deliveries.retain(|id, _| active.contains(id)));
+        let retries = self
+            .outgoing_worlds
+            .iter()
+            .filter(|(id, w)| {
+                w.last_offer.elapsed() > Duration::from_secs(6)
+                    && !self
+                        .live
+                        .lock()
+                        .is_ok_and(|l| l.deliveries.get(*id) == Some(&true))
+            })
+            .map(|(id, w)| (id.clone(), w.peer, w.offer.clone()))
+            .collect::<Vec<_>>();
+        for (id, peer, offer) in retries {
+            if let Some(w) = self.outgoing_worlds.get_mut(&id) {
+                w.last_offer = Instant::now();
+            }
+            self.queue(peer, PeerAction::Invite { offer })?;
+        }
         self.update_expired_invites();
         if self.outbox.len() < 8 && self.inflight < 2 {
             let next = self

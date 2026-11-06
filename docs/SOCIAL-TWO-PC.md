@@ -6,6 +6,10 @@ computers, which must use different independent internet connections.
 
 ## Prepare
 
+Use the **same updated ZIP on both computers**. The invitation-receipt, avatar
+and presence messages are not compatible with the initial Social prototype.
+Copy only the clean ZIP, never a generated identity or `.test-data` directory.
+
 1. Use Windows x64 on both computers. Prefer a home connection and a phone
    hotspot using cellular data. Disable the hotspot phone's Wi-Fi so both are
    not using the same router. Initially disable any VPN on both computers.
@@ -106,6 +110,18 @@ Minecraft requirements. The echo node must be stopped before enabling Social.
   Test uninstall cleanup, including declined removal consent.
 
 ## Evidence and decision
+
+Also check the updated UI on both PCs: select an avatar and Invisible, restore
+Online, and verify the friend's picture and status. Block/unblock and re-add;
+there must be no stale challenge banner. Test World only and With instance
+without pressing Review contents first, then check a Vanilla manifest explicitly.
+The sender must see delivery success only after the receiving launcher has the
+invitation. Disconnect the receiver and verify a bounded undelivered result.
+Check the chime, in-app notification and (when Windows allows it) OS toast for
+both request types. Disable notifications and repeat; no sound or toast should
+appear. Back up an identity, try a wrong password while connected, then restore
+the valid backup: the first must preserve the live identity, the second must
+disconnect Social before replacing it. Test the off confirmation's Cancel path.
 
 Record each test with revision, computer labels, different-network confirmation,
 direct/VPN route, outcome, elapsed time, exact error and redacted evidence.

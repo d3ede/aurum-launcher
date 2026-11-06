@@ -9,17 +9,19 @@ import {
 } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { native, rpc } from "../lib/api";
-import { t } from "../lib/i18n";
+import { getLocale, t } from "../lib/i18n";
 import { useApp } from "../context";
 import type { SocialSnapshot, SocialPerson } from "../lib/social";
 import { Modal } from "./ui";
 import { SocialInviteQueue } from "./SocialInvitations";
+import { SocialAvatar, SocialId } from "./SocialIdentity";
 import "../screens/friends.css";
 interface SocialContextValue {
   snapshot: SocialSnapshot | null;
   refresh: () => Promise<void>;
   act: (job: () => Promise<unknown>) => Promise<boolean>;
   working: boolean;
+  requestDisable: () => void;
 }
 const Context = createContext<SocialContextValue | null>(null);
 export function useSocial() {
@@ -31,11 +33,89 @@ export function SocialProvider({ children }: { children: ReactNode }) {
   const { notify } = useApp();
   const [snapshot, setSnapshot] = useState<SocialSnapshot | null>(null);
   const [working, setWorking] = useState(false);
+  const pending = useRef(0);
+  const [disabling, setDisabling] = useState(false);
+  const alerted = useRef(new Set<string>());
+  const audio = useRef<AudioContext | null>(null);
   const alive = useRef(true);
   const seen = useRef(new Set<string>());
   const [request, setRequest] = useState<SocialPerson | null>(null);
   const [link, setLink] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
+  useEffect(() => {
+    const unlock = () => {
+      audio.current ??= new AudioContext();
+      void audio.current.resume().catch(() => {});
+    };
+    document.addEventListener("pointerdown", unlock, { once: true });
+    document.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      document.removeEventListener("pointerdown", unlock);
+      document.removeEventListener("keydown", unlock);
+      void audio.current?.close().catch(() => {});
+      audio.current = null;
+    };
+  }, []);
+  useEffect(() => {
+    if (!snapshot?.enabled) return;
+    const arrivals = [
+      ...snapshot.people
+        .filter((p) => p.state === "incoming")
+        .map((p) => ({
+          key: `request:${p.id}:${p.updated}`,
+          kind: "request" as const,
+          id: p.id,
+          name: p.name,
+          title: "@social.new.request",
+        })),
+      ...snapshot.invitations
+        .filter((i) => i.status !== "loading")
+        .map((i) => ({
+          key: `invite:${i.offer.id}`,
+          kind: "invite" as const,
+          id: i.offer.id,
+          name:
+            snapshot.people.find((p) => p.id === i.from)?.name ||
+            t("@social.unknown"),
+          title: "@social.received.world",
+        })),
+    ];
+    for (const arrival of arrivals) {
+      if (alerted.current.has(arrival.key)) continue;
+      if (alerted.current.size >= 2048)
+        alerted.current.delete(alerted.current.values().next().value!);
+      alerted.current.add(arrival.key);
+      if (snapshot.privacy.notifications === false) continue;
+      notify(`${t(arrival.title)} · ${arrival.name}`);
+      const context = audio.current;
+      void rpc("social.notify", {
+        kind: arrival.kind,
+        id: arrival.id,
+        russian: getLocale().startsWith("ru"),
+        silent: context?.state === "running",
+      }).catch(() => {});
+      if (context?.state === "running") {
+        for (const [i, frequency] of [659.25, 880].entries()) {
+          const note = context.createOscillator(),
+            gain = context.createGain();
+          note.type = "sine";
+          note.frequency.value = frequency;
+          note.connect(gain);
+          gain.connect(context.destination);
+          const start = context.currentTime + i * 0.14;
+          gain.gain.setValueAtTime(0, start);
+          gain.gain.linearRampToValueAtTime(0.08, start + 0.025);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+          note.start(start);
+          note.stop(start + 0.36);
+          note.onended = () => {
+            note.disconnect();
+            gain.disconnect();
+          };
+        }
+      }
+    }
+  }, [snapshot, notify]);
   useEffect(() => {
     if (!native) return;
     let disposed = false;
@@ -99,16 +179,17 @@ export function SocialProvider({ children }: { children: ReactNode }) {
   }, [snapshot?.enabled, refresh]);
   const act = useCallback(
     async (job: () => Promise<unknown>) => {
+      ++pending.current;
       setWorking(true);
       try {
         await job();
         await refresh();
         return true;
       } catch (e) {
-        notify(e instanceof Error ? e.message : String(e), true);
+        notify(t(e instanceof Error ? e.message : String(e)), true);
         return false;
       } finally {
-        setWorking(false);
+        setWorking(--pending.current > 0);
       }
     },
     [refresh, notify],
@@ -159,8 +240,40 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       setRequest((current) => (current?.id === handled ? null : current));
   };
   return (
-    <Context.Provider value={{ snapshot, refresh, act, working }}>
+    <Context.Provider
+      value={{
+        snapshot,
+        refresh,
+        act,
+        working,
+        requestDisable: () => setDisabling(true),
+      }}
+    >
       {children}
+      {disabling && (
+        <Modal
+          title={t("@social.disable.confirm")}
+          onClose={() => setDisabling(false)}
+          className="social-dialog"
+        >
+          <p className="social-warning">{t("@social.disable.hint")}</p>
+          <div className="modal-actions">
+            <button className="button" onClick={() => setDisabling(false)}>
+              {t("@social.cancel")}
+            </button>
+            <button
+              className="button social-danger"
+              onClick={() =>
+                void act(() => rpc("social.disable", {})).then((ok) => {
+                  if (ok) setDisabling(false);
+                })
+              }
+            >
+              {t("@social.disable")}
+            </button>
+          </div>
+        </Modal>
+      )}
       {closing && (
         <Modal
           title={t("@social.close.title")}
@@ -223,10 +336,10 @@ export function SocialProvider({ children }: { children: ReactNode }) {
           subtitle={request.name || request.id.slice(0, 16)}
           onClose={() => setRequest(null)}
           closeDisabled={working}
-          className="social-request"
+          className="social-dialog social-request"
         >
-          <p>{t("@social.identity.hint")}</p>
-          <code className="social-full-id">{request.id}</code>
+          <SocialAvatar id={request.id} avatar={request.avatar} />
+          <SocialId id={request.id} />
           <div className="modal-actions">
             <button
               className="text-button"
@@ -243,7 +356,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
               {t("@social.decline")}
             </button>
             <button
-              className="button primary"
+              className="button social-positive"
               disabled={working}
               onClick={() => void relationship("accept")}
             >

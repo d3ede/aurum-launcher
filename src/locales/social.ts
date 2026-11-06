@@ -1,5 +1,42 @@
 export const socialEnglish: Record<string, string> = {
-  "@social.activity": "Share the Java profile I am playing",
+  "@social.off.failed": "Could not connect. Try enabling Social again.",
+  "@social.backup.password": "Passphrase — at least 12 characters",
+  "@social.news.personalization": "New settings pages and theme editor.",
+  "@social.offline": "Offline",
+  "@social.unknown": "Player",
+  "@social.invite": "Invite",
+  "@social.friend.actions": "Actions for {{name}}",
+  "@social.verify.id": "Verify identity",
+  "@social.identity.short":
+    "Compare this ID with your friend through a trusted channel.",
+  "@social.show.id": "Show Aurum ID",
+  "@social.hide.id": "Hide Aurum ID",
+  "@social.avatar.choose": "Choose avatar",
+  "@social.status": "Status",
+  "@social.invisible": "Invisible",
+  "@social.off.short": "Turn on Social to invite friends.",
+  "@social.notifications": "Sounds and notifications",
+  "@social.backup.short": "Identity backup",
+  "@social.export.short": "Save backup",
+  "@social.block.confirm": "Block this person?",
+  "@social.remove.confirm": "Remove this friend?",
+  "@social.consent.short":
+    "Friends may see your IP address. Windows will ask for network access.",
+  "@social.agree.short": "I agree to P2P connections",
+  "@social.restore.short":
+    "Social will disconnect and your current Aurum ID will be replaced.",
+  "@social.restore.choose": "Choose backup",
+  "@social.disable.confirm": "Turn off Social?",
+  "@social.disable.hint":
+    "Friends will disconnect from your world. Minecraft will keep running.",
+  "@social.mode.world": "World only",
+  "@social.mode.pack": "With instance",
+  "@social.file.summary": "{{count}} files · {{size}}",
+  "@social.vanilla.contents":
+    "No additional files — Minecraft and the loader install separately.",
+  "@social.delivering": "Waiting for your friend’s launcher…",
+  "@social.delivered": "Invitation received by your friend’s launcher",
+  "@social.activity": "Show my current instance",
   "@social.close.title": "Close Aurum?",
   "@social.close.hint":
     "Friends will disconnect from the shared world. Minecraft will keep running.",
@@ -7,9 +44,9 @@ export const socialEnglish: Record<string, string> = {
   "@social.link.disabled":
     "Enable Social in Friends first. This link has not sent a request.",
   "@social.link.confirm": "Send this person a friend request?",
-  "@social.unreleased": "Social · local test build",
+  "@social.unreleased": "Local test build",
   "@social.unreleased.hint":
-    "Friends, world invitations and separate shared instances are available for testing. Internet verification is still pending.",
+    "Social is being tested. Internet verification is still pending.",
   "@social.pending.installs": "Interrupted installations",
   "@social.resume": "Review and resume",
   "@social.resume.hint":
@@ -23,7 +60,7 @@ export const socialEnglish: Record<string, string> = {
   "@social.profile": "Minecraft profile",
   "@social.lan.port": "LAN world",
   "@social.configs": "Include mod settings",
-  "@social.sensitive": "Also include configs flagged as possible secrets",
+  "@social.sensitive": "Include configs with possible secrets",
   "@social.scan.hint":
     "Worlds and private launcher data stay here. Config scanning cannot detect every secret.",
   "@social.review": "Review contents",
@@ -85,7 +122,7 @@ export const socialEnglish: Record<string, string> = {
   "@social.unreachable": "Offline or unreachable",
   "@social.pending": "Pending delivery or response",
   "@social.privacy": "Privacy",
-  "@social.requests": "Allow incoming friend requests",
+  "@social.requests": "Allow friend requests",
   "@social.relays": "Use public relays for Social",
   "@social.relays.hint":
     "Change this while Social is turned off. Game traffic never uses public relays.",
@@ -114,7 +151,52 @@ export const socialEnglish: Record<string, string> = {
   "@social.network": "Configure network",
 };
 export const socialRussian: Record<string, string> = {
-  "@social.activity": "Показывать мою текущую Java-сборку",
+  "@social.off.failed":
+    "Не удалось подключиться. Попробуйте включить Social снова.",
+  "@social.backup.password": "Пароль — от 12 символов",
+  "Wrong backup password or damaged file":
+    "Неверный пароль или повреждённая копия.",
+  "Waiting for invitation receipt": "Ждём лаунчер друга…",
+  "Invitation was not delivered. Check that your friend is online and try again.":
+    "Приглашение не доставлено. Проверьте, что друг в сети, и повторите.",
+  "Avatar image exceeds 8 MiB": "Выберите изображение размером до 8 МБ.",
+  "Social was disabled": "Social выключен.",
+  "@social.news.personalization": "Новые страницы настроек и редактор тем.",
+  "@social.offline": "Не в сети",
+  "@social.unknown": "Игрок",
+  "@social.invite": "Пригласить",
+  "@social.friend.actions": "Действия: {{name}}",
+  "@social.verify.id": "Проверить личность",
+  "@social.identity.short":
+    "Сравните этот ID с другом в доверенном канале связи.",
+  "@social.show.id": "Показать Aurum ID",
+  "@social.hide.id": "Скрыть Aurum ID",
+  "@social.avatar.choose": "Выбрать аватарку",
+  "@social.status": "Статус",
+  "@social.invisible": "Невидимка",
+  "@social.off.short": "Включите Social, чтобы приглашать друзей.",
+  "@social.notifications": "Звуки и уведомления",
+  "@social.backup.short": "Резервная копия",
+  "@social.export.short": "Сохранить копию",
+  "@social.block.confirm": "Заблокировать игрока?",
+  "@social.remove.confirm": "Удалить друга?",
+  "@social.consent.short":
+    "Друзья могут видеть ваш IP. Windows запросит доступ к сети.",
+  "@social.agree.short": "Я согласен на P2P-подключения",
+  "@social.restore.short":
+    "Social отключится, а текущий Aurum ID будет заменён.",
+  "@social.restore.choose": "Выбрать копию",
+  "@social.disable.confirm": "Выключить Social?",
+  "@social.disable.hint":
+    "Друзья отключатся от вашего мира. Minecraft продолжит работать.",
+  "@social.mode.world": "Без сборки",
+  "@social.mode.pack": "Со сборкой",
+  "@social.file.summary": "Файлов: {{count}} · {{size}}",
+  "@social.vanilla.contents":
+    "Дополнительных файлов нет — Minecraft и загрузчик устанавливаются отдельно.",
+  "@social.delivering": "Ждём лаунчер друга…",
+  "@social.delivered": "Лаунчер друга получил приглашение",
+  "@social.activity": "Показывать мою сборку",
   "@social.close.title": "Закрыть Aurum?",
   "@social.close.hint":
     "Друзья отключатся от общего мира. Minecraft продолжит работать.",
@@ -122,9 +204,9 @@ export const socialRussian: Record<string, string> = {
   "@social.link.disabled":
     "Сначала включите Social в разделе друзей. Эта ссылка ещё не отправила заявку.",
   "@social.link.confirm": "Отправить этому человеку заявку в друзья?",
-  "@social.unreleased": "Social · локальная тестовая сборка",
+  "@social.unreleased": "Тестовая сборка",
   "@social.unreleased.hint":
-    "Друзья, приглашения в мир и отдельные общие сборки доступны для проверки. Проверка через интернет ещё не завершена.",
+    "Social тестируется. Проверка через интернет ещё не завершена.",
   "@social.pending.installs": "Прерванные установки",
   "@social.resume": "Проверить и продолжить",
   "@social.resume.hint":
@@ -138,7 +220,7 @@ export const socialRussian: Record<string, string> = {
   "@social.profile": "Сборка Minecraft",
   "@social.lan.port": "LAN-мир",
   "@social.configs": "Передать настройки модов",
-  "@social.sensitive": "Передать и конфиги с возможными секретами",
+  "@social.sensitive": "Передать конфиги с возможными секретами",
   "@social.scan.hint":
     "Миры и личные данные лаунчера остаются у вас. Проверка конфигов не находит все секреты.",
   "@social.review": "Посмотреть состав",
@@ -154,8 +236,7 @@ export const socialRussian: Record<string, string> = {
   "@social.files": "Файлы и источники",
   "@social.manual": "Ручная установка",
   "@social.dependency": "Обязательная зависимость",
-  "@social.trust.code":
-    "Я доверяю источникам и разрешаю запуск этого кода и применение настроек",
+  "@social.trust.code": "Я доверяю источникам этих модов.",
   "@social.manual.hint":
     "Добавьте недостающие файлы в окне сборки — затем Aurum попробует подключиться, если приглашение ещё действует.",
   "@social.existing.hint":
@@ -198,7 +279,7 @@ export const socialRussian: Record<string, string> = {
   "@social.unreachable": "Не в сети или недоступен",
   "@social.pending": "Ожидает доставки или ответа",
   "@social.privacy": "Приватность",
-  "@social.requests": "Разрешить входящие заявки",
+  "@social.requests": "Принимать заявки",
   "@social.relays": "Публичные relay для Social",
   "@social.relays.hint":
     "Меняется при выключенном Social. Игровой трафик не проходит через публичные relay.",

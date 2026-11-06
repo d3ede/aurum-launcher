@@ -117,6 +117,44 @@ v1 target; Linux support and those transitive maintenance issues are not certifi
 See the upstream [TLS fix](https://github.com/rustls/webpki/pull/546) and
 [ZIP advisory](https://github.com/zip-rs/zip2/security/advisories/GHSA-4v9h-p7m9-rh26).
 
+## UI and delivery correction round (2026-11-06)
+
+The compact Friends screen now uses hidden IDs, avatar/status badges, one green
+Invite action, a friend menu, aligned consent controls and an off confirmation.
+The home news preview uses short group titles; full descriptions stay in the
+changes dialog. These changes remain unreleased.
+
+Real local broker/worker tests passed after the session changes: three
+block/unblock/re-add cycles; simultaneous requests; profile-name and JPEG-avatar updates;
+Invisible withdrawing presence/activity; pack receipt after manifest assembly;
+three Vanilla invitations with sender-side receipts; scoped cancellation without
+discarding a sibling invitation; the consented TCP/direct-QUIC fixture; encrypted
+restore while enabled; wrong-password preservation; clean independent shutdown.
+Fresh challenges, delegated transport keys, signature/recipient checks and
+monotonic sequences remain required. At most two retired sessions are accepted
+for a fixed 30-second overlap, and blocking/removal discards them.
+
+The native negative-probe lab also passed again: two AppContainers at integrity
+RID 4096; canary/child/parent-memory denial; 16 KiB transport; rejection of an
+untrusted game certificate; fixture payload/revocation; oversized IPC rejection.
+These are **local** observations, not internet gameplay evidence. No Firewall
+scope, process isolation or game-relay restriction was relaxed.
+
+Frontend build and 27 unit tests passed. The full UI run had 144/145 passes with
+one timeout during a live Vite reload. The affected personalization suite and
+all final Social cases then passed together (19/19), including two new
+undelivered-invite and cancelled-restore checks. Contract fixtures are only UI
+evidence. The release-profile workspace Rust tests and all-target/all-feature
+Clippy with warnings denied passed. The release profile avoided resources locked
+by the user's open debug app. Existing ignored external-fixture tests remain
+ignored. Native toast presentation and real two-network gameplay still require
+the two-PC procedure; no such success is claimed here.
+The added image-normalization test also passed against the real codecs: a PNG
+becomes a bounded JPEG accepted by the peer validator; malformed and oversized
+input is rejected. The final release worker/lab repeated all 13 friend-flow
+checks and all 11 local isolation/transport checks successfully. The separate
+two-network gate remained explicitly NOT TESTED.
+
 ## Outstanding gates
 
 Not run: two physical computers on separate networks; direct NAT traversal and

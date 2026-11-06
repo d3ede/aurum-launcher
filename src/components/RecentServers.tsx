@@ -27,7 +27,7 @@ import { Modal } from "./ui";
 
 const WEEK = 7 * 24 * 60 * 60;
 
-function ServerMenu({
+export function ServerMenu({
   label,
   children,
 }: {

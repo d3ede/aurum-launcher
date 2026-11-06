@@ -11,6 +11,15 @@ Friends is immediately above Hosting. Social starts disabled on a fresh data
 directory. Enabling it requires P2P consent and an explicit, scoped Windows
 Firewall setup. A previously enabled installation resumes only if its scoped
 rule still matches the bundled worker. Turning Social off persists that choice.
+Turning it off requires confirmation and disconnects Social tunnels without
+stopping Minecraft. The control is below the identity-backup actions.
+
+Your ID starts hidden; reveal it to compare the full key. Choose an avatar by
+clicking your picture, or change between Online and Invisible with the status
+selector. Invisible withdraws your online presence and shared activity from
+friends; it is not anonymity from network peers. Avatars are re-encoded as
+bounded JPEG thumbnails and sent in authenticated control messages, never fetched
+from a peer-provided URL. Friend actions are in the three-dot menu.
 
 Compare the **complete Aurum ID** with your friend through a trusted channel.
 Names and identicons are display aids, not identity verification. Paste an ID or
@@ -28,6 +37,15 @@ To invite someone, start a **Java** instance and open its world to LAN. Aurum
 checks current kernel TCP listeners, their owning Java process and its creation
 time, then performs a Minecraft status ping. A log line is never sufficient.
 Select the current LAN port if there is more than one valid listener.
+The green Invite button offers **World only** or **With instance**. Reviewing
+outgoing contents is optional; it no longer gates sending. An empty Vanilla
+manifest means no additional files, not a zero-byte game: Minecraft and the
+loader install separately. Send waits up to 45 seconds for the receiver's signed
+receipt, including the complete manifest for a shared instance. A timeout is
+reported as undelivered instead of reporting a queued packet as success. This
+receipt confirms that the other launcher received the offer, not that the friend
+accepted it or that the game connection works. Both computers need this updated
+test build; earlier prototypes do not support these new message fields.
 
 The receiver chooses an existing compatible instance or reviews a shared
 instance's complete file and dependency plan. Installation creates a separate
@@ -86,6 +104,15 @@ decisions and filesystem operations. Its seed uses Windows user-scope DPAPI.
 Encrypted age backups need a separate passphrase; losing the seed and backup
 loses that ID. DPAPI does not protect against malware already running with the
 user's unrestricted privileges.
+Restore is available while Social is enabled: the selected backup is decrypted
+first, then operations and the isolated runtime stop before atomic replacement.
+A wrong password or cancelled file picker leaves the active identity unchanged.
+
+Incoming requests and world invitations produce an in-app notification and a
+short chime. The preference disables both. The launcher also attempts a Windows
+toast and taskbar attention when appropriate; Windows policy, Focus Assist and
+unregistered portable builds can suppress the OS toast. The in-app notification
+and invitation queue remain available. Peer names are escaped as XML text.
 
 The worker runs in a real Windows AppContainer with low integrity, Internet and
 private-network capabilities, sanitized environment, two inherited pipe handles,
