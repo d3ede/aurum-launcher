@@ -1,8 +1,8 @@
-# Aurum Social — unreleased Windows test build
+# Aurum Social — experimental Windows feature
 
-**Status: NOT READY.** The implementation is available for local testing; it is
-not part of the published 0.5.5 release. Two computers on different networks and
-an actual Minecraft world have not yet been verified. See the
+**Status: NOT READY for general use.** Included as an opt-in experiment in 0.6.0.
+Two computers on different networks and an actual Minecraft world have not yet
+been verified after the latest fixes. See the
 [test ledger](SOCIAL-TESTS.md) and [two-computer procedure](SOCIAL-TWO-PC.md).
 
 ## Using it

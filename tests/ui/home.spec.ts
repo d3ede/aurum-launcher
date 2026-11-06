@@ -152,9 +152,9 @@ test("home has account and factual release panels, working actions and both them
     page.getByRole("heading", { name: "Недавние сборки" }),
   ).toHaveCount(0);
   await expect(page.locator(".home-account-card")).toContainText("CozyPlayer");
-  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.5.5");
+  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.6.0");
   await expect(page.locator(".home-news-version")).toHaveCount(3);
-  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.4.6");
+  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.5.0");
   await expect(page.locator(".home-news-card")).not.toContainText(
     "Aurum 0.4.2",
   );
@@ -190,15 +190,18 @@ test("home has account and factual release panels, working actions and both them
     .getByRole("button", { name: "Все изменения", exact: true })
     .click();
   const notes = page.getByRole("dialog", { name: "История версий" });
-  await expect(notes.locator(".release-section")).toHaveCount(13);
+  await expect(notes.locator(".release-section")).toHaveCount(14);
   await expect(notes.locator(".release-section[open]")).toHaveCount(1);
   await expect(notes.locator(".release-section[open]")).toContainText(
-    "Aurum 0.5.5",
+    "Aurum 0.6.0",
   );
   await expect(notes.locator(".release-section[open]")).toContainText(
-    "Horizon и моды",
+    "Aurum Social · экспериментально",
   );
   await expect(notes).not.toContainText("В этой сборке:");
+  await expect(notes.locator(".home-news-unreleased")).toHaveCount(0);
+  await expect(notes).not.toContainText("В разработке: персонализация");
+  await expect(notes.locator(".release-section[open] li")).toHaveCount(5);
   await notes.locator("summary").filter({ hasText: "Aurum 0.4.3" }).click();
   await expect(
     notes.getByRole("heading", { name: "Локальный хостинг", exact: true }),
@@ -207,11 +210,11 @@ test("home has account and factual release panels, working actions and both them
   await page.keyboard.press("Escape");
   await expect(notes).toHaveCount(0);
   await page
-    .getByRole("button", { name: "Подробнее о версии 0.4.6", exact: true })
+    .getByRole("button", { name: "Подробнее о версии 0.5.0", exact: true })
     .click();
   await expect(notes.locator(".release-section[open]")).toHaveCount(1);
   await expect(notes.locator(".release-section[open]")).toContainText(
-    "Aurum 0.4.6",
+    "Aurum 0.5.0",
   );
   await page.keyboard.press("Escape");
   await page
@@ -291,10 +294,10 @@ test("home adapts to minimum window size and translates the new panels", async (
   await expect(
     page.getByRole("heading", { name: "What's new", exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.5.5");
+  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.6.0");
   await expect(page.locator(".home-news-version")).toHaveCount(3);
   await expect(page.locator(".home-news-card")).toContainText(
-    "Quick launch and imports",
+    "CurseForge and combined search",
   );
   await page.setViewportSize({ width: 960, height: 680 });
   expect(
@@ -319,7 +322,7 @@ test("home adapts to minimum window size and translates the new panels", async (
   const notes = page.getByRole("dialog", { name: "Version history" });
   await expect(notes.locator(".release-section[open]")).toHaveCount(1);
   await expect(notes.locator(".release-section[open]")).toContainText(
-    "Horizon and mods",
+    "Aurum Social · experimental",
   );
   await expect(notes).not.toContainText("In this build:");
   await notes.screenshot({

@@ -6,14 +6,22 @@ computers, which must use different independent internet connections.
 
 ## Prepare
 
-Use the **same updated ZIP on both computers**. The invitation-receipt, avatar
-and presence messages are not compatible with the initial Social prototype.
-Copy only the clean ZIP, never a generated identity or `.test-data` directory.
+For desktop testing, install **the same 0.6.0 installer on both computers** from
+[GitHub Releases](https://github.com/d3ede/aurum-launcher/releases/tag/v0.6.0).
+Enable Social separately on each PC, exchange IDs, add each other, launch matching
+Minecraft instances and open the host world to LAN. Send an invitation; the guest
+waits for preparation, opens Minecraft and selects **Multiplayer → Aurum: <world>**.
+Keep both launchers open. Record the outcome on both PCs.
+
+The diagnostic labs below need a source build or a clean portable QA ZIP. Use the
+same revision on both PCs; never copy an identity or `.test-data` directory.
+The current invitation-receipt, avatar and presence messages are not compatible
+with the initial Social prototype.
 
 1. Use Windows x64 on both computers. Prefer a home connection and a phone
    hotspot using cellular data. Disable the hotspot phone's Wi-Fi so both are
    not using the same router. Initially disable any VPN on both computers.
-2. Build the same source revision. Do not publish a release:
+2. For diagnostic labs, build the same source revision:
 
    ```powershell
    ./scripts/build-social.ps1 -DebugBuild

@@ -31,10 +31,10 @@ An independent Windows launcher with a warm light theme and a graphite dark them
 
 ## What Aurum offers
 
-**Unreleased local work: Aurum Social — NOT READY.** Windows friend requests,
+**Aurum Social in 0.6.0 — experimental, NOT READY for general use.** Windows friend requests,
 world invitations and reviewed shared-instance installation are implemented behind
 explicit opt-in. Cross-network Minecraft gameplay still needs two-computer
-verification; this is not included in the published 0.5.5 installer. Read the
+verification. Social is optional and disabled until you enable it. Read the
 [implementation and security boundaries](docs/SOCIAL.md),
 [actual test results](docs/SOCIAL-TESTS.md) and
 [second-computer instructions](docs/SOCIAL-TWO-PC.md).
@@ -52,7 +52,7 @@ verification; this is not included in the published 0.5.5 installer. Read the
 | **Recent servers** | A weekly server history with status checks, matching-instance launches and Windows desktop shortcuts. See [recent servers](docs/recent-servers.md). |
 | **Interface** | 41 languages, language search, RTL support, light and dark themes, and settings for memory, Java, and game data. |
 
-**New in 0.5.5:** Horizon and native mod compilation, loader branding, faster skin previews, validated Java archive cleanup and explicit import/uninstall choices. Read the [release notes](docs/releases/v0.5.5.md).
+**New in 0.6.0:** opt-in experimental Social, friend and world invitations, customizable home layouts, five new themes and a color editor. Read the [release notes](docs/releases/v0.6.0.md).
 
 Horizon is experimental and requires a Microsoft account owning Java Edition. Java mods do not run in Horizon. Native mods compile into the game; the first build downloads its tools and may take 20–30 minutes or longer and several GB. Compile only trusted sources. See [compatibility and verification limits](docs/HORIZON.md).
 

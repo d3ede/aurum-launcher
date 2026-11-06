@@ -1,4 +1,17 @@
 export const homeEnglish: Record<string, string> = {
+  "Друзья и оформление": "Friends and appearance",
+  "Aurum Social · экспериментально": "Aurum Social · experimental",
+  "Друзья, аватарки и приглашения в мир — с модами или без.":
+    "Friends, avatars and world invitations, with or without mods.",
+  "Загрузка сборки и выбор игрока доступны прямо в приглашении.":
+    "Download the instance and choose a player from the invitation.",
+  "Проверка игры через интернет ещё не завершена.":
+    "Internet gameplay verification is still incomplete.",
+  "Главная и темы": "Home and themes",
+  "Меняйте порядок блоков, фон, шрифты и быстрый запуск.":
+    "Customize block order, backgrounds, fonts and quick launch.",
+  "Пять новых тем и редактор собственных цветов.":
+    "Five new themes and a custom color editor.",
   "Мир друга появляется в LAN-списке Minecraft.":
     "Your friend's world appears in Minecraft's LAN list.",
   "Приглашения с аватарками и прогрессом загрузки.":

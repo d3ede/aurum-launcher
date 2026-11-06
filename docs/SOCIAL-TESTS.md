@@ -1,6 +1,10 @@
 # Aurum Social: factual test ledger
 
-**2026-11-06 — NOT READY. No release was published.**
+**2026-11-06 — NOT READY for general use.**
+
+Version 0.6.0 packages Social as an optional experiment. Publishing the launcher
+does not certify cross-network gameplay; the two-computer checks below remain
+required. Earlier entries describe the unreleased builds tested at that time.
 
 Host: Windows x64, kernel 10.0.26200.0. Native labs used separate test directories,
 new identities and real Windows AppContainers. They did not use the user's
