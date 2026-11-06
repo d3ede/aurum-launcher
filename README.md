@@ -52,7 +52,7 @@ verification. Social is optional and disabled until you enable it. Read the
 | **Recent servers** | A weekly server history with status checks, matching-instance launches and Windows desktop shortcuts. See [recent servers](docs/recent-servers.md). |
 | **Interface** | 41 languages, language search, RTL support, light and dark themes, and settings for memory, Java, and game data. |
 
-**New in 0.6.2:** datapack folders are preserved during imports, and archive paths are checked before mod downloads. [Release notes](docs/releases/v0.6.2.md).
+**New in 0.6.3:** imports preserve datapacks and custom mod folders. Manual downloads are recognized by checksum and can be moved or copied into the instance. [Release notes](docs/releases/v0.6.3.md).
 
 Version [0.6.1](docs/releases/v0.6.1.md) added automatic retries after CurseForge rate limits, preserving progress and cancellation.
 

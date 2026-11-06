@@ -152,7 +152,7 @@ test("home has account and factual release panels, working actions and both them
     page.getByRole("heading", { name: "Недавние сборки" }),
   ).toHaveCount(0);
   await expect(page.locator(".home-account-card")).toContainText("CozyPlayer");
-  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.6.2");
+  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.6.3");
   await expect(page.locator(".home-news-version")).toHaveCount(3);
   await expect(page.locator(".home-news-card")).toContainText("Aurum 0.6.0");
   await expect(page.locator(".home-news-card")).not.toContainText(
@@ -193,18 +193,16 @@ test("home has account and factual release panels, working actions and both them
   await expect(notes.locator(".release-section")).toHaveCount(16);
   await expect(notes.locator(".release-section[open]")).toHaveCount(1);
   await expect(notes.locator(".release-section[open]")).toContainText(
-    "Aurum 0.6.2",
+    "Aurum 0.6.3",
   );
   await expect(notes.locator(".release-section[open]")).toContainText(
-    "Датапаки и пути файлов",
+    "Файлы модпака",
   );
   await expect(notes).not.toContainText("В этой сборке:");
   await expect(notes.locator(".home-news-unreleased")).toHaveCount(0);
   await expect(notes).not.toContainText("В разработке: персонализация");
   await expect(notes).not.toContainText("В следующем обновлении:");
-  await expect(notes).toContainText(
-    "Подготовлено исправление: пользовательские папки модов, перенос скачанных файлов и распознавание файлов по контрольной сумме.",
-  );
+  await expect(notes).not.toContainText("Подготовлено исправление:");
   await expect(notes.locator(".release-section[open] li")).toHaveCount(2);
   await notes.locator("summary").filter({ hasText: "Aurum 0.4.3" }).click();
   await expect(
@@ -298,7 +296,7 @@ test("home adapts to minimum window size and translates the new panels", async (
   await expect(
     page.getByRole("heading", { name: "What's new", exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.6.2");
+  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.6.3");
   await expect(page.locator(".home-news-version")).toHaveCount(3);
   await expect(page.locator(".home-news-card")).toContainText(
     "Friends and appearance",
@@ -326,7 +324,7 @@ test("home adapts to minimum window size and translates the new panels", async (
   const notes = page.getByRole("dialog", { name: "Version history" });
   await expect(notes.locator(".release-section[open]")).toHaveCount(1);
   await expect(notes.locator(".release-section[open]")).toContainText(
-    "Datapacks and file paths",
+    "Modpack files",
   );
   await expect(notes).not.toContainText("In this build:");
   await notes.screenshot({
