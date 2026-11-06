@@ -85,6 +85,7 @@ export function HomeSidebar() {
             tabIndex={0}
             aria-label={t("Новости лаунчера")}
           >
+            <article className="home-news-unreleased"><div className="home-news-version-head"><span className="release-version">{t("@social.unreleased")}</span></div><p>{t("@social.unreleased.hint")}</p></article>
             {releaseNotes.slice(0, 3).map((release) => (
               <article className="home-news-version" key={release.version}>
                 <div className="home-news-version-head">

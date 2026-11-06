@@ -48,6 +48,8 @@ jobs:
       - run: npm ci
       - name: Check frontend and native code
         run: |
+          ./scripts/build-social.ps1 -DebugBuild
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
           npm run build
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           npm test

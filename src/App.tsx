@@ -17,6 +17,7 @@ import {
   LoaderCircle,
   Monitor,
   Server,
+  Users,
 } from "lucide-react";
 import { Provider, useApp } from "./context";
 import { native, rpc } from "./lib/api";
@@ -47,12 +48,15 @@ import { APP_VERSION } from "./lib/version";
 import { SidebarPattern } from "./components/TerrainPattern";
 import { AccountAvatar } from "./components/AccountAvatar";
 import { PackManualDownloads } from "./components/PackManualDownloads";
+import { SocialProvider } from "./components/SocialProvider";
+const Friends = lazy(() => import("./screens/Friends").then(module=>({default:module.Friends})));
 const navigation = [
   ["home", HomeIcon],
   ["profiles", Layers3],
   ["catalog", Compass],
   ["accounts", UserRound],
   ["skins", Shirt],
+  ["friends", Users],
   ["hosting", Server],
   ["settings", Settings2],
 ] as const;
@@ -329,6 +333,7 @@ function Shell({
                     <Skins />
                   </Suspense>
                 )}
+                {route === "friends" && <Suspense fallback={null}><Friends /></Suspense>}
                 {route === "hosting" && (
                   <Suspense fallback={null}>
                     <Hosting />
@@ -443,7 +448,7 @@ export default function App() {
   return (
     <Provider onCreate={() => setCreating(true)}>
       <UpdateProvider>
-        <Shell creating={creating} setCreating={setCreating} />
+        <SocialProvider><Shell creating={creating} setCreating={setCreating} /></SocialProvider>
       </UpdateProvider>
     </Provider>
   );

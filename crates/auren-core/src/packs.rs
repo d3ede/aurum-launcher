@@ -2,6 +2,9 @@ use crate::{model::*, Engine, Task};
 use anyhow::{bail, Context, Result};
 use serde_json::Value;
 use std::{io::Read, path::Path};
+fn manual_hash(file: &PackManualDownload) -> (&str, &str) {
+    file.sha256.as_deref().map(|hash| ("sha256", hash)).unwrap_or(("sha1", &file.sha1))
+}
 
 // Used only when the provider cannot identify a ZIP's project type.
 fn archive_content_folder(path: &Path) -> Option<&'static str> {
@@ -10,9 +13,9 @@ fn archive_content_folder(path: &Path) -> Option<&'static str> {
     let mut shaders = false;
     for index in 0..zip.len() {
         let file = zip.by_index(index).ok()?;
-        let name = file.name();
+        let name = file.name().ok()?;
         if matches!(
-            name,
+            name.as_ref(),
             "fabric.mod.json"
                 | "quilt.mod.json"
                 | "META-INF/mods.toml"
@@ -218,7 +221,7 @@ impl Engine {
             }
             let overrides=if mr {vec!["overrides/".to_string(),"client-overrides/".to_string()]}else{vec![format!("{}/",manifest["overrides"].as_str().unwrap_or("overrides").trim_end_matches('/'))]};
             let mut total=0u64;
-            for prefix in overrides { for i in 0..zip.len() {task.check()?;let mut f=zip.by_index(i)?;let name=f.name().to_string();let Some(relative)=name.strip_prefix(&prefix)else{continue};if relative.is_empty() || f.is_dir(){continue}validate_pack_path(relative)?;total+=f.size();if total>1_000_000_000{bail!("Слишком большой архив")};if f.unix_mode().is_some_and(|m|m&0o170000==0o120000){bail!("Архив содержит символическую ссылку")};let path=crate::safe_join(&stage,relative)?;std::fs::create_dir_all(path.parent().unwrap())?;std::io::copy(&mut f,&mut std::fs::File::create(path)?)?; } }
+            for prefix in overrides { for i in 0..zip.len() {task.check()?;let mut f=zip.by_index(i)?;let name=f.name()?.into_owned();let Some(relative)=name.strip_prefix(&prefix)else{continue};if relative.is_empty() || f.is_dir(){continue}validate_pack_path(relative)?;total+=f.size();if total>1_000_000_000{bail!("Слишком большой архив")};if f.unix_mode().is_some_and(|m|m&0o170000==0o120000){bail!("Архив содержит символическую ссылку")};let path=crate::safe_join(&stage,relative)?;std::fs::create_dir_all(path.parent().unwrap())?;std::io::copy(&mut f,&mut std::fs::File::create(path)?)?; } }
             // Some packs bundle a restricted file in their overrides already.
             let mut remaining = vec![];
             for file in manual_downloads {
@@ -290,6 +293,7 @@ impl Engine {
             path,
             url: format!("https://www.curseforge.com/projects/{project}/files/{version}"),
             sha1: hash.into(),
+            sha256: None,
             reason: reason.into(),
         }))
     }
@@ -320,14 +324,14 @@ impl Engine {
         let result: Result<()> = async {
             let temp = stage.join("manual-file");
             tokio::fs::copy(source, &temp).await?;
-            if !crate::net::verify(&temp, Some(("sha1", &missing.sha1))).await? {
+            if !crate::net::verify(&temp, Some(manual_hash(missing))).await? {
                 bail!("Выбран другой файл. Скачайте указанную версию мода")
             }
             let mut destination = missing.path.clone();
             if let Some(name) = missing
                 .path
                 .strip_prefix("mods/")
-                .filter(|name| name.ends_with(".zip"))
+                .filter(|name| name.ends_with(".zip") && missing.sha256.is_none())
             {
                 if let Some(folder) = archive_content_folder(&temp) {
                     destination = format!("{folder}/{name}");
@@ -387,7 +391,7 @@ impl Engine {
                 {
                     continue;
                 }
-                if !crate::net::verify(source, Some(("sha1", &missing.sha1)))
+                if !crate::net::verify(source, Some(manual_hash(&missing)))
                     .await
                     .unwrap_or(false)
                 {
@@ -398,7 +402,7 @@ impl Engine {
                 imported += 1;
                 // Cleanup is optional and happens only after the file and database are saved.
                 if remove_imported
-                    && crate::net::verify(source, Some(("sha1", &missing.sha1)))
+                    && crate::net::verify(source, Some(manual_hash(&missing)))
                         .await
                         .unwrap_or(false)
                 {

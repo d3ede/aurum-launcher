@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/auren-core", "src-tauri"]
+members = ["crates/auren-core", "crates/aurum-social", "crates/aurum-social-worker", "src-tauri"]
 default-members = ["crates/auren-core"]
 resolver = "2"
 

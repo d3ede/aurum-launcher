@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://127.0.0.1:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "powershell -NoProfile -File scripts/build-desktop-assets.ps1",
     "beforeBundleCommand": "powershell -NoProfile -File scripts/installer-assets.ps1",
     "frontendDist": "../dist"
   },
@@ -64,6 +64,8 @@
       "icons/icon.png"
     ],
     "resources": {
+      "social-runtime/aurum-social-worker.exe": "social/aurum-social-worker.exe",
+      "social-runtime/aurum-social-firewall.exe": "social/aurum-social-firewall.exe",
       "../src/assets/loaders/HORIZON-LICENSE": "licenses/Horizon-MIT.txt",
       "../src/assets/loaders/NEOFORGE-LICENSE": "licenses/NeoForge-CC-BY-4.txt",
       "../src/assets/loaders/QUILT-LICENSE": "licenses/Quilt-CC0.txt",

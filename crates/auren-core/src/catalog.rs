@@ -218,14 +218,7 @@ impl Engine {
                 p.append_pair("loaders", &json!([l]).to_string());
             }
         }
-        Ok(self
-            .http
-            .get(url)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?)
+        Ok(serde_json::from_value(crate::net::bounded_json(self.http.get(url).send().await?).await?)?)
     }
     pub async fn cf_versions(
         &self,

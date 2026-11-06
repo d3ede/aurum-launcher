@@ -128,6 +128,30 @@ pub(crate) fn directories_running(paths: Vec<PathBuf>) -> bool {
 }
 
 impl Engine {
+    #[cfg(windows)]
+    pub async fn social_lan_listeners(&self, id: &str) -> Result<Vec<aurum_social::listeners::Listener>> {
+        if self.profile(id).await?.engine != crate::model::Runtime::Java { bail!("Aurum Social currently supports Java profiles only"); }
+        let directory=std::fs::canonicalize(self.instance(id)?)?;
+        let id=id.to_owned();
+        let found=tokio::task::spawn_blocking(move||->Result<Vec<aurum_social::listeners::Listener>>{
+            let records=discover(HashMap::from([(directory,id.clone())]));
+            let mut listeners=Vec::new();
+            for record in records.get(&id).into_iter().flatten(){
+                for listener in aurum_social::listeners::for_pid(record.pid)? {
+                    if listener.creation_time==record.creation_time {listeners.push(listener);}
+                }
+            }
+            listeners.sort_by_key(|l|(l.pid,l.address.port(),!l.address.is_ipv4()));listeners.dedup_by_key(|l|(l.pid,l.address.port()));
+            if listeners.len()>8 {bail!("Too many listeners in this Minecraft process; close unrelated Java services first");}
+            Ok(listeners)
+        }).await??;
+        let mut verified=Vec::new();
+        for listener in found {
+            let target=crate::servers::ServerAddress::parse(&listener.connect_address().to_string())?;
+            if matches!(tokio::time::timeout(std::time::Duration::from_millis(1500),crate::servers::ping(&target)).await,Ok(Ok(_))){listener.revalidate()?;verified.push(listener);}
+        }
+        Ok(verified)
+    }
     pub(crate) async fn recover_running(&self) -> Result<()> {
         let mut directories = HashMap::new();
         for profile in &self.db.lock().await.profiles {

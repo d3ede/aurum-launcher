@@ -31,6 +31,14 @@ An independent Windows launcher with a warm light theme and a graphite dark them
 
 ## What Aurum offers
 
+**Unreleased local work: Aurum Social — NOT READY.** Windows friend requests,
+world invitations and reviewed shared-instance installation are implemented behind
+explicit opt-in. Cross-network Minecraft gameplay still needs two-computer
+verification; this is not included in the published 0.5.5 installer. Read the
+[implementation and security boundaries](docs/SOCIAL.md),
+[actual test results](docs/SOCIAL-TESTS.md) and
+[second-computer instructions](docs/SOCIAL-TWO-PC.md).
+
 | | Features |
 | --- | --- |
 | **Instances** | Separate Minecraft instances with their own mods, worlds, settings, and icons. Creating an instance starts installing the game and the appropriate Java runtime. |

@@ -101,7 +101,7 @@ impl crate::Engine {
             502 | 504 => bail!("Сервис CurseForge временно недоступен"),
             _ => {}
         }
-        Ok(response.error_for_status()?.json().await?)
+        crate::net::bounded_json(response).await
     }
 }
 

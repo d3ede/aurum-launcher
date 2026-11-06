@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { storageEnglish, storageRussian } from "../locales/storage";
+import { socialEnglish, socialRussian } from "../locales/social";
 import type { Kind, Loader, Route } from "../types";
 import englishMessages from "../locales/messages/en.json";
 import russianMessages from "../locales/messages/ru.json";
@@ -32,6 +33,7 @@ import {
 } from "../locales/horizon-mods";
 type Dictionary = Record<string, string>;
 const english: Dictionary = {
+  ...socialEnglish,
   ...storageEnglish,
   ...horizonModsEnglish,
   ...englishMessages,
@@ -47,6 +49,7 @@ const english: Dictionary = {
   ...contentManagerEnglish,
 };
 const russian: Dictionary = {
+  ...socialRussian,
   ...storageRussian,
   ...horizonModsRussian,
   ...russianMessages,
@@ -212,6 +215,7 @@ export const ru = {
       accounts: "Профили",
       skins: "Скины и плащи",
       hosting: "Хостинг",
+      friends: "@social.title",
       settings: "Настройки",
     });
   },

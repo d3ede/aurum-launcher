@@ -4,6 +4,14 @@ version = "0.2.0"
 edition = "2021"
 license = "PolyForm-Noncommercial-1.0.0"
 
+[features]
+social-lab = ["aurum-social/lab"]
+
+[[bin]]
+name = "aurum-social-core-lab"
+path = "src/bin/aurum-social-core-lab.rs"
+required-features = ["social-lab"]
+
 [dependencies]
 anyhow = "1"
 base64 = "0.22"
@@ -31,9 +39,10 @@ tokio = { version = "1", features = ["full"] }
 toml_edit = "0.20.2"
 uuid = { version = "1", features = ["v4", "serde"] }
 walkdir = "2"
-zip = { version = "2", default-features = false, features = ["deflate"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }
 
 [target.'cfg(windows)'.dependencies]
+aurum-social = { path = "../aurum-social" }
 windows = { version = "0.62.2", features = ["Win32_System_Com", "Win32_UI_Shell"] }
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Threading", "Win32_System_JobObjects"] }
 

@@ -191,7 +191,8 @@ pub(super) fn jar_major(path: &Path) -> u32 {
         let Ok(mut entry) = archive.by_index(index) else {
             continue;
         };
-        if !entry.name().ends_with(".class") || entry.name().starts_with("META-INF/versions/") {
+        let Ok(name)=entry.name() else {continue;};
+        if !name.ends_with(".class") || name.starts_with("META-INF/versions/") {
             continue;
         }
         let mut header = [0; 8];

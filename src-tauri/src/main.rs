@@ -1,5 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod hosting;
+#[cfg(windows)]
+mod social;
 mod microsoft_window;
 mod server_shortcuts;
 mod uninstall;
@@ -42,6 +44,12 @@ async fn rpc(
     if action.starts_with("hosting") {
         return hosting::rpc(&action, &payload, &e, &app).await;
     }
+    if action.starts_with("social.") {
+        #[cfg(windows)]
+        return social::rpc(&action, &payload, &e, &app).await;
+        #[cfg(not(windows))]
+        return Err("Aurum Social currently requires Windows AppContainer".into());
+    }
     match action.as_str() {
         "uninstall" => {
             let _guard = e
@@ -71,9 +79,13 @@ async fn rpc(
             if !e.running.lock().await.is_empty() {
                 return Err("Сначала остановите игру".into());
             }
+            #[cfg(windows)]
+            e.social.shutdown().map_err(err)?;
             app.restart()
         }
         "changeDataDirectory" => {
+            #[cfg(windows)]
+            e.social.shutdown().map_err(err)?;
             if !e.hosting_running().is_empty() {
                 return Err("Сначала остановите локальные серверы".into());
             }
@@ -736,6 +748,11 @@ async fn choose_file(
     path.map(|p| p.into_path().map_err(err)).transpose()
 }
 fn main() {
+    #[cfg(windows)]
+    if std::env::args().nth(1).as_deref()==Some("--social-cleanup"){
+        let result=std::env::current_exe().map_err(anyhow::Error::from).and_then(|p|aurum_social::firewall::request_removal(&p.with_file_name("social").join("aurum-social-worker.exe")));
+        std::process::exit(if result.is_ok(){0}else{1});
+    }
     if let Some(code) = uninstall::command() {
         std::process::exit(code);
     }
@@ -746,6 +763,7 @@ fn main() {
         .manage(microsoft_window::MicrosoftWindow::default())
         .plugin(tauri_plugin_single_instance::init(|app, arguments, _| {
             server_shortcuts::receive(app, &arguments);
+            #[cfg(windows)] social::receive(app,&arguments);
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.unminimize();
                 let _ = window.set_focus();
@@ -780,6 +798,13 @@ fn main() {
                 let _ = handle.emit("auren:event", event);
             }))?;
             app.manage(engine.clone());
+            #[cfg(windows)]{
+                app.manage(social::Links::default());
+                social::receive(app.handle(),&std::env::args().collect::<Vec<_>>());
+                let social_events=app.handle().clone();
+                engine.social.set_notifier(std::sync::Arc::new(move||{let _=social_events.emit_to("main","social:event",());}));
+                social::resume(app.handle(),&engine);
+            }
             uninstall::register(&engine.root, &app.config().identifier)?;
             app.manage(Relocation(std::sync::atomic::AtomicBool::new(false)));
             // Creation-time centering uses the requested client size. Center again
@@ -790,6 +815,8 @@ fn main() {
                 let closing = app.handle().clone();
                 window.on_window_event(move |event| {
                     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        #[cfg(windows)]
+                        if closing.state::<Engine>().social.has_active_tunnels(){api.prevent_close();let _=closing.emit_to("main","social:closeRequested",());return;}
                         if !closing.state::<Engine>().hosting_running().is_empty() {
                             api.prevent_close();
                             let _ = closing.emit(
@@ -805,6 +832,8 @@ fn main() {
                                 },
                             );
                         } else {
+                            #[cfg(windows)]
+                            let _=closing.state::<Engine>().social.shutdown();
                             microsoft_window::shutdown(&closing);
                         }
                     }

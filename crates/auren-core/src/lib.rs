@@ -26,6 +26,8 @@ mod processes;
 mod secret_store;
 pub mod servers;
 pub mod skins;
+#[cfg(windows)]
+pub mod social;
 pub mod store;
 
 use anyhow::{bail, Context, Result};
@@ -42,6 +44,10 @@ use tokio::sync::Mutex;
 
 #[derive(Clone)]
 pub struct Engine {
+    #[cfg(windows)]
+    pub social: Arc<aurum_social::service::Service>,
+    #[cfg(windows)]
+    pub(crate) social_tasks: Arc<Mutex<std::collections::HashSet<String>>>,
     pub root: PathBuf,
     pub http: reqwest::Client,
     pub(crate) aurum_api_status: Arc<Mutex<aurum_api::ApiStatus>>,
@@ -117,7 +123,13 @@ impl Engine {
             .timeout(std::time::Duration::from_secs(180))
             .https_only(true)
             .build()?;
+        #[cfg(windows)]
+        let social = Arc::new(aurum_social::service::Service::new(root.join("social")));
         let engine = Self {
+            #[cfg(windows)]
+            social,
+            #[cfg(windows)]
+            social_tasks: Arc::new(Mutex::new(std::collections::HashSet::new())),
             root,
             http,
             aurum_api_status: Arc::new(Mutex::new(aurum_api::ApiStatus::default())),
@@ -143,6 +155,13 @@ impl Engine {
     }
     pub async fn snapshot(&self) -> Snapshot {
         self.refresh_recovered().await;
+        #[cfg(windows)]
+        if self.social.is_enabled(){
+            let running=self.running.lock().await.keys().cloned().collect::<Vec<_>>();
+            let db=self.db.lock().await;
+            let world=db.profiles.iter().find(|p|running.contains(&p.id)&&p.engine==model::Runtime::Java).map(|p|aurum_social::world::WorldSpec{name:p.name.clone(),minecraft:p.minecraft.clone(),loader:p.loader.key().into(),loader_version:p.loader_version.clone()});
+            let _=self.social.activity(world);
+        }
         Snapshot {
             database: self.db.lock().await.clone(),
             data_dir: self.root.to_string_lossy().into(),

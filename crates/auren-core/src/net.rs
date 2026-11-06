@@ -6,18 +6,34 @@ use sha1::{Digest, Sha1};
 use sha2::Sha256;
 use std::path::Path;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+pub(crate) async fn bounded_json(response: reqwest::Response) -> Result<serde_json::Value> {
+    const LIMIT: usize = 32 * 1024 * 1024;
+    let response = response.error_for_status()?;
+    if response.content_length().is_some_and(|n| n > LIMIT as u64) {
+        bail!("JSON response exceeds 32 MiB");
+    }
+    let mut stream = response.bytes_stream();
+    let mut bytes = Vec::new();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        if bytes.len() + chunk.len() > LIMIT {
+            bail!("JSON response exceeds 32 MiB");
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    Ok(serde_json::from_slice(&bytes)?)
+}
 
 impl Engine {
     pub async fn json(&self, url: &str) -> Result<serde_json::Value> {
-        Ok(self
-            .http
-            .get(url)
-            .send()
-            .await
-            .context("Нет связи с сервером")?
-            .error_for_status()?
-            .json()
-            .await?)
+        bounded_json(
+            self.http
+                .get(url)
+                .send()
+                .await
+                .context("Нет связи с сервером")?,
+        )
+        .await
     }
     pub async fn download(
         &self,

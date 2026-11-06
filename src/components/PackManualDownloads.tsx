@@ -81,7 +81,9 @@ export function PackManualDownloads({
               <b>{file.name}</b>
               <code>{file.path}</code>
               <small>
-                {file.reason === "restricted"
+                {file.reason === "local"
+                  ? t("@social.local.file")
+                  : file.reason === "restricted"
                   ? t("Автор разрешает скачивание только с сайта")
                   : t("Не удалось скачать автоматически")}
               </small>
@@ -89,6 +91,7 @@ export function PackManualDownloads({
             <div className="pack-manual-actions">
               <button
                 className="button secondary"
+                disabled={!file.url}
                 onClick={() =>
                   void rpc("openUrl", { url: file.url }).catch((error) =>
                     notify(String(error), true),

@@ -1,5 +1,11 @@
 import { t } from "./i18n";
 import type { HorizonModStatus } from "./horizon-mods";
+import type {
+  SocialSnapshot,
+  SocialPrivacy,
+  SharedManifest,
+  SocialReview,
+} from "./social";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
@@ -40,6 +46,56 @@ import type {
 export const native = isTauri();
 type Empty = Record<string, never>;
 interface Contract {
+  "social.takeLink": [Empty, string | null];
+  "social.close": [Empty, void];
+  "social.snapshot": [Empty, SocialSnapshot];
+  "social.pending": [Empty, SocialReview[]];
+  "social.enable": [{ accepted: boolean; name: string }, void];
+  "social.disable": [Empty, void];
+  "social.add": [{ input: string }, void];
+  "social.relationship": [{ id: string; action: string }, void];
+  "social.privacy": [{ privacy: SocialPrivacy }, void];
+  "social.rename": [{ name: string }, void];
+  "social.configureFirewall": [{ accepted: boolean }, void];
+  "social.exportIdentity": [{ password: string }, boolean];
+  "social.restoreIdentity": [{ password: string; replace: boolean }, boolean];
+  "social.qr": [Empty, string];
+  "social.lanListeners": [
+    { profileId: string },
+    { pid: number; creationTime: number; address: string }[],
+  ];
+  "social.exportManifest": [
+    {
+      profileId: string;
+      configs: boolean;
+      sensitive: boolean;
+      operationId: string;
+    },
+    {
+      manifest: SharedManifest;
+      excluded: string[];
+      potentialSecrets: string[];
+    },
+  ];
+  "social.invite": [
+    {
+      profileId: string;
+      friend: string;
+      port: number | null;
+      configs: boolean;
+      sensitive: boolean;
+      withPack: boolean;
+      operationId: string;
+    },
+    void,
+  ];
+  "social.dismissInvite": [{ id: string }, void];
+  "social.plan": [{ id: string; operationId: string }, SocialReview];
+  "social.install": [
+    { planId: string; operationId: string; accepted: boolean },
+    { profileId: string; missing: number },
+  ];
+  "social.join": [{ id: string; profileId: string; operationId: string }, void];
   horizonModStatus: [{ id: string }, HorizonModStatus];
   horizonBuildLog: [{ id: string }, string];
   buildHorizonMods: [

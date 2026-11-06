@@ -650,23 +650,28 @@ impl Engine {
         }
     }
     pub async fn launch(&self, id: &str) -> Result<()> {
-        self.launch_target(id, None, false).await
+        self.launch_target(id, None, false, None).await
     }
     pub async fn launch_to_server(&self, id: &str, address: &str) -> Result<()> {
         let address = crate::servers::ServerAddress::parse(address)?;
-        self.launch_target(id, Some(address), false).await
+        self.launch_target(id, Some(address), false, None).await
+    }
+    #[cfg(windows)]
+    pub(crate) async fn launch_social_server(&self,id:&str,address:&str,task:&Task)->Result<()>{
+        self.launch_target(id,Some(crate::servers::ServerAddress::parse(address)?),false,Some(task.cancel.clone())).await
     }
     pub async fn launch_without_horizon_mods(&self, id: &str, server: Option<&str>) -> Result<()> {
         let server = server
             .map(crate::servers::ServerAddress::parse)
             .transpose()?;
-        self.launch_target(id, server, true).await
+        self.launch_target(id, server, true, None).await
     }
     async fn launch_target(
         &self,
         id: &str,
         server: Option<crate::servers::ServerAddress>,
         skip_native: bool,
+        cancelled: Option<Arc<AtomicBool>>,
     ) -> Result<()> {
         self.refresh_recovered().await;
         let _guard = self
@@ -701,7 +706,7 @@ impl Engine {
         let task = Task {
             id: uuid::Uuid::new_v4().to_string(),
             profile_id: Some(id.into()),
-            cancel: Arc::new(AtomicBool::new(false)),
+            cancel: cancelled.clone().unwrap_or_else(||Arc::new(AtomicBool::new(false))),
             emit: self.emit.clone(),
         };
         let authentication = async {
@@ -930,6 +935,9 @@ impl Engine {
             .kill_on_drop(false);
         hide(&mut command);
         // No shell interpolation, no printed token-bearing command line.
+        task.check()?;
+        #[cfg(windows)]
+        if cancelled.is_some()&&!self.social.is_enabled(){bail!("Social was disabled before Java launch");}
         let child = command.spawn().context("Не удалось запустить Java")?;
         self.supervise_game(&p, child, token, task, server).await
     }
@@ -1081,7 +1089,7 @@ pub fn extract_zip(zip: &Path, target: &Path, mode: Option<&str>, task: &Task) -
     for i in 0..archive.len() {
         task.check()?;
         let mut f = archive.by_index(i)?;
-        let name = f.name().to_owned();
+        let name = f.name()?.into_owned();
         if mode == Some("native") && !crate::launch_cache::native_entry(&name) {
             continue;
         }

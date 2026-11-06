@@ -101,8 +101,8 @@ pub(crate) fn prepare_natives(archives: &[PathBuf], target: &Path, task: &Task) 
         let mut zip = zip::ZipArchive::new(std::fs::File::open(archive)?)?;
         for index in 0..zip.len() {
             let entry = zip.by_index(index)?;
-            if native_entry(entry.name()) {
-                files.insert(PathBuf::from(entry.name()), ());
+            if native_entry(&entry.name()?) {
+                files.insert(PathBuf::from(entry.name()?.into_owned()), ());
             }
         }
     }

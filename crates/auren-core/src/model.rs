@@ -67,6 +67,8 @@ pub struct PackManualDownload {
     pub path: String,
     pub url: String,
     pub sha1: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sha256: Option<String>,
     pub reason: String,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]

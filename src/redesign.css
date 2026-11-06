@@ -1456,7 +1456,7 @@ input[type="range"] {
   flex-shrink: 0;
   margin-top: 16px;
 }
-.app-shell:has(.modrinth-import-modal) .operation-panel {
+body:has(.modrinth-import-modal) .operation-panel {
   display: none;
 }
 .library-import-options {

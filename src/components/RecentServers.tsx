@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
   type ReactNode,
@@ -34,6 +35,7 @@ function ServerMenu({
   children: (close: () => void) => ReactNode;
 }) {
   const trigger = useRef<HTMLButtonElement>(null);
+  const menuId=useId();
   const menu = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{
     top: number;
@@ -107,6 +109,7 @@ function ServerMenu({
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={!!position}
+        aria-controls={position?menuId:undefined}
         onClick={() => {
           if (position) {
             close();
@@ -131,6 +134,7 @@ function ServerMenu({
         createPortal(
           <div
             ref={menu}
+            id={menuId}
             role="menu"
             aria-label={label}
             className="recent-server-menu"

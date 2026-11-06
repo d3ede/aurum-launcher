@@ -59,7 +59,8 @@ export interface PackManualDownload {
   path: string;
   url: string;
   sha1: string;
-  reason: "restricted" | "download";
+  sha256?: string;
+  reason: "restricted" | "download" | "local";
 }
 export interface Account {
   id: string;
@@ -235,4 +236,5 @@ export type Route =
   | "accounts"
   | "skins"
   | "hosting"
+  | "friends"
   | "settings";

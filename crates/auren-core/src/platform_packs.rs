@@ -587,7 +587,8 @@ fn extract_archive(path: &Path, dest: &Path, task: &Task, total: &mut u64) -> Re
         if file.unix_mode().is_some_and(|m| m & 0o170000 == 0o120000) {
             bail!("Pack contains a symbolic link");
         }
-        let relative = file.name().strip_prefix("./").unwrap_or(file.name());
+        let name=file.name()?;
+        let relative = name.strip_prefix("./").unwrap_or(&name);
         let output = crate::safe_join(dest, relative)?;
         *total = total
             .checked_add(file.size())

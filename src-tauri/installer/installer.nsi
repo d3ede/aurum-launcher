@@ -676,6 +676,12 @@ Section Install
   ; Aurum stores the two independent shortcut choices and preserves them on updates.
   Call AurumShortcuts
 
+  ; Per-user contact links open a review dialog; they never auto-enable Social.
+  WriteRegStr HKCU "Software\Classes\aurum" "" "URL:Aurum contact"
+  WriteRegStr HKCU "Software\Classes\aurum" "URL Protocol" ""
+  WriteRegStr HKCU "Software\Classes\aurum\DefaultIcon" "" '$\"$INSTDIR\${MAINBINARYNAME}.exe$\",0'
+  WriteRegStr HKCU "Software\Classes\aurum\shell\open\command" "" '$\"$INSTDIR\${MAINBINARYNAME}.exe$\" $\"%1$\"'
+
   !ifmacrodef NSIS_HOOK_POSTINSTALL
     !insertmacro NSIS_HOOK_POSTINSTALL
   !endif
@@ -742,8 +748,17 @@ Section Uninstall
 
 
   ; Delete the app directory and its content from disk
+  ${If} $UpdateMode <> 1
+  ${AndIf} ${FileExists} "$INSTDIR\social\aurum-social-worker.exe"
+    ; The fixed one-shot helper requests UAC only when an owned rule exists.
+    ExecWait '$\"$INSTDIR\${MAINBINARYNAME}.exe$\" --social-cleanup' $0
+  ${EndIf}
   ; Copy main executable
   Delete "$INSTDIR\${MAINBINARYNAME}.exe"
+  ReadRegStr $0 HKCU "Software\Classes\aurum\shell\open\command" ""
+  ${If} $0 == '$\"$INSTDIR\${MAINBINARYNAME}.exe$\" $\"%1$\"'
+    DeleteRegKey HKCU "Software\Classes\aurum"
+  ${EndIf}
   Delete "$INSTDIR\LICENSE.txt"
   Delete "$INSTDIR\NOTICE.txt"
   Delete "$INSTDIR\TAURI-MIT-LICENSE.txt"

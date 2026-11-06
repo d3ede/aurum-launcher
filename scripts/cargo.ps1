@@ -10,7 +10,10 @@ if ($mingw -and (Test-Path -LiteralPath $gcc)) {
   $env:PATH = (Join-Path $mingw.FullName 'bin') + ';' + $env:PATH
   $env:CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER = Join-Path $mingw.FullName 'bin\x86_64-w64-mingw32-gcc.exe'
   $gccLib = Get-ChildItem -LiteralPath (Join-Path $projectRoot '.tools\gcc\mingw64\lib\gcc\x86_64-w64-mingw32') -Directory | Select-Object -First 1
-  $env:CARGO_ENCODED_RUSTFLAGS = '-L' + [char]31 + ('native=' + $gccLib.FullName) + [char]31 + '-L' + [char]31 + ('native=' + (Join-Path $projectRoot '.tools\gcc\mingw64\lib'))
+  # iroh also builds a cdylib for WASM support. MinGW otherwise auto-exports
+  # its Rust internals and exceeds PE's 65,535-export limit in debug builds.
+  # Explicit exports supplied by Rust's .def file remain exported.
+  $env:CARGO_ENCODED_RUSTFLAGS = '-L' + [char]31 + ('native=' + $gccLib.FullName) + [char]31 + '-L' + [char]31 + ('native=' + (Join-Path $projectRoot '.tools\gcc\mingw64\lib')) + [char]31 + '-C' + [char]31 + 'link-arg=-Wl,--exclude-all-symbols'
   $env:CC = Join-Path $mingw.FullName 'bin\x86_64-w64-mingw32-clang.exe'
   $env:AR = Join-Path $mingw.FullName 'bin\llvm-ar.exe'
 }

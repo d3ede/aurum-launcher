@@ -1,5 +1,6 @@
 import { t, tMessage } from "../lib/i18n";
 import { useEffect, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X, AlertCircle, LoaderCircle, ArrowUpRight } from "lucide-react";
 import aurumLogo from "../assets/branding/aurum-gold.svg";
 export function Logo({ small = false }: { small?: boolean }) {
@@ -8,6 +9,32 @@ export function Logo({ small = false }: { small?: boolean }) {
       <img src={aurumLogo} alt="" aria-hidden="true" />
     </div>
   );
+}
+const modalStack: HTMLElement[] = [];
+const originalInert = new Map<HTMLElement, boolean>();
+function updateModalBackground() {
+  const top = modalStack.at(-1);
+  for (const child of Array.from(document.body.children)) {
+    if (!(child instanceof HTMLElement) || !top) continue;
+    if (!originalInert.has(child)) originalInert.set(child, child.inert);
+    const menu = child.matches('[role="menu"],.select-menu[data-state="open"]')
+      ? child
+      : child.querySelector<HTMLElement>(
+          '[role="menu"],.select-menu[data-state="open"]',
+        );
+    const ownsMenu =
+      menu?.id && top.querySelector(`[aria-controls="${CSS.escape(menu.id)}"]`);
+    child.inert =
+      child !== top &&
+      !ownsMenu &&
+      !child.matches("[data-image-lightbox]") &&
+      !child.querySelector("[data-image-lightbox]");
+  }
+  if (!top) {
+    for (const [node, inert] of originalInert)
+      if (node.isConnected) node.inert = inert;
+    originalInert.clear();
+  }
 }
 export function Modal({
   title,
@@ -28,10 +55,15 @@ export function Modal({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
-  close.current = onClose;
+  close.current = closeDisabled ? () => {} : onClose;
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     const root = ref.current!;
+    const overlay = root.parentElement!;
+    modalStack.push(overlay);
+    updateModalBackground();
+    const observer = new MutationObserver(updateModalBackground);
+    observer.observe(document.body, { childList: true });
     const focusables = () =>
       [
         ...root.querySelectorAll<HTMLElement>(
@@ -43,6 +75,7 @@ export function Modal({
       );
     focusables()[0]?.focus();
     const onKey = (e: KeyboardEvent) => {
+      if (modalStack.at(-1) !== overlay) return;
       if (
         document.querySelector(
           '.select-menu[data-state="open"], [data-image-lightbox]',
@@ -67,14 +100,19 @@ export function Modal({
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
+      observer.disconnect();
+      const index = modalStack.indexOf(overlay);
+      if (index >= 0) modalStack.splice(index, 1);
+      updateModalBackground();
       previous?.focus();
     };
   }, []);
-  return (
+  return createPortal(
     <div
       className="modal-backdrop"
+      data-aurum-modal=""
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) close.current();
       }}
     >
       <div
@@ -100,7 +138,8 @@ export function Modal({
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 export function ErrorBox({

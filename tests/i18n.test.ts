@@ -7,6 +7,7 @@ import {
   setLanguagePreference,
   formatDecimal,
   formatCount,
+  ru,
 } from "../src/lib/i18n";
 const messages = (code: string) =>
   JSON.parse(
@@ -19,6 +20,11 @@ afterEach(async () => {
   await setLanguagePreference("ru");
 });
 describe("offline language packs", () => {
+  it("uses the current language for the Friends navigation label",async()=>{
+    await setLanguagePreference("ru");expect(ru.routes.friends).toBe("Друзья");
+    await setLanguagePreference("en");expect(ru.routes.friends).toBe("Friends");
+    await setLanguagePreference("ru");expect(ru.routes.friends).toBe("Друзья");
+  });
   it("covers every registered language and preserves interpolation values", () => {
     const base = messages("ru");
     expect(languages.length).toBe(41);
