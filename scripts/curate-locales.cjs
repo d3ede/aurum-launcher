@@ -31,6 +31,8 @@ Object.assign(overrides.lt, {'@project.few':'projektai', '@project.many':'projek
 Object.assign(overrides.lv, {'@project.zero':'projektu', '@project.other':'projekti'});
 const folder = path.resolve(__dirname, '../src/locales/messages');
 for (const [code, fixed] of Object.entries(overrides)) {
+  // Do not replace the reviewed Ukrainian copy with the old generated seed.
+  if (code === 'uk') continue;
   const file = path.join(folder, `${code}.json`);
   const pack = JSON.parse(fs.readFileSync(file, 'utf8'));
   Object.assign(pack, fixed);

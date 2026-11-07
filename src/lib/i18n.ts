@@ -162,27 +162,49 @@ export function t(
     values[name] === undefined ? placeholder : String(values[name] ?? ""),
   );
 }
-const patterns = Object.keys(russian)
-  .filter((key) => key.includes("{{"))
-  .sort((a, b) => b.length - a.length)
-  .map((key) => {
-    const names: string[] = [];
-    const pieces = key.split(/(\{\{[^}]+\}\})/g).map((piece) => {
-      const placeholder = piece.match(/^\{\{([^}]+)\}\}$/);
-      if (placeholder) {
-        names.push(placeholder[1]);
-        return "([\\s\\S]*?)";
-      }
-      return piece.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function messageMatchers(messages: Dictionary) {
+  const keys = [
+    ...new Set([...Object.keys(russian), ...Object.keys(messages)]),
+  ];
+  const patterns = keys
+    .filter((key) => key.includes("{{"))
+    .sort((a, b) => b.length - a.length)
+    .map((key) => {
+      const names: string[] = [];
+      const pieces = key.split(/(\{\{[^}]+\}\})/g).map((piece) => {
+        const placeholder = piece.match(/^\{\{([^}]+)\}\}$/);
+        if (placeholder) {
+          names.push(placeholder[1]);
+          return "([\\s\\S]*?)";
+        }
+        return piece.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      });
+      return { key, names, regex: new RegExp(`^${pieces.join("")}$`) };
     });
-    return { key, names, regex: new RegExp(`^${pieces.join("")}$`) };
-  });
-export function tMessage(message: string) {
+  const prefixes = keys
+    .filter((key) => !key.includes("{{") && !key.startsWith("@"))
+    .sort((a, b) => b.length - a.length);
+  return { patterns, prefixes };
+}
+const matcherCache = new WeakMap<
+  Dictionary,
+  ReturnType<typeof messageMatchers>
+>();
+function currentMatchers() {
+  let matchers = matcherCache.get(dictionary);
+  if (!matchers) {
+    matchers = messageMatchers(dictionary);
+    matcherCache.set(dictionary, matchers);
+  }
+  return matchers;
+}
+export function tMessage(message: string): string {
   if (
     dictionary[message] !== undefined ||
     (english as Dictionary)[message] !== undefined
   )
     return t(message);
+  const { patterns, prefixes } = currentMatchers();
   for (const pattern of patterns) {
     const match = message.match(pattern.regex);
     if (match)
@@ -192,6 +214,12 @@ export function tMessage(message: string) {
           pattern.names.map((name, i) => [name, match[i + 1]]),
         ),
       );
+  }
+  // Errors may append an OS/library cause to a known launcher message.
+  // Translate only recognized prefixes; preserve unknown diagnostics verbatim.
+  for (const key of prefixes) {
+    if (message.startsWith(`${key}: `))
+      return `${t(key)}: ${tMessage(message.slice(key.length + 2))}`;
   }
   return message;
 }

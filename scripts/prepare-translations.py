@@ -46,7 +46,8 @@ if sys.argv[1]=="extra":
     english=json.loads((folder/"en.json").read_text(encoding="utf-8"));english.update(seed)
     (folder/"en.json").write_text(json.dumps(english,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     for language in registry:
-        if language["code"] in ["ru","en"]:continue
+        # Ukrainian is manually reviewed. Its coverage is checked by the tests.
+        if language["code"] in ["ru","en","uk"]:continue
         target=folder/(language["code"]+".json")
         out=json.loads(target.read_text(encoding="utf-8"));out.update(pack(seed,"eng_Latn",language["modelCode"]))
         target.write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")

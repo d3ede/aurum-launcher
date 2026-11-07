@@ -1,4 +1,8 @@
 export const homeEnglish: Record<string, string> = {
+  "В разработке: оформление и перевод":
+    "In development: appearance and translation",
+  "Украинский перевод переработан и дополнен во всех разделах.":
+    "The Ukrainian translation has been rewritten and completed across all sections.",
   "В разработке: оформление": "In development: appearance",
   "Две светлые палитры и выбор темы без кнопки сохранения.":
     "Two light palettes and theme selection without a save button.",
