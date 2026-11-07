@@ -14,8 +14,11 @@ project version. Each row also lets you choose another compatible version. A
 running instance cannot be changed. Horizon mods install source code and still
 need the existing explicit compilation step before playing.
 
-Install one row, check several rows and install the selection, or install all
-available projects. Modpacks create separate instances. For platform packs,
+Install one row, or check rows and use **Install selected**. All projects start
+selected; incompatible projects are skipped. **Clear favorites**, beside
+**Check again**, removes only checked projects after confirmation. Cancelling
+keeps the list unchanged; clearing favorites leaves installed files in place.
+Modpacks create separate instances. For platform packs,
 expand the installation options to select optional mods and required files from
 the publisher's website. Restrictions on automatic downloads are unchanged.
 Incomplete pack imports keep their normal manual-file recovery flow, accessible

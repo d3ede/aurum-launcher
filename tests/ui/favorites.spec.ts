@@ -310,7 +310,7 @@ test("bulk installation skips incompatible and manual projects, continues after 
   );
   await expect(
     dialog.getByRole("button", {
-      name: "Установить всё доступное",
+      name: /Установить выбранное · [1-9]/,
       exact: true,
     }),
   ).toBeEnabled();
@@ -319,7 +319,7 @@ test("bulk installation skips incompatible and manual projects, continues after 
     animations: "disabled",
   });
   await dialog
-    .getByRole("button", { name: "Установить всё доступное", exact: true })
+    .getByRole("button", { name: /Установить выбранное · [1-9]/, exact: true })
     .click();
   await expect(dialog.locator(".favorites-summary")).toHaveText(
     "Установлено: 4. Ошибок: 1.",
@@ -427,13 +427,86 @@ test("install selected only processes the checked projects", async ({
   ).toEqual(["curseforge:good", "modrinth:shade"]);
 });
 
+test("clear favorites confirms only the checked projects and keeps cancellation and saved lists intact", async ({
+  page,
+}) => {
+  await fixture(page, { seed: true });
+  const dialog = await open(page);
+  await expect(dialog.locator(".favorites-actions > button")).toHaveCount(1);
+  await expect(dialog).not.toContainText("Проверяем Minecraft и загрузчик");
+  await dialog
+    .getByRole("combobox", { name: "Установить в сборку", exact: true })
+    .click();
+  await page
+    .getByRole("option", { name: "Выберите сборку", exact: true })
+    .click();
+  await expect(dialog).not.toContainText(
+    "Выберите подходящую сборку для этого проекта.",
+  );
+  await expect(
+    row(page, "modrinth good").getByRole("button", {
+      name: "Установить modrinth good",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  const clear = dialog.getByRole("button", {
+    name: "Очистить избранное",
+    exact: true,
+  });
+  await dialog
+    .getByRole("checkbox", { name: "Выбрать все", exact: true })
+    .uncheck();
+  await expect(clear).toBeDisabled();
+  await row(page, "curseforge good").getByRole("checkbox").check();
+  await row(page, "modrinth pack").getByRole("checkbox").check();
+  const clearBox = await clear.boundingBox();
+  const retryBox = await dialog
+    .getByRole("button", { name: "Проверить снова", exact: true })
+    .boundingBox();
+  expect(clearBox!.x + clearBox!.width).toBeLessThan(retryBox!.x);
+  await clear.click();
+  const confirm = page.getByRole("dialog", {
+    name: "Убрать выбранные проекты из избранного?",
+    exact: true,
+  });
+  await expect(confirm).toContainText("Выбрано проектов: 2.");
+  await confirm.getByRole("button", { name: "Отмена", exact: true }).click();
+  await expect(dialog.locator(".favorite-row")).toHaveCount(7);
+  await clear.click();
+  await confirm
+    .getByRole("button", { name: "Очистить избранное", exact: true })
+    .click();
+  await expect(dialog.locator(".favorite-row")).toHaveCount(5);
+  await expect(row(page, "curseforge good")).toHaveCount(0);
+  await expect(row(page, "modrinth pack")).toHaveCount(0);
+  await expect(row(page, "modrinth good")).toHaveCount(1);
+  expect(
+    await page.evaluate(() =>
+      (window as any).favoriteRequests.filter((r: any) =>
+        [
+          "installContent",
+          "downloadPack",
+          "removeProfile",
+          "removeContent",
+        ].includes(r.action),
+      ),
+    ),
+  ).toHaveLength(0);
+  await page.reload();
+  await page
+    .getByRole("button", { name: "Каталог проектов", exact: true })
+    .click();
+  await open(page);
+  await expect(page.locator(".favorite-row")).toHaveCount(5);
+});
+
 test("cancelling a batch does not start the next item or remove saved favorites", async ({
   page,
 }) => {
   await fixture(page, { seed: true, pause: true });
   const dialog = await open(page);
   await dialog
-    .getByRole("button", { name: "Установить всё доступное", exact: true })
+    .getByRole("button", { name: /Установить выбранное · [1-9]/, exact: true })
     .click();
   await expect(row(page, "modrinth good")).toContainText("Установка…");
   await expect(

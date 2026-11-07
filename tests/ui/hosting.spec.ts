@@ -566,6 +566,17 @@ test("consistent core marks distinguish game servers from proxies and offer offi
   await expect(
     proxies.getByRole("button", { name: "Velocity", exact: true }),
   ).toBeVisible();
+  const velocity = proxies.getByRole("button", {
+    name: "Velocity",
+    exact: true,
+  });
+  const iconBox = await velocity.locator(".hosting-icon").boundingBox();
+  const labelBox = await velocity.locator("b").boundingBox();
+  expect(
+    Math.abs(
+      iconBox!.y + iconBox!.height / 2 - labelBox!.y - labelBox!.height / 2,
+    ),
+  ).toBeLessThan(2);
   await expect(
     servers
       .getByRole("button", { name: "Folia", exact: true })

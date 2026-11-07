@@ -1,5 +1,10 @@
 export const favoritesEnglish: Record<string, string> = {
   Избранное: "Favorites",
+  "Очистить избранное": "Clear favorites",
+  "Убрать выбранные проекты из избранного?":
+    "Remove selected projects from favorites?",
+  "Выбрано проектов: {{count}}. Установленные файлы останутся на месте.":
+    "Selected projects: {{count}}. Installed files will stay in place.",
   "Избранное: {{count}}": "Favorites: {{count}}",
   "Убрать {{name}} из избранного": "Remove {{name}} from favorites",
   "Добавить {{name}} в избранное": "Add {{name}} to favorites",

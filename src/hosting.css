@@ -184,6 +184,7 @@
 }
 .hosting-core-picker.hosting-proxy-picker button {
   display: flex;
+  align-items: center;
   justify-content: flex-start;
   padding: 9px 12px;
 }

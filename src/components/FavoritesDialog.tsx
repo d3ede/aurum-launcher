@@ -81,7 +81,10 @@ export function FavoritesDialog({
   onManualFiles?: (profileId: string) => void;
 }) {
   const { data, busy, operation, cancelOperation, notify } = useApp();
-  const { items, toggle, installed } = useFavorites(data.dataDir);
+  const { items, toggle, installed, removeSelected } = useFavorites(
+    data.dataDir,
+  );
+  const [pendingRemoval, setPendingRemoval] = useState<string[] | null>(null);
   const [profileId, setProfileId] = useState(
     initialProfileId ||
       data.profiles.find((p) => p.engine !== "horizon")?.id ||
@@ -122,11 +125,7 @@ export function FavoritesDialog({
         loading: valid && native,
         versions: [],
         versionId: "",
-        error: !native
-          ? t("Поиск и установка доступны в Aurum.")
-          : valid
-            ? undefined
-            : t("Выберите подходящую сборку для этого проекта."),
+        error: !native ? t("Поиск и установка доступны в Aurum.") : undefined,
       };
     }
     setPlans(initial);
@@ -385,11 +384,6 @@ export function FavoritesDialog({
               />
             </Field>
           )}
-          <p className="favorites-hint">
-            {t(
-              "Проверяем Minecraft и загрузчик. Модпаки создают отдельные сборки; ручные загрузки и выбор файлов сохраняются.",
-            )}
-          </p>
           {items.some((item) => item.project.source === "horizon") && (
             <NativeModNotice />
           )}
@@ -415,14 +409,24 @@ export function FavoritesDialog({
             <span>
               {t("Готово к установке: {{count}}", { count: available.length })}
             </span>
-            <button
-              className="text-button"
-              disabled={blocked || checking}
-              onClick={() => setRetry((v) => v + 1)}
-            >
-              <RotateCcw size={15} />
-              {t("Проверить снова")}
-            </button>
+            <div className="favorites-selection-actions">
+              <button
+                className="text-button danger"
+                disabled={blocked || !selected.size}
+                onClick={() => setPendingRemoval([...selected])}
+              >
+                <Trash2 size={15} />
+                {t("Очистить избранное")}
+              </button>
+              <button
+                className="text-button"
+                disabled={blocked || checking}
+                onClick={() => setRetry((v) => v + 1)}
+              >
+                <RotateCcw size={15} />
+                {t("Проверить снова")}
+              </button>
+            </div>
           </div>
           <div className="favorites-list">
             {items.map((item) => {
@@ -456,16 +460,19 @@ export function FavoritesDialog({
                         ? t("Операция отменена")
                         : plan?.loading
                           ? t("Проверяем совместимость…")
-                          : plan?.error ||
-                            (project.kind !== "modpack" &&
-                            data.running.includes(profileId)
-                              ? t("Сначала остановите эту сборку")
-                              : packSource(project.source) &&
-                                  !configuration(item)?.ready
-                                ? t(
-                                    "Проверьте параметры модпака и выберите обязательные файлы.",
-                                  )
-                                : t("Готово к установке"));
+                          : project.kind !== "modpack" &&
+                              !matchesEngine(project, profile)
+                            ? ""
+                            : plan?.error ||
+                              (project.kind !== "modpack" &&
+                              data.running.includes(profileId)
+                                ? t("Сначала остановите эту сборку")
+                                : packSource(project.source) &&
+                                    !configuration(item)?.ready
+                                  ? t(
+                                      "Проверьте параметры модпака и выберите обязательные файлы.",
+                                    )
+                                  : t("Готово к установке"));
               return (
                 <article
                   className="favorite-row"
@@ -535,17 +542,19 @@ export function FavoritesDialog({
                       <Trash2 size={16} />
                     </button>
                   </div>
-                  <div
-                    className={`favorite-status ${result?.state === "failed" ? "has-error" : ""}`}
-                    role="status"
-                  >
-                    {result?.state === "installing" || plan?.loading ? (
-                      <LoaderCircle size={14} className="spin" />
-                    ) : done ? (
-                      <Check size={14} />
-                    ) : null}
-                    {status}
-                  </div>
+                  {status && (
+                    <div
+                      className={`favorite-status ${result?.state === "failed" ? "has-error" : ""}`}
+                      role="status"
+                    >
+                      {result?.state === "installing" || plan?.loading ? (
+                        <LoaderCircle size={14} className="spin" />
+                      ) : done ? (
+                        <Check size={14} />
+                      ) : null}
+                      {status}
+                    </div>
+                  )}
                   {!!plan?.versions.length && !done && (
                     <Select
                       aria-label={t("Версия {{name}}", { name: project.title })}
@@ -600,28 +609,53 @@ export function FavoritesDialog({
                 {t(stopping ? "Останавливаем очередь…" : "Остановить очередь")}
               </button>
             ) : (
-              <>
-                <button
-                  className="button secondary"
-                  disabled={busy || checking || !available.length}
-                  onClick={() => void install(available)}
-                >
-                  {t("Установить всё доступное")}
-                </button>
-                <button
-                  className="button primary"
-                  disabled={busy || checking || !chosen.length}
-                  onClick={() => void install(chosen)}
-                >
-                  <Download size={16} />
-                  {t("Установить выбранное · {{count}}", {
-                    count: chosen.length,
-                  })}
-                </button>
-              </>
+              <button
+                className="button primary"
+                disabled={busy || checking || !chosen.length}
+                onClick={() => void install(chosen)}
+              >
+                <Download size={16} />
+                {t("Установить выбранное · {{count}}", {
+                  count: chosen.length,
+                })}
+              </button>
             )}
           </div>
         </>
+      )}
+      {pendingRemoval && (
+        <Modal
+          title={t("Убрать выбранные проекты из избранного?")}
+          onClose={() => setPendingRemoval(null)}
+        >
+          <p>
+            {t(
+              "Выбрано проектов: {{count}}. Установленные файлы останутся на месте.",
+              { count: pendingRemoval.length },
+            )}
+          </p>
+          <div className="modal-actions">
+            <button
+              className="button secondary"
+              onClick={() => setPendingRemoval(null)}
+            >
+              {t("Отмена")}
+            </button>
+            <button
+              className="button danger"
+              onClick={() => {
+                try {
+                  removeSelected(new Set(pendingRemoval));
+                  setPendingRemoval(null);
+                } catch {
+                  notify(t("Не удалось сохранить избранное."), true);
+                }
+              }}
+            >
+              {t("Очистить избранное")}
+            </button>
+          </div>
+        </Modal>
       )}
     </Modal>
   );

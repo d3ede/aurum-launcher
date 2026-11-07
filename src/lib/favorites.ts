@@ -116,7 +116,12 @@ export function useFavorites(dataDir: string) {
           : item,
       ),
     );
-  return { items, toggle, installed };
+  const removeSelected = (keys: ReadonlySet<string>) =>
+    write(
+      key,
+      read(key).filter((item) => !keys.has(favoriteKey(item.project))),
+    );
+  return { items, toggle, installed, removeSelected };
 }
 
 export type FavoriteResult = {

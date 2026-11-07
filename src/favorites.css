@@ -63,12 +63,6 @@
 .favorites-dialog .modal-head p {
   max-width: 650px;
 }
-.favorites-hint {
-  color: var(--secondary);
-  font-size: 13px;
-  line-height: 1.6;
-  margin: 14px 0 18px;
-}
 .favorites-selection {
   display: flex;
   align-items: center;
@@ -83,8 +77,14 @@
   color: var(--secondary);
   font-size: 12px;
 }
-.favorites-selection > button {
+.favorites-selection-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
   margin-inline-start: auto;
+}
+.favorites-selection-actions > button {
   font-size: 12px;
 }
 .favorites-list {
