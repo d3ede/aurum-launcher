@@ -1,4 +1,8 @@
 export const homeEnglish: Record<string, string> = {
+  "В разработке: браузер скинов и компактный лаунчер":
+    "In development: skin browser and a smaller launcher",
+  "Браузер MineSkin: поиск по названию и нику, 3D-просмотр и сохранение в библиотеку.":
+    "MineSkin browser: search by name or player, preview in 3D and save to your library.",
   "В разработке: компактный лаунчер": "In development: a smaller launcher",
   "Компонент Social скачивается при первом включении и больше не входит в установщик.":
     "The Social component downloads on first use and is no longer bundled in the installer.",

@@ -184,6 +184,22 @@ interface Contract {
   ];
   scanPackDownloads: [{ id: string; removeImported: boolean }, number];
   skinLibrary: [Empty, SkinLibrary];
+  browseSkins: [
+    {
+      query: string;
+      mode: "latest" | "popular" | "random";
+      after: string | null;
+    },
+    {
+      skins: { id: string; name: string; hash: string }[];
+      after: string | null;
+    },
+  ];
+  skinBrowserTexture: [{ hash: string }, string];
+  skinBrowserSkin: [
+    { query: string; source: "mineskin" | "player" },
+    SavedSkin,
+  ];
   importModrinthSkins: [{ directories: string[] }, ModrinthSkinImportResult];
   accountAppearance: [{ id: string }, AccountAppearance];
   accountAvatar: [{ id: string }, string];

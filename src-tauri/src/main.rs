@@ -277,6 +277,25 @@ async fn rpc(
             Ok(Value::Null)
         }
         "skinLibrary" => Ok(json!(e.skin_library().await.map_err(err)?)),
+        "browseSkins" => Ok(json!(e
+            .browse_skins(
+                &param::<String>(&payload, "query")?,
+                &param::<String>(&payload, "mode")?,
+                payload["after"].as_str(),
+            )
+            .await
+            .map_err(err)?)),
+        "skinBrowserTexture" => Ok(json!(e
+            .skin_browser_texture(&param::<String>(&payload, "hash")?)
+            .await
+            .map_err(err)?)),
+        "skinBrowserSkin" => Ok(json!(e
+            .skin_browser_skin(
+                &param::<String>(&payload, "query")?,
+                &param::<String>(&payload, "source")?,
+            )
+            .await
+            .map_err(err)?)),
         "importModrinthSkins" => {
             let _guard = e
                 .busy

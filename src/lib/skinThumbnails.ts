@@ -3,7 +3,10 @@ const cache = new Map<string, Promise<string>>();
 let queue = Promise.resolve();
 let renderer: SkinViewer | null = null;
 let pending = 0;
-export function skinThumbnail(texture: string, model: "steve" | "alex") {
+export function skinThumbnail(
+  texture: string,
+  model: "steve" | "alex" | "auto",
+) {
   const key = `${model}:${texture}`;
   const existing = cache.get(key);
   if (existing) return existing;
@@ -23,7 +26,12 @@ export function skinThumbnail(texture: string, model: "steve" | "alex") {
         });
       const v = renderer;
       await v.loadSkin(texture, {
-        model: model === "alex" ? "slim" : "default",
+        model:
+          model === "auto"
+            ? "auto-detect"
+            : model === "alex"
+              ? "slim"
+              : "default",
       });
       const distance = v.camera.position.length();
       // Frame the head and torso closely, with the lower legs cropped by the card.

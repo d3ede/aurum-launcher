@@ -4,6 +4,7 @@ import {
   ChevronDown,
   Download,
   FolderOpen,
+  Globe,
   ImagePlus,
   Pencil,
   Plus,
@@ -24,6 +25,7 @@ import {
 } from "../lib/defaultSkins";
 import { skinThumbnail } from "../lib/skinThumbnails";
 import { SkinPreview, type SkinMotion } from "../components/SkinPreview";
+import { SkinBrowser } from "../components/SkinBrowser";
 import { Select } from "../components/Select";
 import { ErrorBox, Field, Loading, Modal } from "../components/ui";
 import type {
@@ -185,6 +187,7 @@ export function Skins() {
   const [decodedSkin, setDecodedSkin] = useState("");
   const [motion, setMotion] = useState<SkinMotion>("idle");
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [browserOpen, setBrowserOpen] = useState(false);
   const [error, setError] = useState("");
   const [profileError, setProfileError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -652,6 +655,16 @@ export function Skins() {
                   onClick={() => choose(s)}
                 />
               ))}
+              <button
+                className="wardrobe-add"
+                aria-label={t("Браузер скинов")}
+                disabled={busy || !native}
+                onClick={() => setBrowserOpen(true)}
+              >
+                <Globe size={30} />
+                <b>{t("Браузер скинов")}</b>
+                <small>MineSkin</small>
+              </button>
             </div>
             {!library.skins.length && (
               <p className="wardrobe-empty-note">
@@ -680,6 +693,21 @@ export function Skins() {
           </details>
         </section>
       </div>
+      {browserOpen && (
+        <SkinBrowser
+          library={library.skins}
+          onClose={() => setBrowserOpen(false)}
+          onSaved={async (saved) => {
+            setLibrary((previous) => ({
+              ...previous,
+              skins: [...previous.skins, saved],
+            }));
+            setChosen(saved.id);
+            setCapeId(null);
+            notify(t("Скин сохранён в библиотеке"));
+          }}
+        />
+      )}
       {draft && (
         <Modal
           wide

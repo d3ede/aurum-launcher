@@ -97,6 +97,48 @@ async function fixture(
           w.requests.push({ action, payload });
           if (action === "snapshot") return state;
           if (action === "skinLibrary") return structuredClone(library);
+          if (action === "browseSkins") {
+            if (payload.query === "error")
+              throw new Error("Слишком много запросов. Повторите через 60 с.");
+            if (payload.query === "empty") return { skins: [], after: null };
+            const result = {
+              skins: [
+                {
+                  id: payload.after ? "b".repeat(32) : "a".repeat(32),
+                  name: payload.after ? "Explorer" : "Knight",
+                  hash: "c".repeat(64),
+                },
+              ],
+              after: payload.after ? null : "a".repeat(32),
+            };
+            if (payload.query === "slow")
+              return new Promise((resolve) => {
+                w.resolveSkinSearch = () =>
+                  resolve({
+                    skins: [
+                      {
+                        id: "d".repeat(32),
+                        name: "Stale",
+                        hash: "c".repeat(64),
+                      },
+                    ],
+                    after: null,
+                  });
+              });
+            return result;
+          }
+          if (action === "skinBrowserTexture") return texture(zuri);
+          if (action === "skinBrowserSkin") {
+            if (payload.query === "missing")
+              throw new Error("Скин или игрок не найден");
+            return {
+              id: `${payload.source}:${payload.query}`,
+              name: payload.source === "player" ? payload.query : "Knight",
+              model: "alex",
+              texture: texture(zuri),
+              capeId: null,
+            };
+          }
           if (action === "chooseModrinthDirectory") return "D:/Custom Modrinth";
           if (action === "importModrinthSkins") {
             if (importMode === "error")
@@ -242,6 +284,201 @@ async function fixture(
     "true",
   );
 }
+test("skin browser renders models, previews and saves without applying to Microsoft", async ({
+  page,
+}) => {
+  await fixture(page, "microsoft");
+  const libraryGrid = page.locator(".wardrobe-grid").first();
+  await expect(
+    libraryGrid.locator(":scope > button").last(),
+  ).toHaveAccessibleName("Браузер скинов");
+  await page
+    .getByRole("button", { name: "Браузер скинов", exact: true })
+    .click();
+  const browser = page.getByRole("dialog", {
+    name: "Браузер скинов",
+    exact: true,
+  });
+  const tile = browser.getByRole("button", { name: "Посмотреть скин Knight" });
+  await expect(tile.locator("img")).toHaveAttribute(
+    "data-thumbnail-ready",
+    "true",
+  );
+  await tile.click();
+  await expect(browser.locator("canvas")).toHaveAttribute("data-ready", "true");
+  await expect(browser.getByText("Тонкие руки", { exact: true })).toBeVisible();
+  await browser
+    .getByRole("button", { name: "Добавить в библиотеку", exact: true })
+    .click();
+  await expect(
+    browser.getByRole("button", { name: "Уже в библиотеке" }),
+  ).toBeDisabled();
+  const requests = await page.evaluate(() => (window as any).requests);
+  expect(
+    requests.filter((r: any) => r.action === "saveLibrarySkin"),
+  ).toHaveLength(1);
+  expect(requests.some((r: any) => r.action === "applyLibrarySkin")).toBe(
+    false,
+  );
+  for (const [width, height, theme] of [
+    [1280, 820, "light"],
+    [960, 680, "dark"],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    if (theme === "dark") {
+      await browser.getByRole("button", { name: "Закрыть диалог" }).click();
+      await page.getByRole("button", { name: "Переключить тему" }).click();
+      await page
+        .getByRole("button", { name: "Браузер скинов", exact: true })
+        .click();
+      await browser
+        .getByRole("button", { name: "Посмотреть скин Knight" })
+        .click();
+      await expect(browser.locator("canvas")).toHaveAttribute(
+        "data-ready",
+        "true",
+      );
+    }
+    await expect(
+      browser.getByRole("button", { name: "Уже в библиотеке" }),
+    ).toBeInViewport();
+    await expect(
+      browser.getByRole("button", { name: "Закрыть диалог" }),
+    ).toBeInViewport();
+    expect(
+      await browser.evaluate((el) => el.scrollWidth <= el.clientWidth),
+    ).toBe(true);
+    await page.screenshot({
+      path: `.test-data/screenshots/skin-browser-${theme}.png`,
+    });
+  }
+  await browser.getByRole("button", { name: "Закрыть диалог" }).click();
+  await expect(
+    page.getByRole("button", { name: "Выбрать скин Knight" }),
+  ).toBeVisible();
+  await page.reload();
+  await page
+    .getByRole("button", { name: "Скины и плащи", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Выбрать скин Knight" }),
+  ).toBeVisible();
+});
+
+test("skin browser searches the catalog, pages, sorts, opens players and MineSkin links", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page
+    .getByRole("button", { name: "Браузер скинов", exact: true })
+    .click();
+  const browser = page.getByRole("dialog", {
+    name: "Браузер скинов",
+    exact: true,
+  });
+  await browser.getByRole("button", { name: "Показать ещё скины" }).click();
+  await expect(
+    browser.getByRole("button", { name: "Посмотреть скин Explorer" }),
+  ).toBeVisible();
+  await expect(
+    browser.getByRole("button", { name: "Показать ещё скины" }),
+  ).toHaveCount(0);
+  const search = browser.getByRole("textbox", { name: "Поиск скинов" });
+  await search.fill("knight");
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as any).requests
+            .filter((r: any) => r.action === "browseSkins")
+            .at(-1)?.payload.query,
+      ),
+    )
+    .toBe("knight");
+  await browser.getByRole("combobox", { name: "Порядок скинов" }).click();
+  await page
+    .getByRole("option", { name: "Популярные скины", exact: true })
+    .click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as any).requests
+            .filter((r: any) => r.action === "browseSkins")
+            .at(-1)?.payload.mode,
+      ),
+    )
+    .toBe("popular");
+  await search.fill("");
+  await browser.getByRole("combobox", { name: "Где искать скины" }).click();
+  await page
+    .getByRole("option", { name: "По нику игрока", exact: true })
+    .click();
+  await search.fill("Notch");
+  await expect(
+    browser.getByRole("heading", { name: "Notch", exact: true }),
+  ).toBeVisible();
+  const request = await page.evaluate(() =>
+    (window as any).requests
+      .filter((r: any) => r.action === "skinBrowserSkin")
+      .at(-1),
+  );
+  expect(request.payload).toEqual({ query: "Notch", source: "player" });
+  await search.fill("");
+  await browser.getByRole("combobox", { name: "Где искать скины" }).click();
+  await page
+    .getByRole("option", { name: "По ID или ссылке", exact: true })
+    .click();
+  await search.fill("https://mineskin.org/898c498b");
+  await expect(
+    browser.getByRole("heading", { name: "Knight", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as any).requests
+          .filter((r: any) => r.action === "skinBrowserSkin")
+          .at(-1)?.payload,
+    ),
+  ).toEqual({ query: "https://mineskin.org/898c498b", source: "mineskin" });
+});
+
+test("skin browser handles empty results, rate limits and stale search responses", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page
+    .getByRole("button", { name: "Браузер скинов", exact: true })
+    .click();
+  const browser = page.getByRole("dialog", {
+    name: "Браузер скинов",
+    exact: true,
+  });
+  const search = browser.getByRole("textbox", { name: "Поиск скинов" });
+  await search.fill("error");
+  await expect(
+    browser.getByText("Слишком много запросов. Повторите через 60 с."),
+  ).toBeVisible();
+  await search.fill("empty");
+  await expect(
+    browser.getByText("Скины не найдены. Попробуйте другое название или тег."),
+  ).toBeVisible();
+  await search.fill("slow");
+  await expect
+    .poll(() => page.evaluate(() => typeof (window as any).resolveSkinSearch))
+    .toBe("function");
+  await search.fill("knight");
+  await expect(
+    browser.getByRole("button", { name: "Посмотреть скин Knight" }),
+  ).toBeVisible();
+  await page.evaluate(() => (window as any).resolveSkinSearch());
+  await expect(
+    browser.getByRole("button", { name: "Посмотреть скин Stale" }),
+  ).toHaveCount(0);
+  await expect(
+    browser.getByRole("button", { name: "Посмотреть скин Knight" }),
+  ).toBeVisible();
+});
 for (const kind of ["offline", "microsoft"] as const) {
   test(`${kind} wardrobe keeps preview and Apply visible while the library scrolls`, async ({
     page,

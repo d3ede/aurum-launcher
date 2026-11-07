@@ -1,4 +1,50 @@
 export const skinEnglish: Record<string, string> = {
+  "Браузер скинов": "Skin browser",
+  "Посмотреть скин {{name}}": "View skin {{name}}",
+  "Поиск скинов": "Search skins",
+  "Ник Minecraft или UUID": "Minecraft username or UUID",
+  "ID или ссылка MineSkin": "MineSkin ID or link",
+  "Название, тег или ссылка MineSkin": "Name, tag or MineSkin link",
+  "Где искать скины": "Skin search source",
+  "Каталог MineSkin": "MineSkin catalog",
+  "По нику игрока": "By player name",
+  "По ID или ссылке": "By ID or link",
+  "Порядок скинов": "Skin order",
+  "Новые скины": "Latest skins",
+  "Популярные скины": "Popular skins",
+  "Случайные скины": "Random skins",
+  "Результаты поиска скинов": "Skin search results",
+  "Ищем скины…": "Searching skins…",
+  "Скины не найдены. Попробуйте другое название или тег.":
+    "No skins found. Try another name or tag.",
+  "Введите ник, UUID или ID скина в строку поиска.":
+    "Enter a username, UUID or skin ID in the search field.",
+  "Показать ещё скины": "Load more skins",
+  "Просмотр выбранного скина": "Selected skin preview",
+  "Уже в библиотеке": "Already in library",
+  "Добавляем скин…": "Adding skin…",
+  "Добавить в библиотеку": "Add to library",
+  "Добавление в библиотеку не меняет скин аккаунта. Выберите сохранённый скин и нажмите «Применить».":
+    "Adding to your library does not change your account skin. Select a saved skin and click Apply.",
+  "Выберите скин для просмотра": "Select a skin to preview",
+  "Укажите ID или ссылку MineSkin": "Enter a MineSkin ID or link",
+  "Слишком много запросов. Повторите через {{v1}} с.":
+    "Too many requests. Retry in {{v1}} s.",
+  "Скин или игрок не найден": "Skin or player not found",
+  "Не удалось загрузить скины. Проверьте подключение":
+    "Could not load skins. Check your connection",
+  "Ответ сервиса скинов слишком большой":
+    "The skin service response is too large",
+  "Поисковый запрос слишком длинный": "The search query is too long",
+  "Неизвестный порядок скинов": "Unknown skin order",
+  "Неверная страница скинов": "Invalid skin page",
+  "Сервис вернул неверный список скинов":
+    "The service returned an invalid skin list",
+  "Неверный адрес текстуры скина": "Invalid skin texture address",
+  "Укажите ник Minecraft или UUID игрока":
+    "Enter a Minecraft username or player UUID",
+  "У игрока нет собственного скина": "This player has no custom skin",
+  "Неизвестный источник скинов": "Unknown skin source",
   "Загружаем скин…": "Loading skin…",
   "Библиотека скинов": "Skin library",
   "Импорт из Modrinth": "Import from Modrinth",
