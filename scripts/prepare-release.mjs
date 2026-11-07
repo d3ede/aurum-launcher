@@ -8,6 +8,7 @@ import {
 import { createHash } from "node:crypto";
 import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { runtimeNames } from "./package-social-runtime.mjs";
 
 export function prepareRelease({
   root = resolve("."),
@@ -89,6 +90,46 @@ export function prepareRelease({
     `${JSON.stringify(manifest, null, 2)}\n`,
   );
   const assets = [installerName, `${installerName}.sig`, "latest.json"];
+  // The launcher embeds this manifest's hashes. Publish these exact bytes with
+  // the same immutable release, never a runtime fetched from "latest".
+  const runtimeDir = join(root, "src-tauri/social-runtime");
+  const runtimeManifest = readFileSync(join(runtimeDir, "manifest.json"));
+  const runtime = JSON.parse(runtimeManifest);
+  if (
+    runtime.version !== packageVersion ||
+    runtime.files?.length !== runtimeNames.length
+  )
+    throw new Error("Social runtime must match the exact release version.");
+  const revision = createHash("sha256")
+    .update(
+      runtime.files
+        .map((file) => `${file.name}:${file.sha256}:${file.bytes}`)
+        .join("\n"),
+    )
+    .digest("hex");
+  if (revision !== runtime.revision)
+    throw new Error("Invalid Social runtime revision.");
+  for (const [index, file] of runtime.files.entries()) {
+    if (file.name !== runtimeNames[index])
+      throw new Error("Unexpected Social runtime executable.");
+    for (const compressed of [false, true]) {
+      const name = file.name + (compressed ? ".gz" : "");
+      const bytes = readFileSync(join(runtimeDir, name));
+      if (
+        bytes.length !== (compressed ? file.downloadBytes : file.bytes) ||
+        createHash("sha256").update(bytes).digest("hex") !==
+          (compressed ? file.downloadSha256 : file.sha256)
+      )
+        throw new Error(`Social runtime checksum mismatch: ${name}`);
+      if (compressed) {
+        copyFileSync(join(runtimeDir, name), join(outputDir, name));
+        assets.push(name);
+      }
+    }
+  }
+  const runtimeName = "Aurum-Social_windows-x86_64.json";
+  writeFileSync(join(outputDir, runtimeName), runtimeManifest);
+  assets.push(runtimeName);
   writeFileSync(
     join(outputDir, "SHA256SUMS.txt"),
     assets

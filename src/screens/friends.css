@@ -855,3 +855,7 @@
     transform: none;
   }
 }
+.social-dialog progress {
+  width: 100%;
+  accent-color: var(--gold);
+}

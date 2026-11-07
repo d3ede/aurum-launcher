@@ -5,4 +5,6 @@ resolver = "2"
 
 [profile.release]
 strip = true
-lto = "thin"
+opt-level = "z"
+lto = "fat"
+codegen-units = 1

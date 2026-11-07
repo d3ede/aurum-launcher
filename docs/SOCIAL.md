@@ -10,9 +10,32 @@ been verified after the latest fixes. See the
 Friends is immediately above Hosting. Social starts disabled on a fresh data
 directory. Enabling it requires P2P consent and an explicit, scoped Windows
 Firewall setup. A previously enabled installation resumes only if its scoped
-rule still matches the bundled worker. Turning Social off persists that choice.
+rule still matches the verified worker. Turning Social off persists that choice.
 Turning it off requires confirmation and disconnects Social tunnels without
 stopping Minecraft. The control is below the identity-backup actions.
+
+In the upcoming build, the installer no longer bundles the Social executables.
+The first explicit activation downloads the worker and Firewall helper from the
+same GitHub release as the launcher. The dialog shows download progress and
+allows cancellation before Firewall configuration. Both compressed downloads
+and executable files are verified against SHA-256 hashes embedded in the
+launcher; a remote manifest cannot select another executable. Failed or
+cancelled downloads do not activate Social and can be retried.
+
+Verified files are cached in
+`%LOCALAPPDATA%\app.auren.launcher\social-runtime\<content hash>`. The cache is
+independent of relocated game data. Matching components work offline without
+another download; changed components require setup again. Contacts and identity
+are preserved. Obsolete cached executable revisions are removed after a new
+component installs successfully. Uninstall removes the component cache and
+owned Firewall rule independently of the optional game-data removal choice.
+
+For development, run `scripts/build-social.ps1 -DebugBuild` before native checks
+or `tauri dev`. Desktop release builds run it automatically in release mode.
+The build generates an ignored `src-tauri/social-runtime/manifest.json` plus two
+`.exe.gz` assets; `prepare-release.mjs` validates and publishes them with the
+installer. Release publication must include all of those assets. Offline QA
+packages may place the exact pinned executables in a sibling `social` directory.
 
 Your ID starts hidden; reveal it to compare the full key. Choose an avatar by
 clicking your picture, or change between Online and Invisible with the status

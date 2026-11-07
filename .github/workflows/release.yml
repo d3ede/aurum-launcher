@@ -129,7 +129,7 @@ jobs:
             gh release create $env:RELEASE_TAG --verify-tag --draft --title "Aurum Launcher $version" --notes-file "docs/releases/$($env:RELEASE_TAG).md"
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
           }
-          gh release upload $env:RELEASE_TAG target/publish/Aurum-Launcher_x64-setup.exe target/publish/Aurum-Launcher_x64-setup.exe.sig target/publish/latest.json target/publish/SHA256SUMS.txt --clobber
+          gh release upload $env:RELEASE_TAG target/publish/Aurum-Launcher_x64-setup.exe target/publish/Aurum-Launcher_x64-setup.exe.sig target/publish/latest.json target/publish/SHA256SUMS.txt target/publish/aurum-social-worker.exe.gz target/publish/aurum-social-firewall.exe.gz target/publish/Aurum-Social_windows-x86_64.json --clobber
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           gh release edit $env:RELEASE_TAG --draft=false --latest
           if ($LASTEXITCODE) { exit $LASTEXITCODE }

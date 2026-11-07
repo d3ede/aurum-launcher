@@ -2,6 +2,8 @@
 mod hosting;
 #[cfg(windows)]
 mod social;
+#[cfg(windows)]
+mod social_runtime;
 mod microsoft_window;
 mod server_shortcuts;
 mod uninstall;
@@ -753,10 +755,21 @@ async fn choose_file(
     path.map(|p| p.into_path().map_err(err)).transpose()
 }
 fn main() {
+    let context: tauri::Context<tauri::Wry> = tauri::generate_context!();
     #[cfg(windows)]
-    if std::env::args().nth(1).as_deref()==Some("--social-cleanup"){
-        let result=std::env::current_exe().map_err(anyhow::Error::from).and_then(|p|aurum_social::firewall::request_removal(&p.with_file_name("social").join("aurum-social-worker.exe")));
-        std::process::exit(if result.is_ok(){0}else{1});
+    if let Some(action) = std::env::args().nth(1).filter(|arg| {
+        matches!(arg.as_str(), "--social-cleanup" | "--social-firewall-remove")
+    }) {
+        let result = if action == "--social-firewall-remove" {
+            if context.config().identifier == "app.auren.launcher" {
+                aurum_social::firewall::remove_owned_rules()
+            } else {
+                Ok(())
+            }
+        } else {
+            social_runtime::cleanup(&context.config().identifier)
+        };
+        std::process::exit(if result.is_ok() { 0 } else { 1 });
     }
     if let Some(code) = uninstall::command() {
         std::process::exit(code);
@@ -805,6 +818,7 @@ fn main() {
             app.manage(engine.clone());
             #[cfg(windows)]{
                 app.manage(social::Links::default());
+                app.manage(social_runtime::Runtime::new(app.handle())?);
                 social::receive(app.handle(),&std::env::args().collect::<Vec<_>>());
                 let social_events=app.handle().clone();
                 engine.social.set_notifier(std::sync::Arc::new(move||{let _=social_events.emit_to("main","social:event",());}));
@@ -848,6 +862,6 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![rpc])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("Unable to start Aurum");
 }

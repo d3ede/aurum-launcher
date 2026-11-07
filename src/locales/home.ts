@@ -1,4 +1,11 @@
 export const homeEnglish: Record<string, string> = {
+  "В разработке: компактный лаунчер": "In development: a smaller launcher",
+  "Компонент Social скачивается при первом включении и больше не входит в установщик.":
+    "The Social component downloads on first use and is no longer bundled in the installer.",
+  "Загрузка показывает прогресс, поддерживает отмену и проверяет целостность файлов.":
+    "Downloads show progress, support cancellation and verify file integrity.",
+  "Релизная сборка оптимизирована для меньшего размера.":
+    "Release builds are optimized for a smaller size.",
   "Избранное, хостинг и загрузки": "Favorites, hosting and downloads",
   "Модовые серверы": "Modded servers",
   "Ресурсы Minecraft": "Minecraft resources",

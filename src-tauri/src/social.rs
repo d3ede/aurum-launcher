@@ -41,27 +41,10 @@ use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
 
 pub fn worker_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
-    let bundled = app
-        .path()
-        .resource_dir()
+    app.state::<crate::social_runtime::Runtime>()
+        .worker(app)
         .map_err(err)?
-        .join("social/aurum-social-worker.exe");
-    if bundled.is_file() {
-        return Ok(bundled);
-    }
-    #[cfg(debug_assertions)]
-    {
-        let debug = std::env::current_exe()
-            .map_err(err)?
-            .with_file_name("aurum-social-worker.exe");
-        if debug.is_file() {
-            return Ok(debug);
-        }
-    }
-    Err(
-        "The isolated Social worker is missing. Build the Social sidecars before enabling it."
-            .into(),
-    )
+        .ok_or_else(|| "Download the Social component before enabling it.".into())
 }
 pub async fn rpc(
     action: &str,
@@ -71,6 +54,24 @@ pub async fn rpc(
 ) -> Result<Value, String> {
     let social = e.social.clone();
     match action {
+        "social.runtimeStatus" => {
+            let app = app.clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                app.state::<crate::social_runtime::Runtime>().status(&app)
+                    .and_then(|status| Ok(serde_json::to_value(status)?))
+            }).await.map_err(err)?.map_err(err)
+        }
+        "social.installRuntime" => {
+            if !param::<bool>(payload, "accepted")? {
+                return Err("Accept Social setup before downloading its component".into());
+            }
+            app.state::<crate::social_runtime::Runtime>().install(app, &e.http).await.map_err(err)?;
+            Ok(Value::Null)
+        }
+        "social.cancelRuntime" => {
+            app.state::<crate::social_runtime::Runtime>().cancel();
+            Ok(Value::Null)
+        }
         "social.takeLink" => {
             let value = app.state::<Links>().0.lock().map_err(err)?.pop_front();
             Ok(json!(value))
@@ -141,6 +142,7 @@ pub async fn rpc(
         }
         "social.enable" => {
             let accepted: bool = param(payload, "accepted")?;
+            if !accepted { return Err("Explicit consent to Social is required".into()); }
             let name: String = param(payload, "name")?;
             let executable = worker_path(app)?;
             let rules = aurum_social::firewall::status(&executable, false).map_err(err)?;
@@ -348,7 +350,7 @@ pub async fn rpc(
             Ok(json!(aurum_social::identity::qr(&id).map_err(err)?))
         }
         "social.firewallStatus" => {
-            let worker = worker_path(app)?;
+            let Ok(worker) = worker_path(app) else { return Ok(json!([])); };
             tauri::async_runtime::spawn_blocking(move || {
                 aurum_social::firewall::status(&worker, false)
                     .and_then(|s| Ok(serde_json::to_value(s)?))

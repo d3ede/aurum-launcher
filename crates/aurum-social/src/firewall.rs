@@ -25,6 +25,64 @@ pub fn request_removal(program: &Path) -> Result<()> {
     request_change(program, true)
 }
 fn request_change(program: &Path, remove: bool) -> Result<()> {
+    let helper = program
+        .with_file_name("aurum-social-firewall.exe")
+        .canonicalize()?;
+    elevate(&helper, if remove { "remove" } else { "install" })?;
+    if !status(program, false)?.iter().all(|r| {
+        if remove {
+            !r.present
+        } else {
+            r.present && r.scoped
+        }
+    }) {
+        bail!("Scoped Firewall rule could not be verified");
+    }
+    Ok(())
+}
+
+// Uninstall must also work after a launcher update, before the new optional
+// worker has been downloaded. Only these fixed, owned rules can be removed.
+pub fn request_cleanup() -> Result<()> {
+    if owned_rules()?.is_empty() {
+        return Ok(());
+    }
+    elevate(&std::env::current_exe()?, "--social-firewall-remove")?;
+    if !owned_rules()?.is_empty() {
+        bail!("Social Firewall cleanup failed");
+    }
+    Ok(())
+}
+
+fn owned_rules() -> Result<Vec<String>> {
+    let _com = Com::new()?;
+    let policy: INetFwPolicy2 =
+        unsafe { CoCreateInstance(&NetFwPolicy2, None, CLSCTX_INPROC_SERVER)? };
+    let rules = unsafe { policy.Rules()? };
+    let rule_name = name(false, 0);
+    if let Ok(rule) = unsafe { rules.Item(&BSTR::from(&rule_name)) } {
+        if unsafe { rule.Grouping()? } == GROUP {
+            return Ok(vec![rule_name]);
+        }
+    }
+    Ok(Vec::new())
+}
+
+pub fn remove_owned_rules() -> Result<()> {
+    let names = owned_rules()?;
+    let _com = Com::new()?;
+    let policy: INetFwPolicy2 =
+        unsafe { CoCreateInstance(&NetFwPolicy2, None, CLSCTX_INPROC_SERVER)? };
+    let rules = unsafe { policy.Rules()? };
+    for name in names {
+        unsafe {
+            rules.Remove(&BSTR::from(name))?;
+        }
+    }
+    Ok(())
+}
+
+fn elevate(helper: &Path, operation: &str) -> Result<()> {
     use std::os::windows::ffi::OsStrExt;
     use windows::core::PCWSTR;
     use windows::Win32::UI::Shell::{ShellExecuteExW, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW};
@@ -32,14 +90,9 @@ fn request_change(program: &Path, remove: bool) -> Result<()> {
         Foundation::CloseHandle,
         System::Threading::{GetExitCodeProcess, WaitForSingleObject},
     };
-    let helper = program
-        .with_file_name("aurum-social-firewall.exe")
-        .canonicalize()?;
     let file: Vec<u16> = helper.as_os_str().encode_wide().chain(Some(0)).collect();
     let verb: Vec<u16> = "runas\0".encode_utf16().collect();
-    let args: Vec<u16> = if remove { "remove\0" } else { "install\0" }
-        .encode_utf16()
-        .collect();
+    let args: Vec<u16> = operation.encode_utf16().chain(Some(0)).collect();
     let mut info = SHELLEXECUTEINFOW {
         cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
         fMask: SEE_MASK_NOCLOSEPROCESS,
@@ -62,15 +115,6 @@ fn request_change(program: &Path, remove: bool) -> Result<()> {
         if waited != 0 || code != 0 {
             bail!("Firewall setup was cancelled or failed");
         }
-    }
-    if !status(program, false)?.iter().all(|r| {
-        if remove {
-            !r.present
-        } else {
-            r.present && r.scoped
-        }
-    }) {
-        bail!("Scoped Firewall rule could not be verified");
     }
     Ok(())
 }

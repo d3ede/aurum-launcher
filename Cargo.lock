@@ -409,6 +409,7 @@ dependencies = [
  "auren-core",
  "aurum-social",
  "dunce",
+ "reqwest 0.12.28",
  "serde",
  "serde_json",
  "tauri",
@@ -418,6 +419,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]

@@ -28,6 +28,7 @@ pub mod servers;
 pub mod skins;
 #[cfg(windows)]
 pub mod social;
+pub mod social_runtime;
 #[cfg(windows)]
 mod social_launch;
 pub mod store;

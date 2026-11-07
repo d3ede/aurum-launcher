@@ -12,6 +12,9 @@ ManifestDPIAwareness PerMonitorV2
 !else
   ; Set the compression algorithm. We default to LZMA.
   SetCompressor /SOLID "{{compression}}"
+  !if "{{compression}}" == "lzma"
+    SetCompressorDictSize 32
+  !endif
 !endif
 
 ; Keep above !include to stay ahead of any plugin command
@@ -590,6 +593,10 @@ Section Install
 
   ; Copy main executable
   File "${MAINBINARYSRCPATH}"
+  ; Old releases bundled these files. New releases download Social on demand.
+  Delete "$INSTDIR\social\aurum-social-worker.exe"
+  Delete "$INSTDIR\social\aurum-social-firewall.exe"
+  RMDir "$INSTDIR\social"
   CopyFiles /SILENT "$PLUGINSDIR\LICENSE.txt" "$INSTDIR"
   CopyFiles /SILENT "$PLUGINSDIR\NOTICE.txt" "$INSTDIR"
   CopyFiles /SILENT "$PLUGINSDIR\TAURI-MIT-LICENSE.txt" "$INSTDIR"
@@ -749,8 +756,8 @@ Section Uninstall
 
   ; Delete the app directory and its content from disk
   ${If} $UpdateMode <> 1
-  ${AndIf} ${FileExists} "$INSTDIR\social\aurum-social-worker.exe"
-    ; The fixed one-shot helper requests UAC only when an owned rule exists.
+    ; The launcher requests UAC only when an owned rule exists. The optional
+    ; component cache is disposable; game data still follows the separate choice.
     ExecWait '$\"$INSTDIR\${MAINBINARYNAME}.exe$\" --social-cleanup' $0
   ${EndIf}
   ; Copy main executable

@@ -6,7 +6,7 @@ import { useApp } from "../context";
 import { getLocale, t } from "../lib/i18n";
 import { Modal } from "./ui";
 
-import { releaseNotes } from "../lib/release-notes";
+import { releaseNotes, upcomingChanges } from "../lib/release-notes";
 
 function releaseDate(date: string) {
   return new Intl.DateTimeFormat(getLocale(), {
@@ -85,6 +85,10 @@ export function HomeSidebar() {
             tabIndex={0}
             aria-label={t("Новости лаунчера")}
           >
+            <article className="home-news-version home-news-upcoming">
+              <h3>{t(upcomingChanges.title)}</h3>
+              <p>{t(upcomingChanges.items[0])}</p>
+            </article>
             {releaseNotes.slice(0, 3).map((release) => (
               <article className="home-news-version" key={release.version}>
                 <div className="home-news-version-head">
@@ -138,6 +142,14 @@ export function HomeSidebar() {
             tabIndex={0}
             aria-label={t("Все изменения")}
           >
+            <section className="release-section-body">
+              <h3>{t(upcomingChanges.title)}</h3>
+              <ul>
+                {upcomingChanges.items.map((item) => (
+                  <li key={item}>{t(item)}</li>
+                ))}
+              </ul>
+            </section>
             {releaseNotes.map((release) => (
               <details
                 className="release-section"

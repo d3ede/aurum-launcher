@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Users,
   UserPlus,
@@ -42,6 +42,36 @@ export function Friends() {
   const [input, setInput] = useState("");
   const [name, setName] = useState("");
   const [agree, setAgree] = useState(false);
+  const [installing, setInstalling] = useState(false);
+  const [runtime, setRuntime] = useState<{
+    installed: boolean;
+    downloading: boolean;
+    done: number;
+    total: number;
+  } | null>(null);
+  const preparing = installing || runtime?.downloading === true;
+  useEffect(() => {
+    if (!native) return;
+    let disposed = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        const status = await rpc("social.runtimeStatus", {});
+        if (!disposed) {
+          setRuntime(status);
+          if (status.downloading) setDialog("enable");
+        }
+      } catch {
+        /* Setup errors are surfaced by the explicit download action. */
+      }
+      if (!disposed && preparing) timer = setTimeout(() => void poll(), 250);
+    };
+    void poll();
+    return () => {
+      disposed = true;
+      clearTimeout(timer);
+    };
+  }, [preparing]);
   const [password, setPassword] = useState("");
   const [qr, setQr] = useState("");
   const [invite, setInvite] = useState<SocialPerson | null>(null);
@@ -329,6 +359,7 @@ export function Friends() {
               </div>
               <button
                 className="button primary"
+                disabled={working}
                 onClick={() => {
                   setName(s.name);
                   if (s.id && s.status !== "identity_missing") {
@@ -564,6 +595,22 @@ export function Friends() {
           className="social-dialog"
         >
           <p className="social-warning">{t("@social.consent.short")}</p>
+          {!runtime?.installed && <p>{t("@social.runtime.note")}</p>}
+          {preparing && (
+            <div role="status">
+              <p>
+                {t("@social.runtime.downloading")}
+                {runtime?.total
+                  ? ` ${Math.floor((100 * runtime.done) / runtime.total)}%`
+                  : ""}
+              </p>
+              <progress
+                aria-label={t("@social.runtime.downloading")}
+                max={runtime?.total || 1}
+                value={runtime?.done || 0}
+              />
+            </div>
+          )}
           <Field label={t("@social.name")}>
             <input
               maxLength={48}
@@ -580,7 +627,17 @@ export function Friends() {
             {t("@social.agree.short")}
           </SocialCheck>
           <div className="modal-actions">
-            <button className="button" disabled={working} onClick={close}>
+            <button
+              className="button"
+              disabled={working && !preparing}
+              onClick={() => {
+                if (preparing)
+                  void rpc("social.cancelRuntime", {}).catch((error) =>
+                    notify(String(error), true),
+                  );
+                else close();
+              }}
+            >
               {t("@social.cancel")}
             </button>
             <button
@@ -588,6 +645,12 @@ export function Friends() {
               disabled={!agree || working}
               onClick={() =>
                 void act(async () => {
+                  setInstalling(true);
+                  try {
+                    await rpc("social.installRuntime", { accepted: agree });
+                  } finally {
+                    setInstalling(false);
+                  }
                   await rpc("social.configureFirewall", { accepted: agree });
                   await rpc("social.enable", {
                     accepted: agree,

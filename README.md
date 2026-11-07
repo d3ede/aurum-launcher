@@ -137,6 +137,9 @@ git clone https://github.com/d3ede/aurum-launcher.git
 cd aurum-launcher
 npm ci
 
+# Build the optional Social executables and their pinned download manifest
+./scripts/build-social.ps1 -DebugBuild
+
 # Start the desktop app in development mode
 npm run tauri dev
 

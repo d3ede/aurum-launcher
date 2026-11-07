@@ -11,6 +11,8 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 // @ts-expect-error The release tool is a standalone Node module.
 import { prepareRelease } from "../scripts/prepare-release.mjs";
+// @ts-expect-error Standalone build tool.
+import { packageSocialRuntime } from "../scripts/package-social-runtime.mjs";
 
 const roots: string[] = [];
 afterEach(() =>
@@ -43,6 +45,16 @@ function fixture() {
     }),
   );
   writeFileSync(join(root, "docs/releases/v1.2.3.md"), "Release notes");
+  mkdirSync(join(root, "src-tauri/social-runtime"));
+  writeFileSync(
+    join(root, "src-tauri/social-runtime/aurum-social-worker.exe"),
+    "worker fixture",
+  );
+  writeFileSync(
+    join(root, "src-tauri/social-runtime/aurum-social-firewall.exe"),
+    "firewall fixture",
+  );
+  packageSocialRuntime(root);
   const installer = join(bundleDir, "Aurum Launcher_1.2.3_x64-setup.exe");
   writeFileSync(installer, "owned installer fixture");
   writeFileSync(
@@ -54,6 +66,39 @@ function fixture() {
   return { root, bundleDir, outputDir, tag: "v1.2.3", installer };
 }
 describe("signed release publication", () => {
+  it("publishes the exact compressed Social binaries and pins their checksums", () => {
+    const data = fixture();
+    prepareRelease(data);
+    const runtime = JSON.parse(
+      readFileSync(
+        join(data.outputDir, "Aurum-Social_windows-x86_64.json"),
+        "utf8",
+      ),
+    );
+    for (const file of runtime.files) {
+      const bytes = readFileSync(join(data.outputDir, `${file.name}.gz`));
+      expect(createHash("sha256").update(bytes).digest("hex")).toBe(
+        file.downloadSha256,
+      );
+      expect(
+        readFileSync(join(data.outputDir, "SHA256SUMS.txt"), "utf8"),
+      ).toContain(file.downloadSha256);
+    }
+  });
+  it("rejects stale or changed Social binaries before publication", () => {
+    const data = fixture();
+    writeFileSync(
+      join(data.root, "src-tauri/social-runtime/aurum-social-worker.exe.gz"),
+      "tampered",
+    );
+    expect(() => prepareRelease(data)).toThrow("checksum mismatch");
+    packageSocialRuntime(data.root);
+    const path = join(data.root, "src-tauri/social-runtime/manifest.json");
+    const manifest = JSON.parse(readFileSync(path, "utf8"));
+    manifest.version = "1.2.2";
+    writeFileSync(path, JSON.stringify(manifest));
+    expect(() => prepareRelease(data)).toThrow("exact release version");
+  });
   it("pairs the manifest with an immutable installer URL and matching checksum", () => {
     const data = fixture();
     const manifest = prepareRelease({

@@ -64,8 +64,6 @@
       "icons/icon.png"
     ],
     "resources": {
-      "social-runtime/aurum-social-worker.exe": "social/aurum-social-worker.exe",
-      "social-runtime/aurum-social-firewall.exe": "social/aurum-social-firewall.exe",
       "../src/assets/loaders/HORIZON-LICENSE": "licenses/Horizon-MIT.txt",
       "../src/assets/loaders/NEOFORGE-LICENSE": "licenses/NeoForge-CC-BY-4.txt",
       "../src/assets/loaders/QUILT-LICENSE": "licenses/Quilt-CC0.txt",

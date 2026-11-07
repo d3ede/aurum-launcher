@@ -3,8 +3,10 @@ $projectRoot=Split-Path -Parent $PSScriptRoot
 $releaseRoot=Join-Path $projectRoot 'target/release'
 $required=@('aurum.exe','aurum-social-lab.exe','aurum-social-worker.exe','aurum-social-firewall.exe')
 foreach($file in $required) { if(!(Test-Path -LiteralPath (Join-Path $releaseRoot $file))) { throw "Build the release desktop and lab first: $file is missing" } }
+$runtimeManifest=Get-Content -LiteralPath (Join-Path $projectRoot 'src-tauri/social-runtime/manifest.json') -Raw | ConvertFrom-Json
 foreach($file in @('aurum-social-worker.exe','aurum-social-firewall.exe')) {
-  if((Get-FileHash -LiteralPath (Join-Path $releaseRoot $file)).Hash -ne (Get-FileHash -LiteralPath (Join-Path $releaseRoot "social/$file")).Hash) { throw 'Rebuild the desktop after updating its sidecars' }
+  $expected=($runtimeManifest.files | Where-Object { $_.name -eq $file }).sha256
+  if((Get-FileHash -LiteralPath (Join-Path $releaseRoot $file)).Hash.ToLowerInvariant() -ne $expected) { throw 'Rebuild the desktop after updating its sidecars' }
 }
 $version=(Get-Content -LiteralPath (Join-Path $projectRoot 'package.json') -Raw | ConvertFrom-Json).version
 $name='aurum-social-test-'+$version+'-'+(Get-Date -Format 'yyyyMMdd-HHmmss')

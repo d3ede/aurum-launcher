@@ -159,6 +159,32 @@ async function fixture(
           )
             return true;
           if (action === "social.configureFirewall") return null;
+          if (action === "social.runtimeStatus")
+            return {
+              installed: w.runtimeInstalled === true,
+              downloading: !!w.finishRuntime,
+              done: w.finishRuntime ? 50 : 0,
+              total: w.finishRuntime ? 100 : 0,
+            };
+          if (action === "social.installRuntime") {
+            if (w.runtimeWait)
+              await new Promise<void>((resolve, reject) => {
+                w.finishRuntime = () => {
+                  w.finishRuntime = null;
+                  resolve();
+                };
+                w.cancelRuntime = () => {
+                  w.finishRuntime = null;
+                  reject("Download cancelled");
+                };
+              });
+            w.runtimeInstalled = true;
+            return null;
+          }
+          if (action === "social.cancelRuntime") {
+            w.cancelRuntime?.();
+            return null;
+          }
           if (action === "social.firewallStatus")
             return [{ present: true, scoped: true }];
           if (action === "social.enable") {
@@ -250,6 +276,7 @@ test("fresh install requires explicit P2P and scoped Firewall consent", async ({
     );
   expect(await calls()).not.toContain("social.enable");
   expect(await calls()).not.toContain("social.configureFirewall");
+  expect(await calls()).not.toContain("social.installRuntime");
   await page
     .getByRole("button", { name: "Enable Social", exact: true })
     .click();
@@ -265,6 +292,9 @@ test("fresh install requires explicit P2P and scoped Firewall consent", async ({
     page.getByRole("button", { name: "Turn off Social", exact: true }),
   ).toBeVisible();
   const actions = await calls();
+  expect(actions.indexOf("social.installRuntime")).toBeLessThan(
+    actions.indexOf("social.configureFirewall"),
+  );
   expect(actions.indexOf("social.configureFirewall")).toBeLessThan(
     actions.indexOf("social.enable"),
   );
@@ -282,6 +312,46 @@ test("fresh install requires explicit P2P and scoped Firewall consent", async ({
     page.getByRole("heading", { name: "Social is offline" }),
   ).toBeVisible();
 });
+test("Social download shows progress, cancels safely and can be retried", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.evaluate(() => {
+    (window as any).runtimeWait = true;
+  });
+  await page
+    .getByRole("button", { name: "Enable Social", exact: true })
+    .click();
+  const modal = page.getByRole("dialog");
+  await expect(modal).toContainText("downloads on first use");
+  await modal.getByRole("checkbox").check();
+  await modal
+    .getByRole("button", { name: "Enable Social", exact: true })
+    .click();
+  await expect(modal.getByRole("progressbar")).toHaveAttribute("value", "50");
+  await page.screenshot({ path: ".test-data/screenshots/social-download.png" });
+  await modal.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(
+    modal.getByRole("button", { name: "Enable Social", exact: true }),
+  ).toBeEnabled();
+  expect(
+    await page.evaluate(() =>
+      (window as any).socialRequests.some(
+        (r: any) => r.action === "social.configureFirewall",
+      ),
+    ),
+  ).toBe(false);
+  await page.evaluate(() => {
+    (window as any).runtimeWait = false;
+  });
+  await modal
+    .getByRole("button", { name: "Enable Social", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Turn off Social", exact: true }),
+  ).toBeVisible();
+});
+
 for (const theme of ["dark", "light"]) {
   test(`incoming requests queue, trap focus and keep peer text inert (${theme})`, async ({
     page,

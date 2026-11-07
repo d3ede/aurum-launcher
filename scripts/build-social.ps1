@@ -16,4 +16,6 @@ try {
   foreach($name in @('aurum-social-worker.exe','aurum-social-firewall.exe')) {
     Copy-Item -LiteralPath (Join-Path $targetRoot "$profile/$name") -Destination (Join-Path $destination $name) -Force
   }
+  & node (Join-Path $PSScriptRoot 'package-social-runtime.mjs')
+  if ($LASTEXITCODE) { throw 'Social runtime packaging failed' }
 } finally { Pop-Location }

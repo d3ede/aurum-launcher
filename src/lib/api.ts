@@ -55,6 +55,12 @@ interface Contract {
   "social.snapshot": [Empty, SocialSnapshot];
   "social.pending": [Empty, SocialReview[]];
   "social.enable": [{ accepted: boolean; name: string }, void];
+  "social.runtimeStatus": [
+    Empty,
+    { installed: boolean; downloading: boolean; done: number; total: number },
+  ];
+  "social.installRuntime": [{ accepted: boolean }, void];
+  "social.cancelRuntime": [Empty, void];
   "social.disable": [Empty, void];
   "social.add": [{ input: string }, void];
   "social.relationship": [{ id: string; action: string }, void];

@@ -149,6 +149,9 @@ export const socialEnglish: Record<string, string> = {
   "@social.off.copy":
     "Friends and invitations use P2P. Peers can see your IP, and public services may be unavailable.",
   "@social.enable": "Enable Social",
+  "@social.runtime.note":
+    "The Social component downloads on first use. It is kept for future launches; component updates may require another download.",
+  "@social.runtime.downloading": "Downloading Social…",
   "@social.disable": "Turn off Social",
   "@social.consent": "Enable Aurum Social?",
   "@social.agree": "I understand the P2P privacy risks",
@@ -378,6 +381,9 @@ export const socialRussian: Record<string, string> = {
   "@social.off.copy":
     "Друзья и приглашения работают через P2P. Участники могут видеть ваш IP, а публичные сервисы могут быть недоступны.",
   "@social.enable": "Включить Social",
+  "@social.runtime.note":
+    "Компонент Social скачается при первом включении и сохранится для следующих запусков. При обновлении компонента может понадобиться новая загрузка.",
+  "@social.runtime.downloading": "Скачиваем Social…",
   "@social.disable": "Выключить Social",
   "@social.consent": "Включить Aurum Social?",
   "@social.agree": "Я понимаю риски P2P для приватности",

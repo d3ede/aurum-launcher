@@ -26,6 +26,13 @@ Signatures bind the release version as well as the installer bytes. The release 
 - `Aurum-Launcher_x64-setup.exe.sig`
 - `latest.json`, with an immutable version-specific installer URL
 - `SHA256SUMS.txt`
+- `aurum-social-worker.exe.gz` and `aurum-social-firewall.exe.gz`, downloaded only when Social is enabled
+- `Aurum-Social_windows-x86_64.json`, the component manifest also embedded in the launcher
+
+The optional component uses exact version URLs and hashes pinned in the signed
+launcher build. Its manifest is generated from the release executables before
+compiling the launcher, and publication rejects missing, stale or altered
+component assets. The launcher never trusts a downloaded manifest to select code.
 
 All assets are uploaded to a draft before it becomes the latest public release. The workflow refuses to overwrite published releases. `latest.json` must be present on every future latest release so existing clients can check for updates.
 
