@@ -14,8 +14,10 @@ import {
   ShieldOff,
   Trash2,
   Fingerprint,
+  Images,
 } from "lucide-react";
 import { useSocial } from "../components/SocialProvider";
+import { ScreenshotPicker } from "../components/Screenshots";
 import { useApp } from "../context";
 import { rpc, native } from "../lib/api";
 import { t } from "../lib/i18n";
@@ -75,6 +77,7 @@ export function Friends() {
   const [password, setPassword] = useState("");
   const [qr, setQr] = useState("");
   const [invite, setInvite] = useState<SocialPerson | null>(null);
+  const [screenshotFriend, setScreenshotFriend] = useState<SocialPerson | null>(null);
   const [verify, setVerify] = useState<SocialPerson | null>(null);
   const [confirm, setConfirm] = useState<{
     person: SocialPerson;
@@ -130,6 +133,18 @@ export function Friends() {
             </small>
           </div>
           <div className="social-person-actions">
+            {state === "friend" && (
+              <button
+                type="button"
+                className="icon-button social-share-screenshot"
+                aria-label={`${t("@shots.share")}: ${p.name}`}
+                title={t("@shots.share")}
+                disabled={working}
+                onClick={() => setScreenshotFriend(p)}
+              >
+                <Images size={19} />
+              </button>
+            )}
             {state === "friend" && (
               <button
                 className="button social-positive"
@@ -535,6 +550,12 @@ export function Friends() {
             </aside>
           </div>
         </>
+      )}
+      {screenshotFriend && (
+        <ScreenshotPicker
+          friend={screenshotFriend}
+          onClose={() => setScreenshotFriend(null)}
+        />
       )}
       {s?.enabled && invite && (
         <SocialHostInvite friend={invite} onClose={() => setInvite(null)} />

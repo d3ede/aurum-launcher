@@ -10,6 +10,8 @@ pub mod listeners;
 pub mod manifest;
 pub mod profile;
 #[cfg(windows)]
+pub mod photos;
+#[cfg(windows)]
 pub mod sandbox;
 #[cfg(windows)]
 pub mod service;

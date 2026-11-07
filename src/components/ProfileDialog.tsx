@@ -11,12 +11,14 @@ import {
   Terminal,
   Settings2,
   Puzzle,
+  Images,
   ArrowLeft,
   LoaderCircle,
 } from "lucide-react";
 import { Modal, Field, Loading, ErrorBox } from "./ui";
 import { ProfileIcon, IconPicker } from "./ProfileIcon";
 import { InstanceContent } from "./InstanceContent";
+import { ScreenshotLibrary } from "./Screenshots";
 import { PackManualNotice } from "./PackManualDownloads";
 import { Select } from "./Select";
 import { HorizonMods } from "./HorizonMods";
@@ -372,7 +374,9 @@ export function ProfileDialog({
   const profile = data.profiles.find((p) => p.id === initial.id) || initial;
   const horizon = profile.engine === "horizon";
   const [draft, setDraft] = useState(profile);
-  const [tab, setTab] = useState<"content" | "settings" | "logs">(initialTab);
+  const [tab, setTab] = useState<
+    "content" | "screenshots" | "settings" | "logs"
+  >(initialTab);
   const [error, setError] = useState("");
   const [log, setLog] = useState("");
   const [confirm, setConfirm] = useState(false);
@@ -476,6 +480,7 @@ export function ProfileDialog({
         {(
           [
             ["content", t("Контент"), Puzzle],
+            ["screenshots", t("@shots.title"), Images],
             ["settings", t("Параметры"), Settings2],
             ["logs", t("Журнал"), Terminal],
           ] as const
@@ -499,6 +504,7 @@ export function ProfileDialog({
       {tab === "content" && !horizon && (
         <InstanceContent profile={profile} onFindProjects={onFindProjects} />
       )}
+      {tab === "screenshots" && <ScreenshotLibrary profileId={profile.id} />}
       {tab === "settings" && (
         <form
           onSubmit={(e) => {

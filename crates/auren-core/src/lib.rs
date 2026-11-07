@@ -26,6 +26,7 @@ mod processes;
 mod secret_store;
 pub mod servers;
 pub mod skins;
+pub mod screenshots;
 pub mod skin_browser;
 #[cfg(windows)]
 pub mod social;

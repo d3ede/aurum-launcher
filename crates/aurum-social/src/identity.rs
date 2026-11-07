@@ -165,7 +165,7 @@ pub fn verify(key: &[u8; 32], bytes: &[u8], signature: &[u8]) -> Result<()> {
 }
 
 #[cfg(windows)]
-fn protect(bytes: &[u8], encrypt: bool) -> Result<Vec<u8>> {
+pub(crate) fn protect(bytes: &[u8], encrypt: bool) -> Result<Vec<u8>> {
     use windows_sys::Win32::{Foundation::LocalFree, Security::Cryptography::*};
     let input = CRYPT_INTEGER_BLOB {
         cbData: bytes.len() as u32,

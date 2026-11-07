@@ -21,6 +21,7 @@ use std::{
     time::{Duration, Instant},
 };
 mod game;
+mod photos;
 use crate::{
     listeners::Listener,
     manifest::Manifest,
@@ -83,6 +84,7 @@ struct Runtime {
     kill: Arc<Mutex<Option<crate::sandbox::JobKiller>>>,
 }
 struct ActorInit {
+    photo_lock: Arc<Mutex<()>>,
     root: PathBuf,
     executable: PathBuf,
     identity: Arc<Identity>,
@@ -94,6 +96,7 @@ struct ActorInit {
     kill: Arc<Mutex<Option<crate::sandbox::JobKiller>>>,
 }
 pub struct Service {
+    photo_lock: Arc<Mutex<()>>,
     root: PathBuf,
     runtime: Mutex<Option<Runtime>>,
     live: Arc<Mutex<Live>>,
@@ -130,6 +133,7 @@ enum Local {
 impl Service {
     pub fn new(root: PathBuf) -> Self {
         Self {
+            photo_lock: Arc::new(Mutex::new(())),
             root,
             runtime: Mutex::new(None),
             live: Arc::new(Mutex::new(Live::default())),
@@ -266,6 +270,7 @@ impl Service {
         let notify = self.notify.clone();
         let stopping = stop.clone();
         let lab = self.lab;
+        let photo_lock = self.photo_lock.clone();
         let kill = Arc::new(Mutex::new(None));
         let actor_kill = kill.clone();
         let join = std::thread::spawn(move || {
@@ -276,6 +281,7 @@ impl Service {
                 if !key_path.exists() { let _ = identity.save(&key_path); }
                 let started = Instant::now();
                 let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Actor::run(ActorInit {
+                    photo_lock: photo_lock.clone(),
                     root: root.clone(), executable: executable.clone(), identity: identity.clone(),
                     stop: stopping.clone(), commands: receiver.clone(), live: live.clone(),
                     notify: notify.clone(), lab, kill: actor_kill.clone(),
@@ -572,6 +578,10 @@ enum Body {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase", deny_unknown_fields)]
 enum PeerAction {
+    PhotoOffer { offer: crate::photos::Offer },
+    PhotoReady { id: String },
+    PhotoReceipt { id: String },
+    PhotoRejected { id: String, reason: String },
     Request {
         name: String,
     },
@@ -636,6 +646,7 @@ struct Session {
     expires: Instant,
 }
 struct Actor {
+    photos: photos::State,
     identity: Arc<Identity>,
     store: Store,
     worker: WorkerClient,
@@ -663,6 +674,7 @@ struct Actor {
 impl Actor {
     fn run(init: ActorInit) -> Result<()> {
         let ActorInit {
+            photo_lock,
             root,
             executable,
             identity,
@@ -732,6 +744,7 @@ impl Actor {
         let activity = live.lock().map_err(|_| anyhow::anyhow!("Social state unavailable"))?.local_activity.clone();
         let contacts = live.lock().map_err(|_| anyhow::anyhow!("Social state unavailable"))?.known_contacts.clone();
         let mut actor = Self {
+            photos: photos::State::new(crate::photos::Store::new(root.join("photos"), photo_lock))?,
             identity,
             store,
             worker,
@@ -812,6 +825,7 @@ impl Actor {
             if let Err(e) = actor.game_tick() {
                 actor.error(e);
             }
+            if let Err(e) = actor.photo_tick() { actor.error(e); }
             // One acknowledged control message at a time preserves signed sequence
             // order across independent QUIC streams and bounds relay traffic.
             if actor.inflight < 1 {
@@ -1205,6 +1219,9 @@ impl Actor {
         Ok(())
     }
     fn response(&mut self, response: Response) -> Result<()> {
+        if matches!(&response, Response::PhotoOpened{..}|Response::PhotoData{..}|Response::PhotoWritten{..}|Response::PhotoEnd{..}|Response::PhotoDelivered{..}|Response::PhotoFailed{..}) {
+            return self.photo_response(response);
+        }
         match response {
             Response::GameAddress {
                 address,
@@ -1528,7 +1545,10 @@ impl Actor {
                 if self.store.state(id)?.as_deref() != Some("friend") {
                     bail!("World actions require an accepted friend");
                 }
-                self.world_action(id, peer, other)?;
+                match other {
+                    action @ (PeerAction::PhotoOffer{..}|PeerAction::PhotoReady{..}|PeerAction::PhotoReceipt{..}|PeerAction::PhotoRejected{..}) => self.photo_action(id, peer, action)?,
+                    action => self.world_action(id, peer, action)?,
+                }
             }
         }
         signal(&self.notify);

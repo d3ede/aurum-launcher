@@ -234,6 +234,7 @@ export type Route =
   | "home"
   | "profiles"
   | "catalog"
+  | "screenshots"
   | "accounts"
   | "skins"
   | "hosting"

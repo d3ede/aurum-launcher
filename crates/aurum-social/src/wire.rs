@@ -6,6 +6,7 @@ use std::io::{Read, Write};
 // a maximal 16 KiB Social frame and its bounded endpoint/IPC metadata.
 pub const MAX_FRAME: usize = 96 * 1024;
 pub const SOCIAL_ALPN: &[u8] = b"aurum/social/1";
+pub const PHOTO_ALPN: &[u8] = b"aurum/photos/1";
 pub const GAME_ALPN: &[u8] = b"aurum/game/1";
 pub fn encode<T: Serialize>(value: &T) -> Result<Vec<u8>> {
     let body = serde_json::to_vec(value)?;
@@ -41,6 +42,12 @@ pub fn read<T: DeserializeOwned>(reader: &mut impl Read) -> Result<T> {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase", deny_unknown_fields)]
 pub enum Command {
+    PhotoConnect { address: String, id: String },
+    PhotoAccept { stream: u64 },
+    PhotoWrite { stream: u64, bytes: Vec<u8> },
+    PhotoFinish { stream: u64 },
+    PhotoComplete { stream: u64 },
+    PhotoClose { stream: u64 },
     Start {
         public_relays: bool,
         ports: [u16; 3],
@@ -86,6 +93,12 @@ pub enum Command {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase", deny_unknown_fields)]
 pub enum Response {
+    PhotoOpened { id: String, stream: u64, transport_key: [u8;32], incoming: bool },
+    PhotoData { stream: u64, bytes: Vec<u8> },
+    PhotoWritten { stream: u64, bytes: usize },
+    PhotoEnd { stream: u64 },
+    PhotoDelivered { stream: u64 },
+    PhotoFailed { id: String, message: String },
     GameAddress {
         address: String,
         certificate: Vec<u8>,

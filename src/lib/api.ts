@@ -46,7 +46,17 @@ import type {
 } from "../types";
 export const native = isTauri();
 type Empty = Record<string, never>;
+import type { ScreenshotLibrary, ScreenshotTransfer } from "./screenshots";
 interface Contract {
+  "screenshots.list": [{ profileId: string | null }, ScreenshotLibrary];
+  "screenshots.image": [{ id: string; thumbnail: boolean }, string];
+  "screenshots.send": [{ friend: string; ids: string[] }, string[]];
+  "screenshots.transfers": [Empty, ScreenshotTransfer[]];
+  "screenshots.cancel": [{ id: string }, void];
+  "screenshots.retry": [{ id: string }, void];
+  "screenshots.removeReceived": [{ id: string }, void];
+  "screenshots.openFolder": [{ profileId: string }, void];
+  "screenshots.save": [{ id: string }, boolean];
   "social.takeLink": [Empty, string | null];
   hostingLoaderVersions: [
     { core: string; version: string; experimental: boolean },

@@ -18,6 +18,7 @@ import {
   Monitor,
   Server,
   Users,
+  Images,
 } from "lucide-react";
 import { Provider, useApp } from "./context";
 import { native, rpc } from "./lib/api";
@@ -50,6 +51,10 @@ import { SidebarPattern } from "./components/TerrainPattern";
 import { AccountAvatar } from "./components/AccountAvatar";
 import { PackManualDownloads } from "./components/PackManualDownloads";
 import { SocialProvider } from "./components/SocialProvider";
+import {
+  ScreenshotNotifications,
+  ScreenshotsPage as Screenshots,
+} from "./components/Screenshots";
 const Friends = lazy(() =>
   import("./screens/Friends").then((module) => ({ default: module.Friends })),
 );
@@ -57,6 +62,7 @@ const navigation = [
   ["home", HomeIcon],
   ["profiles", Layers3],
   ["catalog", Compass],
+  ["screenshots", Images],
   ["accounts", UserRound],
   ["skins", Shirt],
   ["friends", Users],
@@ -168,6 +174,7 @@ function Shell({
   };
   return (
     <div className="app-shell">
+      <ScreenshotNotifications />
       {manualProfile && (
         <PackManualDownloads
           profile={manualProfile}
@@ -339,6 +346,7 @@ function Shell({
                     setTarget={setCatalogTarget}
                   />
                 )}{" "}
+                {route === "screenshots" && <Screenshots />}
                 {route === "accounts" && (
                   <Suspense
                     fallback={

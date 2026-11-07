@@ -1,6 +1,7 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 mod transport;
 mod udp_mux;
+mod photos;
 use anyhow::{bail, Context, Result};
 use aurum_social::wire::{self, Command, Response, SOCIAL_ALPN};
 use iroh::{EndpointAddr, RelayMode};
@@ -62,7 +63,7 @@ async fn run() -> Result<()> {
     };
     let endpoint = iroh::endpoint::Builder::empty()
         .crypto_provider(Arc::new(rustls::crypto::ring::default_provider()))
-        .alpns(vec![SOCIAL_ALPN.to_vec()])
+        .alpns(vec![SOCIAL_ALPN.to_vec(), wire::PHOTO_ALPN.to_vec()])
         .bind_addr((std::net::Ipv4Addr::UNSPECIFIED, ports[0]))?
         .relay_mode(if public_relays {
             RelayMode::Default
@@ -91,6 +92,7 @@ async fn run() -> Result<()> {
     let send_permits = Arc::new(Semaphore::new(2));
     let game_permits = Arc::new(Semaphore::new(2));
     let mut tasks = tokio::task::JoinSet::new();
+    let mut photos = photos::Photos::new(output.clone());
     let mut streams: HashMap<u64, noq::SendStream> = HashMap::new();
     let mut game_connections: HashMap<u64, noq::Connection> = HashMap::new();
     let mut mapping_timer = tokio::time::interval_at(
@@ -108,6 +110,7 @@ async fn run() -> Result<()> {
                 if matches!(command, Command::Stop) { break; }
                 let operation=match &command{Command::Send{..}=>"send",Command::GameConnect{..}=>"game-connect",Command::Publish{..}=>"publish",Command::Resolve{..}=>"resolve",_=>"command"};
                 let result:Result<()>=async { match command {
+                    command @ (Command::PhotoConnect{..}|Command::PhotoAccept{..}|Command::PhotoWrite{..}|Command::PhotoFinish{..}|Command::PhotoComplete{..}|Command::PhotoClose{..}) => photos.command(command,&endpoint).await?,
                     Command::Refresh=>{output.send(Response::Ready{address:serde_json::to_string(&endpoint.addr())?,game_certificate:game.certificate.clone(),game_port:game.endpoint.local_addr()?.port(),game_external:game.external(),stun_error:game.stun_error.clone()}).await?;}
                     Command::ProbeSandbox{canary,parent_pid}=>{
                         #[cfg(windows)] { let i=aurum_social::sandbox::current_isolation()?; let child=std::process::Command::new(format!("{}\\System32\\cmd.exe",std::env::var("SystemRoot")?)).args(["/c","exit","0"]).spawn(); let child_denied=match child {Err(_)=>true, Ok(mut child)=>{let _=child.kill();let _=child.wait();false}}; output.send(Response::SandboxProbe{app_container:i.app_container, integrity_rid:i.integrity_rid,canary_denied:std::fs::read(canary).is_err(),child_denied,parent_memory_denied:!aurum_social::sandbox::can_open_process_memory(parent_pid)}).await?; }
@@ -150,8 +153,10 @@ async fn run() -> Result<()> {
                 if let Err(error)=result {output.send(failure(operation,error)).await?;}
             }
             Some(incoming)=endpoint.accept()=>{
-                if let Ok(permit)=incoming_permits.clone().try_acquire_owned(){ let tx=output.clone();tasks.spawn(async move {let _permit=permit;let result:Result<()>=async {let connection=timeout(Duration::from_secs(10),incoming).await??;let remote=*connection.remote_id().as_bytes(); let (mut send,mut recv)=timeout(Duration::from_secs(10),connection.accept_bi()).await??;let bytes=timeout(Duration::from_secs(10),recv.read_to_end(16384)).await??;tx.send(Response::Received{transport_key:remote,bytes}).await?;send.write_all(&[1]).await?;send.finish()?;let _=timeout(Duration::from_secs(2),connection.closed()).await;Ok(())}.await;if let Err(e)=result{let _=tx.send(failure("incoming",e)).await;}}); } else {incoming.refuse();}
+                let photo_opener=photos.opener.clone();
+                if let Ok(permit)=incoming_permits.clone().try_acquire_owned(){ let tx=output.clone();tasks.spawn(async move {let _permit=permit;let result:Result<()>=async {let connection=timeout(Duration::from_secs(10),incoming).await??;if connection.alpn()==wire::PHOTO_ALPN {photos::accept(connection,photo_opener).await?;return Ok(());}let remote=*connection.remote_id().as_bytes(); let (mut send,mut recv)=timeout(Duration::from_secs(10),connection.accept_bi()).await??;let bytes=timeout(Duration::from_secs(10),recv.read_to_end(16384)).await??;tx.send(Response::Received{transport_key:remote,bytes}).await?;send.write_all(&[1]).await?;send.finish()?;let _=timeout(Duration::from_secs(2),connection.closed()).await;Ok(())}.await;if let Err(e)=result{let _=tx.send(failure("incoming",e)).await;}}); } else {incoming.refuse();}
             }
+            Some(opened)=photos.opened.recv()=>{photos.start(opened).await?;}
             Some(incoming)=game.endpoint.accept()=>{
                 if streams.len()>=8 {incoming.refuse();continue;}
                 let tx=opened_tx.clone();let permit=incoming_permits.clone().try_acquire_owned();

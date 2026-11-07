@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod hosting;
+mod screenshots;
 #[cfg(windows)]
 mod social;
 #[cfg(windows)]
@@ -42,6 +43,9 @@ async fn rpc(
         return Err(
             "Данные скопированы. Перезапустите Aurum, чтобы использовать новую папку".into(),
         );
+    }
+    if action.starts_with("screenshots.") {
+        return screenshots::rpc(&action, &payload, &e, &app).await;
     }
     if action.starts_with("hosting") {
         return hosting::rpc(&action, &payload, &e, &app).await;

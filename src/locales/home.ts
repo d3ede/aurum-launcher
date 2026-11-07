@@ -1,4 +1,8 @@
 export const homeEnglish: Record<string, string> = {
+  "Скриншоты каждой сборки и общая библиотека с поиском, сортировкой и просмотром вблизи.":
+    "Instance screenshots and a shared library with search, sorting and a closer view.",
+  "До 10 скриншотов другу за раз: зашифрованная очередь сохраняется до следующего соединения.":
+    "Send up to 10 screenshots to a friend: an encrypted queue waits until the next connection.",
   "Модпаки получают обложку из каталога, а новые сборки — случайный значок с сочетающимися цветами. Кнопка с кубиками меняет вариант.":
     "Modpacks use their catalog artwork; new instances get a random icon with matching colors. Use the dice button to try another look.",
   "В разработке: браузер скинов и компактный лаунчер":

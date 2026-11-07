@@ -7,6 +7,9 @@ been verified after the latest fixes. See the
 
 ## Using it
 
+The upcoming screenshot library and encrypted friend-sharing queue are described
+in [Screenshot library and sharing](SCREENSHOTS.md).
+
 Friends is immediately above Hosting. Social starts disabled on a fresh data
 directory. Enabling it requires P2P consent and an explicit, scoped Windows
 Firewall setup. A previously enabled installation resumes only if its scoped

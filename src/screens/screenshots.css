@@ -1,0 +1,435 @@
+.screenshots-page {
+  max-width: 1200px;
+  margin: auto;
+  min-width: 0;
+}
+.screenshots-page h1 {
+  margin: 0;
+}
+.screenshots-page .page-heading p {
+  color: var(--muted);
+  margin: 7px 0 0;
+}
+.screenshot-library {
+  min-width: 0;
+}
+.shot-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0 24px;
+}
+.shot-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1 1 calc(100% - 50px);
+  padding: 0 12px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 11px;
+  color: var(--muted);
+}
+.shot-search:focus-within {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px var(--gold-soft);
+}
+.shot-search input {
+  background: none;
+  border: none;
+  box-shadow: none;
+  width: 100%;
+  min-width: 0;
+  padding: 11px 0;
+  outline: none;
+}
+.shot-search input:focus {
+  box-shadow: none;
+  border: none;
+}
+.shot-toolbar .select-trigger {
+  width: auto;
+  min-width: 135px;
+  max-width: 270px;
+}
+.shot-group {
+  margin-bottom: 28px;
+}
+.shot-group h3 {
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 14px;
+  color: var(--text);
+}
+.shot-group h3::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+  margin-left: 7px;
+}
+.shot-group h3 span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 2px 7px;
+  border-radius: 7px;
+}
+.screenshot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+}
+.screenshot-card {
+  position: relative;
+  min-width: 0;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  transition:
+    border-color 0.16s,
+    box-shadow 0.16s,
+    transform 0.16s;
+}
+.screenshot-card.selected {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px var(--gold-soft);
+}
+.shot-select {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 11px;
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+  color: white;
+  overflow: hidden;
+}
+.shot-select:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+}
+.shot-select:active {
+  transform: scale(0.978);
+}
+.shot-select:active .shot-thumbnail img {
+  transform: scale(1.025);
+}
+.shot-select:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.shot-thumbnail {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: var(--surface);
+  overflow: hidden;
+}
+.shot-thumbnail img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transition: transform 0.28s ease;
+}
+.screenshot-card:hover .shot-thumbnail img {
+  transform: scale(1.025);
+}
+.shot-placeholder {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  color: var(--muted);
+  background: linear-gradient(
+    120deg,
+    var(--surface),
+    var(--gold-soft),
+    var(--surface)
+  );
+  background-size: 200% 100%;
+  animation: shot-shimmer 2s ease infinite;
+}
+.shot-placeholder.failed {
+  animation: none;
+}
+.shot-caption {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 28px 13px 11px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.78));
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  pointer-events: none;
+}
+.shot-caption strong {
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shot-caption small {
+  font-size: 11px;
+  opacity: 0.8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 20px;
+}
+.shot-check {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  height: 29px;
+  padding: 0 8px;
+  border-radius: 9px;
+  background: var(--gold);
+  color: #202018;
+  box-shadow: 0 2px 10px #0004;
+  animation: shot-pop 0.22s ease-out;
+}
+.shot-check b {
+  font-size: 12px;
+}
+.shot-inspect,
+.shot-save {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  background: rgba(20, 23, 26, 0.78);
+  color: #fff;
+  border: 1px solid #fff3;
+  border-radius: 9px;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-5px) scale(0.94);
+  transition:
+    opacity 0.18s,
+    transform 0.18s,
+    background 0.18s;
+}
+.shot-inspect {
+  width: 34px;
+  height: 34px;
+  top: 10px;
+  right: 10px;
+}
+.shot-save {
+  width: 30px;
+  height: 30px;
+  bottom: 9px;
+  right: 9px;
+}
+.screenshot-card:hover .shot-inspect,
+.screenshot-card:focus-within .shot-inspect,
+.screenshot-card:hover .shot-save,
+.screenshot-card:focus-within .shot-save {
+  opacity: 1;
+  transform: none;
+}
+.shot-inspect:hover,
+.shot-save:hover {
+  background: rgba(20, 23, 26, 0.98);
+}
+.shot-inspect::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  white-space: nowrap;
+  right: calc(100% + 8px);
+  top: 50%;
+  transform: translate(4px, -50%);
+  opacity: 0;
+  pointer-events: none;
+  color: #fff;
+  background: #202328;
+  padding: 6px 9px;
+  font-size: 12px;
+  border: 1px solid #ffffff25;
+  border-radius: 7px;
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
+}
+.shot-inspect:hover::after,
+.shot-inspect:focus-visible::after {
+  opacity: 1;
+  transform: translate(0, -50%);
+  transition-delay: 0.65s;
+}
+.modal.wide.screenshot-picker {
+  width: min(1050px, calc(100vw - 48px));
+  max-width: 1050px;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 48px);
+}
+.shot-queue-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.screenshot-picker-scroll {
+  flex: 1;
+  min-height: 160px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 8px 0 0;
+}
+.screenshot-picker > .modal-head,
+.screenshot-picker > .shot-queue-hint {
+  flex-shrink: 0;
+}
+.shot-show-more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.shot-remove {
+  position: absolute;
+  bottom: 9px;
+  right: 46px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #fff3;
+  border-radius: 9px;
+  color: white;
+  background: rgba(20, 23, 26, 0.78);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.18s;
+}
+.screenshot-card:hover .shot-remove,
+.screenshot-card:focus-within .shot-remove {
+  opacity: 1;
+}
+.shot-picker-footer {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  flex-shrink: 0;
+}
+.shot-picker-footer > span {
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 13px;
+}
+.shot-picker-footer > .button {
+  margin-left: auto;
+}
+.shot-warning {
+  color: var(--muted);
+  font-size: 13px;
+}
+.shot-source-tabs small {
+  margin-left: 7px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--gold-soft);
+}
+.shot-deliveries {
+  display: grid;
+  gap: 10px;
+  padding-top: 18px;
+}
+.shot-delivery {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface);
+}
+.shot-delivery > div {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.shot-delivery strong {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shot-delivery small,
+.shot-delivery > div > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.shot-delivery-icon {
+  color: var(--muted);
+}
+.shot-delivery.delivered .shot-delivery-icon,
+.shot-delivery.received .shot-delivery-icon {
+  color: var(--gold);
+}
+.shot-delivery progress {
+  width: 100%;
+  accent-color: var(--gold);
+}
+@keyframes shot-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes shot-shimmer {
+  0%,
+  100% {
+    background-position: 100% 0;
+  }
+  50% {
+    background-position: 0 0;
+  }
+}
+@media (max-width: 1050px) {
+  .screenshot-grid {
+    gap: 10px;
+  }
+  .shot-picker-footer {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .screenshot-picker {
+    padding: 20px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .screenshot-library * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
