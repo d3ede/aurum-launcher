@@ -3,7 +3,9 @@ import fabric from "../assets/loaders/fabric.png";
 import forge from "../assets/loaders/forge.png";
 import neoforge from "../assets/loaders/neoforge.png";
 import quilt from "../assets/loaders/quilt.svg";
-import vanilla from "../assets/loaders/grass-block.png";
+import vanilla from "../assets/loaders/vanilla.svg";
+import vanillaMask from "../assets/loaders/grass-block.png";
+import fabricMask from "../assets/loaders/fabric-mask.svg";
 import horizon from "../assets/loaders/horizon.svg";
 import forgeMask from "../assets/loaders/forge-mask.png";
 import quiltMask from "../assets/loaders/quilt-mask.svg";
@@ -11,8 +13,8 @@ import neoforgeMask from "../assets/loaders/neoforge-mask.svg";
 import horizonMask from "../assets/loaders/horizon-mask.svg";
 
 export const loaderBrands = {
-  vanilla: { name: "Vanilla", source: vanilla, mask: vanilla },
-  fabric: { name: "Fabric", source: fabric, mask: fabric },
+  vanilla: { name: "Vanilla", source: vanilla, mask: vanillaMask },
+  fabric: { name: "Fabric", source: fabric, mask: fabricMask },
   forge: { name: "Forge", source: forge, mask: forgeMask },
   neoforge: { name: "NeoForge", source: neoforge, mask: neoforgeMask },
   quilt: { name: "Quilt", source: quilt, mask: quiltMask },

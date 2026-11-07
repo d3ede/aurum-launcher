@@ -740,10 +740,10 @@ textarea {
   margin-bottom: 18px;
 }
 .icon-symbols button {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 40px;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  aspect-ratio: 1;
   padding: 0;
   border-radius: 9px;
   border: 1px solid var(--border);
@@ -758,6 +758,26 @@ textarea {
   color: var(--accent-ink);
   border: 2px solid var(--gold);
   background: var(--gold-soft);
+}
+.icon-symbols .icon-randomizer {
+  color: #6845b1;
+  background: #eee6ff;
+  border-color: #c8b2f0;
+}
+.icon-symbols .icon-randomizer:hover:not(:disabled) {
+  color: #51328e;
+  background: #e3d5ff;
+  border-color: #9774cf;
+}
+[data-theme="dark"] .icon-symbols .icon-randomizer {
+  color: #dbc7ff;
+  background: #392753;
+  border-color: #6c4d91;
+}
+[data-theme="dark"] .icon-symbols .icon-randomizer:hover:not(:disabled) {
+  color: #eadfff;
+  background: #493263;
+  border-color: #ae8ed8;
 }
 .icon-editor-colors {
   display: grid;
@@ -1015,8 +1035,9 @@ textarea {
   gap: 12px;
   width: 100%;
   min-width: 0;
-  min-height: 42px;
-  padding: 10px 12px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 9px;
   background: var(--surface);
@@ -1024,6 +1045,7 @@ textarea {
   text-align: left;
   font-size: 14px;
   font-weight: 500;
+  line-height: 20px;
   cursor: pointer;
   transition:
     border-color 160ms ease,
@@ -1036,7 +1058,7 @@ textarea {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.select-trigger:hover:not(:disabled) {
+.select-trigger[data-pointer-over]:not(:disabled) {
   border-color: var(--gold);
   background: var(--input-soft);
 }
@@ -1105,6 +1127,9 @@ textarea {
   color: var(--accent-ink);
   background: var(--gold-soft);
   font-weight: 600;
+}
+.select-option + .select-option {
+  margin-top: 3px;
 }
 .select-option[data-highlighted] {
   background: var(--hover);

@@ -324,17 +324,17 @@ export function CreateProfile({
         {error && (
           <ErrorBox error={error} retry={() => setRetry((v) => v + 1)} />
         )}
-        <div className="dialog-note">
-          {folderImport
-            ? t("Выберите папку .minecraft или папку игры из другого лаунчера.")
-            : horizon
+        {(folderImport || horizon) && (
+          <div className="dialog-note">
+            {folderImport
               ? t(
-                  "Horizon и ресурсы установятся автоматически. Подготовка первого запуска займёт несколько минут.",
+                  "Выберите папку .minecraft или папку игры из другого лаунчера.",
                 )
               : t(
-                  "Minecraft и Java используются повторно, если совместимая версия уже установлена. Остальные файлы скачаются при необходимости.",
+                  "Horizon и ресурсы установятся автоматически. Подготовка первого запуска займёт несколько минут.",
                 )}
-        </div>
+          </div>
+        )}
         <div className="modal-actions">
           <button type="button" className="button secondary" onClick={onClose}>
             {t("Отмена")}

@@ -102,7 +102,33 @@ test("symbol and independent custom colors persist and render on cards", async (
     .click();
   await page.getByRole("button", { name: "Изменить значок сборки" }).click();
   const editor = page.locator(".icon-editor");
-  await expect(editor.locator(".icon-symbols button")).toHaveCount(22);
+  const tiles = editor.locator(".icon-symbols button");
+  await expect(tiles).toHaveCount(23);
+  const randomizer = editor.getByRole("button", {
+    name: "Случайный значок",
+    exact: true,
+  });
+  await expect(tiles.last()).toHaveAccessibleName("Случайный значок");
+  await expect(editor.locator(".icon-editor-actions")).not.toContainText(
+    "Случайный значок",
+  );
+  await expect(randomizer).toHaveText("");
+  const geometry = await tiles.evaluateAll((buttons) =>
+    buttons.map((button) => {
+      const tile = button.getBoundingClientRect();
+      const glyph = button.firstElementChild!.getBoundingClientRect();
+      return {
+        square: Math.abs(tile.width - tile.height),
+        x: Math.abs(tile.x + tile.width / 2 - glyph.x - glyph.width / 2),
+        y: Math.abs(tile.y + tile.height / 2 - glyph.y - glyph.height / 2),
+      };
+    }),
+  );
+  for (const tile of geometry) {
+    expect(tile.square).toBeLessThan(1);
+    expect(tile.x).toBeLessThan(1);
+    expect(tile.y).toBeLessThan(1);
+  }
   await editor.getByRole("button", { name: "Ракета", exact: true }).click();
   await editor
     .getByRole("textbox", { name: "Цвет символа HEX" })

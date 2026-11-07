@@ -138,7 +138,7 @@ async function create(page: Page) {
     dialog.getByText(
       "Minecraft и Java используются повторно, если совместимая версия уже установлена. Остальные файлы скачаются при необходимости.",
     ),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await dialog
     .getByRole("textbox", { name: "Название сборки" })
     .fill("Своя сборка");
@@ -258,11 +258,33 @@ for (const theme of ["light", "dark"]) {
         name: "Новая сборка",
         exact: true,
       });
+      const minecraft = dialog.getByRole("combobox", {
+        name: "Версия Minecraft",
+        exact: true,
+      });
+      const loader = dialog.getByRole("combobox", {
+        name: "Загрузчик",
+        exact: true,
+      });
+      await expect(minecraft).toHaveCSS("height", "44px");
+      await expect(loader).toHaveCSS("height", "44px");
+      const border = await loader.evaluate(
+        (el) => getComputedStyle(el).borderColor,
+      );
       await dialog
-        .getByRole("combobox", { name: "Загрузчик", exact: true })
-        .click();
+        .locator(".field > span")
+        .filter({ hasText: /^Загрузчик$/ })
+        .hover();
+      await expect(loader).not.toHaveAttribute("data-pointer-over");
+      await expect(loader).toHaveCSS("border-color", border);
+      await loader.hover();
+      await expect(loader).toHaveAttribute("data-pointer-over", "true");
+      await loader.click();
       const options = page.getByRole("option");
       await expect(options).toHaveCount(6);
+      const first = await options.nth(0).boundingBox();
+      const second = await options.nth(1).boundingBox();
+      expect(second!.y - first!.y - first!.height).toBeGreaterThanOrEqual(2);
       await expect(page.locator(".select-menu img.loader-logo")).toHaveCount(6);
       await page.screenshot({
         path: "target/branding-icons/loaders-" + theme + ".png",

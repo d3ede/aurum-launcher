@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { t } from "../lib/i18n";
-import { Upload, RotateCcw, Dices } from "lucide-react";
+import { Upload, RotateCcw, Dice5 } from "lucide-react";
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
 import {
@@ -141,17 +141,6 @@ export function IconPicker({
             type="button"
             className="text-button"
             disabled={busy}
-            onClick={() =>
-              onChange({ ...value, icon: null, iconStyle: randomIconStyle() })
-            }
-          >
-            <Dices size={16} aria-hidden="true" />
-            {t("Случайный значок")}
-          </button>
-          <button
-            type="button"
-            className="text-button"
-            disabled={busy}
             onClick={async () => {
               const icon = await run(() => rpc("chooseProfileIcon", {}));
               if (icon) onChange({ ...value, icon });
@@ -196,6 +185,18 @@ export function IconPicker({
             <Icon size={21} aria-hidden="true" />
           </button>
         ))}
+        <button
+          type="button"
+          className="icon-randomizer"
+          title={t("Случайный значок")}
+          aria-label={t("Случайный значок")}
+          disabled={busy}
+          onClick={() =>
+            onChange({ ...value, icon: null, iconStyle: randomIconStyle() })
+          }
+        >
+          <Dice5 size={22} aria-hidden="true" />
+        </button>
       </div>
       <div className="icon-editor-colors">
         <ColorControl

@@ -31,6 +31,8 @@ export function Select({
 }) {
   const empty = "__aurum_any__";
   const [open, setOpen] = useState(false);
+  // CSS :hover also matches the control when its wrapping label is hovered.
+  const [pointerOver, setPointerOver] = useState(false);
   return (
     <Dropdown.Root
       open={open}
@@ -43,6 +45,11 @@ export function Select({
         id={id}
         aria-label={label}
         className={`select-trigger ${className}`}
+        data-pointer-over={pointerOver || undefined}
+        onPointerEnter={(event) => {
+          if (event.pointerType !== "touch") setPointerOver(true);
+        }}
+        onPointerLeave={() => setPointerOver(false)}
         onPointerDown={(event) => {
           if (open && event.button === 0 && event.pointerType === "mouse") {
             event.preventDefault();

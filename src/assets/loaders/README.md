@@ -10,8 +10,9 @@ PolyForm license; their respective owners retain their rights.
 - Forge: Minecraft Forge's anvil mark, [minecraftforge.net](https://minecraftforge.net/).
 - NeoForge: the project mark by Ridanisaurus, under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
   [NeoForged artwork](https://github.com/neoforged/.github/tree/main/art). The editable
-  `neoforge-mask.svg` is a monochrome pixel silhouette adapted from the fox in
-  `neoforged_icon_16x16.png`, with the gray backing plate removed.
+  `neoforge-mask.svg` is a smooth monochrome adaptation of the fox motif in
+  `neoforged_icon_16x16.png`, with outlined ears and facial details instead of
+  pixel edges and without the gray backing plate.
   Attribution and the adaptation are recorded here; see `NEOFORGE-LICENSE`.
 - Quilt: QuiltMC's project mark, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/),
   [QuiltMC/art](https://github.com/QuiltMC/art/tree/master/brand/svg).
@@ -19,15 +20,19 @@ PolyForm license; their respective owners retain their rights.
   transparent white variant, unmodified. See `QUILT-LICENSE`.
 - Vanilla: Minecraft's rendered grass-block identifying artwork belongs to
   Mojang/Microsoft. It is not licensed under MIT or PolyForm.
+  `vanilla.svg` is an Aurum-drawn geometric grass block for small selectors,
+  with equal-width cube faces and a full-height silhouette.
 - Horizon: `horizon.svg` is the unmodified [upstream application icon](https://github.com/horizon-rust/horizon/blob/main/packaging/icons/hicolor/scalable/apps/horizon.svg),
   MIT, Copyright (c) 2026 Ludovic Marie and the Horizon contributors. The
   `horizon-mask.svg` monochrome adaptation retains its H and horizon-line motif.
   The license is preserved in `HORIZON-LICENSE`.
 
-The color selector uses the original images. The instance icon editor offers
+The color selector uses the original images, except for the geometric Vanilla
+block. The instance icon editor offers
 monochrome adaptations for user-selected colors. `forge-mask.png` removes the
-original background using `scripts/loader-masks.ps1`; Fabric and Vanilla masks
-use the original alpha channel. Colors and backgrounds
+original background using `scripts/loader-masks.ps1`; `fabric-mask.svg` is an
+Aurum-drawn smooth adaptation of Fabric's diagonal fabric-roll motif. The
+Vanilla mask uses the original alpha channel. Colors and backgrounds
 chosen for an instance are user customization, not replacement official logos.
 
 Horizon executables are not bundled. They are downloaded from upstream GitHub
