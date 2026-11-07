@@ -145,7 +145,13 @@ impl Manifest {
                 continue;
             }
             let response = tokio::select! {
-                response = client.get(format!("{base}/{}.gz", file.name)).send() => response?.error_for_status()?,
+                response = client.get(format!("{base}/{}.gz", file.name)).send() => {
+                    let response = response?;
+                    if response.status() == reqwest::StatusCode::NOT_FOUND {
+                        bail!("Social component is not published for this build. Install the offline build or update Aurum.");
+                    }
+                    response.error_for_status()?
+                },
                 _ = cancelled(cancel) => bail!("Social component download cancelled"),
             };
             if response
@@ -387,6 +393,37 @@ mod tests {
         json["files"][0]["name"] = WORKER.into();
         json["files"][0]["bytes"] = (MAX_FILE + 1).into();
         assert!(Manifest::decode(&json.to_string()).is_err());
+    }
+
+    #[tokio::test]
+    async fn unpublished_runtime_explains_recovery_and_leaves_no_installation() {
+        let (manifest, _) = fixture();
+        let root = tempfile::tempdir().unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut request = [0; 4096];
+            let _ = socket.read(&mut request).await.unwrap();
+            socket
+                .write_all(
+                    b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                )
+                .await
+                .unwrap();
+        });
+        let error = manifest
+            .install_from(
+                &reqwest::Client::new(),
+                root.path(),
+                &AtomicBool::new(false),
+                |_, _| {},
+                &format!("http://{address}"),
+            )
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("not published for this build"));
+        assert_eq!(std::fs::read_dir(root.path()).unwrap().count(), 0);
     }
 
     #[tokio::test]

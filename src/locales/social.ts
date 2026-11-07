@@ -1,4 +1,6 @@
 export const socialEnglish: Record<string, string> = {
+  "Social component is not published for this build. Install the offline build or update Aurum.":
+    "The Social component is unavailable for this build. Install the offline build or update Aurum.",
   "@social.auto.joined": "You are in the world",
   "@social.auto.stopped": "Minecraft closed",
   "@social.auto.connecting": "Connecting to the world…",
@@ -209,6 +211,8 @@ export const socialEnglish: Record<string, string> = {
   "@social.network": "Configure network",
 };
 export const socialRussian: Record<string, string> = {
+  "Social component is not published for this build. Install the offline build or update Aurum.":
+    "Компонент Social для этой сборки не опубликован. Установите сборку с Social внутри или обновите Aurum.",
   "@social.auto.joined": "Вы в мире",
   "@social.auto.stopped": "Minecraft закрыт",
   "@social.auto.connecting": "Подключаемся к миру…",

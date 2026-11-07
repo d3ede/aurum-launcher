@@ -17,7 +17,7 @@ rule still matches the verified worker. Turning Social off persists that choice.
 Turning it off requires confirmation and disconnects Social tunnels without
 stopping Minecraft. The control is below the identity-backup actions.
 
-In the upcoming build, the installer no longer bundles the Social executables.
+In upcoming published builds, the installer no longer bundles the Social executables.
 The first explicit activation downloads the worker and Firewall helper from the
 same GitHub release as the launcher. The dialog shows download progress and
 allows cancellation before Firewall configuration. Both compressed downloads
@@ -39,6 +39,15 @@ The build generates an ignored `src-tauri/social-runtime/manifest.json` plus two
 `.exe.gz` assets; `prepare-release.mjs` validates and publishes them with the
 installer. Release publication must include all of those assets. Offline QA
 packages may place the exact pinned executables in a sibling `social` directory.
+
+Local `npm run tauri build` and `scripts/desktop.ps1 -Mode build` installers
+include those exact executables for offline use. A local build can contain a
+new runtime that does not exist in its version's published GitHub release;
+requesting that asset would return 404. The release workflow sets `RELEASE_TAG`
+and builds the smaller download-on-activation installer, publishing its pinned
+runtime assets in the same release. `build-social.ps1` also stages a matching
+`social` directory beside the directly runnable build output. Local installers
+are therefore larger than the on-demand release installer.
 
 Your ID starts hidden; reveal it to compare the full key. Choose an avatar by
 clicking your picture, or change between Online and Invisible with the status

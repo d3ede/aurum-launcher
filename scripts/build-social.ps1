@@ -16,6 +16,13 @@ try {
   foreach($name in @('aurum-social-worker.exe','aurum-social-firewall.exe')) {
     Copy-Item -LiteralPath (Join-Path $targetRoot "$profile/$name") -Destination (Join-Path $destination $name) -Force
   }
+  # A directly launched local release binary needs the same offline fallback as
+  # its installer. These files are not resources of the on-demand CI installer.
+  $localRuntime=Join-Path $targetRoot "$profile/social"
+  New-Item -ItemType Directory -Path $localRuntime -Force | Out-Null
+  foreach($name in @('aurum-social-worker.exe','aurum-social-firewall.exe')) {
+    Copy-Item -LiteralPath (Join-Path $destination $name) -Destination (Join-Path $localRuntime $name) -Force
+  }
   & node (Join-Path $PSScriptRoot 'package-social-runtime.mjs')
   if ($LASTEXITCODE) { throw 'Social runtime packaging failed' }
 } finally { Pop-Location }
