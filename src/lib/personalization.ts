@@ -39,7 +39,7 @@ export interface Personalization {
   home: HomePreferences;
   appearance: AppearancePreferences;
 }
-export type SettingsTab = "general" | "home" | "appearance";
+export type SettingsTab = "general" | "home" | "appearance" | "storage";
 export const homeDefaults: HomePreferences = {
   order: ["launch", "servers", "profiles", "discover"],
   launch: "last-profile",

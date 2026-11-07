@@ -19,7 +19,7 @@ pub async fn run(root: PathBuf) -> Result<()> {
         container.allow_runtime_read(&target)?;
     }
     let mut engine = Engine::new(root.join("data"), |_| {}).await?;
-    engine.social = Arc::new(Service::laboratory(engine.root.join("social"), 1)?);
+    engine.social = Arc::new(Service::laboratory(crate::layout::app_path(&engine.root, "social"), 1)?);
     let source = Service::laboratory(root.join("sender"), 0)?;
     source.set_privacy(aurum_social::store::Privacy {
         public_relays: false,

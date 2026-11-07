@@ -91,7 +91,7 @@ async fn main() -> Result<()> {
         assert!(!e.list_content(&p.id).await?.is_empty());
     }
     e.launch(&p.id).await?;
-    let log = e.instance(&p.id)?.join("auren-latest.log");
+    let log = e.instance(&p.id)?.join("aurum-latest.log");
     let mut ready = false;
     for _ in 0..120 {
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;

@@ -5,8 +5,9 @@ mod screenshots;
 mod social;
 #[cfg(windows)]
 mod social_runtime;
-mod microsoft_window;
+
 mod server_shortcuts;
+mod maintenance;
 mod uninstall;
 use auren_core::Engine;
 use serde_json::{json, Value};
@@ -20,6 +21,7 @@ fn param<T: serde::de::DeserializeOwned>(p: &Value, k: &str) -> Result<T, String
 fn err(e: impl std::fmt::Display) -> String {
     e.to_string()
 }
+struct BrowserSignIn(std::sync::Mutex<std::collections::HashMap<String, String>>);
 struct Relocation(std::sync::atomic::AtomicBool);
 #[tauri::command]
 async fn rpc(
@@ -122,9 +124,12 @@ async fn rpc(
                 .map_err(err)?;
             let result: Result<(), anyhow::Error> = async {
                 e.copy_data(&path, &task).await?;
-                task.check()?;
                 let config = app.path().app_config_dir()?;
                 std::fs::create_dir_all(&config)?;
+                let profile = auren_core::layout::application(&e.root).parent().unwrap().join("webview");
+                if profile.is_dir() {
+                    std::fs::write(config.join("webview-source.json"), serde_json::to_vec(&profile)?)?;
+                }
                 let temp = config.join("data-location.json.tmp");
                 std::fs::write(&temp, serde_json::to_vec(&path)?)?;
                 std::fs::rename(temp, config.join("data-location.json"))?;
@@ -138,6 +143,20 @@ async fn rpc(
             e.finish(&task, &result).await;
             result.map_err(err)?;
             Ok(json!(path.to_string_lossy()))
+        }
+        "storageRemoveVersion" => Ok(json!(e.remove_unused_installation(&param::<String>(&payload, "id")?).await.map_err(err)?)),
+        "storageSnapshot" => Ok(json!(e.storage_snapshot().await.map_err(err)?)),
+        "storageClean" => Ok(json!(e.clean_storage(&param::<String>(&payload, "category")?).await.map_err(err)?)),
+        "storageTrash" => Ok(json!(e.storage_trash(&param::<Vec<String>>(&payload, "ids")?, payload["restore"].as_bool().unwrap_or(false)).await.map_err(err)?)),
+        "optimizeJava" => {
+            let _guard = e.busy.try_lock().map_err(|_| "Дождитесь завершения операции".to_string())?;
+            e.ensure_idle("").await.map_err(err)?;
+            if !e.hosting_running().is_empty() || !e.running.lock().await.is_empty() { return Err("Сначала остановите игры и серверы".into()); }
+            let task = e.task(param(&payload, "operationId")?, None).await.map_err(err)?;
+            let result = e.optimize_java(&task).await;
+            let finished = result.as_ref().map(|_| ()).map_err(|error| anyhow::anyhow!("{error:#}"));
+            e.finish(&task, &finished).await;
+            Ok(json!(result.map_err(err)?))
         }
         "snapshot" => Ok(json!(e.snapshot().await)),
         "recentServers" => Ok(json!(e.recent_servers().await.map_err(err)?)),
@@ -536,7 +555,9 @@ async fn rpc(
             Ok(Value::Null)
         }
         "reopenMicrosoft" => {
-            microsoft_window::focus(&app, &param::<String>(&payload, "operationId")?)?;
+            let id = param::<String>(&payload, "operationId")?;
+            let url = app.state::<BrowserSignIn>().0.lock().map_err(err)?.get(&id).cloned().ok_or("Вход уже завершён")?;
+            app.opener().open_url(url, None::<&str>).map_err(err)?;
             Ok(Value::Null)
         }
         "openFolder" => {
@@ -563,7 +584,7 @@ async fn rpc(
         "logs" => {
             let id = param::<String>(&payload, "id")?;
             e.profile(&id).await.map_err(err)?;
-            let path = e.instance(&id).map_err(err)?.join("auren-latest.log");
+            let path = e.instance(&id).map_err(err)?.join("aurum-latest.log");
             if !path.exists() {
                 return Ok(json!("Журнал появится после запуска игры"));
             }
@@ -659,18 +680,21 @@ async fn rpc(
                         let result = e
                             .login_microsoft(&task, |url| {
                                 let app = app.clone();
-                                let engine = e.clone();
                                 let id = task.id.clone();
-                                let cancelled = task.cancel.clone();
                                 async move {
-                                    tauri::async_runtime::spawn_blocking(move || {
-                                        microsoft_window::open(&app, &engine, &id, &url, &cancelled)
-                                    })
-                                    .await?
+                                    app.state::<BrowserSignIn>().0.lock().map_err(|_| anyhow::anyhow!("Не удалось подготовить вход"))?.insert(id, url.clone());
+                                    app.opener().open_url(&url, None::<&str>)
+                                        .map_err(|_| anyhow::anyhow!("Не удалось открыть браузер. Проверьте браузер по умолчанию"))
                                 }
                             })
                             .await;
-                        microsoft_window::finish(&app, &task.id);
+                        if let Ok(mut pending) = app.state::<BrowserSignIn>().0.lock() { pending.remove(&task.id); }
+                        if result.is_ok() {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.unminimize();
+                                let _ = window.set_focus();
+                            }
+                        }
                         Ok(json!(result?))
                     }
                     "importPack" => {
@@ -778,6 +802,7 @@ async fn choose_file(
     path.map(|p| p.into_path().map_err(err)).transpose()
 }
 fn main() {
+    if let Some(code) = maintenance::command() { std::process::exit(code); }
     let context: tauri::Context<tauri::Wry> = tauri::generate_context!();
     #[cfg(windows)]
     if let Some(action) = std::env::args().nth(1).filter(|arg| {
@@ -801,7 +826,6 @@ fn main() {
     shortcuts.enqueue(&std::env::args().collect::<Vec<_>>());
     tauri::Builder::default()
         .manage(shortcuts)
-        .manage(microsoft_window::MicrosoftWindow::default())
         .plugin(tauri_plugin_single_instance::init(|app, arguments, _| {
             server_shortcuts::receive(app, &arguments);
             #[cfg(windows)] social::receive(app,&arguments);
@@ -810,11 +834,14 @@ fn main() {
                 let _ = window.set_focus();
             }
         }))
+        .manage(BrowserSignIn(std::sync::Mutex::new(std::collections::HashMap::new())))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
+            maintenance::clean_old_updaters();
             let handle = app.handle().clone();
+            let isolated_data = std::env::var_os("AURUM_DATA_DIR").is_some() || std::env::var_os("AUREN_DATA_DIR").is_some();
             let location = app.path().app_config_dir()?.join("data-location.json");
             let root = if let Some(path) =
                 std::env::var_os("AURUM_DATA_DIR").or_else(|| std::env::var_os("AUREN_DATA_DIR"))
@@ -832,11 +859,35 @@ fn main() {
             } else {
                 auren_core::default_data_directory(&app.path().app_data_dir()?)?
             };
-            let engine = tauri::async_runtime::block_on(Engine::new(root, move |event| {
-                if event.phase == "auth-exchange" {
-                    microsoft_window::finish(&handle, &event.id);
+            let root = auren_core::layout::prepare(&root)?;
+            let application = auren_core::layout::application(&root);
+            if std::env::var_os("AURUM_DATA_DIR").is_none() && std::env::var_os("AUREN_DATA_DIR").is_none() {
+                let pending = app.path().app_config_dir()?.join("webview-source.json");
+                if pending.exists() {
+                    let source: std::path::PathBuf = serde_json::from_slice(&std::fs::read(&pending)?)?;
+                    if source.file_name().is_none_or(|n| n != "webview") || source.parent().and_then(|p| p.file_name()).is_none_or(|n| n != auren_core::layout::LAUNCHER) {
+                        return Err(anyhow::anyhow!("Invalid interface profile migration source").into());
+                    }
+                    auren_core::layout::relocate_webview(&source, &root)?;
+                    std::fs::remove_file(pending)?;
                 }
-                let _ = handle.emit("auren:event", event);
+                auren_core::layout::relocate_webview(&app.path().app_local_data_dir()?, &root)?;
+            }
+            // Delete only disposable browser caches, before any WebView process opens this profile.
+            if application.join("clear-browser-cache").exists() {
+                auren_core::storage_manager::clean_browser_cache(&root)?;
+            }
+            let mut config = app.config().app.windows[0].clone();
+            config.create = true;
+            config.data_directory = Some(application.parent().unwrap().join("webview"));
+            tauri::WebviewWindowBuilder::from_config(app, &config)?.build()?;
+            let location = app.path().app_config_dir()?.join("data-location.json");
+            if !isolated_data {
+                std::fs::create_dir_all(location.parent().unwrap())?;
+                std::fs::write(&location, serde_json::to_vec(&root)?)?;
+            }
+            let engine = tauri::async_runtime::block_on(Engine::new(root, move |event| {
+                let _ = handle.emit("aurum:event", event);
             }))?;
             app.manage(engine.clone());
             #[cfg(windows)]{
@@ -847,7 +898,7 @@ fn main() {
                 engine.social.set_notifier(std::sync::Arc::new(move||{let _=social_events.emit_to("main","social:event",());}));
                 social::resume(app.handle(),&engine);
             }
-            uninstall::register(&engine.root, &app.config().identifier)?;
+            if !isolated_data { uninstall::register(&engine.root, &app.config().identifier)?; }
             app.manage(Relocation(std::sync::atomic::AtomicBool::new(false)));
             // Creation-time centering uses the requested client size. Center again
             // after Windows has applied the actual resize frame, then show once.
@@ -862,7 +913,7 @@ fn main() {
                         if !closing.state::<Engine>().hosting_running().is_empty() {
                             api.prevent_close();
                             let _ = closing.emit(
-                                "auren:event",
+                                "aurum:event",
                                 auren_core::model::Event {
                                     id: String::new(),
                                     profile_id: None,
@@ -876,12 +927,10 @@ fn main() {
                         } else {
                             #[cfg(windows)]
                             let _=closing.state::<Engine>().social.shutdown();
-                            microsoft_window::shutdown(&closing);
                         }
                     }
                 });
             }
-            microsoft_window::warm_up(app.handle(), &engine);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![rpc])

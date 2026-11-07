@@ -15,8 +15,12 @@ const DIRECTORIES: &[&str] = &[
     "hosting",
     "skins",
     "horizon",
+    "installers",
+    "logs",
+    "social",
 ];
 const FILES: &[&str] = &[
+    "launcher_profiles.json",
     "state.json",
     "skin-library.json",
     "recent-servers.json",
@@ -26,6 +30,9 @@ const FILES: &[&str] = &[
 
 pub fn register_owner(root: &Path, identifier: &str) -> Result<()> {
     std::fs::write(root.join(".aurum-data-owner"), identifier)?;
+    let app = crate::layout::application(root);
+    std::fs::create_dir_all(&app)?;
+    std::fs::write(app.join(".aurum-data-owner"), identifier)?;
     Ok(())
 }
 
@@ -36,10 +43,27 @@ pub fn remove_owned_data(root: &Path, identifier: &str) -> Result<()> {
     {
         bail!("Папка не принадлежит этой установке Aurum")
     }
-    let state = root.join("state.json");
+    let state = crate::layout::app_path(&root, "state.json");
     if state.exists() {
         let _: crate::model::Database = serde_json::from_slice(&std::fs::read(state)?)
             .context("Не удалось проверить данные Aurum; удалите их вручную")?;
+    }
+    let application = crate::layout::application(&root);
+    let mut application_targets = vec![];
+    if application != root
+        && std::fs::read_to_string(application.join(".aurum-data-owner")).is_ok_and(|value| value == identifier)
+    {
+        let launcher = application.parent().context("Нет папки лаунчера")?;
+        for path in [application.clone(), launcher.join("webview")] {
+            if !path.exists() { continue; }
+            for entry in walkdir::WalkDir::new(&path).follow_links(false) {
+                let entry = entry?;
+                if entry.file_type().is_symlink() || !std::fs::canonicalize(entry.path())?.starts_with(std::fs::canonicalize(launcher)?) {
+                    bail!("Связанная папка приложения сохранена")
+                }
+            }
+            application_targets.push(path);
+        }
     }
     // Validate every target before making any change. Linked folders are never traversed.
     for name in DIRECTORIES.iter().chain(FILES.iter()) {
@@ -97,6 +121,7 @@ pub fn remove_owned_data(root: &Path, identifier: &str) -> Result<()> {
             std::fs::remove_file(path)?;
         }
     }
+    for path in application_targets { std::fs::remove_dir_all(path)?; }
     // Keep the root if application files or unrelated files are still present.
     let _ = std::fs::remove_dir(root);
     Ok(())

@@ -174,12 +174,10 @@ FunctionEnd
 Function AurumInit
   StrCpy $AurumProgressTitle "$(AurumTitle)"
   ; Interactive/fresh installs never place application files in a drive root.
-  ; Automatic updates retain the registered installation location.
-  ${If} $UpdateMode <> 1
-    StrCpy $0 $INSTDIR
-    Call AurumNormalizeInstallPath
-    StrCpy $INSTDIR $0
-  ${EndIf}
+  ; Application files live in the Launcher child of the selected home.
+  StrCpy $0 $INSTDIR
+  Call AurumNormalizeInstallPath
+  StrCpy $INSTDIR $0
   StrCpy $AurumDesktopChoice 1
   StrCpy $AurumStartChoice 1
   StrCpy $AurumRunChoice 1

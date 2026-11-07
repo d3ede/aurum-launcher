@@ -117,7 +117,7 @@ impl Engine {
         task.check()?;
         open(login.authorize_uri.clone()).await?;
         task.check()?;
-        task.progress("auth-waiting", "Подтвердите вход в окне Microsoft", 0, 0);
+        task.progress("auth-waiting", "Подтвердите вход в браузере", 0, 0);
         let code = login.wait(task).await?;
         task.progress("auth-exchange", "Подключаем ваш аккаунт", 0, 0);
         let oauth = cancellable(task, Duration::from_secs(90), async {
@@ -331,7 +331,7 @@ impl Engine {
                 .error_for_status()
                 .context("Minecraft не принял скин")?;
         }
-        let folder = self.root.join("skins");
+        let folder = crate::layout::app_path(&self.root, "skins");
         tokio::fs::create_dir_all(&folder).await?;
         tokio::fs::write(folder.join(format!("{}.png", account.id)), &bytes).await?;
         let mut db = self.db.lock().await;
@@ -362,7 +362,7 @@ impl Engine {
         if !account.has_skin {
             return Ok(vec![]);
         }
-        Ok(tokio::fs::read(self.root.join("skins").join(format!("{}.png", account.id))).await?)
+        Ok(tokio::fs::read(crate::layout::app_path(&self.root, "skins").join(format!("{}.png", account.id))).await?)
     }
 }
 

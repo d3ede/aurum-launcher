@@ -50,6 +50,20 @@ pub(crate) fn installed_candidates() -> Vec<PathBuf> {
             }
         }
     }
+    // Known launcher runtime stores only; never recursively scan the user's drives.
+    let mut runtime_stores = vec![];
+    if let Some(roaming) = dirs::data_dir() { runtime_stores.push(roaming.join(".minecraft/runtime")); }
+    if let Some(local) = dirs::data_local_dir() {
+        runtime_stores.push(local.join("ModrinthApp/meta/java_versions"));
+        runtime_stores.push(local.join("Programs/Eclipse Adoptium"));
+    }
+    for store in runtime_stores {
+        for entry in walkdir::WalkDir::new(store).max_depth(8).follow_links(false).into_iter().filter_map(Result::ok) {
+            if entry.file_type().is_file() && entry.file_name() == if cfg!(windows) { "java.exe" } else { "java" } {
+                candidates.push(entry.into_path());
+            }
+        }
+    }
     let mut seen = std::collections::HashSet::new();
     candidates.retain(|p| {
         p.is_file() && seen.insert(std::fs::canonicalize(p).unwrap_or_else(|_| p.clone()))
@@ -80,6 +94,85 @@ fn matching_architecture(path: &Path) -> bool {
 }
 
 impl Engine {
+    pub(crate) async fn download_compact_java(&self, major: u32, runtime: &Path, task: &crate::Task) -> Result<PathBuf> {
+        self.download_java_image(major, runtime, "jre", task).await
+    }
+
+    pub(crate) async fn preparation_java(&self, major: u32, task: &crate::Task) -> Result<(PathBuf, Option<crate::temporary::Temporary>)> {
+        let managed = self.root.join("runtimes").join(format!("java-{major}"));
+        let mut candidates = installed_candidates();
+        if let Some(java) = find_java(&managed) { candidates.insert(0, java); }
+        for java in candidates {
+            if java.parent().is_some_and(|p| p.join("javac.exe").is_file())
+                && self.compatible_installed_java(&java, major).await {
+                return Ok((java, None));
+            }
+        }
+        let tools = self.root.join("runtimes").join(format!(".preparation-{major}-{}", uuid::Uuid::new_v4()));
+        let guard = crate::temporary::Temporary::directory(&tools);
+        let java = self.download_java_image(major, &tools, "jdk", task).await?;
+        Ok((java, Some(guard)))
+    }
+
+    async fn download_java_image(&self, major: u32, runtime: &Path, image: &str, task: &crate::Task) -> Result<PathBuf> {
+        use anyhow::{bail, Context};
+        task.progress("java", format!("Устанавливаем компактную Java {major}"), 0, 0);
+        let arch = if cfg!(target_arch = "aarch64") { "aarch64" } else { "x64" };
+        let list = self.json(&format!("https://api.adoptium.net/v3/assets/latest/{major}/hotspot?architecture={arch}&image_type={image}&os=windows&vendor=eclipse")).await?;
+        let package = &list.as_array().and_then(|a| a.first()).context("Компактная Java для этой версии недоступна")?["binary"]["package"];
+        let base = self.root.join("runtimes");
+        tokio::fs::create_dir_all(&base).await?;
+        let id = uuid::Uuid::new_v4();
+        let archive = base.join(format!(".java-{major}-{id}.zip"));
+        let stage = base.join(format!(".java-{major}-{id}.installing"));
+        let _archive = crate::temporary::Temporary::file(&archive);
+        let _stage = crate::temporary::Temporary::directory(&stage);
+        self.download(package["link"].as_str().context("Нет ссылки Java")?, &archive,
+            Some(("sha256", package["checksum"].as_str().context("Нет SHA256 Java")?)), task).await?;
+        crate::minecraft::extract_zip(&archive, &stage, None, task)?;
+        let java = find_java(&stage).context("Java не найдена после распаковки")?;
+        if java_version(&java).await? != major { bail!("Скачанная Java не соответствует требуемой версии") }
+        task.check()?;
+        let relative = java.strip_prefix(&stage)?.to_owned();
+        let backup = base.join(format!(".java-{major}-{id}.backup"));
+        if runtime.exists() { std::fs::rename(runtime, &backup)?; }
+        if let Err(error) = std::fs::rename(&stage, runtime) {
+            if backup.exists() { std::fs::rename(&backup, runtime)?; }
+            return Err(error.into());
+        }
+        if backup.exists() { std::fs::remove_dir_all(&backup)?; }
+        Ok(runtime.join(relative))
+    }
+
+    pub async fn optimize_java(&self, task: &crate::Task) -> Result<u64> {
+        let base = self.root.join("runtimes");
+        let configured = self.db.lock().await.settings.java_path.clone();
+        let mut reclaimed = 0;
+        let Ok(entries) = std::fs::read_dir(&base) else { return Ok(0) };
+        for entry in entries {
+            task.check()?;
+            let entry = entry?;
+            if !entry.file_type()?.is_dir() { continue; }
+            let name = entry.file_name();
+            let Some(major) = name.to_str().and_then(|n| n.strip_prefix("java-")).and_then(|n| n.parse::<u32>().ok()) else { continue };
+            let runtime = entry.path();
+            // An explicitly configured developer runtime belongs to the user's configuration.
+            if !configured.is_empty() && Path::new(&configured).starts_with(&runtime) { continue; }
+            let Some(java) = find_java(&runtime) else { continue };
+            if !java.parent().unwrap().join("javac.exe").exists() { continue; }
+            if !std::fs::canonicalize(&runtime)?.starts_with(std::fs::canonicalize(&base)?) { continue; }
+            let before = crate::storage_manager::bytes(&runtime)?;
+            if self.installed_java(major).await.is_some() {
+                std::fs::remove_dir_all(&runtime)?;
+                reclaimed += before;
+                continue;
+            }
+            self.download_compact_java(major, &runtime, task).await?;
+            reclaimed += before.saturating_sub(crate::storage_manager::bytes(&runtime)?);
+        }
+        Ok(reclaimed)
+    }
+
     async fn compatible_installed_java(&self, path: &Path, major: u32) -> bool {
         matching_architecture(path) && self.cached_java_version(path).await.ok() == Some(major)
     }

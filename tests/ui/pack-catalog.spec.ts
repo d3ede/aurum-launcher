@@ -46,7 +46,7 @@ async function fixture(
       let eventHandler: number | undefined;
       w.emitPackProgress = (payload: any) =>
         callbacks.get(eventHandler!)?.({
-          event: "auren:event",
+          event: "aurum:event",
           id: 1,
           payload,
         });
@@ -61,7 +61,7 @@ async function fixture(
         },
         async invoke(cmd: string, args: any) {
           if (cmd === "plugin:event|listen") {
-            if (args.event === "auren:event") eventHandler = args.handler;
+            if (args.event === "aurum:event") eventHandler = args.handler;
             return 1;
           }
           if (cmd !== "rpc") return cmd.includes("is_maximized") ? false : 1;

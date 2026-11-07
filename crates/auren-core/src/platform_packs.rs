@@ -798,7 +798,7 @@ mod tests {
         std::fs::create_dir_all(&staging).unwrap();
         std::fs::write(staging.join("example.jar"), b"abc").unwrap();
         // Force persistence to fail after publication; the instance must roll back.
-        std::fs::create_dir(e.root.join("state.json.tmp")).unwrap();
+        std::fs::create_dir(crate::layout::app_path(&e.root, "state.json.tmp")).unwrap();
         let error = e
             .download_platform_pack("ftb", "125", "1", &t)
             .await

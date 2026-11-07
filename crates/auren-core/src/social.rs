@@ -112,7 +112,7 @@ struct Journal {
 
 impl Engine {
     pub async fn social_pending(&self) -> Result<Vec<Review>> {
-        let directory = self.root.join("social/installations");
+        let directory = crate::layout::app_path(&self.root, "social/installations");
         if !directory.is_dir() {
             return Ok(Vec::new());
         }
@@ -140,9 +140,7 @@ impl Engine {
             if validate_hash(&journal.plan, 64).is_err() {
                 continue;
             }
-            let path = self
-                .root
-                .join("social/plans")
+            let path = crate::layout::app_path(&self.root, "social/plans")
                 .join(format!("{}.json", journal.plan));
             if !path.is_file() || tokio::fs::metadata(&path).await?.len() > 8 * 1024 * 1024 {
                 continue;
@@ -713,7 +711,7 @@ impl Engine {
         validate_plan(&plan)?;
         let bytes = serde_json::to_vec(&plan)?;
         let id = format!("{:x}", Sha256::digest(&bytes));
-        let folder = self.root.join("social/plans");
+        let folder = crate::layout::app_path(&self.root, "social/plans");
         tokio::fs::create_dir_all(&folder).await?;
         tokio::fs::write(folder.join(format!("{id}.json")), bytes).await?;
         Ok(Review { id, plan })
@@ -740,9 +738,7 @@ impl Engine {
             bail!("Review and accept the complete file/dependency plan first");
         }
         validate_hash(plan_id, 64)?;
-        let path = self
-            .root
-            .join("social/plans")
+        let path = crate::layout::app_path(&self.root, "social/plans")
             .join(format!("{plan_id}.json"));
         if tokio::fs::metadata(&path).await?.len() > 8 * 1024 * 1024 {
             bail!("Install plan exceeds limit");
@@ -766,9 +762,7 @@ impl Engine {
         task: &Task,
     ) -> Result<InstallResult> {
         let stage = self.root.join("staging").join(format!("social-{id}"));
-        let journal_path = self
-            .root
-            .join("social/installations")
+        let journal_path = crate::layout::app_path(&self.root, "social/installations")
             .join(format!("{id}.json"));
         tokio::fs::create_dir_all(journal_path.parent().unwrap()).await?;
         let mut journal = if journal_path.exists() {
@@ -824,7 +818,7 @@ impl Engine {
         }
         let game = stage.join("game");
         tokio::fs::create_dir_all(&game).await?;
-        let cache = self.root.join("cache/social-content");
+        let cache = crate::layout::app_path(&self.root, "cache/social-content");
         tokio::fs::create_dir_all(&cache).await?;
         for (index, item) in plan.items.iter().enumerate() {
             task.check()?;
@@ -967,9 +961,7 @@ impl Engine {
             .context("Invitation expired")?;
         incoming.offer.validate()?;
         let world = incoming.offer.world;
-        let preparation = self
-            .root
-            .join("social/preparations")
+        let preparation = crate::layout::app_path(&self.root, "social/preparations")
             .join(format!("{invitation}.json"));
         let saved = if profile_id.is_none() && preparation.is_file() {
             let bytes = tokio::fs::read(&preparation).await?;
@@ -1313,6 +1305,7 @@ async fn download_bounded(value: &str, path: &Path, item: &PlanItem, task: &Task
         .timeout(Duration::from_secs(180))
         .build()?;
     let temp = path.with_extension("part");
+    let _temporary = crate::temporary::Temporary::file(&temp);
     let result: Result<()> = async {
         let response = client.get(url).send().await?;
         if !response.status().is_success() {

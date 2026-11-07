@@ -213,6 +213,7 @@ impl Engine {
                 .root
                 .join("horizon/downloads")
                 .join(format!("{digest}.zip"));
+            let _archive = crate::temporary::Temporary::file(&archive);
             self.download(
                 asset_url(&release, ARCHIVE)?,
                 &archive,
@@ -223,6 +224,7 @@ impl Engine {
             task.progress("horizon", "Распаковываем Horizon", 0, 0);
             // Extraction rejects traversal, links and oversized archives. Publish only the complete tree.
             let staging = self.root.join("horizon/staging").join(&task.id);
+            let _staging = crate::temporary::Temporary::directory(&staging);
             extract_zip(&archive, &staging, None, task)?;
             let extracted = staging.join("horizon-windows-x64");
             if !extracted.join("horizon-client.exe").is_file()
@@ -313,6 +315,7 @@ impl Engine {
         let meta: Value = serde_json::from_slice(&tokio::fs::read(&version_json).await?)?;
         let server = &meta["downloads"]["server"];
         let server_jar = version_dir.join("horizon-server-source.jar");
+        let _server_source = crate::temporary::Temporary::file(&server_jar);
         self.download(
             server["url"].as_str().context("Horizon: нет server jar")?,
             &server_jar,
@@ -325,7 +328,7 @@ impl Engine {
             task,
         )
         .await?;
-        let java = self.java(major, task).await?;
+        let (java, _preparation_tools) = self.preparation_java(major, task).await?;
         let java_home = java
             .parent()
             .and_then(Path::parent)
@@ -350,6 +353,10 @@ impl Engine {
             .arg("--output")
             .arg(resources);
         run_prepare(command, task).await?;
+        // The exported resources are standalone; Java exporter inputs can be downloaded again.
+        for name in [".local/minecraft", ".local/datagen"] {
+            let _ = tokio::fs::remove_dir_all(directory.join(name)).await;
+        }
         task.check()?;
         let mut db = self.db.lock().await;
         let mut next = db.clone();

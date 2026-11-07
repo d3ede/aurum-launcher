@@ -29,6 +29,13 @@ Function AurumNormalizeInstallPath
       ${EndIf}
     ${EndIf}
   ${EndIf}
+  ${GetFileName} "$0" $1
+  ${If} $1 != "Launcher"
+    ${If} $1 != "${PRODUCTNAME}"
+      StrCpy $0 "$0\${PRODUCTNAME}"
+    ${EndIf}
+    StrCpy $0 "$0\Launcher"
+  ${EndIf}
   Pop $2
   Pop $1
 FunctionEnd

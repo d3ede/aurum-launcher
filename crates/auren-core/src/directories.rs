@@ -151,7 +151,7 @@ fn move_files(root: &Path, movement: &Move, resume: bool) -> Result<()> {
 }
 
 pub(crate) fn recover(root: &Path, db: &mut Database) -> Result<()> {
-    let journal = root.join(JOURNAL);
+    let journal = crate::layout::app_path(root, JOURNAL);
     if !journal.try_exists()? {
         return Ok(());
     }
@@ -174,7 +174,7 @@ pub(crate) fn recover(root: &Path, db: &mut Database) -> Result<()> {
         bail!("Завершите Minecraft для продолжения переноса профилей")
     }
     move_files(root, &movement, true)?;
-    write_json(&root.join("state.json"), &movement.after)?;
+    write_json(&crate::layout::app_path(root, "state.json"), &movement.after)?;
     *db = movement.after;
     std::fs::remove_file(journal)?;
     Ok(())
@@ -188,7 +188,7 @@ impl Engine {
         source: Option<&Path>,
         target: String,
     ) -> Result<()> {
-        let journal = self.root.join(JOURNAL);
+        let journal = crate::layout::app_path(&self.root, JOURNAL);
         if journal.try_exists()? {
             bail!("Перезапустите лаунчер для завершения предыдущего переноса")
         }
@@ -209,7 +209,7 @@ impl Engine {
             return Err(error);
         }
         // Keep the journal and published files if saving fails. Startup completes the move.
-        if let Err(error) = write_json(&self.root.join("state.json"), &movement.after) {
+        if let Err(error) = write_json(&crate::layout::app_path(&self.root, "state.json"), &movement.after) {
             // Imports still own a staging directory and can roll back safely. Keep the
             // journal if rollback fails so cleanup can never discard the published files.
             if let Some(source) = movement

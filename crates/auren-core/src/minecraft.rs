@@ -500,39 +500,7 @@ impl Engine {
         if !cfg!(windows) {
             bail!("Автоматическая Java сейчас доступна на Windows. Укажите путь к Java {major} в настройках")
         }
-        task.progress(
-            "java",
-            format!("Устанавливаем Eclipse Temurin Java {major}"),
-            0,
-            0,
-        );
-        let arch = if cfg!(target_arch = "aarch64") {
-            "aarch64"
-        } else {
-            "x64"
-        };
-        let list=self.json(&format!("https://api.adoptium.net/v3/assets/latest/{major}/hotspot?architecture={arch}&image_type=jdk&os=windows&vendor=eclipse")).await?;
-        let package = &list
-            .as_array()
-            .context("Нет ответа Adoptium")?
-            .first()
-            .context("Java для этой платформы не найдена")?["binary"]["package"];
-        let zip = self.root.join("runtimes").join(format!("java-{major}.zip"));
-        self.download(
-            text(package, "link")?,
-            &zip,
-            Some(("sha256", text(package, "checksum")?)),
-            task,
-        )
-        .await?;
-        extract_zip(&zip, &runtime, None, task)?;
-        let path = find_java(&runtime).context("Java не найдена после распаковки")?;
-        if self.cached_java_version(&path).await? != major {
-            bail!("Скачанная Java не соответствует требуемой версии {major}")
-        }
-        // Extraction and executable verification must both succeed first.
-        let _ = tokio::fs::remove_file(&zip).await;
-        Ok(path)
+        self.download_compact_java(major, &runtime, task).await
     }
     async fn install_forge(&self, p: &Profile, java: &Path, task: &Task) -> Result<Value> {
         let version = p.loader_version.as_deref().context("Нет загрузчика")?;
@@ -570,6 +538,7 @@ impl Engine {
             .context("Нет SHA1 установщика")?;
         self.download(&url, &jar, Some(("sha1", checksum)), task)
             .await?;
+        let _installer = crate::temporary::Temporary::file(&jar);
         let mut archive = zip::ZipArchive::new(std::fs::File::open(&jar)?)?;
         let metadata: Value = {
             let mut file = archive.by_name("install_profile.json")?;
@@ -640,7 +609,7 @@ impl Engine {
         drop(tx);
         let mut tail = std::collections::VecDeque::new();
         let mut last_event = std::time::Instant::now() - std::time::Duration::from_secs(1);
-        let log_dir = self.root.join("logs");
+        let log_dir = crate::layout::app_path(&self.root, "logs");
         tokio::fs::create_dir_all(&log_dir).await?;
         let mut log =
             tokio::fs::File::create(log_dir.join(format!("installer-{}.log", task.id))).await?;
@@ -1019,7 +988,7 @@ impl Engine {
         drop(tx);
         task.progress("running", "Minecraft запущен", 0, 0);
         tokio::spawn(async move {
-            let mut log = tokio::fs::File::create(instance.join("auren-latest.log"))
+            let mut log = tokio::fs::File::create(instance.join("aurum-latest.log"))
                 .await
                 .ok();
             let mut stream_open = true;

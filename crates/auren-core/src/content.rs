@@ -159,7 +159,7 @@ impl Engine {
                     });
                 c.enabled = enabled;
                 let path = file.path();
-                let cache = self.root.join("cache/content-metadata");
+                let cache = crate::layout::app_path(&self.root, "cache/content-metadata");
                 c = tokio::task::spawn_blocking(move || {
                     crate::content_metadata::describe_file(&path, &cache, c)
                 })
@@ -204,12 +204,7 @@ impl Engine {
                 tokio::fs::rename(source, dest).await?;
             }
             "remove" => {
-                let trash = self
-                    .root
-                    .join("trash/content")
-                    .join(uuid::Uuid::new_v4().to_string());
-                tokio::fs::create_dir_all(&trash).await?;
-                tokio::fs::rename(source, trash.join(&item.filename)).await?;
+                self.trash_content(id, item, &source).await?;
             }
             _ => bail!("Неизвестное действие"),
         }

@@ -85,7 +85,7 @@ fn parse(arguments: &[String]) -> Result<Option<ServerLaunch>, String> {
 
 pub fn receive(app: &tauri::AppHandle, arguments: &[String]) {
     if app.state::<Shortcuts>().enqueue(arguments) {
-        let _ = app.emit("auren:event", serde_json::json!({"id":"server-shortcut","profileId":null,"phase":"server-shortcut","message":"","done":0,"total":0}));
+        let _ = app.emit("aurum:event", serde_json::json!({"id":"server-shortcut","profileId":null,"phase":"server-shortcut","message":"","done":0,"total":0}));
     }
 }
 

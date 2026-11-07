@@ -10,6 +10,9 @@ pub mod hosting;
 mod import_cleanup;
 mod java_runtime;
 mod launch_cache;
+pub mod layout;
+mod temporary;
+pub mod storage_manager;
 pub mod storage;
 pub use directories::default_data_directory;
 pub mod microsoft_oauth;
@@ -110,8 +113,9 @@ impl Task {
 impl Engine {
     pub async fn new(root: PathBuf, emit: impl Fn(Event) + Send + Sync + 'static) -> Result<Self> {
         tokio::fs::create_dir_all(&root).await?;
-        let mut db: Database = if root.join("state.json").exists() {
-            serde_json::from_slice(&tokio::fs::read(root.join("state.json")).await?)
+        tokio::fs::create_dir_all(crate::layout::application(&root)).await?;
+        let mut db: Database = if crate::layout::app_path(&root, "state.json").exists() {
+            serde_json::from_slice(&tokio::fs::read(crate::layout::app_path(&root, "state.json")).await?)
                 .context("Не удалось прочитать state.json; файл сохранён для восстановления")?
         } else {
             Database::default()
@@ -130,7 +134,7 @@ impl Engine {
             .https_only(true)
             .build()?;
         #[cfg(windows)]
-        let social = Arc::new(aurum_social::service::Service::new(root.join("social")));
+        let social = Arc::new(aurum_social::service::Service::new(crate::layout::app_path(&root, "social")));
         let engine = Self {
             #[cfg(windows)]
             social,
@@ -158,6 +162,7 @@ impl Engine {
         engine.migrate_instance_directories().await?;
         // Best effort: only validated installation archives, never game files or caches.
         let _ = engine.clean_java_archives().await;
+        let _ = engine.cleanup_installation_leftovers().await;
         Ok(engine)
     }
     pub async fn snapshot(&self) -> Snapshot {
@@ -191,7 +196,7 @@ impl Engine {
     }
     pub fn instance(&self, id: &str) -> Result<PathBuf> {
         uuid::Uuid::parse_str(id).context("Неверный идентификатор сборки")?;
-        if self.root.join("instance-move.json").try_exists()? {
+        if crate::layout::app_path(&self.root, "instance-move.json").try_exists()? {
             bail!("Перезапустите лаунчер для завершения переноса профилей")
         }
         let directories = self.instance_directories.read().unwrap();

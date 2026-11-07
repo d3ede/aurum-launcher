@@ -83,7 +83,7 @@ export function MicrosoftLogin() {
           {success
             ? t("Аккаунт Minecraft Java подключён и выбран для игры.")
             : t(
-                "Подтвердите вход в отдельном окне Microsoft. Aurum позаботится об остальном.",
+                "Подтвердите вход в обычном браузере. Aurum позаботится об остальном.",
               )}
         </p>
       </div>
@@ -117,8 +117,8 @@ export function MicrosoftLogin() {
                       : checking
                         ? t("Завершаем вход")
                         : waiting
-                          ? t("Ждём подтверждения в окне Microsoft")
-                          : t("Открываем окно Microsoft")}
+                          ? t("Ждём подтверждения в браузере")
+                          : t("Открываем страницу Microsoft")}
             </b>
             <p>
               {error
@@ -134,7 +134,7 @@ export function MicrosoftLogin() {
                             "Подключаем аккаунт и проверяем профиль Minecraft Java.",
                           )
                         : t(
-                            "Выберите аккаунт в окне Microsoft и подтвердите вход. Это окно закроется автоматически.",
+                            "Выберите аккаунт в браузере и подтвердите вход. Aurum подключит его автоматически.",
                           )}
             </p>
           </div>
@@ -188,7 +188,7 @@ export function MicrosoftLogin() {
               disabled={reopening}
               onClick={() => void reopen()}
             >
-              {t("Вернуться к окну Microsoft ")}
+              {t("Открыть Microsoft ещё раз ")}
               <ArrowUpRight size={17} />
             </button>
           ) : null}

@@ -160,7 +160,7 @@ fn icon(value: &str) -> Option<String> {
 }
 
 async fn read_history(root: &Path) -> Result<History> {
-    let path = root.join("recent-servers.json");
+    let path = crate::layout::app_path(root, "recent-servers.json");
     match tokio::fs::metadata(&path).await {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(History::default()),
         Ok(metadata) if metadata.len() > 4 * 1024 * 1024 => {
@@ -174,12 +174,12 @@ async fn read_history(root: &Path) -> Result<History> {
 }
 
 async fn save_history(root: &Path, history: &History) -> Result<()> {
-    let temporary = root.join("recent-servers.json.tmp");
+    let temporary = crate::layout::app_path(root, "recent-servers.json.tmp");
     let mut file = tokio::fs::File::create(&temporary).await?;
     file.write_all(&serde_json::to_vec(history)?).await?;
     file.sync_all().await?;
     drop(file);
-    tokio::fs::rename(temporary, root.join("recent-servers.json")).await?;
+    tokio::fs::rename(temporary, crate::layout::app_path(root, "recent-servers.json")).await?;
     Ok(())
 }
 

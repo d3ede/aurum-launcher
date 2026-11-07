@@ -189,7 +189,7 @@ async fn real_minecraft_automatically_opens_the_native_lan_connection() -> Resul
             .await
             .unwrap_or_default();
         eprintln!("Agent state: {}", state.trim());
-        if let Ok(log) = tokio::fs::read_to_string(instance.join("auren-latest.log")).await {
+        if let Ok(log) = tokio::fs::read_to_string(instance.join("aurum-latest.log")).await {
             for line in log
                 .lines()
                 .rev()

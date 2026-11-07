@@ -296,6 +296,7 @@ impl Engine {
             .join("horizon/mod-downloads")
             .join(format!("{hash}.hnmod"));
         task.progress("horizon-mod", "Скачиваем исходники мода Horizon", 0, 0);
+        let _download = crate::temporary::Temporary::file(&cached);
         self.download(url, &cached, Some(("sha256", hash)), task)
             .await?;
         if tokio::fs::metadata(&cached).await?.len() != size {
@@ -330,8 +331,11 @@ impl Engine {
         tokio::fs::create_dir_all(&folder).await?;
         let target = crate::safe_join(&folder, name)?;
         let temporary = target.with_extension(format!("{}.tmp", task.id));
+        let _temporary = crate::temporary::Temporary::file(&temporary);
         tokio::fs::copy(&cached, &temporary).await?;
         tokio::fs::rename(&temporary, &target).await?;
+        let old_file = profile.content.iter().find(|c| c.source == "horizon" && c.project_id == project_id)
+            .filter(|c| c.filename != name).map(|c| folder.join(&c.filename));
         let project = native_project(raw)?;
         let mut db = self.db.lock().await;
         let mut next = db.clone();
@@ -364,6 +368,7 @@ impl Engine {
         });
         persist(&self.root, &next).await?;
         *db = next;
+        if let Some(old) = old_file { let _ = tokio::fs::remove_file(old).await; }
         Ok(())
     }
 
@@ -383,12 +388,7 @@ impl Engine {
         if action == "remove" {
             let file = crate::safe_join(&sources(&self.instance(id)?), &item.filename)?;
             if file.exists() {
-                let trash = self
-                    .root
-                    .join("trash/content")
-                    .join(uuid::Uuid::new_v4().to_string());
-                tokio::fs::create_dir_all(&trash).await?;
-                tokio::fs::rename(&file, trash.join(&item.filename)).await?;
+                self.trash_content(id, item, &file).await?;
             }
         } else if action != "toggle" {
             bail!("Неизвестное действие с модом")
@@ -576,6 +576,7 @@ impl Engine {
             .root
             .join("horizon/downloads")
             .join("native-builder-0.2.43.zip");
+        let _archive = crate::temporary::Temporary::file(&archive);
         self.download(
             &format!("{base}/{BUILDER_ASSET}"),
             &archive,
@@ -699,6 +700,7 @@ impl Engine {
         tokio::fs::create_dir_all(home.join("instances").join(id)).await?;
         let input = root.join("inputs").join(&task.id);
         tokio::fs::create_dir_all(&input).await?;
+        let _input = crate::temporary::Temporary::directory(&input);
         for c in &enabled {
             task.check()?;
             let archive = crate::safe_join(&sources(&self.instance(id)?), &c.filename)?;

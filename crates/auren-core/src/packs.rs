@@ -732,6 +732,7 @@ impl Engine {
         let path = self.root.join("downloads").join(format!("{}.zip", task.id));
         self.download(&url, &path, Some(("sha1", &hash)), task)
             .await?;
+        let _archive = crate::temporary::Temporary::file(&path);
         // Archive manifests do not contain the project's catalog artwork.
         let metadata = tokio::time::timeout(std::time::Duration::from_secs(5), async {
             if source == "modrinth" {

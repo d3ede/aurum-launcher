@@ -451,7 +451,7 @@ Function .onInit
         StrCpy $INSTDIR "$PROGRAMFILES\${PRODUCTNAME}"
       ${EndIf}
     !else if "${INSTALLMODE}" == "currentUser"
-      StrCpy $INSTDIR "$LOCALAPPDATA\${PRODUCTNAME}"
+      StrCpy $INSTDIR "$APPDATA\${PRODUCTNAME}\Launcher"
     !endif
 
     Call RestorePreviousInstallLocation
@@ -543,6 +543,7 @@ Section WebView2
         DetailPrint "$(installingWebview2)"
         ; $6 holds the path to the webview2 installer
         ExecWait "$6 ${WEBVIEW2INSTALLERARGS} /install" $1
+        Delete "$6"
         ${If} $1 = 0
           DetailPrint "$(webview2InstallSuccess)"
         ${Else}

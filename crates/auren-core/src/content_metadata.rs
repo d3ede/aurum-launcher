@@ -496,7 +496,7 @@ impl Engine {
                 warnings.push(format!("{}: {e}", item.name));
             }
         }
-        let cache = self.root.join("cache/content-metadata");
+        let cache = crate::layout::app_path(&self.root, "cache/content-metadata");
         tokio::fs::create_dir_all(&cache).await?;
         for item in &content {
             if item.source != "local" {

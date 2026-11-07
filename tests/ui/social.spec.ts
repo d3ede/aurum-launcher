@@ -73,8 +73,8 @@ async function fixture(
       w.socialState = state;
       w.statePatch = (patch: any) => {
         Object.assign(state, patch);
-        events.get("auren:event")?.({
-          event: "auren:event",
+        events.get("aurum:event")?.({
+          event: "aurum:event",
           payload: {
             id: "fixture",
             phase: "running",

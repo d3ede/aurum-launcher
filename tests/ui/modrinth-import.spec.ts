@@ -73,7 +73,7 @@ async function fixture(
       let eventHandler: number | undefined;
       let finishImport: ((value: any) => void) | undefined;
       w.emitProgress = (payload: any) => callbacks.get(eventHandler!)?.({
-        event: "auren:event", id: 1, payload,
+        event: "aurum:event", id: 1, payload,
       });
       w.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
       w.__TAURI_INTERNALS__ = {
@@ -87,7 +87,7 @@ async function fixture(
         },
         async invoke(command: string, args: any) {
           if (command === "plugin:event|listen") {
-            if (args.event === "auren:event") eventHandler = args.handler;
+            if (args.event === "aurum:event") eventHandler = args.handler;
             return 1;
           }
           if (command !== "rpc")

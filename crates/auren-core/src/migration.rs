@@ -21,21 +21,41 @@ impl Engine {
         if std::fs::read_dir(&target)?.next().is_some() {
             bail!("Выберите пустую папку для данных Aurum")
         }
-        let entries: Vec<_> = walkdir::WalkDir::new(&source)
+        let mut entries: Vec<_> = walkdir::WalkDir::new(&source)
             .follow_links(false)
             .into_iter()
-            .collect::<std::result::Result<_, _>>()?;
+            .map(|entry| {
+                let entry = entry?;
+                let relative = entry.path().strip_prefix(&source)?.to_path_buf();
+                Ok((entry, relative))
+            })
+            .collect::<Result<_>>()?;
+        let application = crate::layout::application(&source);
+        if application != source {
+            for name in crate::layout::APP_ENTRIES {
+                if name.ends_with(".tmp") || *name == "instance-move.json" { continue; }
+                let path = application.join(name);
+                if !path.exists() { continue; }
+                for entry in walkdir::WalkDir::new(&path).follow_links(false) {
+                    let entry = entry?;
+                    let relative = entry.path().strip_prefix(&application)?.to_path_buf();
+                    entries.push((entry, relative));
+                }
+            }
+        }
+        let stage = target.join(format!(".aurum-copy-{}", task.id));
+        tokio::fs::create_dir(&stage).await?;
+        let _stage = crate::temporary::Temporary::directory(&stage);
         let result: Result<()> = async {
-            for (i, entry) in entries.iter().enumerate() {
+            for (i, (entry, relative)) in entries.iter().enumerate() {
                 task.check()?;
                 if entry.file_type().is_symlink() {
                     bail!("Папка данных содержит символическую ссылку")
                 }
-                let relative = entry.path().strip_prefix(&source)?;
                 if relative.as_os_str().is_empty() {
                     continue;
                 }
-                let destination = target.join(relative);
+                let destination = stage.join(relative);
                 if entry.file_type().is_dir() {
                     tokio::fs::create_dir_all(destination).await?;
                 } else {
@@ -66,12 +86,34 @@ impl Engine {
                 }
             }
             let db = self.db.lock().await;
-            crate::store::persist(&target, &db).await?;
-            self.hosting_rebase_copy(&target).await?;
+            crate::store::persist(&stage, &db).await?;
+            self.hosting_rebase_copy(&stage).await?;
+            let hosting = stage.join("hosting/profiles.json");
+            if hosting.exists() {
+                let mut profiles: Vec<crate::hosting::HostingProfile> = serde_json::from_slice(&tokio::fs::read(&hosting).await?)?;
+                for profile in &mut profiles {
+                    if let Ok(relative) = profile.root.strip_prefix(&stage) { profile.root = target.join(relative); }
+                }
+                tokio::fs::write(hosting, serde_json::to_vec_pretty(&profiles)?).await?;
+            }
+            task.check()?;
+            let publish = std::fs::read_dir(&stage)?.map(|entry| Ok(entry?.path())).collect::<Result<Vec<_>>>()?;
+            for source in &publish {
+                if target.join(source.file_name().unwrap()).exists() { bail!("Новая папка изменилась во время копирования") }
+            }
+            let mut moved = vec![];
+            for source in publish {
+                let destination = target.join(source.file_name().unwrap());
+                if let Err(error) = std::fs::rename(&source, &destination) {
+                    for (source, destination) in moved.into_iter().rev() { std::fs::rename(destination, source)?; }
+                    return Err(error.into());
+                }
+                moved.push((source, destination));
+            }
             Ok(())
         }
         .await;
-        // On cancellation, partial copies are kept for inspection. They are never selected as active data.
+        // The staging guard removes partial copies on error, cancellation or future drop.
         result
     }
 }

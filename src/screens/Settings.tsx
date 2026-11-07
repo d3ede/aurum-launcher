@@ -1,3 +1,4 @@
+import { StorageSettings } from "./Storage";
 import { t, formatDecimal } from "../lib/i18n";
 import { LanguagePicker } from "../components/LanguagePicker";
 import { LauncherUpdateSettings } from "../components/LauncherUpdate";
@@ -11,6 +12,7 @@ import {
   FolderOpen,
   Cpu,
   Coffee,
+  HardDrive,
   Check,
   Save,
 } from "lucide-react";
@@ -27,6 +29,7 @@ import {
 export function Settings() {
   const { settingsTab, openSettings } = useApp();
   useLayoutEffect(scrollSettingsToTop, [settingsTab]);
+  if (settingsTab === "storage") return <StorageSettings />;
   if (settingsTab === "appearance") return <AppearanceSettings />;
   return (
     <div className="settings-page" data-settings-page={settingsTab}>
@@ -290,6 +293,20 @@ function GeneralSettings() {
               </div>
             )}
           </div>
+          <button
+            type="button"
+            className="settings-destination storage-destination"
+            onClick={() => openSettings("storage")}
+          >
+            <span className="settings-destination-icon">
+              <HardDrive size={25} />
+            </span>
+            <span>
+              <b>{t("Хранилище")}</b>
+              <small>{t("Занятое место, очистка и корзина")}</small>
+            </span>
+            <ArrowRight size={19} />
+          </button>
           <label className="checkbox-label">
             <input
               type="checkbox"

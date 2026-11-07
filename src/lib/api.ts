@@ -48,6 +48,11 @@ export const native = isTauri();
 type Empty = Record<string, never>;
 import type { ScreenshotLibrary, ScreenshotTransfer } from "./screenshots";
 interface Contract {
+  storageRemoveVersion: [{ id: string }, number];
+  storageSnapshot: [Empty, import("../screens/Storage").StorageSnapshot];
+  storageClean: [{ category: string }, number];
+  storageTrash: [{ ids: string[]; restore: boolean }, number];
+  optimizeJava: [{ operationId: string }, number];
   "screenshots.list": [{ profileId: string | null }, ScreenshotLibrary];
   "screenshots.image": [{ id: string; thumbnail: boolean }, string];
   "screenshots.send": [{ friend: string; ids: string[] }, string[]];
@@ -524,7 +529,7 @@ export async function rpc<K extends keyof Contract>(
 }
 export async function events(callback: (event: Progress) => void) {
   if (!native) return () => {};
-  return listen<Progress>("auren:event", (event) => callback(event.payload));
+  return listen<Progress>("aurum:event", (event) => callback(event.payload));
 }
 export const defaultSettings: Settings = {
   language: "system",
@@ -538,7 +543,7 @@ export const defaultSettings: Settings = {
 };
 const savedTheme =
   typeof localStorage !== "undefined"
-    ? localStorage.getItem("auren:theme")
+    ? localStorage.getItem("aurum:theme") || localStorage.getItem("auren:theme")
     : null;
 const savedBrowserSettings = (() => {
   try {

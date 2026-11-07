@@ -125,8 +125,7 @@ pub fn default_texture(id: &str, model: &str) -> Result<Vec<u8>> {
 impl Engine {
     fn avatar_cache_path(&self, id: &str) -> std::path::PathBuf {
         use sha2::{Digest, Sha256};
-        self.root
-            .join("cache/account-avatars")
+        crate::layout::app_path(&self.root, "cache/account-avatars")
             .join(format!("{:x}.json", Sha256::digest(id.as_bytes())))
     }
 
@@ -280,7 +279,7 @@ impl Engine {
     }
 
     pub async fn skin_library(&self) -> Result<SkinLibrary> {
-        let path = self.root.join("skin-library.json");
+        let path = crate::layout::app_path(&self.root, "skin-library.json");
         if !path.exists() {
             return Ok(SkinLibrary::default());
         }
@@ -288,13 +287,13 @@ impl Engine {
             .context("Не удалось прочитать библиотеку скинов; исходный файл сохранён")
     }
     async fn persist_skins(&self, library: &SkinLibrary) -> Result<()> {
-        let temp = self.root.join("skin-library.json.tmp");
+        let temp = crate::layout::app_path(&self.root, "skin-library.json.tmp");
         let mut file = tokio::fs::File::create(&temp).await?;
         use tokio::io::AsyncWriteExt;
         file.write_all(&serde_json::to_vec_pretty(library)?).await?;
         file.sync_all().await?;
         drop(file);
-        tokio::fs::rename(temp, self.root.join("skin-library.json")).await?;
+        tokio::fs::rename(temp, crate::layout::app_path(&self.root, "skin-library.json")).await?;
         Ok(())
     }
     pub async fn save_library_skin(

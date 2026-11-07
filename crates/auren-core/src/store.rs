@@ -3,16 +3,16 @@ use anyhow::{bail, Context, Result};
 use md5::{Digest, Md5};
 
 pub async fn persist(root: &std::path::Path, db: &Database) -> Result<()> {
-    if root.join("instance-move.json").try_exists()? {
+    if crate::layout::app_path(root, "instance-move.json").try_exists()? {
         bail!("Перезапустите лаунчер для завершения переноса профилей")
     }
     let bytes = serde_json::to_vec_pretty(db)?;
-    let temp = root.join("state.json.tmp");
+    let temp = crate::layout::app_path(root, "state.json.tmp");
     let mut file = tokio::fs::File::create(&temp).await?;
     tokio::io::AsyncWriteExt::write_all(&mut file, &bytes).await?;
     file.sync_all().await?;
     drop(file);
-    tokio::fs::rename(temp, root.join("state.json")).await?;
+    tokio::fs::rename(temp, crate::layout::app_path(root, "state.json")).await?;
     Ok(())
 }
 impl Engine {
@@ -129,26 +129,7 @@ impl Engine {
         Ok(())
     }
     pub async fn delete_profile(&self, id: &str) -> Result<()> {
-        self.ensure_idle(id).await?;
-        if self.root.join("instance-move.json").exists() {
-            bail!("Перезапустите лаунчер для завершения переноса")
-        }
-        self.profile(id).await?;
-        // Preserve deleted worlds in a recoverable trash folder.
-        let path = self.instance(id)?;
-        if path.exists() {
-            let trash = self.root.join("trash");
-            tokio::fs::create_dir_all(&trash).await?;
-            tokio::fs::rename(path, trash.join(format!("{}-{id}", crate::now()))).await?;
-        }
-        let mut db = self.db.lock().await;
-        let mut next = db.clone();
-        next.profiles.retain(|p| p.id != id);
-        next.instance_directories.remove(id);
-        persist(&self.root, &next).await?;
-        *db = next;
-        self.instance_directories.write().unwrap().remove(id);
-        Ok(())
+        self.trash_profile(id).await
     }
     pub async fn save_settings(&self, settings: Settings) -> Result<()> {
         if !matches!(

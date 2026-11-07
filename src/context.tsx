@@ -263,7 +263,7 @@ export function Provider({
       if (native) await rpc("saveSettings", { settings });
       else {
         localStorage.setItem("aurum:settings", JSON.stringify(settings));
-        localStorage.setItem("auren:theme", settings.theme);
+        localStorage.setItem("aurum:theme", settings.theme);
         setData((old) => ({ ...old, settings }));
       }
       return true;

@@ -38,7 +38,7 @@ try {
       }
     });
     await window.__TAURI_INTERNALS__.invoke("plugin:event|listen", {
-      event: "auren:event", target: { kind: "Any" }, handler,
+      event: "aurum:event", target: { kind: "Any" }, handler,
     });
   });
   await page.getByRole("button", { name: "Аккаунты и скины", exact: true }).click();

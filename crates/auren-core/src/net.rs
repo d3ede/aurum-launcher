@@ -57,6 +57,7 @@ impl Engine {
             task.id,
             uuid::Uuid::new_v4()
         ));
+        let _temporary = crate::temporary::Temporary::file(&temp);
         let result: Result<()> = async {
             let response = self.http.get(url).send().await?.error_for_status()?;
             let mut stream = response.bytes_stream();

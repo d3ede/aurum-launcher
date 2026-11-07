@@ -1,53 +1,30 @@
-# Storage and removal
+# Storage and sign-in
 
-These storage and removal controls are included in Aurum 0.5.5.
+The default data home has two directories:
 
-## Disk usage
+```text
+Aurum Launcher/
+  Launcher/
+    aurum.exe
+    data/        # profiles database, settings, Social identity, caches and logs
+    webview/     # main interface profile, including existing preferences
+  Game Files/
+    instances/   # each instance's worlds, mods and game settings
+    assets/
+    libraries/
+    versions/
+    runtimes/
+    horizon/
+    hosting/
+    trash/
+```
 
-The launcher executable is only the application. Minecraft assets, libraries and
-versions are shared between Aurum instances. Each instance has its own mods,
-worlds, screenshots and mod-generated data. Java runtimes and game data may take
-several gigabytes even when the executable is small.
+Existing game data is moved using same-volume renames. Migration resumes after an interruption, rejects ambiguous destinations and preserves unknown files. An explicit Java path inside the previous data root follows the move. The application identifier and credential-vault namespace remain unchanged so existing Microsoft accounts keep their credentials.
 
-Aurum first reuses its working managed Java for the requested major version.
-If that runtime is absent, it checks JAVA_HOME, JDK_HOME, PATH and common Windows
-Java installation directories. Automatic discovery requires the exact major and
-matching architecture. A newer major is not treated as interchangeable. Explicit
-Java settings continue to be respected. If no compatible runtime is available,
-Aurum downloads its managed runtime.
+Settings → Files and versions → Storage shows disk usage, cache and download cleanup, installed versions and trash. Used versions cannot be removed. Deleting an instance or supported content creates recovery metadata; individual items or the whole trash can be restored. Restoring never replaces an existing file. Permanent deletion requires confirmation. Items from older versions without recovery metadata remain removable but cannot be restored automatically.
 
-After successful extraction and executable verification, the Java ZIP is removed.
-Startup also removes leftover `runtimes/java-N.zip` archives only when the matching
-extracted Java still works. Broken/incomplete runtime archives, game assets,
-libraries and user content are retained. Cleanup does not require internet access.
+Managed downloads use drop guards so cancellation of a parallel future removes its partial file. Installation archives are discarded after use. Startup also removes abandoned managed downloads, retains the latest 20 installer logs and preserves import rollback backups and resumable Social installations. Main interface caches are cleared before WebView startup when requested; preference and sign-in storage are preserved.
 
-## Import copies
+Java selection reuses an exact-major runtime from managed installations, environment variables, known system vendors or known launcher stores. New ordinary installations download a verified Temurin JRE. Storage can replace managed JDKs with JREs or reuse a matching system installation; manually configured Java is preserved. Horizon preparation can use an existing JDK or a temporary verified JDK that is removed after preparation.
 
-Import creates a separate copy and keeps the original by default. The dialog
-explains the additional disk use. An unchecked option allows sending the original
-to the Windows Recycle Bin after a successful import and SHA-256 verification of
-the copied content. Changed originals, failed copies and cancellation preserve the
-source. Disposal errors are reported separately from an already completed import.
-The original's space is reclaimed only after the user empties the Windows Recycle Bin.
-
-When disposing a folder import's original, all of its files are copied, including
-files outside the normal mods/worlds/settings selection. Originals containing
-links require manual disposal. Modrinth's launcher metadata, session locks and logs
-remain excluded from the imported instance.
-
-## Uninstall
-
-Use **Settings → Files and versions → Uninstall Aurum**, search for **Aurum Launcher
-Uninstall** in Start, or use **Windows Settings → Apps → Installed apps → Aurum
-Launcher → Uninstall**. Start links are installed unless `/NS` was requested.
-
-The uninstaller uses the same presentation as setup. Its data-deletion checkbox is
-unchecked. Removing only the application preserves instances, worlds and other
-game data. Selecting the checkbox permanently deletes launcher-owned data in the
-listed registered roots, including custom data locations used by this installation,
-plus its application configuration and credentials. An update or silent uninstall
-does not opt into data deletion.
-
-Data ownership and directory boundaries are validated. Linked targets are rejected
-and unrelated top-level files are retained. Original import sources and externally
-hosted server folders are not claimed by the uninstaller.
+Microsoft sign-in opens the default browser using authorization code flow with PKCE and a loopback callback. No embedded Microsoft browser or separate sign-in profile is created. The browser callback does not claim that account verification is already complete, and reopening sign-in uses the current operation's URL. Tokens stay in the native credential store.

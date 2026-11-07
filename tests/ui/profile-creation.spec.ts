@@ -49,7 +49,7 @@ async function fixture(page: Page, theme = "light", owner = false) {
         },
         async invoke(command: string, args: any) {
           if (command === "plugin:event|listen") {
-            if (args.event === "auren:event") eventHandler = args.handler;
+            if (args.event === "aurum:event") eventHandler = args.handler;
             return 1;
           }
           if (command !== "rpc")
@@ -94,7 +94,7 @@ async function fixture(page: Page, theme = "light", owner = false) {
             });
             queueMicrotask(() =>
               callbacks.get(eventHandler)?.({
-                event: "auren:event",
+                event: "aurum:event",
                 id: 1,
                 payload: {
                   id: payload.operationId,

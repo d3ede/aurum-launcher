@@ -93,7 +93,7 @@ async function fixture(
       },
       async invoke(command: string, args: any) {
         if (command === "plugin:event|listen") {
-          if (args.event === "auren:event")
+          if (args.event === "aurum:event")
             windowState.serverEventCallback = callbacks.get(args.handler);
           return 1;
         }
@@ -146,7 +146,7 @@ async function fixture(
     windowState.deliverServerShortcut = () => {
       shortcut = { profileId: profile.id, address: "reused.example.org" };
       windowState.serverEventCallback({
-        event: "auren:event",
+        event: "aurum:event",
         payload: {
           id: "shortcut",
           phase: "server-shortcut",

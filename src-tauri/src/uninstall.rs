@@ -32,6 +32,13 @@ pub fn register(root: &Path, identifier: &str) -> Result<()> {
     }
     let root = dunce::canonicalize(root)?;
     auren_core::storage::register_owner(&root, identifier)?;
+    // A migrated home is now the parent of Game Files, not an independent owned root.
+    data.roots.retain(|previous| {
+        previous.exists()
+            && !(root.file_name().is_some_and(|name| name == auren_core::layout::GAMES)
+                && root.parent() == Some(previous.as_path())
+                && !previous.join(".aurum-data-owner").exists())
+    });
     if !data.roots.contains(&root) {
         data.roots.push(root);
     }
@@ -60,7 +67,7 @@ pub fn command() -> Option<i32> {
         if action == "--register-data" {
             let root = PathBuf::from(args.get(3).ok_or_else(|| anyhow::anyhow!("Нет папки"))?);
             let _: auren_core::model::Database =
-                serde_json::from_slice(&std::fs::read(root.join("state.json"))?)?;
+                serde_json::from_slice(&std::fs::read(auren_core::layout::app_path(&root, "state.json"))?)?;
             return register(&root, identifier);
         }
         let path = manifest()?;
@@ -94,7 +101,7 @@ pub fn command() -> Option<i32> {
             let mut account_ids = std::collections::HashSet::new();
             if identifier == "app.auren.launcher" {
                 for root in &data.roots {
-                    if let Ok(bytes) = std::fs::read(root.join("state.json")) {
+                    if let Ok(bytes) = std::fs::read(auren_core::layout::app_path(root, "state.json")) {
                         if let Ok(db) =
                             serde_json::from_slice::<auren_core::model::Database>(&bytes)
                         {
