@@ -302,11 +302,24 @@ test("dragging reorders blocks and uploaded backgrounds survive restart and rese
   ).toBe("launch");
 });
 
-test("new palettes, named custom themes and fonts persist with live preview", async ({
+test("grouped palettes save immediately; named custom themes and fonts persist", async ({
   page,
 }) => {
   await fixture(page);
   await appearance(page);
+  await expect(
+    page.getByRole("button", { name: "Системная тема" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Сохранить оформление" }),
+  ).toHaveCount(0);
+  const groups = page.locator(".appearance-theme-group");
+  await expect(groups).toHaveCount(2);
+  await expect(groups.nth(0)).toHaveAttribute("data-theme-group", "light");
+  await expect(groups.nth(1)).toHaveAttribute("data-theme-group", "dark");
+  await expect(groups.nth(0).locator(".theme-option")).toHaveCount(6);
+  await expect(groups.nth(1).locator(".theme-option")).toHaveCount(8);
+  await expect(groups.nth(1)).toHaveCSS("border-top-style", "solid");
   for (const [name, id] of [
     ["Гранатовый шёлк", "garnet"],
     ["Северная глубина", "navy"],
@@ -318,15 +331,26 @@ test("new palettes, named custom themes and fonts persist with live preview", as
     ["Вулкан", "volcano"],
     ["Полярное утро", "polar"],
     ["Сакура", "sakura"],
+    ["Мятный фарфор", "porcelain"],
+    ["Песчаный берег", "dune"],
   ]) {
     await page.getByRole("button", { name, exact: true }).click();
     await expect(page.locator("html")).toHaveAttribute("data-palette", id);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            JSON.parse(localStorage.getItem("test:settings")!).personalization
+              .appearance.themeId,
+        ),
+      )
+      .toBe(id);
     const card = page.getByRole("button", { name, exact: true });
     await expect(card.locator(".theme-card-name")).toHaveText(name);
     await expect(card.locator("small")).toHaveCount(0);
     await expect(
       card.locator(
-        ["peach", "polar", "sakura"].includes(id)
+        ["peach", "polar", "sakura", "porcelain", "dune"].includes(id)
           ? ".lucide-sun"
           : ".lucide-moon",
       ),
@@ -336,9 +360,26 @@ test("new palettes, named custom themes and fonts persist with live preview", as
       animations: "disabled",
     });
   }
-  await page.getByRole("button", { name: "Создать свою тему" }).click();
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-palette", "dune");
+  await appearance(page);
   await expect(
-    page.getByRole("heading", { name: "Создание своей темы", exact: true }),
+    page.getByRole("button", { name: "Песчаный берег", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.screenshot({
+    path: ".test-data/screenshots/appearance-groups.png",
+    animations: "disabled",
+  });
+  await page
+    .getByRole("heading", { name: "Тёмные темы", exact: true })
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: ".test-data/screenshots/appearance-divider.png",
+    animations: "disabled",
+  });
+  await page.getByRole("button", { name: "Создать светлую тему" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Создание светлой темы", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".appearance-theme-grid")).toHaveCount(0);
   await expect(
@@ -361,7 +402,7 @@ test("new palettes, named custom themes and fonts persist with live preview", as
   await page
     .getByRole("textbox", { name: "Название установленного шрифта" })
     .fill("Georgia");
-  await page.getByRole("button", { name: "Сохранить оформление" }).click();
+  await page.getByRole("button", { name: "Сохранить шрифт" }).click();
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute(
     "data-palette",
@@ -385,8 +426,137 @@ test("new palettes, named custom themes and fonts persist with live preview", as
     .getByRole("button", { name: "Сохранить тему", exact: true })
     .click();
   await page.getByRole("button", { name: "Удалить тему Новое имя" }).click();
-  await page.getByRole("button", { name: "Сохранить оформление" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-palette", "light");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-palette", "light");
+  await appearance(page);
+  await expect(
+    page.getByRole("button", { name: "Новое имя", exact: true }),
+  ).toHaveCount(0);
+});
+
+test("light and dark creation use matching colors and presets, and changing base resets the palette", async ({
+  page,
+}) => {
+  await fixture(page);
+  await appearance(page);
+  for (const [base, name, preset, excluded] of [
+    ["dark", "тёмной", "Графит", "Полярное утро"],
+    ["light", "светлой", "Полярное утро", "Графит"],
+  ]) {
+    await page
+      .getByRole("button", {
+        name: base === "light" ? "Создать светлую тему" : "Создать тёмную тему",
+        exact: false,
+      })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: `Создание ${name} темы`, exact: true }),
+    ).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", base);
+    await expect(
+      page.getByRole("button", { name: preset, exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: excluded, exact: true }),
+    ).toHaveCount(0);
+    const expectedBackground = base === "light" ? "#f0f6fc" : "#181a1f";
+    await expect(
+      page.getByRole("textbox", { name: "HEX: Фон страницы", exact: true }),
+    ).toHaveValue(expectedBackground);
+    if (base === "light") {
+      await select(page, "Основа темы", "Тёмная");
+      await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+      await expect(
+        page.getByRole("textbox", { name: "HEX: Фон страницы", exact: true }),
+      ).toHaveValue("#181a1f");
+      await expect(
+        page.getByLabel("Основной текст", { exact: true }),
+      ).toHaveValue("#eceef4");
+      await select(page, "Основа темы", "Светлая");
+    }
+    await page
+      .getByRole("textbox", { name: "Название темы", exact: true })
+      .fill(`Custom ${base}`);
+    await page
+      .getByRole("button", { name: "Сохранить тему", exact: true })
+      .click();
+    await expect(
+      page
+        .locator(`[data-theme-group="${base}"]`)
+        .getByRole("button", { name: `Custom ${base}`, exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", base);
+    await appearance(page);
+  }
+});
+
+test("theme save failures restore the saved selection and do not save font drafts", async ({
+  page,
+}) => {
+  await fixture(page);
+  await appearance(page);
+  await page
+    .getByRole("textbox", { name: "Название установленного шрифта" })
+    .fill("Georgia");
+  await page.getByRole("button", { name: "Графит", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Графит", exact: true }),
+  ).toBeEnabled();
+  expect(
+    await page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem("test:settings")!).personalization
+          .appearance.font,
+    ),
+  ).toBe("");
+  await page.evaluate(() => {
+    (window as any).failSettings = true;
+  });
+  await page.getByRole("button", { name: "Вулкан", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("Settings write failed");
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-palette",
+    "graphite",
+  );
+  await expect(
+    page.getByRole("button", { name: "Графит", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-palette",
+    "graphite",
+  );
+  await expect(page.locator("body")).not.toHaveCSS("font-family", /Georgia/);
+});
+
+test("legacy system preferences select the detected base without a system card", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.evaluate(() => {
+    const settings = JSON.parse(localStorage.getItem("test:settings") || "{}");
+    settings.theme = "system";
+    localStorage.setItem("test:settings", JSON.stringify(settings));
+  });
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.reload();
+  await appearance(page);
+  await expect(
+    page.getByRole("button", { name: "Системная тема" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Тихий вечер", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Тихий вечер", exact: true }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => JSON.parse(localStorage.getItem("test:settings")!).theme,
+      ),
+    )
+    .toBe("dark");
 });
 
 test("uploaded fonts persist, invalid files are rejected and failed saves retain previous home", async ({
@@ -402,7 +572,7 @@ test("uploaded fonts persist, invalid files are rejected and failed saves retain
   await expect(
     page.getByRole("textbox", { name: "Название установленного шрифта" }),
   ).toHaveValue("inter-latin-wght-normal.woff2");
-  await page.getByRole("button", { name: "Сохранить оформление" }).click();
+  await page.getByRole("button", { name: "Сохранить шрифт" }).click();
   await page.reload();
   await expect
     .poll(() =>
@@ -434,7 +604,7 @@ test("uploaded fonts persist, invalid files are rejected and failed saves retain
   await expect(page.locator(".recent-server-row")).toHaveCount(5);
 });
 
-test("running-game snapshots preserve the appearance preview", async ({
+test("running-game snapshots preserve the saved appearance", async ({
   page,
 }) => {
   await fixture(page);
@@ -460,10 +630,10 @@ test("running-game snapshots preserve the appearance preview", async ({
   await page
     .getByRole("button", { name: "Назад к настройкам", exact: true })
     .click();
-  await expect(page.locator("html")).toHaveAttribute("data-palette", "light");
+  await expect(page.locator("html")).toHaveAttribute("data-palette", "navy");
 });
 
-test("appearance fits minimum size, translates and discards unsaved preview; uninstall is separate", async ({
+test("appearance fits minimum size, translates and discards unsaved editor changes; uninstall is separate", async ({
   page,
 }) => {
   await fixture(page, "en");
@@ -471,9 +641,9 @@ test("appearance fits minimum size, translates and discards unsaved preview; uni
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("button", { name: "Appearance", exact: true }).click();
   await page.getByRole("button", { name: "Garnet Silk", exact: true }).click();
-  await page.getByRole("button", { name: "Create your own theme" }).click();
+  await page.getByRole("button", { name: "Create a dark theme" }).click();
   await expect(
-    page.getByRole("heading", { name: "Create your own theme", exact: true }),
+    page.getByRole("heading", { name: "Create a dark theme", exact: true }),
   ).toBeVisible();
   expect(
     await page
@@ -486,7 +656,7 @@ test("appearance fits minimum size, translates and discards unsaved preview; uni
   await page
     .getByRole("button", { name: "Back to settings", exact: true })
     .click();
-  await expect(page.locator("html")).toHaveAttribute("data-palette", "light");
+  await expect(page.locator("html")).toHaveAttribute("data-palette", "garnet");
   const uninstall = page.getByRole("button", {
     name: "Uninstall Aurum",
     exact: true,
@@ -557,9 +727,9 @@ test("settings destinations occupy separate rows and the page never scrolls outs
   await page.locator(".content-scroll").evaluate((el) => {
     el.scrollTop = el.scrollHeight;
   });
-  await page.getByRole("button", { name: "Создать свою тему" }).click();
+  await page.getByRole("button", { name: "Создать светлую тему" }).click();
   await expect(
-    page.getByRole("heading", { name: "Создание своей темы", exact: true }),
+    page.getByRole("heading", { name: "Создание светлой темы", exact: true }),
   ).toBeInViewport();
   expect(
     await page.locator(".content-scroll").evaluate((el) => el.scrollTop),

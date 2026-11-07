@@ -1,4 +1,9 @@
 export const homeEnglish: Record<string, string> = {
+  "В разработке: оформление": "In development: appearance",
+  "Две светлые палитры и выбор темы без кнопки сохранения.":
+    "Two light palettes and theme selection without a save button.",
+  "Темы разделены на светлые и тёмные. Добавлены «Мятный фарфор» и «Песчаный берег». Выбор темы сохраняется сразу; для своей темы можно отдельно выбрать светлую или тёмную основу.":
+    "Themes are grouped into light and dark. Added Mint Porcelain and Sandy Shore. Theme selection saves immediately; custom themes can start with a light or dark base.",
   "Импорт и ручные загрузки": "Imports and manual downloads",
   "Файлы модпака": "Modpack files",
   "Импорт сохраняет датапаки и пользовательские папки модов.":

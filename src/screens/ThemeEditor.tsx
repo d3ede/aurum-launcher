@@ -16,6 +16,7 @@ import { Select } from "../components/Select";
 import { SettingsPageHeading } from "../components/SettingsPageHeading";
 import {
   builtInThemes,
+  themeBaseColors,
   type CustomTheme,
   type ThemePalette,
 } from "../lib/personalization";
@@ -130,7 +131,13 @@ export function ThemeEditor({
       data-settings-page="theme-editor"
     >
       <SettingsPageHeading
-        title={isNew ? "Создание своей темы" : "Редактирование темы"}
+        title={
+          isNew
+            ? theme.base === "light"
+              ? "Создание светлой темы"
+              : "Создание тёмной темы"
+            : "Редактирование темы"
+        }
         description="Название, цвета и предпросмотр — всё оформление в одном месте."
         onBack={onBack}
         backLabel="Назад к внешнему виду"
@@ -166,13 +173,23 @@ export function ThemeEditor({
                 />
               </Field>
               <div className="theme-editor-base">
-                <Field label={t("Основа темы")}>
+                <Field
+                  label={t("Основа темы")}
+                  hint={t(
+                    "Смена основы заменит цвета на светлую или тёмную палитру.",
+                  )}
+                >
                   <Select
                     aria-label={t("Основа темы")}
                     value={theme.base}
-                    onValueChange={(base) =>
-                      onChange({ ...theme, base: base as "light" | "dark" })
-                    }
+                    onValueChange={(value) => {
+                      const base = value as CustomTheme["base"];
+                      onChange({
+                        ...theme,
+                        base,
+                        colors: themeBaseColors(base),
+                      });
+                    }}
                     options={[
                       { value: "light", label: t("Светлая") },
                       { value: "dark", label: t("Тёмная") },
@@ -183,24 +200,26 @@ export function ThemeEditor({
               <div className="theme-starting-palettes">
                 <span>{t("Взять цвета готовой темы")}</span>
                 <div className="button-row">
-                  {builtInThemes.map((preset) => (
-                    <button
-                      type="button"
-                      className="theme-preset"
-                      key={preset.id}
-                      onClick={() =>
-                        onChange({
-                          ...theme,
-                          base: preset.base,
-                          colors: { ...preset.colors },
-                        })
-                      }
-                    >
-                      <i style={{ background: preset.colors.bg }} />
-                      <i style={{ background: preset.colors.accent }} />
-                      {t(preset.name)}
-                    </button>
-                  ))}
+                  {builtInThemes
+                    .filter((preset) => preset.base === theme.base)
+                    .map((preset) => (
+                      <button
+                        type="button"
+                        className="theme-preset"
+                        key={preset.id}
+                        onClick={() =>
+                          onChange({
+                            ...theme,
+                            base: preset.base,
+                            colors: { ...preset.colors },
+                          })
+                        }
+                      >
+                        <i style={{ background: preset.colors.bg }} />
+                        <i style={{ background: preset.colors.accent }} />
+                        {t(preset.name)}
+                      </button>
+                    ))}
                 </div>
               </div>
             </section>

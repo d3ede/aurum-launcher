@@ -1,4 +1,21 @@
 export const personalizationEnglish: Record<string, string> = {
+  "Мятный фарфор": "Mint Porcelain",
+  "Песчаный берег": "Sandy Shore",
+  "Светлые темы": "Light themes",
+  "Тёмные темы": "Dark themes",
+  "Создать светлую тему": "Create a light theme",
+  "Создать тёмную тему": "Create a dark theme",
+  "Создание светлой темы": "Create a light theme",
+  "Создание тёмной темы": "Create a dark theme",
+  "Моя светлая тема": "My light theme",
+  "Моя тёмная тема": "My dark theme",
+  "Смена основы заменит цвета на светлую или тёмную палитру.":
+    "Switching the base replaces the colors with a light or dark palette.",
+  "Тема применяется и сохраняется сразу после выбора.":
+    "Themes apply and save as soon as you choose them.",
+  "Настройки шрифта сохраняются отдельно.":
+    "Font settings are saved separately.",
+  "Сохранить шрифт": "Save font",
   Графит: "Graphite",
   Экспрессо: "Expresso",
   Вулкан: "Volcano",

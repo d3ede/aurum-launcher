@@ -574,7 +574,8 @@
   padding: 0 0 14px;
   border-bottom: 1px solid var(--border);
 }
-.home-release-list .home-news-unreleased p {
+.home-release-list .home-news-unreleased p,
+.home-release-list .home-news-upcoming p {
   font-size: 12px;
   line-height: 1.6;
   color: var(--secondary);

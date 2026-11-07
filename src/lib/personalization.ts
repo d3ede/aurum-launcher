@@ -203,7 +203,44 @@ export const builtInThemes: CustomTheme[] = [
       accentInk: "#9b3b60",
     },
   },
+  {
+    id: "porcelain",
+    name: "Мятный фарфор",
+    base: "light",
+    colors: {
+      bg: "#f1f8f5",
+      surface: "#fcfffd",
+      sidebar: "#e1efe8",
+      text: "#263e36",
+      secondary: "#526b61",
+      border: "#bed8cb",
+      accent: "#80c7b5",
+      accentInk: "#236354",
+    },
+  },
+  {
+    id: "dune",
+    name: "Песчаный берег",
+    base: "light",
+    colors: {
+      bg: "#faf5e9",
+      surface: "#fffcf5",
+      sidebar: "#eee6d3",
+      text: "#44392d",
+      secondary: "#70604d",
+      border: "#dacbb1",
+      accent: "#dca78b",
+      accentInk: "#8d4834",
+    },
+  },
 ];
+
+export function themeBaseColors(base: CustomTheme["base"]): ThemePalette {
+  const preset = builtInThemes.find(
+    (item) => item.id === (base === "light" ? "polar" : "graphite"),
+  )!;
+  return { ...preset.colors };
+}
 export function preferences(settings: Settings): Personalization {
   const stored = settings.personalization;
   const home = { ...homeDefaults, ...stored?.home };

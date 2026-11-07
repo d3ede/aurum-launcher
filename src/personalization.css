@@ -320,6 +320,16 @@ body {
   outline: 2px solid var(--gold);
   outline-offset: 3px;
 }
+.appearance-theme-group > h3 {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--secondary);
+}
+.appearance-theme-group + .appearance-theme-group {
+  margin-top: 28px;
+  padding-top: 26px;
+  border-top: 1px solid var(--border-strong);
+}
 .appearance-theme-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -16,7 +16,6 @@ import {
   LayoutTemplate,
   Sun,
   Moon,
-  Monitor,
   Palette,
   Pencil,
   Play,
@@ -40,6 +39,8 @@ import {
   homeDefaults,
   preferences,
   readPersonalFile,
+  themeBaseColors,
+  type AppearancePreferences,
   type CustomTheme,
   type HomeBlock,
 } from "../lib/personalization";
@@ -432,10 +433,20 @@ export function HomeSettings() {
 
 export function AppearanceSettings() {
   const { data, saveSettings, busy, notify, openSettings } = useApp();
-  const [draft, setDraft] = useState(
-    () => preferences(data.settings).appearance,
-  );
-  const [base, setBase] = useState(data.settings.theme);
+  const resolvedBase = (): CustomTheme["base"] =>
+    data.settings.theme === "system"
+      ? matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light"
+      : data.settings.theme;
+  const [draft, setDraft] = useState(() => {
+    const appearance = preferences(data.settings).appearance;
+    return appearance.themeId === "system"
+      ? { ...appearance, themeId: resolvedBase() }
+      : appearance;
+  });
+  const [base, setBase] = useState(resolvedBase);
+  const savingTheme = useRef(false);
   const [editor, setEditor] = useState<CustomTheme | null>(null);
   useLayoutEffect(scrollSettingsToTop, [!!editor]);
   const [reading, setReading] = useState(false);
@@ -470,33 +481,59 @@ export function AppearanceSettings() {
     },
     [],
   );
-  const choose = (id: string, themeBase: typeof base) => {
-    setDraft((old) => ({ ...old, themeId: id }));
+  // Palette selection must not save an unfinished font edit.
+  const persistTheme = async (
+    appearance: AppearancePreferences,
+    themeBase: CustomTheme["base"],
+  ) => {
+    if (busy || savingTheme.current) return false;
+    savingTheme.current = true;
+    const previous = { themeId: draft.themeId, themes: draft.themes, base };
+    setDraft((old) => ({
+      ...old,
+      themeId: appearance.themeId,
+      themes: appearance.themes,
+    }));
     setBase(themeBase);
-    setEditor(null);
+    const settings = {
+      ...saved.current,
+      theme: themeBase,
+      personalization: {
+        ...preferences(saved.current),
+        appearance: {
+          ...preferences(saved.current).appearance,
+          themeId: appearance.themeId,
+          themes: appearance.themes,
+        },
+      },
+    };
+    const success = await saveSettings(settings);
+    if (success) saved.current = settings;
+    else {
+      setDraft((old) => ({
+        ...old,
+        themeId: previous.themeId,
+        themes: previous.themes,
+      }));
+      setBase(previous.base);
+    }
+    savingTheme.current = false;
+    return success;
+  };
+  const choose = (id: string, themeBase: CustomTheme["base"]) => {
+    if (id !== draft.themeId || saved.current.theme === "system")
+      void persistTheme({ ...draft, themeId: id }, themeBase);
   };
   const custom = [...builtInThemes, ...draft.themes];
-  const createTheme = () => {
-    const current = custom.find((item) => item.id === draft.themeId);
-    const style = getComputedStyle(document.documentElement);
-    const color = (key: string) => style.getPropertyValue(`--${key}`).trim();
+  const createTheme = (themeBase: CustomTheme["base"]) => {
+    const current = custom.find(
+      (item) => item.id === draft.themeId && item.base === themeBase,
+    );
     setEditor({
       id: `custom-${crypto.randomUUID()}`,
-      name: t("Моя тема"),
-      base:
-        document.documentElement.dataset.theme === "light" ? "light" : "dark",
-      colors: current
-        ? { ...current.colors }
-        : {
-            bg: color("bg"),
-            surface: color("surface"),
-            sidebar: color("sidebar"),
-            text: color("text"),
-            secondary: color("secondary"),
-            border: color("border"),
-            accent: color("gold"),
-            accentInk: color("accent-ink"),
-          },
+      name: t(themeBase === "light" ? "Моя светлая тема" : "Моя тёмная тема"),
+      base: themeBase,
+      colors: current ? { ...current.colors } : themeBaseColors(themeBase),
     });
   };
   if (editor)
@@ -515,17 +552,7 @@ export function AppearanceSettings() {
             themeId: theme.id,
             themes: [...draft.themes.filter((v) => v.id !== theme.id), theme],
           };
-          if (
-            await saveSettings({
-              ...data.settings,
-              theme: theme.base,
-              personalization: { ...preferences(data.settings), appearance },
-            })
-          ) {
-            setDraft(appearance);
-            setBase(theme.base);
-            setEditor(null);
-          }
+          if (await persistTheme(appearance, theme.base)) setEditor(null);
         }}
       />
     );
@@ -540,158 +567,176 @@ export function AppearanceSettings() {
         className="settings-form customization-form"
         onSubmit={async (e) => {
           e.preventDefault();
-          await saveSettings({
-            ...data.settings,
-            theme: base,
+          const settings = {
+            ...saved.current,
             personalization: {
-              ...preferences(data.settings),
-              appearance: draft,
+              ...preferences(saved.current),
+              appearance: {
+                ...preferences(saved.current).appearance,
+                font: draft.font,
+                fontData: draft.fontData,
+              },
             },
-          });
+          };
+          if (await saveSettings(settings)) saved.current = settings;
         }}
       >
         <section className="settings-section">
           <Intro icon={<Palette size={22} />} title="Настроение лаунчера">
-            {t(
-              "Выберите готовую палитру или создайте свою. Изменения видны сразу.",
-            )}
+            {t("Тема применяется и сохраняется сразу после выбора.")}
           </Intro>
-          <div className="appearance-theme-grid">
-            {(
-              [
-                { id: "light", name: "Тёплый свет", base: "light" },
-                { id: "dark", name: "Тихий вечер", base: "dark" },
-                { id: "system", name: "Системная тема", base: "system" },
-              ] as const
-            ).map((item) => (
-              <button
-                type="button"
-                key={item.id}
-                className={`theme-option ${item.id} ${draft.themeId === item.id ? "selected" : ""}`}
-                aria-pressed={draft.themeId === item.id}
-                aria-label={t(item.name)}
-                onClick={() => choose(item.id, item.base)}
-              >
-                <div className="theme-mini">
-                  <span />
-                  <div>
-                    <i />
-                    <i />
-                    <i />
-                  </div>
-                </div>
-                <span>
-                  {item.base === "light" ? (
-                    <Sun size={16} />
-                  ) : item.base === "dark" ? (
-                    <Moon size={16} />
-                  ) : (
-                    <Monitor size={16} />
-                  )}
-                  <span className="theme-card-name">{t(item.name)}</span>
-                  {draft.themeId === item.id && (
-                    <Check className="theme-selected-check" size={15} />
-                  )}
-                </span>
-              </button>
-            ))}
-            {custom.map((item) => (
-              <div className="custom-theme-card" key={item.id}>
+          {(["light", "dark"] as const).map((group) => (
+            <section
+              className="appearance-theme-group"
+              data-theme-group={group}
+              key={group}
+              aria-label={t(group === "light" ? "Светлые темы" : "Тёмные темы")}
+            >
+              <h3>{t(group === "light" ? "Светлые темы" : "Тёмные темы")}</h3>
+              <div className="appearance-theme-grid">
                 <button
                   type="button"
-                  className={`theme-option ${draft.themeId === item.id ? "selected" : ""}`}
-                  aria-pressed={draft.themeId === item.id}
-                  aria-label={
-                    builtInThemes.some((v) => v.id === item.id)
-                      ? t(item.name)
-                      : item.name
-                  }
-                  onClick={() => choose(item.id, item.base)}
+                  className={`theme-option ${group} ${draft.themeId === group ? "selected" : ""}`}
+                  aria-pressed={draft.themeId === group}
+                  aria-label={t(
+                    group === "light" ? "Тёплый свет" : "Тихий вечер",
+                  )}
+                  disabled={busy}
+                  onClick={() => choose(group, group)}
                 >
-                  <div
-                    className="palette-mini"
-                    style={{
-                      background: item.colors.bg,
-                      borderColor: item.colors.border,
-                    }}
-                  >
-                    <span style={{ background: item.colors.sidebar }} />
+                  <div className="theme-mini">
+                    <span />
                     <div>
-                      <b style={{ background: item.colors.accent }} />
-                      <div>
-                        {[0, 1, 2].map((i) => (
-                          <i
-                            key={i}
-                            style={{
-                              background: item.colors.surface,
-                              borderColor: item.colors.border,
-                            }}
-                          />
-                        ))}
-                      </div>
+                      <i />
+                      <i />
+                      <i />
                     </div>
                   </div>
                   <span>
-                    {item.base === "light" ? (
-                      <Sun size={16} />
-                    ) : (
-                      <Moon size={16} />
-                    )}
+                    {group === "light" ? <Sun size={16} /> : <Moon size={16} />}
                     <span className="theme-card-name">
-                      {builtInThemes.some((v) => v.id === item.id)
-                        ? t(item.name)
-                        : item.name}
+                      {t(group === "light" ? "Тёплый свет" : "Тихий вечер")}
                     </span>
-                    {draft.themeId === item.id && (
+                    {draft.themeId === group && (
                       <Check className="theme-selected-check" size={15} />
                     )}
                   </span>
                 </button>
-                {draft.themes.some((v) => v.id === item.id) && (
-                  <div className="custom-theme-actions">
-                    <button
-                      className="text-button"
-                      type="button"
-                      aria-label={t("Изменить тему {{name}}", {
-                        name: item.name,
-                      })}
-                      onClick={() => setEditor(structuredClone(item))}
-                    >
-                      <Pencil size={13} />
-                      {t("Изменить")}
-                    </button>
-                    <button
-                      type="button"
-                      className="icon-button danger"
-                      aria-label={t("Удалить тему {{name}}", {
-                        name: item.name,
-                      })}
-                      onClick={() => {
-                        setDraft((old) => ({
-                          ...old,
-                          themes: old.themes.filter((v) => v.id !== item.id),
-                          themeId:
-                            old.themeId === item.id ? "light" : old.themeId,
-                        }));
-                        if (draft.themeId === item.id) setBase("light");
-                      }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                )}
+                {custom
+                  .filter((item) => item.base === group)
+                  .map((item) => (
+                    <div className="custom-theme-card" key={item.id}>
+                      <button
+                        type="button"
+                        className={`theme-option ${draft.themeId === item.id ? "selected" : ""}`}
+                        aria-pressed={draft.themeId === item.id}
+                        aria-label={
+                          builtInThemes.some((v) => v.id === item.id)
+                            ? t(item.name)
+                            : item.name
+                        }
+                        disabled={busy}
+                        onClick={() => choose(item.id, item.base)}
+                      >
+                        <div
+                          className="palette-mini"
+                          style={{
+                            background: item.colors.bg,
+                            borderColor: item.colors.border,
+                          }}
+                        >
+                          <span style={{ background: item.colors.sidebar }} />
+                          <div>
+                            <b style={{ background: item.colors.accent }} />
+                            <div>
+                              {[0, 1, 2].map((i) => (
+                                <i
+                                  key={i}
+                                  style={{
+                                    background: item.colors.surface,
+                                    borderColor: item.colors.border,
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <span>
+                          {item.base === "light" ? (
+                            <Sun size={16} />
+                          ) : (
+                            <Moon size={16} />
+                          )}
+                          <span className="theme-card-name">
+                            {builtInThemes.some((v) => v.id === item.id)
+                              ? t(item.name)
+                              : item.name}
+                          </span>
+                          {draft.themeId === item.id && (
+                            <Check className="theme-selected-check" size={15} />
+                          )}
+                        </span>
+                      </button>
+                      {draft.themes.some((v) => v.id === item.id) && (
+                        <div className="custom-theme-actions">
+                          <button
+                            className="text-button"
+                            type="button"
+                            aria-label={t("Изменить тему {{name}}", {
+                              name: item.name,
+                            })}
+                            disabled={busy}
+                            onClick={() => setEditor(structuredClone(item))}
+                          >
+                            <Pencil size={13} />
+                            {t("Изменить")}
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-button danger"
+                            aria-label={t("Удалить тему {{name}}", {
+                              name: item.name,
+                            })}
+                            disabled={busy}
+                            onClick={() => {
+                              const active = draft.themeId === item.id;
+                              void persistTheme(
+                                {
+                                  ...draft,
+                                  themes: draft.themes.filter(
+                                    (v) => v.id !== item.id,
+                                  ),
+                                  themeId: active ? item.base : draft.themeId,
+                                },
+                                active ? item.base : base,
+                              );
+                            }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                <button
+                  type="button"
+                  className="create-theme-card"
+                  disabled={busy}
+                  onClick={() => createTheme(group)}
+                >
+                  <Plus size={38} strokeWidth={1.4} />
+                  <b>
+                    {t(
+                      group === "light"
+                        ? "Создать светлую тему"
+                        : "Создать тёмную тему",
+                    )}
+                  </b>
+                  <small>{t("Ваши цвета и название")}</small>
+                </button>
               </div>
-            ))}
-            <button
-              type="button"
-              className="create-theme-card"
-              onClick={createTheme}
-            >
-              <Plus size={38} strokeWidth={1.4} />
-              <b>{t("Создать свою тему")}</b>
-              <small>{t("Ваши цвета и название")}</small>
-            </button>
-          </div>
+            </section>
+          ))}
         </section>
         <section className="settings-section">
           <Intro icon={<Type size={22} />} title="Шрифт интерфейса">
@@ -766,7 +811,7 @@ export function AppearanceSettings() {
                       "Aurum Font Check",
                       `url(${JSON.stringify(fontData)})`,
                     ).load();
-                    setDraft({ ...draft, font: file.name, fontData });
+                    setDraft((old) => ({ ...old, font: file.name, fontData }));
                   } catch {
                     notify(
                       t(
@@ -806,17 +851,13 @@ export function AppearanceSettings() {
           </p>
         </section>
         <div className="settings-save">
-          <span>
-            {t(
-              "Сохраните, чтобы использовать оформление при следующем запуске.",
-            )}
-          </span>
+          <span>{t("Настройки шрифта сохраняются отдельно.")}</span>
           <button
             className="button primary"
             disabled={busy || reading || !!editor}
           >
             <Save size={17} />
-            {t("Сохранить оформление")}
+            {t("Сохранить шрифт")}
           </button>
         </div>
       </form>

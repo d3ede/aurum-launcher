@@ -153,7 +153,12 @@ test("home has account and factual release panels, working actions and both them
   ).toHaveCount(0);
   await expect(page.locator(".home-account-card")).toContainText("CozyPlayer");
   await expect(page.locator(".home-news-card")).toContainText("Aurum 0.6.3");
-  await expect(page.locator(".home-news-version")).toHaveCount(3);
+  await expect(
+    page.locator(".home-news-version:not(.home-news-upcoming)"),
+  ).toHaveCount(3);
+  await expect(page.locator(".home-news-upcoming")).toContainText(
+    "Две светлые палитры",
+  );
   await expect(page.locator(".home-news-card")).toContainText("Aurum 0.6.0");
   await expect(page.locator(".home-news-card")).not.toContainText(
     "Aurum 0.4.2",
@@ -204,6 +209,9 @@ test("home has account and factual release panels, working actions and both them
   await expect(notes).not.toContainText("В следующем обновлении:");
   await expect(notes).not.toContainText("Подготовлено исправление:");
   await expect(notes.locator(".release-section[open] li")).toHaveCount(2);
+  await expect(notes).toContainText(
+    "Добавлены «Мятный фарфор» и «Песчаный берег».",
+  );
   await notes.locator("summary").filter({ hasText: "Aurum 0.4.3" }).click();
   await expect(
     notes.getByRole("heading", { name: "Локальный хостинг", exact: true }),
@@ -297,7 +305,12 @@ test("home adapts to minimum window size and translates the new panels", async (
     page.getByRole("heading", { name: "What's new", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".home-news-card")).toContainText("Aurum 0.6.3");
-  await expect(page.locator(".home-news-version")).toHaveCount(3);
+  await expect(
+    page.locator(".home-news-version:not(.home-news-upcoming)"),
+  ).toHaveCount(3);
+  await expect(page.locator(".home-news-upcoming")).toContainText(
+    "Two light palettes",
+  );
   await expect(page.locator(".home-news-card")).toContainText(
     "Friends and appearance",
   );
