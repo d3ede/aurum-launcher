@@ -85,24 +85,6 @@ export function HomeSidebar() {
             tabIndex={0}
             aria-label={t("Новости лаунчера")}
           >
-            <article className="home-news-version home-news-upcoming">
-              <h3>{t("Готовится обновление")}</h3>
-              <p>
-                {t(
-                  "Избранное в каталоге: сохранение проектов и установка списком.",
-                )}
-              </p>
-              <p>
-                {t(
-                  "Хостинг: установка Fabric, Forge и NeoForge с выбором загрузчика.",
-                )}
-              </p>
-              <p>
-                {t(
-                  "Исправлен сбой при загрузке одинаковых ресурсов Minecraft.",
-                )}
-              </p>
-            </article>
             {releaseNotes.slice(0, 3).map((release) => (
               <article className="home-news-version" key={release.version}>
                 <div className="home-news-version-head">
@@ -156,24 +138,6 @@ export function HomeSidebar() {
             tabIndex={0}
             aria-label={t("Все изменения")}
           >
-            <section className="release-section-body">
-              <h4>{t("Готовится обновление")}</h4>
-              <p>
-                {t(
-                  "Избранное сохраняет моды, модпаки, шейдеры и ресурспаки из разных источников. Можно установить выбранные проекты или весь совместимый список, выбрать версии и остановить очередь. Ручные загрузки и ограничения авторов сохраняются.",
-                )}
-              </p>
-              <p>
-                {t(
-                  "В хостинге доступны Fabric, Forge и NeoForge: выбор Minecraft и загрузчика, официальные установщики, папка mods и запуск через серверные аргументы JVM.",
-                )}
-              </p>
-              <p>
-                {t(
-                  "Исправлен сбой при загрузке одинаковых ресурсов Minecraft.",
-                )}
-              </p>
-            </section>
             {releaseNotes.map((release) => (
               <details
                 className="release-section"

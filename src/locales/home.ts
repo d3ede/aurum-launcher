@@ -1,4 +1,7 @@
 export const homeEnglish: Record<string, string> = {
+  "Избранное, хостинг и загрузки": "Favorites, hosting and downloads",
+  "Модовые серверы": "Modded servers",
+  "Ресурсы Minecraft": "Minecraft resources",
   "Избранное в каталоге: сохранение проектов и установка списком.":
     "Catalog favorites: save projects and install them as a batch.",
   "Хостинг: установка Fabric, Forge и NeoForge с выбором загрузчика.":

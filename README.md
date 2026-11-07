@@ -53,7 +53,7 @@ verification. Social is optional and disabled until you enable it. Read the
 | **Recent servers** | A weekly server history with status checks, matching-instance launches and Windows desktop shortcuts. See [recent servers](docs/recent-servers.md). |
 | **Interface** | 41 languages, language search, RTL support, light and dark themes, and settings for memory, Java, and game data. |
 
-**New in 0.6.5:** automatic native LAN joining, Social reconnection with the same identity, redesigned invitations, and quieter manual-download recovery. Includes grouped themes and an expanded Ukrainian translation. [Release notes](docs/releases/v0.6.5.md).
+**New in 0.6.7:** catalog favorites with queued installation, local Fabric/Forge/NeoForge server setup, and a fix for duplicate Minecraft resource downloads. [Release notes](docs/releases/v0.6.7.md).
 
 Version [0.6.1](docs/releases/v0.6.1.md) added automatic retries after CurseForge rate limits, preserving progress and cancellation.
 
