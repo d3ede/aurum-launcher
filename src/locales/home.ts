@@ -1,13 +1,26 @@
 export const homeEnglish: Record<string, string> = {
+  "Избранное в каталоге: сохранение проектов и установка списком.":
+    "Catalog favorites: save projects and install them as a batch.",
+  "Хостинг: установка Fabric, Forge и NeoForge с выбором загрузчика.":
+    "Hosting: install Fabric, Forge and NeoForge with a loader version selector.",
+  "Избранное сохраняет моды, модпаки, шейдеры и ресурспаки из разных источников. Можно установить выбранные проекты или весь совместимый список, выбрать версии и остановить очередь. Ручные загрузки и ограничения авторов сохраняются.":
+    "Favorites save mods, modpacks, shaders and resource packs from different sources. Install selected projects or the full compatible list, choose versions and stop the queue. Manual downloads and publisher restrictions still apply.",
+  "В хостинге доступны Fabric, Forge и NeoForge: выбор Minecraft и загрузчика, официальные установщики, папка mods и запуск через серверные аргументы JVM.":
+    "Hosting supports Fabric, Forge and NeoForge: choose Minecraft and loader versions, use official installers, add files to mods and launch through server JVM arguments.",
   "Готовится обновление": "Upcoming update",
-  "Исправлен сбой при загрузке одинаковых ресурсов Minecraft.": "Fixed an error when downloading duplicate Minecraft resources.",
+  "Исправлен сбой при загрузке одинаковых ресурсов Minecraft.":
+    "Fixed an error when downloading duplicate Minecraft resources.",
   "Social и автоматический вход": "Social and automatic joining",
   "Приглашения и подключение": "Invitations and connection",
-  "Minecraft подключается к миру друга автоматически.": "Minecraft joins your friend's world automatically.",
-  "Social восстанавливает соединение, сохраняя ID и друзей.": "Social reconnects while keeping your ID and friends.",
-  "Обновлены приглашения, карточка профиля и показ ID.": "Updated invitations, the profile card and ID reveal.",
+  "Minecraft подключается к миру друга автоматически.":
+    "Minecraft joins your friend's world automatically.",
+  "Social восстанавливает соединение, сохраняя ID и друзей.":
+    "Social reconnects while keeping your ID and friends.",
+  "Обновлены приглашения, карточка профиля и показ ID.":
+    "Updated invitations, the profile card and ID reveal.",
   "Оформление и установка": "Appearance and installation",
-  "Ручная установка модов больше не открывается при старте лаунчера.": "Manual mod installation no longer opens on launcher startup.",
+  "Ручная установка модов больше не открывается при старте лаунчера.":
+    "Manual mod installation no longer opens on launcher startup.",
   "В разработке: оформление и перевод":
     "In development: appearance and translation",
   "Украинский перевод переработан и дополнен во всех разделах.":

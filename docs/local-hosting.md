@@ -22,6 +22,17 @@ Without a startup script, the common button starts direct-JAR backends before pr
 
 The installer separates game servers (**Paper, Purpur, Folia, Vanilla**) from the **Velocity proxy**. **Spigot** is also visible, with a link to official BuildTools and an import action for the resulting prepared server; no unofficial Spigot JAR mirror is used. Select a version; only stable PaperMC builds are eligible unless you explicitly opt into experimental builds. Purpur uses the latest successful numbered build from its official API, pinned before download; its published MD5 is verified over HTTPS. Purpur does not expose a PaperMC-style stable channel. Aurum never silently substitutes another Minecraft version. Failed or cancelled installations remove only their own newly created staging directory. Existing folders are never used as installation targets.
 
+**Modded servers** have a separate **Fabric / Forge / NeoForge** group. Choose
+Minecraft and loader versions; unstable Fabric loaders and NeoForge beta releases require
+the experimental option. The Minecraft metadata determines the Java version.
+Fabric uses its official executable server launcher, which prepares missing
+libraries on first launch. Forge and NeoForge use their official, checksum-verified
+installers in a fresh server directory. Modern Forge/NeoForge launch through the
+generated platform-specific JVM argument file, without executing `run.bat` or
+`run.sh`; older Forge server JARs use `-jar`. Aurum supplies the memory and JVM
+settings from its own server settings. Add server-side mods to `mods`; player
+Minecraft, loader and mod versions must match the server's requirements.
+
 Game-server installation requires an explicit unchecked-by-default [Minecraft EULA](https://www.minecraft.net/eula) consent. Import does not grant consent; an existing server needs its own `eula=true` or an explicit acceptance in Hosting settings before launch. Velocity is a proxy, not a Minecraft game server. A new Velocity profile points `lobby` to `127.0.0.1:25566` and listens on `127.0.0.1:25577`; configure its backends and secure forwarding before use. Folia needs specifically compatible plugins and is not a drop-in Paper replacement.
 
 New installations bind to loopback only, leave account verification enabled and do not enable RCON. To make a server available on a LAN or the internet, deliberately adjust its bind address, firewall and proxy configuration. Aurum does not expose ports, change firewall rules or configure port forwarding automatically. Spigot and other prepared distributions can be imported; they are not downloaded from third-party mirrors.
@@ -48,5 +59,16 @@ Hosting uses an unboxed server list, aligned left-hand metric icons, centered la
 `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `npm test`, `npm run build`, and `npm run test:ui` cover persistence, import, configuration preservation, path confinement, consent, console bounds, player-action confirmation and both UI themes.
 
 The ignored `hosting` integration test requires `AURUM_PROCESS_TEST_JAVA` pointing to a JDK. It compiles and runs only a generic Java stdin fixture under `.test-data`, not Minecraft or a user's server. The read-only folder diagnostic requires an explicitly selected `AURUM_HOSTING_INSPECT_ROOT`.
+
+The separate ignored `modded_hosting` integration test downloads official Fabric,
+Forge and NeoForge distributions for Minecraft 1.21.1, starts them on temporary
+loopback ports, and stops them normally. All files remain under
+`.test-data/modded-hosting-smoke`. Run it explicitly with
+`scripts/cargo.ps1 -CargoArguments @('test','-p','auren-core','--test','modded_hosting','--','--ignored','--nocapture')`.
+
+Modded server sources: [Fabric server launcher](https://fabricmc.net/use/server/),
+[Fabric Meta API](https://github.com/FabricMC/fabric-meta),
+[Forge downloads](https://files.minecraftforge.net/),
+[NeoForge server installation](https://docs.neoforged.net/user/docs/server/).
 
 Sources: [PaperMC Downloads Service](https://docs.papermc.io/misc/downloads-service/), [Paper setup](https://docs.papermc.io/paper/getting-started/), [Velocity commands](https://docs.papermc.io/velocity/built-in-commands/), [Folia](https://papermc.io/software/folia/), [asset usage terms](https://docs.papermc.io/misc/assets/).

@@ -246,7 +246,7 @@ impl Engine {
         task: &Task,
     ) -> Result<()> {
         let folder = confined(&profile.root, &profile.directory)?;
-        let jar = confined(&profile.root, &profile.entrypoint)?;
+        let launch = super::modded::launch_target(&profile, &folder)?;
         let settings = discovery::settings(&profile)?;
         if !proxy(&profile.core)
             && !discovery::read_small(&discovery::config_path(&profile, "eula.txt")?)?
@@ -265,7 +265,7 @@ impl Engine {
             .arg(format!("-Xms{}M", profile.ram_mb.min(512)))
             .arg(format!("-Xmx{}M", profile.ram_mb));
         let arguments = shlex::split(&profile.jvm_args).context("Некорректные JVM-аргументы")?;
-        command.args(arguments).arg("-jar").arg(jar);
+        command.args(arguments).args(launch);
         if !proxy(&profile.core) {
             command.arg("nogui");
         }

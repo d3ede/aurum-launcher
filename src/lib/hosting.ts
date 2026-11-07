@@ -86,6 +86,7 @@ export interface HostingInstall {
   acceptEula: boolean;
   experimental: boolean;
   ramMb: number;
+  loaderVersion?: string;
 }
 export const hostingCores: Record<string, string> = {
   network: "Сеть серверов",

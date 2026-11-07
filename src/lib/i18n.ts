@@ -31,12 +31,19 @@ import {
   contentManagerRussian,
 } from "../locales/content-manager";
 import { languages, resolveLanguage } from "../locales/registry";
+import { favoritesEnglish, favoritesRussian } from "../locales/favorites";
+import {
+  hostingModsEnglish,
+  hostingModsRussian,
+} from "../locales/hosting-mods";
 import {
   horizonModsEnglish,
   horizonModsRussian,
 } from "../locales/horizon-mods";
 type Dictionary = Record<string, string>;
 const english: Dictionary = {
+  ...hostingModsEnglish,
+  ...favoritesEnglish,
   ...socialEnglish,
   ...storageEnglish,
   ...horizonModsEnglish,
@@ -54,6 +61,8 @@ const english: Dictionary = {
   ...contentManagerEnglish,
 };
 const russian: Dictionary = {
+  ...hostingModsRussian,
+  ...favoritesRussian,
   ...socialRussian,
   ...storageRussian,
   ...horizonModsRussian,

@@ -227,6 +227,12 @@ async function fixture(
         }
         if (action === "hostingVersions")
           return [{ version: "1.21.11" }, { version: "1.21.10" }];
+        if (action === "hostingLoaderVersions")
+          return payload.core === "fabric"
+            ? ["0.19.0", "0.18.0"]
+            : payload.core === "forge"
+              ? ["61.0.1", "61.0.0"]
+              : ["21.11.1", "21.11.0"];
         if (action === "hostingInstall") {
           const installed = {
             ...profile,
@@ -657,6 +663,72 @@ test("Purpur installation and network group selection keep choices explicit", as
     fullPage: true,
   });
 });
+
+for (const [core, brand, version] of [
+  ["fabric", "Fabric", "0.18.0"],
+  ["forge", "Forge", "61.0.0"],
+  ["neoforge", "NeoForge", "21.11.0"],
+]) {
+  test(`${brand} hosting installs the selected loader version and requires EULA`, async ({
+    page,
+  }) => {
+    await fixture(page, { empty: true });
+    await page
+      .getByRole("button", { name: "Установить сервер", exact: true })
+      .click();
+    const dialog = page.getByRole("dialog");
+    const group = dialog.locator(".hosting-core-group").filter({
+      has: page.getByRole("heading", {
+        name: "Серверы с модами",
+        exact: true,
+      }),
+    });
+    await group.getByRole("button", { name: brand, exact: true }).click();
+    await dialog
+      .getByLabel("Название сервера", { exact: true })
+      .fill(`Modded ${brand}`);
+    await dialog
+      .getByRole("combobox", { name: "Версия загрузчика", exact: true })
+      .click();
+    await page.getByRole("option", { name: version, exact: true }).click();
+    await expect(
+      dialog.getByRole("button", { name: "Установить сервер", exact: true }),
+    ).toBeDisabled();
+    await dialog
+      .getByRole("checkbox", { name: "Я прочитал и принимаю" })
+      .check();
+    await page.screenshot({
+      path: `.test-data/screenshots/hosting-${core}-install.png`,
+      animations: "disabled",
+    });
+    await dialog
+      .getByRole("button", { name: "Установить сервер", exact: true })
+      .click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as any).hostingRequests.filter(
+              (request: any) => request.action === "hostingInstall",
+            ).length,
+        ),
+      )
+      .toBe(1);
+    const request = await page.evaluate(
+      () =>
+        (window as any).hostingRequests.find(
+          (request: any) => request.action === "hostingInstall",
+        ).payload.request,
+    );
+    expect(request).toMatchObject({
+      core,
+      loaderVersion: version,
+      acceptEula: true,
+      name: `Modded ${brand}`,
+      version: "1.21.11",
+    });
+  });
+}
 
 test("a network has one card and a consented whole-network launch, never component launches", async ({
   page,

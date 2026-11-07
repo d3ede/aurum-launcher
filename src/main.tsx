@@ -7,6 +7,7 @@ import "./redesign.css";
 import "./i18n.css";
 import "./skins.css";
 import "./catalog.css";
+import "./favorites.css";
 import "./content.css";
 import "./home.css";
 import "./servers.css";

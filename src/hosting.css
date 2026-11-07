@@ -203,6 +203,9 @@
 .hosting-install-modal .hosting-proxy-picker {
   grid-template-columns: 1fr;
 }
+.hosting-install-modal .hosting-modded-picker {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
 .hosting-install-modal .hosting-core-picker button {
   padding: 8px;
   gap: 6px;

@@ -77,6 +77,7 @@ function Shell({
     run,
     busy,
     progress,
+    cancelOperation,
     logs,
     notify,
     saveSettings,
@@ -330,6 +331,7 @@ function Shell({
                 )}{" "}
                 {route === "catalog" && (
                   <Catalog
+                    onManualFiles={setManualProfileId}
                     query={query}
                     setQuery={setQuery}
                     onProject={setProject}
@@ -444,11 +446,7 @@ function Shell({
             <button
               className="icon-button"
               aria-label={t("Отменить операцию")}
-              onClick={() =>
-                void rpc("cancel", { operationId: progress.id }).catch((e) =>
-                  notify(e.message, true),
-                )
-              }
+              onClick={() => void cancelOperation(progress.id)}
             >
               <X size={17} />
             </button>

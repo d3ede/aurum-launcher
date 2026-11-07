@@ -614,7 +614,7 @@ impl Engine {
         )
         .map_err(Into::into)
     }
-    async fn run_installer(&self, mut command: Command, task: &Task) -> Result<()> {
+    pub(crate) async fn run_installer(&self, mut command: Command, task: &Task) -> Result<()> {
         command
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -646,7 +646,10 @@ impl Engine {
             tokio::fs::File::create(log_dir.join(format!("installer-{}.log", task.id))).await?;
         let mut written = 0usize;
         loop {
-            task.check()?;
+            if task.check().is_err() {
+                child.kill().await?;
+                bail!("Установка отменена")
+            }
             tokio::select! {
                 line=rx.recv()=>if let Some(line)=line {
                     if written<8_000_000 {log.write_all(format!("{line}\n").as_bytes()).await?;written+=line.len()+1;}

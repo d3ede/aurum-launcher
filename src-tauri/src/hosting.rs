@@ -158,6 +158,17 @@ pub async fn rpc(
                 .map_err(err)?;
             Ok(Value::Null)
         }
+        "hostingLoaderVersions" => Ok(json!(engine
+            .hosting_loader_versions(
+                &param::<String>(payload, "core")?,
+                &param::<String>(payload, "version")?,
+                payload
+                    .get("experimental")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
+            )
+            .await
+            .map_err(err)?)),
         "hostingVersions" => Ok(json!(engine
             .hosting_versions(&param::<String>(payload, "core")?)
             .await

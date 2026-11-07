@@ -24,6 +24,7 @@ import type { Kind, Loader, Project, ProjectDetail } from "../types";
 import { Modal, Loading, ErrorBox, EmptyState, Field } from "../components/ui";
 import { NativeModNotice } from "../components/NativeModNotice";
 import { Select } from "../components/Select";
+import { FavoriteButton } from "../components/FavoriteButton";
 import {
   catalogSources,
   catalogWebsite,
@@ -207,6 +208,7 @@ export function ProjectDialog({
           <ExternalLink size={16} />
           {t(" Страница проекта")}
         </button>
+        <FavoriteButton project={project} />
       </div>
       {loading ? (
         <Loading label={t("Получаем проект и совместимые версии\u2026")} />

@@ -10,6 +10,7 @@ import {
   Compass,
   LayoutGrid,
   List,
+  Star,
 } from "lucide-react";
 import { useApp } from "../context";
 import { native, rpc } from "../lib/api";
@@ -32,20 +33,27 @@ import { EmptyState, ErrorBox, Loading } from "../components/ui";
 import { CatalogSourceLogo } from "../components/CatalogSourceLogo";
 import { CatalogInstallButton } from "../components/CatalogInstallButton";
 import { categoryKey } from "../lib/catalog-categories";
+import { FavoriteButton } from "../components/FavoriteButton";
+import { FavoritesDialog } from "../components/FavoritesDialog";
+import { useFavorites } from "../lib/favorites";
 export function Catalog({
   query,
   setQuery,
   onProject,
   target,
   setTarget,
+  onManualFiles,
 }: {
   query: string;
   setQuery: (v: string) => void;
   onProject: (p: Project) => void;
   target: CatalogTarget;
   setTarget: (v: CatalogTarget) => void;
+  onManualFiles?: (id: string) => void;
 }) {
   const { data, operation, run, busy } = useApp();
+  const { items: favorites } = useFavorites(data.dataDir);
+  const [favoritesOpen, setFavoritesOpen] = useState(false);
   const [pending, setPending] = useState<{
     projectId: string;
     source: string;
@@ -299,6 +307,14 @@ export function Catalog({
   };
   return (
     <>
+      {favoritesOpen && (
+        <FavoritesDialog
+          initialProfileId={target.profileId}
+          onClose={() => setFavoritesOpen(false)}
+          onProject={onProject}
+          onManualFiles={onManualFiles}
+        />
+      )}
       <div className="page-heading">
         <h1>{t("Каталог проектов")}</h1>
       </div>
@@ -417,6 +433,19 @@ export function Catalog({
                 <LayoutGrid size={18} />
               </button>
             </div>
+            <button
+              className="catalog-favorites-button"
+              aria-label={t("Избранное: {{count}}", {
+                count: favorites.length,
+              })}
+              title={t("Избранное")}
+              onClick={() => setFavoritesOpen(true)}
+            >
+              <Star size={20} />
+              {!!favorites.length && (
+                <span aria-hidden="true">{favorites.length}</span>
+              )}
+            </button>
           </div>
           {source === "all" &&
             failedSources.length > 0 &&
@@ -549,20 +578,23 @@ export function Catalog({
                           )}
                         </div>
                       </button>
-                      <CatalogInstallButton
-                        nativeSource={project.source === "horizon"}
-                        state={action}
-                        title={project.title}
-                        disabled={
-                          busy || (bound && data.running.includes(profile.id))
-                        }
-                        onClick={() => {
-                          if (!bound) onProject(project);
-                          else if (installed)
-                            void remove(project, installed.id);
-                          else void install(project);
-                        }}
-                      />
+                      <div className="catalog-result-actions">
+                        <CatalogInstallButton
+                          nativeSource={project.source === "horizon"}
+                          state={action}
+                          title={project.title}
+                          disabled={
+                            busy || (bound && data.running.includes(profile.id))
+                          }
+                          onClick={() => {
+                            if (!bound) onProject(project);
+                            else if (installed)
+                              void remove(project, installed.id);
+                            else void install(project);
+                          }}
+                        />
+                        <FavoriteButton project={project} />
+                      </div>
                     </article>
                   );
                 })}

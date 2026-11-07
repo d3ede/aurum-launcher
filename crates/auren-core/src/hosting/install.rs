@@ -12,13 +12,15 @@ pub struct HostingInstall {
     pub accept_eula: bool,
     pub experimental: bool,
     pub ram_mb: u32,
+    #[serde(default)]
+    pub loader_version: Option<String>,
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HostingVersion {
     pub version: String,
 }
-fn official_url(url: &str, hosts: &[&str]) -> Result<()> {
+pub(super) fn official_url(url: &str, hosts: &[&str]) -> Result<()> {
     let parsed = reqwest::Url::parse(url)?;
     if parsed.scheme() != "https" || !parsed.host_str().is_some_and(|host| hosts.contains(&host)) {
         bail!("Неожиданный адрес загрузки ядра")
@@ -26,7 +28,11 @@ fn official_url(url: &str, hosts: &[&str]) -> Result<()> {
     Ok(())
 }
 fn supported(core: &str) -> Result<()> {
-    if !["paper", "folia", "velocity", "vanilla", "purpur"].contains(&core) {
+    if ![
+        "paper", "folia", "velocity", "vanilla", "purpur", "fabric", "forge", "neoforge",
+    ]
+    .contains(&core)
+    {
         bail!("Это ядро можно импортировать из подготовленной папки")
     }
     Ok(())
@@ -75,6 +81,9 @@ fn purpur_build(metadata: &serde_json::Value, version: &str) -> Result<(String, 
 impl Engine {
     pub async fn hosting_versions(&self, core: &str) -> Result<Vec<HostingVersion>> {
         supported(core)?;
+        if super::modded::is_modded(core) {
+            return super::modded::versions(self, core).await;
+        }
         if core == "purpur" {
             let project = self.json("https://api.purpurmc.org/v2/purpur").await?;
             let mut versions: Vec<_> = project["versions"]
@@ -148,6 +157,9 @@ impl Engine {
         }
         if !proxy(&request.core) && !request.accept_eula {
             bail!("Для установки нужно принять Minecraft EULA")
+        }
+        if super::modded::is_modded(&request.core) {
+            return super::modded::create(self, request, task).await;
         }
         let (url, algorithm, checksum, java_major) = if request.core == "vanilla" {
             let manifest = self.minecraft_versions().await?;
@@ -319,6 +331,7 @@ mod tests {
                     accept_eula: false,
                     experimental: false,
                     ram_mb: 1024,
+                    loader_version: None,
                 },
                 &task,
             )

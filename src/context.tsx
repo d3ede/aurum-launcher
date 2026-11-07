@@ -38,9 +38,10 @@ interface AppState {
     success?: string,
   ) => Promise<T | undefined>;
   operation: <T>(
-    action: (id: string) => Promise<T>,
+    action: (id: string, signal: AbortSignal) => Promise<T>,
     success?: string,
   ) => Promise<T | undefined>;
+  cancelOperation: (operationId?: string) => Promise<void>;
   play: (p: Profile, server?: string) => Promise<void>;
   route: Route;
   navigate: (route: Route) => void;
@@ -78,6 +79,10 @@ export function Provider({
     status: HorizonModStatus;
   } | null>(null);
   const lock = useRef(false);
+  const activeOperation = useRef<{
+    id: string;
+    controller: AbortController;
+  } | null>(null);
   const [microsoftLogin, setMicrosoftLogin] =
     useState<MicrosoftLoginState | null>(null);
   const loginIds = useRef(new Set<string>());
@@ -213,9 +218,14 @@ export function Provider({
     [refresh, notify],
   );
   const operation = useCallback(
-    async <T,>(action: (id: string) => Promise<T>, success?: string) =>
+    async <T,>(
+      action: (id: string, signal: AbortSignal) => Promise<T>,
+      success?: string,
+    ) =>
       run(async () => {
         const id = crypto.randomUUID();
+        const controller = new AbortController();
+        activeOperation.current = { id, controller };
         setProgress({
           id,
           profileId: null,
@@ -225,12 +235,28 @@ export function Provider({
           total: 0,
         });
         try {
-          return await action(id);
+          return await action(id, controller.signal);
         } finally {
+          activeOperation.current = null;
           setProgress(null);
         }
       }, success),
     [run],
+  );
+  const cancelOperation = useCallback(
+    async (operationId?: string) => {
+      const active = activeOperation.current;
+      const id = active?.id || operationId;
+      if (!id) return;
+      active?.controller.abort();
+      try {
+        await rpc("cancel", { operationId: id });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (message !== "Операция уже завершена") notify(message, true);
+      }
+    },
+    [notify],
   );
   const saveSettings = async (settings: Settings) => {
     const saved = await run(async () => {
@@ -418,6 +444,7 @@ export function Provider({
         logs,
         run,
         operation,
+        cancelOperation,
         play,
         route,
         navigate,

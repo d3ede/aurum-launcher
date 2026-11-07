@@ -47,6 +47,10 @@ export const native = isTauri();
 type Empty = Record<string, never>;
 interface Contract {
   "social.takeLink": [Empty, string | null];
+  hostingLoaderVersions: [
+    { core: string; version: string; experimental: boolean },
+    string[],
+  ];
   "social.close": [Empty, void];
   "social.snapshot": [Empty, SocialSnapshot];
   "social.pending": [Empty, SocialReview[]];

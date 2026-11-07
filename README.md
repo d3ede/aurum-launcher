@@ -44,11 +44,12 @@ verification. Social is optional and disabled until you enable it. Read the
 | **Instances** | Separate Minecraft instances with their own mods, worlds, settings, and icons. Creating an instance starts installing the game and the appropriate Java runtime. |
 | **Engines and loaders** | Java with Vanilla, Fabric, Forge, NeoForge or Quilt. Optional Horizon instances for Minecraft 26.3, downloaded separately. Original loader logos and tintable instance symbols. |
 | **Mods and content** | Modrinth and CurseForge, plus public ATLauncher, FTB and Technic modpacks. Search one source or multiple compatible sources together. Install, inspect, update, toggle and remove content. CurseForge needs no personal API key. |
+| **Catalog favorites** | Save projects across sources and install one, a selection, or all compatible items through a cancellable queue. See [favorites](docs/favorites.md). |
 | **Horizon mods** | A separate native source catalog, explicit compilation, progress, logs and cancellation. Play offers compilation or launching without user mods when the selection has changed. |
 | **Import** | Modrinth App, `.mrpack`, CurseForge ZIP and existing game folders. Originals are kept by default; recycling after a verified copy is a separate option. |
 | **Accounts** | Microsoft sign-in in a dedicated window, encrypted token storage with keys in the OS credential vault, and local offline profiles. |
 | **Skins and capes** | PNG library, nine default characters, wide/slim arms and animated 3D previews. Cached skins appear independently of cape downloads. Apply skins and owned capes to a Microsoft account. |
-| **Local hosting** | Import server folders and proxy networks, install official server distributions, use console and player controls, and manage a network with one launch button. See [local hosting](docs/local-hosting.md). |
+| **Local hosting** | Import server folders and proxy networks, install official server distributions including Fabric, Forge and NeoForge, use console and player controls, and manage a network with one launch button. See [local hosting](docs/local-hosting.md). |
 | **Recent servers** | A weekly server history with status checks, matching-instance launches and Windows desktop shortcuts. See [recent servers](docs/recent-servers.md). |
 | **Interface** | 41 languages, language search, RTL support, light and dark themes, and settings for memory, Java, and game data. |
 

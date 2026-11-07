@@ -1,0 +1,223 @@
+.catalog-favorites-button,
+.favorite-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--secondary);
+}
+.catalog-favorites-button {
+  position: relative;
+}
+.catalog-favorites-button:hover,
+.favorite-button:hover,
+.favorite-button.is-favorite {
+  color: var(--accent-ink);
+  border-color: var(--gold-border);
+  background: var(--gold-soft);
+}
+.catalog-favorites-button > span {
+  position: absolute;
+  inset-inline-end: -5px;
+  top: -6px;
+  display: grid;
+  place-items: center;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  border: 2px solid var(--bg);
+  border-radius: 12px;
+  background: var(--gold);
+  color: #382f1b;
+}
+.catalog-results-toolbar .input-icon {
+  min-width: 140px;
+}
+.catalog-result-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.catalog-result-grid .catalog-result-actions {
+  margin-top: auto;
+}
+.catalog-result-grid .catalog-result-actions .catalog-install-button {
+  flex: 1;
+  min-height: 42px;
+}
+.favorites-dialog {
+  max-width: 920px;
+}
+.favorites-dialog .modal-head > div {
+  min-width: 0;
+}
+.favorites-dialog .modal-head p {
+  max-width: 650px;
+}
+.favorites-hint {
+  color: var(--secondary);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 14px 0 18px;
+}
+.favorites-selection {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin: 15px 0;
+}
+.favorites-selection .checkbox-label {
+  margin: 0;
+}
+.favorites-selection > span {
+  color: var(--secondary);
+  font-size: 12px;
+}
+.favorites-selection > button {
+  margin-inline-start: auto;
+  font-size: 12px;
+}
+.favorites-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.favorite-row {
+  padding: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 12px;
+}
+.favorite-row-heading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.favorite-row-heading > input {
+  flex-shrink: 0;
+}
+.favorite-row .project-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 9px;
+  object-fit: contain;
+}
+.favorite-row-title {
+  flex: 1;
+  min-width: 0;
+}
+.favorite-row-title > button {
+  display: block;
+  padding: 0;
+  text-align: start;
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.favorite-row-title small {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--secondary);
+}
+.favorite-row .favorite-install {
+  min-height: 36px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.favorite-row-heading > .icon-button {
+  flex-shrink: 0;
+}
+.favorite-status {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  color: var(--secondary);
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 12px 0 0;
+  overflow-wrap: anywhere;
+}
+.favorite-status.has-error {
+  color: var(--danger);
+}
+.favorite-row > .select-trigger {
+  margin-top: 10px;
+  width: 100%;
+  font-size: 12px;
+}
+.favorite-pack-options {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.favorite-pack-options > summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-ink);
+}
+.favorite-pack-options .pack-options {
+  margin-top: 12px;
+}
+.favorites-summary {
+  color: var(--accent-ink);
+  padding: 14px 0 0;
+  font-size: 13px;
+}
+.favorites-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  position: sticky;
+  bottom: -24px;
+  padding: 18px 0 0;
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  z-index: 1;
+}
+@container catalog-results (max-width: 450px) {
+  .catalog-result-list:not(.catalog-result-grid) .catalog-result-actions {
+    margin-inline-start: auto;
+  }
+}
+@media (max-width: 1100px) {
+  .catalog-results-toolbar .input-icon {
+    flex-basis: calc(100% - 54px);
+    order: 0;
+  }
+  .catalog-results-toolbar .catalog-favorites-button {
+    order: 1;
+  }
+  .catalog-results-toolbar > .select-trigger {
+    order: 2;
+    flex: 1;
+    width: auto;
+  }
+  .catalog-results-toolbar .catalog-view-switch {
+    order: 3;
+  }
+}
+@media (max-width: 700px) {
+  .favorite-row-heading {
+    flex-wrap: wrap;
+  }
+  .favorite-row-title {
+    flex-basis: calc(100% - 110px);
+  }
+  .favorite-row .favorite-install {
+    margin-inline-start: auto;
+  }
+}

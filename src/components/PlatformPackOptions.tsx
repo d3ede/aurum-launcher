@@ -8,6 +8,7 @@ import { ErrorBox, Loading } from "./ui";
 export interface PackConfiguration {
   key: string;
   ready: boolean;
+  checking?: boolean;
   options: PackOptions;
 }
 
@@ -35,7 +36,7 @@ export function PlatformPackOptions({
     let live = true;
     const options = { optional, manualFiles };
     const key = `${project.source}:${project.id}:${versionId}`;
-    onChange({ key, ready: false, options });
+    onChange({ key, ready: false, checking: true, options });
     setLoading(true);
     setError("");
     rpc("packRequirements", {
@@ -50,11 +51,15 @@ export function PlatformPackOptions({
         onChange({
           key,
           ready: r.manualFiles.every((f) => !!manualFiles[f.id]),
+          checking: false,
           options,
         });
       })
       .catch((e) => {
-        if (live) setError(e.message);
+        if (live) {
+          setError(e.message);
+          onChange({ key, ready: false, checking: false, options });
+        }
       })
       .finally(() => {
         if (live) setLoading(false);

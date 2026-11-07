@@ -1,5 +1,6 @@
 mod discovery;
 mod install;
+mod modded;
 mod network;
 mod process;
 #[cfg(windows)]

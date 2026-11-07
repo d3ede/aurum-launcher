@@ -17,6 +17,7 @@ import purpur from "../assets/hosting/purpur.svg";
 import spigot from "../assets/hosting/spigot.svg";
 import type { HostingProfile } from "../lib/hosting";
 import { hostingCores } from "../lib/hosting";
+import { loaderBrands } from "./LoaderLogo";
 
 export const hostingSymbols = [
   { id: "core", Icon: Layers3, label: "Значок ядра" },
@@ -40,6 +41,9 @@ const hostingBrands: Record<string, { source: string; mask?: boolean }> = {
   velocity: { source: velocity },
   purpur: { source: purpur, mask: true },
   spigot: { source: spigot, mask: true },
+  fabric: { source: loaderBrands.fabric.mask, mask: true },
+  forge: { source: loaderBrands.forge.mask, mask: true },
+  neoforge: { source: loaderBrands.neoforge.mask, mask: true },
 };
 export const hasHostingBrand = (core: string) => !!hostingBrands[core];
 export const canTintHostingIcon = (core: string) => core !== "velocity";

@@ -2366,11 +2366,45 @@ function InstallServer({
     acceptEula: false,
     experimental: false,
     ramMb: 4096,
+    loaderVersion: "",
   });
   const [versions, setVersions] = useState<{ version: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const modded = ["fabric", "forge", "neoforge"].includes(request.core);
+  const [loaders, setLoaders] = useState<string[]>([]);
+  const [loaderLoading, setLoaderLoading] = useState(false);
+  useEffect(() => {
+    let active = true;
+    setLoaders([]);
+    setRequest((old) => ({ ...old, loaderVersion: "" }));
+    if (!modded || !request.version) {
+      setLoaderLoading(false);
+      return;
+    }
+    setLoaderLoading(true);
+    rpc("hostingLoaderVersions", {
+      core: request.core,
+      version: request.version,
+      experimental: request.experimental,
+    })
+      .then((versions) => {
+        if (active) {
+          setLoaders(versions);
+          setRequest((old) => ({ ...old, loaderVersion: versions[0] || "" }));
+        }
+      })
+      .catch((error) => {
+        if (active) setError(String(error));
+      })
+      .finally(() => {
+        if (active) setLoaderLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [modded, request.core, request.version, request.experimental]);
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -2412,6 +2446,9 @@ function InstallServer({
     folia: "Многопоточность; нужны совместимые плагины",
     vanilla: "Обычный Minecraft без модов и плагинов",
     velocity: "Общий вход и переходы между серверами",
+    fabric: "Сервер с модами Fabric",
+    forge: "Сервер с модами Forge",
+    neoforge: "Сервер с модами NeoForge",
   };
   return (
     <Modal
@@ -2428,6 +2465,7 @@ function InstallServer({
         onSubmit={(event) => {
           event.preventDefault();
           if (manual) return;
+          if (modded && (loaderLoading || !request.loaderVersion)) return;
           setPending(true);
           setError("");
           void operation((operationId) =>
@@ -2456,12 +2494,16 @@ function InstallServer({
               label: "Игровые серверы",
               cores: ["paper", "purpur", "spigot", "folia", "vanilla"],
             },
+            {
+              label: "Серверы с модами",
+              cores: ["fabric", "forge", "neoforge"],
+            },
             { label: "Прокси", cores: ["velocity"] },
           ].map((group) => (
             <section className="hosting-core-group" key={group.label}>
               <h3>{t(group.label)}</h3>
               <div
-                className={`hosting-core-picker${group.cores.length === 1 ? " hosting-proxy-picker" : ""}`}
+                className={`hosting-core-picker${group.cores.length === 1 ? " hosting-proxy-picker" : group.cores.length === 3 ? " hosting-modded-picker" : ""}`}
               >
                 {group.cores.map((core) => (
                   <button
@@ -2474,6 +2516,7 @@ function InstallServer({
                     onClick={() => {
                       set("core", core);
                       set("version", "");
+                      set("loaderVersion", "");
                     }}
                   >
                     <HostingIcon
@@ -2515,7 +2558,13 @@ function InstallServer({
                     aria-label={t("Версия")}
                     disabled={loading || !versions.length || pending}
                     value={request.version}
-                    onValueChange={(value) => set("version", value)}
+                    onValueChange={(value) =>
+                      setRequest((old) => ({
+                        ...old,
+                        version: value,
+                        loaderVersion: "",
+                      }))
+                    }
                     placeholder={t(loading ? "Загрузка…" : "Выберите версию")}
                     options={versions.map(({ version }) => ({
                       value: version,
@@ -2536,6 +2585,31 @@ function InstallServer({
                   />
                 </Field>
               </div>
+              {modded && (
+                <>
+                  <Field label={t("Версия загрузчика")}>
+                    <Select
+                      aria-label={t("Версия загрузчика")}
+                      value={request.loaderVersion || ""}
+                      onValueChange={(value) => set("loaderVersion", value)}
+                      disabled={pending || loaderLoading || !loaders.length}
+                      placeholder={t(
+                        loaderLoading ? "Загрузка…" : "Совместимых версий нет",
+                      )}
+                      options={loaders.map((value) => ({
+                        value,
+                        label: value,
+                      }))}
+                    />
+                  </Field>
+                  <p className="hosting-core-note">
+                    <Info size={14} />
+                    {t(
+                      "Добавляйте серверные моды в папку mods. Версии Minecraft, загрузчика и модов у игроков должны быть совместимы с сервером.",
+                    )}
+                  </p>
+                </>
+              )}
               {request.core === "folia" && (
                 <p
                   className="hosting-core-note"
@@ -2558,13 +2632,19 @@ function InstallServer({
                   {t("Общий вход в сеть серверов")}
                 </p>
               )}
-              {["paper", "folia", "velocity"].includes(request.core) && (
+              {["paper", "folia", "velocity", "fabric", "neoforge"].includes(
+                request.core,
+              ) && (
                 <label className="hosting-check">
                   <input
                     type="checkbox"
                     checked={request.experimental}
                     onChange={(event) =>
-                      set("experimental", event.target.checked)
+                      setRequest((old) => ({
+                        ...old,
+                        experimental: event.target.checked,
+                        loaderVersion: "",
+                      }))
                     }
                   />
                   {t("Разрешить экспериментальные сборки")}
@@ -2616,6 +2696,7 @@ function InstallServer({
                 className="button primary"
                 disabled={
                   loading ||
+                  (modded && (loaderLoading || !request.loaderVersion)) ||
                   !request.version ||
                   (!isProxy(request.core) && !request.acceptEula)
                 }
