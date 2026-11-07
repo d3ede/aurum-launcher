@@ -419,6 +419,19 @@ impl Engine {
         profiles.retain(|profile| profile.id != id && !members.contains(&profile.id));
         self.hosting_save(&profiles).await
     }
+
+    // Called while holding hosting.gate by the storage category remover.
+    pub(crate) async fn check_hosting_storage_idle(&self) -> Result<()> {
+        if !self.hosting_running().is_empty() {
+            bail!("Сначала остановите сервер")
+        }
+        for profile in self.hosting_profiles_unlocked().await? {
+            if profile.network.is_none() && process::port_busy(&profile).await? {
+                bail!("Порт сервера занят. Сначала остановите внешний процесс")
+            }
+        }
+        Ok(())
+    }
     pub async fn hosting_path(&self, id: &str, logs: bool) -> Result<PathBuf> {
         let profile = self.hosting_profile(id).await?;
         if logs {

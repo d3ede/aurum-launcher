@@ -145,6 +145,7 @@ async fn rpc(
             Ok(json!(path.to_string_lossy()))
         }
         "storageRemoveVersion" => Ok(json!(e.remove_unused_installation(&param::<String>(&payload, "id")?).await.map_err(err)?)),
+        "storageRemoveComponent" => Ok(json!(e.remove_storage_component(&param::<String>(&payload, "category")?).await.map_err(err)?)),
         "storageSnapshot" => Ok(json!(e.storage_snapshot().await.map_err(err)?)),
         "storageClean" => Ok(json!(e.clean_storage(&param::<String>(&payload, "category")?).await.map_err(err)?)),
         "storageTrash" => Ok(json!(e.storage_trash(&param::<Vec<String>>(&payload, "ids")?, payload["restore"].as_bool().unwrap_or(false)).await.map_err(err)?)),

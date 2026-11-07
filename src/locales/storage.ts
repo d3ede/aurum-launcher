@@ -126,6 +126,40 @@ Object.assign(storageEnglish, {
   "Удалить версию {{v1}}": "Delete version {{v1}}",
   "Удалить неиспользуемую версию?": "Delete unused version?",
 });
+Object.assign(storageEnglish, {
+  "Удаление компонентов": "Remove components",
+  "Освободите место, удалив целую категорию файлов.":
+    "Free up space by removing an entire file category.",
+  "Выберите категорию целиком. Отдельные сборки можно удалить в разделе «Сборки и миры».":
+    "Choose an entire category. Remove individual instances under Instances and worlds.",
+  "Удалить компонент {{v1}}": "Remove component {{v1}}",
+  "Удалить «{{v1}}»?": "Remove “{{v1}}”?",
+  "Все сборки и миры будут перемещены в корзину Aurum. Их можно восстановить. Место освободится после очистки корзины.":
+    "All instances and worlds will move to the Aurum trash and can be restored. Empty the trash to reclaim disk space.",
+  "Общие файлы Minecraft будут удалены. Сборки, миры, моды и настройки сохранятся. Перед игрой потребуется повторная установка.":
+    "Shared Minecraft files will be removed. Instances, worlds, mods and settings will be kept. Reinstall before playing again.",
+  "Файлы Horizon будут удалены. Сборки, миры, моды и настройки сохранятся. Перед игрой потребуется повторная установка.":
+    "Horizon files will be removed. Instances, worlds, mods and settings will be kept. Reinstall before playing again.",
+  "Будет удалена только Java из папки Aurum. Системная Java сохранится. Нужная среда запуска будет найдена или скачана перед игрой.":
+    "Only Java in the Aurum folder will be removed. System Java will be kept. A compatible runtime will be found or downloaded before playing.",
+  "Файлы серверов внутри Aurum и их миры будут удалены без восстановления. Импортированные папки вне Aurum сохранятся.":
+    "Server files and worlds inside Aurum will be permanently deleted. Imported folders outside Aurum will be kept.",
+  "Восстанавливаемый кэш будет очищен. Кэш интерфейса удалится при перезапуске. Миры, настройки и входы сохранятся.":
+    "Rebuildable cache will be cleared. Interface cache will be cleared on restart. Worlds, settings and sign-ins will be kept.",
+  "Будут удалены ненужные архивы установок и остатки прерванных загрузок.":
+    "Unused installation archives and interrupted download files will be removed.",
+  "Журналы установок будут удалены. Миры и настройки сохранятся.":
+    "Installation logs will be removed. Worlds and settings will be kept.",
+  "Вся корзина Aurum будет очищена без возможности восстановления файлов и миров.":
+    "The entire Aurum trash will be emptied. Files and worlds cannot be restored.",
+  "Файлы вне основных категорий будут удалены без возможности восстановления. Служебные метки Aurum сохранятся.":
+    "Files outside the main categories will be permanently deleted. Aurum ownership markers will be kept.",
+  "Открыть деинсталлятор": "Open uninstaller",
+  "Сборки перемещены в корзину": "Instances moved to trash",
+  "Неизвестный компонент хранилища": "Unknown storage component",
+  "Удаление компонентов по категориям: игровые файлы можно установить заново, а сборки и миры восстановить из корзины.":
+    "Remove components by category: reinstall game files or restore instances and worlds from the trash.",
+});
 export const storageRussian = Object.fromEntries(
   Object.keys(storageEnglish).map((key) => [key, key]),
 );

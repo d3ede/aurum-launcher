@@ -197,6 +197,57 @@
 .storage-java > button {
   flex: none;
 }
+.storage-components-card {
+  border-color: color-mix(in srgb, var(--danger, #c56767) 42%, var(--border));
+  background: color-mix(in srgb, var(--danger, #c56767) 6%, var(--surface));
+}
+.storage-components-card > .settings-destination-icon {
+  color: var(--danger, #c56767);
+}
+.storage-page .button.storage-remove-button,
+.modal .button.storage-remove-button {
+  color: var(--danger, #c56767);
+  border-color: color-mix(in srgb, var(--danger, #c56767) 48%, var(--border));
+  background: color-mix(in srgb, var(--danger, #c56767) 5%, var(--surface));
+}
+.storage-page .button.storage-remove-button:hover:not(:disabled),
+.modal .button.storage-remove-button:hover:not(:disabled) {
+  border-color: var(--danger, #c56767);
+  background: color-mix(in srgb, var(--danger, #c56767) 13%, var(--surface));
+}
+.modal.storage-components-modal {
+  width: min(680px, calc(100vw - 40px));
+  max-width: 680px;
+}
+.storage-components-modal > .dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+.storage-component-confirm .dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+.storage-components-intro {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0 0 18px;
+}
+.storage-list.storage-component-list {
+  max-height: min(56vh, 480px);
+  overflow-y: auto;
+}
+.storage-component-row .storage-row-name > b {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.storage-component-row > button {
+  flex: none;
+}
 .storage-list {
   border: 1px solid var(--border);
   border-radius: 13px;
@@ -367,4 +418,7 @@
   }
 }
 
-.data-directory-change { align-self: flex-start; width: fit-content; }
+.data-directory-change {
+  align-self: flex-start;
+  width: fit-content;
+}

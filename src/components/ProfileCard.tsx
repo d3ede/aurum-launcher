@@ -31,7 +31,11 @@ export function ProfileCard({
       : profile.installedVersion
         ? t("Установлена")
         : t("Готова к установке");
-  const action = running ? t("Стоп") : t("Играть");
+  const action = running
+    ? t("Стоп")
+    : profile.installedVersion
+      ? t("Играть")
+      : t("Установить и играть");
   const launch = (
     <button
       className={`button launch-button ${running ? "stop" : "primary"}${layout === "row" ? " instance-card-play" : ""}`}

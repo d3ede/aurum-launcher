@@ -8,6 +8,7 @@ import {
   Coffee,
   LoaderCircle,
   ArrowRight,
+  PackageMinus,
 } from "lucide-react";
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
@@ -70,10 +71,13 @@ export function StorageSettings() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  const [componentsOpen, setComponentsOpen] = useState(false);
   const [confirm, setConfirm] = useState<{
     title: string;
     text: string;
     apply: () => Promise<void>;
+    destructive?: boolean;
+    actionLabel?: string;
   } | null>(null);
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -120,6 +124,56 @@ export function StorageSettings() {
         { v1: ids.length },
       ),
       apply: () => trash(ids, false),
+    });
+  }
+  function removeComponent(category: { id: string; bytes: number }) {
+    const label = t(labels[category.id] || category.id);
+    const descriptions: Record<string, string> = {
+      profiles:
+        "Все сборки и миры будут перемещены в корзину Aurum. Их можно восстановить. Место освободится после очистки корзины.",
+      minecraft:
+        "Общие файлы Minecraft будут удалены. Сборки, миры, моды и настройки сохранятся. Перед игрой потребуется повторная установка.",
+      horizon:
+        "Файлы Horizon будут удалены. Сборки, миры, моды и настройки сохранятся. Перед игрой потребуется повторная установка.",
+      java: "Будет удалена только Java из папки Aurum. Системная Java сохранится. Нужная среда запуска будет найдена или скачана перед игрой.",
+      hosting:
+        "Файлы серверов внутри Aurum и их миры будут удалены без восстановления. Импортированные папки вне Aurum сохранятся.",
+      cache:
+        "Восстанавливаемый кэш будет очищен. Кэш интерфейса удалится при перезапуске. Миры, настройки и входы сохранятся.",
+      temporary:
+        "Будут удалены ненужные архивы установок и остатки прерванных загрузок.",
+      logs: "Журналы установок будут удалены. Миры и настройки сохранятся.",
+      trash:
+        "Вся корзина Aurum будет очищена без возможности восстановления файлов и миров.",
+      other:
+        "Файлы вне основных категорий будут удалены без возможности восстановления. Служебные метки Aurum сохранятся.",
+      launcher:
+        "Откроется деинсталлятор. Удаление сборок, миров и остальных данных выбирается отдельно.",
+    };
+    setConfirm({
+      title: t("Удалить «{{v1}}»?", { v1: label }),
+      text: `${storageSize(category.bytes)}. ${t(descriptions[category.id])}`,
+      destructive: true,
+      actionLabel:
+        category.id === "profiles"
+          ? t("В корзину")
+          : category.id === "launcher"
+            ? t("Открыть деинсталлятор")
+            : t("Удалить"),
+      apply: async () => {
+        const result = await run(() =>
+          category.id === "launcher"
+            ? rpc("uninstall", {}).then(() => 0)
+            : rpc("storageRemoveComponent", { category: category.id }),
+        );
+        if (result !== undefined && category.id !== "launcher")
+          notify(
+            category.id === "profiles"
+              ? t("Сборки перемещены в корзину")
+              : t("Освобождено: {{v1}}", { v1: storageSize(result) }),
+          );
+        await refresh();
+      },
     });
   }
   return (
@@ -245,6 +299,24 @@ export function StorageSettings() {
                 </button>
               </div>
             )}
+            <div className="storage-java storage-components-card">
+              <span className="settings-destination-icon">
+                <PackageMinus size={24} />
+              </span>
+              <div>
+                <h3>{t("Удаление компонентов")}</h3>
+                <p>{t("Освободите место, удалив целую категорию файлов.")}</p>
+              </div>
+              <button
+                className="button secondary storage-remove-button"
+                disabled={blocked}
+                aria-label={t("Удаление компонентов")}
+                onClick={() => setComponentsOpen(true)}
+              >
+                {t(" Открыть").trim()}
+                <ArrowRight size={15} />
+              </button>
+            </div>
             <div className="storage-java">
               <span className="settings-destination-icon">
                 <Coffee size={24} />
@@ -528,11 +600,6 @@ export function StorageSettings() {
           </section>
           <section className="storage-section storage-paths">
             <h2>{t("Где хранятся файлы")}</h2>
-            <p>
-              {t(
-                "Лаунчер и игровые данные разделены. Общие ресурсы не дублируются для каждой сборки.",
-              )}
-            </p>
             <label>
               {t("Лаунчер")}
               <code>{snapshot.launcherDirectory}</code>
@@ -544,8 +611,55 @@ export function StorageSettings() {
           </section>
         </>
       )}
+      {componentsOpen && snapshot && (
+        <Modal
+          title={t("Удаление компонентов")}
+          onClose={() => setComponentsOpen(false)}
+          closeDisabled={busy || loading}
+          className="storage-components-modal"
+        >
+          <p className="storage-components-intro">
+            {t(
+              "Выберите категорию целиком. Отдельные сборки можно удалить в разделе «Сборки и миры».",
+            )}
+          </p>
+          <div className="storage-list storage-component-list">
+            {snapshot.categories
+              .filter((c) => c.bytes > 0)
+              .map((c) => (
+                <div className="storage-row storage-component-row" key={c.id}>
+                  <span className={`storage-dot storage-color-${c.id}`} />
+                  <div className="storage-row-name">
+                    <b>{t(labels[c.id] || c.id)}</b>
+                    <small>{storageSize(c.bytes)}</small>
+                  </div>
+                  <button
+                    className="button secondary storage-remove-button"
+                    disabled={blocked}
+                    aria-label={t("Удалить компонент {{v1}}", {
+                      v1: t(labels[c.id] || c.id),
+                    })}
+                    onClick={() => removeComponent(c)}
+                  >
+                    <Trash2 size={15} />
+                    {t("Удалить")}
+                  </button>
+                </div>
+              ))}
+          </div>
+          <div className="dialog-actions">
+            <button
+              className="button secondary"
+              disabled={busy || loading}
+              onClick={() => setComponentsOpen(false)}
+            >
+              {t("Закрыть")}
+            </button>
+          </div>
+        </Modal>
+      )}
       {confirm && (
-        <Modal title={confirm.title} onClose={() => setConfirm(null)}>
+        <Modal title={confirm.title} onClose={() => setConfirm(null)} className={confirm.destructive ? "storage-component-confirm" : ""}>
           <p>{confirm.text}</p>
           <div className="dialog-actions">
             <button
@@ -555,14 +669,19 @@ export function StorageSettings() {
               {t("Отмена")}
             </button>
             <button
-              className="button primary"
+              className={
+                confirm.destructive
+                  ? "button secondary storage-remove-button"
+                  : "button primary"
+              }
+              disabled={blocked}
               onClick={() => {
                 const apply = confirm.apply;
                 setConfirm(null);
                 void apply();
               }}
             >
-              {t("Продолжить")}
+              {confirm.actionLabel || t("Продолжить")}
             </button>
           </div>
         </Modal>

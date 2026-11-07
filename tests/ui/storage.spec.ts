@@ -32,6 +32,10 @@ async function fixture(page: Page, language = "ru", theme = "light") {
           { id: "profiles", bytes: 5 * 1024 ** 3, cleanable: false },
           { id: "minecraft", bytes: 1024 ** 3, cleanable: false },
           { id: "java", bytes: 1024 ** 3, cleanable: false },
+          { id: "horizon", bytes: 889 * 1024 ** 2, cleanable: false },
+          { id: "hosting", bytes: 1024 ** 2, cleanable: false },
+          { id: "launcher", bytes: 69 * 1024 ** 2, cleanable: false },
+          { id: "other", bytes: 10 * 1024, cleanable: false },
           { id: "cache", bytes: 700 * 1024 ** 2, cleanable: true },
           { id: "temporary", bytes: 200 * 1024 ** 2, cleanable: true },
           { id: "logs", bytes: 1024 ** 2, cleanable: true },
@@ -118,6 +122,23 @@ async function fixture(page: Page, language = "ru", theme = "light") {
             );
             return 1024;
           }
+          if (action === "storageRemoveComponent") {
+            storage.categories.find((c) => c.id === payload.category)!.bytes =
+              0;
+            if (payload.category === "profiles") {
+              storage.trash.push({
+                id: "all-profiles",
+                name: "My world",
+                bytes: 5 * 1024 ** 3,
+                kind: "profile",
+                restorable: true,
+                deletedAt: 1794000100,
+              });
+              storage.profiles = [];
+              return 0;
+            }
+            return 1024;
+          }
           if (action === "recentServers" || action === "featured") return [];
           return null;
         },
@@ -129,11 +150,16 @@ async function fixture(page: Page, language = "ru", theme = "light") {
   await page.getByRole("button", { name: "Настройки", exact: true }).click();
   const destination = page.getByRole("button", { name: /Хранилище/ });
   await expect(destination.locator("..")).toHaveClass("settings-form");
-  await expect(destination.locator("xpath=preceding-sibling::*[1]")).toContainText("Файлы и версии");
-  await expect(page.getByRole("button", { name: "Изменить папку данных", exact: true }))
-    .toHaveClass(/\bbutton secondary\b/);
+  await expect(
+    destination.locator("xpath=preceding-sibling::*[1]"),
+  ).toContainText("Файлы и версии");
+  await expect(
+    page.getByRole("button", { name: "Изменить папку данных", exact: true }),
+  ).toHaveClass(/\bbutton secondary\b/);
   await destination.scrollIntoViewIfNeeded();
-  await page.screenshot({ path: `.test-data/screenshots/storage-placement-${theme}.png` });
+  await page.screenshot({
+    path: `.test-data/screenshots/storage-placement-${theme}.png`,
+  });
   await page.getByRole("button", { name: /Хранилище/ }).click();
   await expect(
     page.getByRole("heading", { name: "Хранилище", exact: true }),
@@ -215,4 +241,152 @@ test("cache cleanup preserves settings and schedules browser cache clearing on r
   expect(calls).toEqual([
     { action: "storageClean", payload: { category: "cache" } },
   ]);
+});
+
+for (const theme of ["light", "dark"]) {
+  test(`component removal has its own dialog, confirmation and cancellation in ${theme}`, async ({
+    page,
+  }) => {
+    await fixture(page, "ru", theme);
+    const entry = page.getByRole("button", {
+      name: "Удаление компонентов",
+      exact: true,
+    });
+    const card = entry.locator("..");
+    await expect(card).toHaveClass(/storage-components-card/);
+    await expect(card.locator("xpath=following-sibling::*[1]")).toContainText(
+      "Компактная Java",
+    );
+    await card.scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: `.test-data/screenshots/components-card-${theme}.png`,
+    });
+    await entry.click();
+    const list = page.getByRole("dialog", {
+      name: "Удаление компонентов",
+      exact: true,
+    });
+      await list.locator(".storage-component-list").hover();
+      await page.mouse.wheel(0, 900);
+      await expect(list.getByRole("button", { name: "Удалить компонент Корзина", exact: true })).toBeInViewport();
+    await expect(
+      list.getByRole("button", {
+        name: "Удалить компонент Общие файлы Minecraft",
+        exact: true,
+      }),
+    ).toBeEnabled();
+    await expect(
+      list.getByRole("button", { name: "Удалить компонент Java", exact: true }),
+    ).toBeEnabled();
+    await list
+      .getByRole("button", { name: "Удалить компонент Horizon", exact: true })
+      .click();
+    const confirmation = page.getByRole("dialog", {
+      name: "Удалить «Horizon»?",
+      exact: true,
+    });
+    await expect(confirmation).toContainText(
+      "Сборки, миры, моды и настройки сохранятся",
+    );
+    await expect(confirmation).toContainText("889");
+    await confirmation
+      .getByRole("button", { name: "Отмена", exact: true })
+      .click();
+    expect(
+      await page.evaluate(() =>
+        (window as any).storageRequests.filter(
+          (r: any) => r.action === "storageRemoveComponent",
+        ),
+      ),
+    ).toEqual([]);
+    await expect(list).toBeVisible();
+    await page.screenshot({
+      path: `.test-data/screenshots/components-dialog-${theme}.png`,
+    });
+    await list
+      .getByRole("button", { name: "Удалить компонент Horizon", exact: true })
+      .click();
+    await page
+      .getByRole("dialog", { name: "Удалить «Horizon»?", exact: true })
+      .getByRole("button", { name: "Удалить", exact: true })
+      .click();
+    await expect(
+      list.getByRole("button", {
+        name: "Удалить компонент Horizon",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    expect(
+      await page.evaluate(() =>
+        (window as any).storageRequests.filter(
+          (r: any) => r.action === "storageRemoveComponent",
+        ),
+      ),
+    ).toEqual([
+      { action: "storageRemoveComponent", payload: { category: "horizon" } },
+    ]);
+    await list.getByRole("button", { name: "Закрыть", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "Где хранятся файлы", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "Лаунчер и игровые данные разделены. Общие ресурсы не дублируются для каждой сборки.",
+        { exact: true },
+      ),
+    ).toHaveCount(0);
+  });
+}
+
+test("bulk profile removal explains recovery and leaves individual controls below", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page
+    .getByRole("button", { name: "Удаление компонентов", exact: true })
+    .click();
+  const list = page.getByRole("dialog", {
+    name: "Удаление компонентов",
+    exact: true,
+  });
+  await list
+    .getByRole("button", {
+      name: "Удалить компонент Сборки и миры",
+      exact: true,
+    })
+    .click();
+  const confirmation = page.getByRole("dialog", {
+    name: "Удалить «Сборки и миры»?",
+    exact: true,
+  });
+  await expect(confirmation).toContainText(
+    "Место освободится после очистки корзины",
+  );
+  await confirmation
+    .getByRole("button", { name: "В корзину", exact: true })
+    .click();
+  await expect(
+    list.getByRole("button", {
+      name: "Удалить компонент Сборки и миры",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await list.getByRole("button", { name: "Закрыть", exact: true }).click();
+  await expect(page.getByText("My world", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Восстановить My world", exact: true }),
+  ).toBeVisible();
+});
+
+test("launcher removal opens the uninstaller only after confirmation", async ({page}) => {
+  await fixture(page);
+  await page.getByRole("button",{name:"Удаление компонентов",exact:true}).click();
+  const list=page.getByRole("dialog",{name:"Удаление компонентов",exact:true});
+  await list.getByRole("button",{name:"Удалить компонент Лаунчер",exact:true}).click();
+  const confirmation=page.getByRole("dialog",{name:"Удалить «Лаунчер»?",exact:true});
+  await expect(confirmation).toContainText("Откроется деинсталлятор");
+  expect(await page.evaluate(() => (window as any).storageRequests.filter((r:any)=>r.action==="uninstall"))).toEqual([]);
+  await confirmation.getByRole("button",{name:"Открыть деинсталлятор",exact:true}).click();
+  await expect.poll(async()=>page.evaluate(()=>(window as any).storageRequests.filter((r:any)=>r.action==="uninstall").length)).toBe(1);
+  expect(await page.evaluate(() => (window as any).storageRequests.filter((r:any)=>r.action==="storageRemoveComponent"))).toEqual([]);
 });

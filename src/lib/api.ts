@@ -49,6 +49,7 @@ type Empty = Record<string, never>;
 import type { ScreenshotLibrary, ScreenshotTransfer } from "./screenshots";
 interface Contract {
   storageRemoveVersion: [{ id: string }, number];
+  storageRemoveComponent: [{ category: string }, number];
   storageSnapshot: [Empty, import("../screens/Storage").StorageSnapshot];
   storageClean: [{ category: string }, number];
   storageTrash: [{ ids: string[]; restore: boolean }, number];

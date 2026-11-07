@@ -99,6 +99,14 @@ fn children(path: &Path) -> Result<Vec<PathBuf>> {
     }
     std::fs::read_dir(path)?.map(|e| Ok(e?.path())).collect()
 }
+fn managed_java_path(root: &Path, configured: &str) -> bool {
+    if configured.is_empty() { return false; }
+    let managed = root.join("runtimes");
+    let path = Path::new(configured);
+    path.starts_with(&managed) || std::fs::canonicalize(path).is_ok_and(|path| {
+        std::fs::canonicalize(&managed).is_ok_and(|managed| path.starts_with(managed))
+    })
+}
 fn owned_part(name: &str) -> bool {
     name.strip_suffix(".part")
         .and_then(|s| s.rsplit('.').next())
@@ -113,6 +121,9 @@ pub fn browser_cache_paths(root: &Path) -> Vec<PathBuf> {
         "GrShaderCache",
         "ShaderCache",
         "GPUCache",
+        "Default/GPUCache",
+        "Default/DawnGraphiteCache",
+        "Default/DawnWebGPUCache",
         "Crashpad/reports",
         "component_crx_cache",
     ]
@@ -522,7 +533,7 @@ impl Engine {
             )?;
             let mut db = self.db.lock().await;
             let mut next = db.clone();
-            if let Some(profile) = record.profile {
+            if let Some(mut profile) = record.profile {
                 if next.profiles.iter().any(|p| p.id == profile.id) {
                     bail!("Эта сборка уже существует")
                 }
@@ -533,6 +544,15 @@ impl Engine {
                 }
                 std::fs::create_dir_all(target.parent().unwrap())?;
                 let id = profile.id.clone();
+                if let Some(version) = &profile.installed_version {
+                    let installed = if profile.engine == Runtime::Horizon {
+                        self.root.join("horizon/builds").join(version).join("horizon-client.exe").is_file()
+                            && self.root.join("horizon/resources").join(version).join("horizon-resources.json").is_file()
+                    } else {
+                        self.root.join("versions").join(version).join(format!("{version}.json")).is_file()
+                    };
+                    if !installed { profile.installed_version = None; }
+                }
                 next.profiles.push(profile);
                 next.instance_directories.insert(id.clone(), name.clone());
                 std::fs::rename(&path, &target)?;
@@ -737,6 +757,88 @@ impl Engine {
         Ok(removed)
     }
 
+    /// Remove an entire storage category. Instance directories are never included
+    /// in reinstallable component plans; external Java and server folders stay untouched.
+    pub async fn remove_storage_component(&self, category: &str) -> Result<u64> {
+        if matches!(category, "cache" | "temporary" | "logs") {
+            return self.clean_storage(category).await;
+        }
+        if category == "trash" {
+            let ids = self.trash_entries()?.into_iter().map(|entry| entry.id).collect::<Vec<_>>();
+            return self.storage_trash(&ids, false).await;
+        }
+        let _guard = self.busy.try_lock()
+            .map_err(|_| anyhow::anyhow!("Дождитесь завершения операции"))?;
+        self.storage_idle().await?;
+        if category == "profiles" {
+            let ids = self.db.lock().await.profiles.iter().map(|p| p.id.clone()).collect::<Vec<_>>();
+            // Validate every instance before moving the first one.
+            for id in &ids {
+                let path = self.instance(id)?;
+                if path.try_exists()? { checked(&self.root, &path)?; }
+            }
+            for id in ids { self.trash_profile(&id).await?; }
+            return Ok(0); // Recoverable deletion does not reclaim space yet.
+        }
+        let targets = match category {
+            "minecraft" => ["assets", "libraries", "versions"].map(|name| self.root.join(name)).to_vec(),
+            "java" => vec![self.root.join("runtimes")],
+            "horizon" => vec![self.root.join("horizon")],
+            "hosting" => vec![self.root.join("hosting")],
+            "other" => self.other_storage_paths()?,
+            _ => bail!("Неизвестный компонент хранилища"),
+        };
+        // Hosting has its own start/install lock in addition to the engine lock.
+        let _hosting = if matches!(category, "hosting" | "java") { Some(self.hosting.gate.lock().await) } else { None };
+        if matches!(category, "hosting" | "java") {
+            self.check_hosting_storage_idle().await?;
+        }
+        for path in &targets {
+            if path.try_exists()? { checked(&self.root, path)?; }
+        }
+        if matches!(category, "minecraft" | "horizon" | "java") {
+            let mut db = self.db.lock().await;
+            let mut next = db.clone();
+            if category == "java" {
+                if managed_java_path(&self.root, &next.settings.java_path) {
+                    next.settings.java_path.clear();
+                }
+                let mut servers = self.hosting_profiles_unlocked().await?;
+                let mut changed = false;
+                for server in &mut servers {
+                    if managed_java_path(&self.root, &server.java_path) {
+                        server.java_path.clear();
+                        changed = true;
+                    }
+                }
+                if changed { self.hosting_save(&servers).await?; }
+            } else {
+                for profile in &mut next.profiles {
+                    if (category == "horizon") == (profile.engine == Runtime::Horizon) {
+                        profile.installed_version = None;
+                    }
+                }
+            }
+            // Publish the reinstall requirement before touching shared files.
+            // If a delete fails, a repair remains available and personal data stays intact.
+            persist(&self.root, &next).await?;
+            *db = next;
+        }
+        let mut removed = 0;
+        for path in targets { removed += discard(&self.root, &path)?; }
+        Ok(removed)
+    }
+
+    fn other_storage_paths(&self) -> Result<Vec<PathBuf>> {
+        let app = crate::layout::application(&self.root);
+        let known = ["instances", "assets", "libraries", "versions", "runtimes", "horizon", "hosting", "downloads", "installers", "trash", ".aurum-data-owner"];
+        Ok(children(&self.root)?.into_iter().filter(|path| {
+            let name = path.file_name().unwrap().to_string_lossy();
+            !known.contains(&name.as_ref())
+                && !(app == self.root && crate::layout::APP_ENTRIES.contains(&name.as_ref()))
+        }).collect())
+    }
+
     pub async fn remove_unused_installation(&self, id: &str) -> Result<u64> {
         let _guard = self
             .busy
@@ -774,6 +876,135 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn component_removal_preserves_instances_and_invalidates_only_the_affected_engine() {
+        let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.test-data/storage-components");
+        std::fs::create_dir_all(&base).unwrap();
+        let fixture = tempfile::tempdir_in(base).unwrap();
+        let root = crate::layout::prepare(&fixture.path().join("home")).unwrap();
+        let e = Engine::new(root.clone(), |_| {}).await.unwrap();
+        let java = e.create_profile("Java world".into(), "1.21.1".into(), Loader::Vanilla, None, 0).await.unwrap();
+        let native = e.create_profile("Horizon world".into(), "26.3".into(), Loader::Vanilla, None, 0).await.unwrap();
+        {
+            let mut db = e.db.lock().await;
+            db.profiles[0].installed_version = Some("1.21.1".into());
+            db.profiles[1].engine = Runtime::Horizon;
+            db.profiles[1].installed_version = Some("nightly-test".into());
+            persist(&root, &db).await.unwrap();
+        }
+        for p in [&java, &native] {
+            let instance = e.instance(&p.id).unwrap();
+            std::fs::create_dir_all(instance.join("saves/world")).unwrap();
+            std::fs::write(instance.join("saves/world/level.dat"), b"precious-world").unwrap();
+            std::fs::write(instance.join("options.txt"), b"settings").unwrap();
+        }
+        for path in ["assets/test", "libraries/test", "versions/1.21.1/1.21.1.json", "horizon/builds/nightly-test/client", "horizon/resources/nightly-test/data", "runtimes/java-17/bin/java.exe"] {
+            let path = root.join(path);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, b"data").unwrap();
+        }
+        assert!(e.remove_storage_component("../instances").await.is_err());
+        assert_eq!(e.remove_storage_component("horizon").await.unwrap(), 8);
+        assert!(e.profile(&native.id).await.unwrap().installed_version.is_none());
+        assert_eq!(e.profile(&java.id).await.unwrap().installed_version.as_deref(), Some("1.21.1"));
+        assert_eq!(e.remove_storage_component("minecraft").await.unwrap(), 12);
+        assert!(e.profile(&java.id).await.unwrap().installed_version.is_none());
+        let outside = fixture.path().join("system-java.exe");
+        std::fs::write(&outside, b"external-java").unwrap();
+        e.db.lock().await.settings.java_path = outside.to_string_lossy().into();
+        assert_eq!(e.remove_storage_component("java").await.unwrap(), 4);
+        assert!(outside.exists());
+        assert_eq!(e.db.lock().await.settings.java_path, outside.to_string_lossy());
+        for p in [&java, &native] {
+            assert_eq!(std::fs::read(e.instance(&p.id).unwrap().join("saves/world/level.dat")).unwrap(), b"precious-world");
+            assert_eq!(std::fs::read(e.instance(&p.id).unwrap().join("options.txt")).unwrap(), b"settings");
+        }
+        let reopened = Engine::new(root, |_| {}).await.unwrap();
+        assert_eq!(reopened.db.lock().await.profiles.len(), 2);
+        assert!(reopened.profile(&java.id).await.unwrap().installed_version.is_none());
+    }
+
+    #[tokio::test]
+    async fn bulk_profiles_remain_recoverable_after_shared_files_are_removed() {
+        let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.test-data/storage-components");
+        std::fs::create_dir_all(&base).unwrap();
+        let fixture = tempfile::tempdir_in(base).unwrap();
+        let e = Engine::new(fixture.path().into(), |_| {}).await.unwrap();
+        let p = e.create_profile("Keep my world".into(), "1.21.1".into(), Loader::Vanilla, None, 0).await.unwrap();
+        e.db.lock().await.profiles[0].installed_version = Some("1.21.1".into());
+        let instance = e.instance(&p.id).unwrap();
+        std::fs::create_dir_all(instance.join("saves/world")).unwrap();
+        std::fs::write(instance.join("saves/world/level.dat"), b"world").unwrap();
+        assert_eq!(e.remove_storage_component("profiles").await.unwrap(), 0);
+        assert!(e.db.lock().await.profiles.is_empty());
+        let snapshot = e.storage_snapshot().await.unwrap();
+        assert_eq!(snapshot.trash.len(), 1);
+        assert!(snapshot.trash[0].restorable);
+        e.remove_storage_component("minecraft").await.unwrap();
+        e.storage_trash(&[snapshot.trash[0].id.clone()], true).await.unwrap();
+        assert!(e.profile(&p.id).await.unwrap().installed_version.is_none());
+        assert_eq!(std::fs::read(e.instance(&p.id).unwrap().join("saves/world/level.dat")).unwrap(), b"world");
+    }
+
+    #[tokio::test]
+    async fn category_removal_rejects_active_operations_and_keeps_owner_and_app_state() {
+        let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.test-data/storage-components");
+        std::fs::create_dir_all(&base).unwrap();
+        let fixture = tempfile::tempdir_in(base).unwrap();
+        let e = Engine::new(fixture.path().into(), |_| {}).await.unwrap();
+        std::fs::create_dir_all(e.root.join("runtimes/java-17/bin")).unwrap();
+        let managed = e.root.join("runtimes/java-17/bin/java.exe");
+        std::fs::write(&managed, b"runtime").unwrap();
+        e.db.lock().await.settings.java_path = managed.to_string_lossy().into();
+        let task = e.task(uuid::Uuid::new_v4().to_string(), None).await.unwrap();
+        assert!(e.remove_storage_component("java").await.is_err());
+        assert!(managed.exists());
+        e.finish(&task, &Ok(())).await;
+        e.remove_storage_component("java").await.unwrap();
+        assert!(e.db.lock().await.settings.java_path.is_empty());
+        crate::storage::register_owner(&e.root, "test.application").unwrap();
+        std::fs::write(e.root.join("old.tmp"), b"unused").unwrap();
+        let app_state = std::fs::read(e.root.join("state.json")).unwrap();
+        e.remove_storage_component("other").await.unwrap();
+        assert_eq!(std::fs::read(e.root.join("state.json")).unwrap(), app_state);
+        assert!(e.root.join(".aurum-data-owner").is_file());
+        assert!(!e.root.join("old.tmp").exists());
+    }
+
+    #[test]
+    fn graphics_cache_cleanup_preserves_browser_preferences() {
+        let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.test-data/storage-components");
+        std::fs::create_dir_all(&base).unwrap();
+        let fixture = tempfile::tempdir_in(base).unwrap();
+        let games = crate::layout::prepare(fixture.path()).unwrap();
+        let browser = crate::layout::application(&games).parent().unwrap().join("webview/EBWebView/Default");
+        for path in ["GPUCache/data", "DawnGraphiteCache/data", "DawnWebGPUCache/data", "Local Storage/preferences"] {
+            let file = browser.join(path);
+            std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+            std::fs::write(file, b"data").unwrap();
+        }
+        assert_eq!(clean_browser_cache(&games).unwrap(), 12);
+        assert_eq!(std::fs::read(browser.join("Local Storage/preferences")).unwrap(), b"data");
+    }
+
+    #[tokio::test]
+    async fn removing_hosting_storage_does_not_delete_imported_external_worlds() {
+        let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.test-data/storage-components");
+        std::fs::create_dir_all(&base).unwrap();
+        let fixture = tempfile::tempdir_in(base).unwrap();
+        let games = crate::layout::prepare(&fixture.path().join("home")).unwrap();
+        let e = Engine::new(games.clone(), |_| {}).await.unwrap();
+        let outside = fixture.path().join("external-server");
+        std::fs::create_dir_all(outside.join("world")).unwrap();
+        std::fs::write(outside.join("world/level.dat"), b"external-world").unwrap();
+        std::fs::create_dir_all(games.join("hosting/server/world")).unwrap();
+        std::fs::write(games.join("hosting/server/world/level.dat"), b"managed-world").unwrap();
+        assert_eq!(e.remove_storage_component("hosting").await.unwrap(), 13);
+        assert!(!games.join("hosting").exists());
+        assert_eq!(std::fs::read(outside.join("world/level.dat")).unwrap(), b"external-world");
+        assert!(e.hosting_profiles().await.unwrap().is_empty());
+    }
     #[tokio::test]
     async fn profile_trash_roundtrip_preserves_world_and_metadata() {
         let root = {
