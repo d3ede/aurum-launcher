@@ -202,15 +202,16 @@ export function ScreenshotLibrary({
           : b.createdAt - a.createdAt,
     );
     const result = new Map<string, Screenshot[]>();
+    const month = new Intl.DateTimeFormat(getLocale(), {
+      year: "numeric",
+      month: "long",
+    });
     for (const shot of filtered) {
       const key =
         group === "profile"
           ? shot.profileName
           : group === "date"
-            ? new Intl.DateTimeFormat(getLocale(), {
-                year: "numeric",
-                month: "long",
-              }).format(new Date(shot.createdAt))
+            ? month.format(new Date(shot.createdAt))
             : "";
       if (!result.has(key)) result.set(key, []);
       result.get(key)!.push(shot);
