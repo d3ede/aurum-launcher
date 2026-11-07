@@ -276,7 +276,9 @@ svg {
 .app-shell {
   grid-template-columns: 214px minmax(0, 1fr);
   grid-template-rows: 64px minmax(0, 1fr);
-  border: 1px solid var(--border-strong);
+  /* Keep the frame inside the shell so controls can cover the outermost pixels. */
+  padding: 1px;
+  box-shadow: inset 0 0 0 1px var(--border-strong);
 }
 .titlebar {
   --content-gutter: 28px;
@@ -393,13 +395,16 @@ svg {
 }
 .window-controls {
   display: flex;
-  height: 100%;
+  height: 38px;
   flex-shrink: 0;
+  align-self: flex-start;
+  /* Reach the window edges while preserving the search and profile footprint. */
+  margin: -1px -1px 0 -17px;
 }
 .window-controls button {
   display: grid;
   place-items: center;
-  width: 46px;
+  width: 52px;
   height: 100%;
   padding: 0;
   border: 0;
