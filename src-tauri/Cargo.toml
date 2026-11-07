@@ -10,7 +10,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 anyhow = "1"
 dunce = "1"
-auren-core = { path = "../crates/auren-core" }
+aurum-core = { path = "../crates/aurum-core" }
 aurum-social = { path = "../crates/aurum-social" }
 serde = { version = "1", features = ["derive"] }
 tauri = { version = "2", features = [] }

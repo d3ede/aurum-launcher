@@ -28,7 +28,7 @@ with the initial Social prototype.
    ```powershell
    ./scripts/build-social.ps1 -DebugBuild
    ./scripts/cargo.ps1 build --package aurum-social-worker --bins --locked
-   ./scripts/cargo.ps1 build --package auren-core --features social-lab --bin aurum-social-core-lab --locked
+   ./scripts/cargo.ps1 build --package aurum-core --features social-lab --bin aurum-social-core-lab --locked
    ```
 
    The test node needs `aurum-social-lab.exe`, `aurum-social-worker.exe` and

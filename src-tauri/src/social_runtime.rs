@@ -1,4 +1,4 @@
-use auren_core::social_runtime::Manifest;
+use aurum_core::social_runtime::Manifest;
 use serde::Serialize;
 use std::{
     path::PathBuf,
@@ -11,7 +11,7 @@ use tauri::Manager;
 
 pub fn cleanup(identifier: &str) -> anyhow::Result<()> {
     // Installer QA uses a separate identity and must not touch production rules.
-    if identifier == "app.auren.launcher" {
+    if identifier == "app.aurum.launcher" {
         aurum_social::firewall::request_cleanup()?;
     }
     let local = std::env::var_os("LOCALAPPDATA")
@@ -59,10 +59,10 @@ impl Runtime {
         {
             let directory = std::env::current_exe()?.parent().map(PathBuf::from);
             if let Some(directory) = directory {
-                let worker = directory.join(auren_core::social_runtime::WORKER);
+                let worker = directory.join(aurum_core::social_runtime::WORKER);
                 if worker.is_file()
                     && directory
-                        .join(auren_core::social_runtime::FIREWALL)
+                        .join(aurum_core::social_runtime::FIREWALL)
                         .is_file()
                 {
                     return Ok(Some(worker));

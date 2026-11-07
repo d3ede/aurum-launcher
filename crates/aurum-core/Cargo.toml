@@ -1,0 +1,53 @@
+[package]
+name = "aurum-core"
+version = "0.2.0"
+edition = "2021"
+license = "PolyForm-Noncommercial-1.0.0"
+
+[features]
+social-lab = ["aurum-social/lab"]
+
+[[bin]]
+name = "aurum-social-core-lab"
+path = "src/bin/aurum-social-core-lab.rs"
+required-features = ["social-lab"]
+
+[dependencies]
+anyhow = "1"
+base64 = "0.22"
+chrono = "0.4"
+dirs = "6"
+fastnbt = "2"
+flate2 = "1"
+futures-util = "0.3"
+hickory-resolver = { version = "0.26", default-features = false, features = ["tokio", "system-config"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+keyring = { version = "3", features = ["windows-native", "apple-native", "sync-secret-service"] }
+md-5 = "0.10"
+minisign-verify = "0.3"
+regex = "1"
+ring = "0.17"
+rusqlite = { version = "0.37", features = ["bundled"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream", "multipart"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha1 = "0.10"
+sha2 = "0.10"
+shlex = "1"
+sysinfo = { version = "0.39", default-features = false, features = ["system"] }
+tokio = { version = "1", features = ["full"] }
+toml_edit = "0.20.2"
+uuid = { version = "1", features = ["v4", "serde"] }
+walkdir = "2"
+zip = { version = "9", default-features = false, features = ["deflate"] }
+
+[target.'cfg(windows)'.dependencies]
+aurum-social = { path = "../aurum-social" }
+windows = { version = "0.62.2", features = ["Win32_System_Com", "Win32_UI_Shell", "Win32_System_WinRT", "Data_Xml_Dom", "UI_Notifications"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Threading", "Win32_System_JobObjects"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[build-dependencies]
+dotenvy = "0.15.7"

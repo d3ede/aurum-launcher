@@ -15,7 +15,7 @@ Update dated October 13, 2026. The full product name is Aurum Launcher; the shor
 
 ## Data compatibility
 
-The `app.auren.launcher` system identifier and Credential Manager service are intentionally preserved. Existing paths, settings, accounts, and instances require no migration. The new `icon` field is optional when reading older JSON. `AURUM_DATA_DIR` takes precedence; `AUREN_DATA_DIR` remains supported. The source directory and internal `auren-core` crate name did not change.
+The system identifier and Credential Manager service are `app.aurum.launcher`. Startup migrates the previous identity's application directories and copies vault references before removing old entries. Existing game data, accounts and the main WebView profile are preserved. The crate is `aurum-core`; isolated runs use `AURUM_DATA_DIR`.
 
 ## Verified
 

@@ -27,15 +27,16 @@ pub fn register(root: &Path, identifier: &str) -> Result<()> {
             roots: vec![],
         }
     };
-    if data.identifier != identifier {
+    if !aurum_core::identity::same_application(&data.identifier, identifier) {
         bail!("Папка установки принадлежит другому приложению")
     }
+    data.identifier = identifier.into();
     let root = dunce::canonicalize(root)?;
-    auren_core::storage::register_owner(&root, identifier)?;
+    aurum_core::storage::register_owner(&root, identifier)?;
     // A migrated home is now the parent of Game Files, not an independent owned root.
     data.roots.retain(|previous| {
         previous.exists()
-            && !(root.file_name().is_some_and(|name| name == auren_core::layout::GAMES)
+            && !(root.file_name().is_some_and(|name| name == aurum_core::layout::GAMES)
                 && root.parent() == Some(previous.as_path())
                 && !previous.join(".aurum-data-owner").exists())
     });
@@ -66,8 +67,8 @@ pub fn command() -> Option<i32> {
             .ok_or_else(|| anyhow::anyhow!("Нет идентификатора"))?;
         if action == "--register-data" {
             let root = PathBuf::from(args.get(3).ok_or_else(|| anyhow::anyhow!("Нет папки"))?);
-            let _: auren_core::model::Database =
-                serde_json::from_slice(&std::fs::read(auren_core::layout::app_path(&root, "state.json"))?)?;
+            let _: aurum_core::model::Database =
+                serde_json::from_slice(&std::fs::read(aurum_core::layout::app_path(&root, "state.json"))?)?;
             return register(&root, identifier);
         }
         let path = manifest()?;
@@ -79,7 +80,7 @@ pub fn command() -> Option<i32> {
                 roots: vec![],
             }
         };
-        if data.identifier != *identifier {
+        if !aurum_core::identity::same_application(&data.identifier, identifier) {
             bail!("Не совпадает установка")
         }
         if action == "--uninstall-data-list" {
@@ -99,11 +100,11 @@ pub fn command() -> Option<i32> {
             std::fs::write(output, bytes)?;
         } else {
             let mut account_ids = std::collections::HashSet::new();
-            if identifier == "app.auren.launcher" {
+            if identifier == "app.aurum.launcher" {
                 for root in &data.roots {
-                    if let Ok(bytes) = std::fs::read(auren_core::layout::app_path(root, "state.json")) {
+                    if let Ok(bytes) = std::fs::read(aurum_core::layout::app_path(root, "state.json")) {
                         if let Ok(db) =
-                            serde_json::from_slice::<auren_core::model::Database>(&bytes)
+                            serde_json::from_slice::<aurum_core::model::Database>(&bytes)
                         {
                             account_ids.extend(
                                 db.accounts
@@ -116,13 +117,13 @@ pub fn command() -> Option<i32> {
                 }
             }
             for root in data.roots.iter().filter(|p| p.exists()) {
-                auren_core::storage::remove_owned_data(root, identifier)?;
+                aurum_core::storage::remove_owned_data(root, identifier)?;
             }
-            if identifier == "app.auren.launcher" {
+            if identifier == "app.aurum.launcher" {
                 for id in account_ids {
-                    let _ = auren_core::auth::delete_secret(&id);
+                    let _ = aurum_core::auth::delete_secret(&id);
                 }
-                let _ = auren_core::auth::delete_secret("curseforge");
+                let _ = aurum_core::auth::delete_secret("curseforge");
             }
         }
         Ok(())

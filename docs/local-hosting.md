@@ -64,7 +64,7 @@ The separate ignored `modded_hosting` integration test downloads official Fabric
 Forge and NeoForge distributions for Minecraft 1.21.1, starts them on temporary
 loopback ports, and stops them normally. All files remain under
 `.test-data/modded-hosting-smoke`. Run it explicitly with
-`scripts/cargo.ps1 -CargoArguments @('test','-p','auren-core','--test','modded_hosting','--','--ignored','--nocapture')`.
+`scripts/cargo.ps1 -CargoArguments @('test','-p','aurum-core','--test','modded_hosting','--','--ignored','--nocapture')`.
 
 Modded server sources: [Fabric server launcher](https://fabricmc.net/use/server/),
 [Fabric Meta API](https://github.com/FabricMC/fabric-meta),

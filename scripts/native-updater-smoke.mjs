@@ -1,4 +1,4 @@
-// Build a debug application with identifier app.auren.launcher.updater-smoke
+// Build a debug application with identifier app.aurum.launcher.updater-smoke
 // with test version 0.3.1 and the diagnostic-only updater endpoint
 // http://127.0.0.1:9241/latest.json.
 // The script downloads and verifies fixtures; it NEVER calls install().

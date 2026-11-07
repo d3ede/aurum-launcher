@@ -27,7 +27,7 @@ account credentials or worlds are used. The process is stopped after each sample
 
 ```powershell
 $env:AURUM_PROCESS_TEST_JAVA = 'C:\path\to\jdk\bin\java.exe'
-.\scripts\cargo.ps1 -CargoArguments @('test','--release','-p','auren-core','--test','launch_performance','--','--ignored','--nocapture','--test-threads=1')
+.\scripts\cargo.ps1 -CargoArguments @('test','--release','-p','aurum-core','--test','launch_performance','--','--ignored','--nocapture','--test-threads=1')
 ```
 
 The launch timer measures the core `launch` call through process creation and

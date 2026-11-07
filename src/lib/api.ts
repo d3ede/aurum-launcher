@@ -541,10 +541,14 @@ export const defaultSettings: Settings = {
   resolutionHeight: 720,
   showSnapshots: false,
 };
-const savedTheme =
-  typeof localStorage !== "undefined"
-    ? localStorage.getItem("aurum:theme") || localStorage.getItem("auren:theme")
-    : null;
+const savedTheme = (() => {
+  if (typeof localStorage === "undefined") return null;
+  const legacyKey = "auren:theme"; // One-time upgrade of the previous browser key.
+  const theme = localStorage.getItem("aurum:theme") || localStorage.getItem(legacyKey);
+  if (theme) localStorage.setItem("aurum:theme", theme);
+  localStorage.removeItem(legacyKey);
+  return theme;
+})();
 const savedBrowserSettings = (() => {
   try {
     return JSON.parse(

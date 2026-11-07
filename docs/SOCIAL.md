@@ -26,7 +26,7 @@ launcher; a remote manifest cannot select another executable. Failed or
 cancelled downloads do not activate Social and can be retried.
 
 Verified files are cached in
-`%LOCALAPPDATA%\app.auren.launcher\social-runtime\<content hash>`. The cache is
+`%LOCALAPPDATA%\app.aurum.launcher\social-runtime\<content hash>`. The cache is
 independent of relocated game data. Matching components work offline without
 another download; changed components require setup again. Contacts and identity
 are preserved. Obsolete cached executable revisions are removed after a new

@@ -1,4 +1,4 @@
-use auren_core::{servers::ServerAddress, Engine};
+use aurum_core::{servers::ServerAddress, Engine};
 use serde::Serialize;
 use std::{
     collections::VecDeque,
@@ -113,7 +113,7 @@ pub async fn create(app: &tauri::AppHandle, engine: &Engine, id: &str) -> Result
 fn create_link(
     desktop: &Path,
     executable: &Path,
-    server: &auren_core::model::RecentServer,
+    server: &aurum_core::model::RecentServer,
     profile: &str,
 ) -> Result<PathBuf, String> {
     #[cfg(windows)]
@@ -201,7 +201,7 @@ mod tests {
         let root = tempfile::tempdir_in(directory).unwrap();
         let executable = std::env::current_exe().unwrap();
         let profile_id = "95698e6a-9ac5-4418-b773-4346121b0220";
-        let server = auren_core::model::RecentServer {
+        let server = aurum_core::model::RecentServer {
             id: "abcdef0123456789".into(),
             profile_id: profile_id.into(),
             name: "Test <server> \"quoted\"".into(),

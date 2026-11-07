@@ -16,7 +16,7 @@ const rpc = (action, payload = {}) =>
   );
 const before = await rpc("snapshot");
 assert(before.dataDir.includes(".test-data"));
-assert(before.accounts.some((a) => a.name === "AurenTest"));
+assert(before.accounts.some((a) => a.name === "AurumTest"));
 await page
   .getByRole("button", { name: "Каталог проектов", exact: true })
   .click();

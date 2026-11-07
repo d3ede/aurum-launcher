@@ -22,7 +22,6 @@ $previewStart.UseShellExecute = $false
 $previewStart.CreateNoWindow = $true
 # These changes belong only to the child process, never the user's environment.
 $previewStart.EnvironmentVariables['AURUM_DATA_DIR'] = $previewData
-$previewStart.EnvironmentVariables.Remove('AUREN_DATA_DIR')
 $previewStart.EnvironmentVariables['WEBVIEW2_USER_DATA_FOLDER'] = $previewBrowser
 $previewStart.EnvironmentVariables.Remove('WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS')
 $previewStart.EnvironmentVariables.Remove('WEBVIEW2_PIPE_FOR_SCRIPT_DEBUGGER')

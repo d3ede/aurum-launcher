@@ -13,19 +13,19 @@ pub fn command() -> Option<i32> {
             args.get(3)
                 .ok_or_else(|| anyhow::anyhow!("Missing report path"))?,
         );
-        let root = auren_core::layout::prepare(&home)?;
+        let root = aurum_core::layout::prepare(&home)?;
         if let Some(local) = std::env::var_os("LOCALAPPDATA") {
-            auren_core::layout::relocate_webview(
-                &std::path::PathBuf::from(local).join("app.auren.launcher"),
+            aurum_core::layout::relocate_webview(
+                &std::path::PathBuf::from(local).join("app.aurum.launcher"),
                 &root,
             )?;
         }
-        let app = auren_core::layout::application(&root);
-        let before = auren_core::storage_manager::bytes(&root)?
-            + auren_core::storage_manager::bytes(app.parent().unwrap())?;
+        let app = aurum_core::layout::application(&root);
+        let before = aurum_core::storage_manager::bytes(&root)?
+            + aurum_core::storage_manager::bytes(app.parent().unwrap())?;
         let runtime = tokio::runtime::Runtime::new()?;
         runtime.block_on(async {
-            let engine = auren_core::Engine::new(root.clone(), |_| {}).await?;
+            let engine = aurum_core::Engine::new(root.clone(), |_| {}).await?;
             engine.ensure_idle("").await?;
             if !engine.running.lock().await.is_empty() || !engine.hosting_running().is_empty() { anyhow::bail!("Close games before maintenance") }
             let task = engine.task("6ab0f7a4-dce0-4f7b-8d46-1040600799e3".into(), None).await?;
@@ -35,8 +35,8 @@ pub fn command() -> Option<i32> {
             let optimized = optimized?;
             let cache = engine.clean_storage("cache").await?;
             let logs = engine.clean_storage("logs").await?;
-            let browser = auren_core::storage_manager::clean_browser_cache(&root)?;
-            let after = auren_core::storage_manager::bytes(&root)? + auren_core::storage_manager::bytes(app.parent().unwrap())?;
+            let browser = aurum_core::storage_manager::clean_browser_cache(&root)?;
+            let after = aurum_core::storage_manager::bytes(&root)? + aurum_core::storage_manager::bytes(app.parent().unwrap())?;
             let snapshot = engine.storage_snapshot().await?;
             std::fs::write(&report, serde_json::to_vec_pretty(&serde_json::json!({
                 "reclaimedBytes": before.saturating_sub(after), "javaReclaimedBytes": optimized,

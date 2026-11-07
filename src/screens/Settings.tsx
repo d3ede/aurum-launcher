@@ -258,7 +258,7 @@ function GeneralSettings() {
           <div className="field">
             <button
               type="button"
-              className="text-button"
+              className="button secondary data-directory-change"
               disabled={busy || !!newPath}
               onClick={async () => {
                 const path = await operation((operationId) =>
@@ -267,6 +267,7 @@ function GeneralSettings() {
                 if (path) setNewPath(path);
               }}
             >
+              <FolderOpen size={16} />
               {t("Изменить папку данных")}
             </button>
             <small>

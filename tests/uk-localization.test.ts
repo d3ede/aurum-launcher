@@ -69,7 +69,7 @@ describe("reviewed Ukrainian localization", () => {
         }
       }
     }
-    scan(fileURLToPath(new URL("../crates/auren-core/src", import.meta.url)));
+    scan(fileURLToPath(new URL("../crates/aurum-core/src", import.meta.url)));
     scan(fileURLToPath(new URL("../src-tauri/src", import.meta.url)));
     expect([...missing]).toEqual([]);
   });

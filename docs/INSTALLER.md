@@ -88,7 +88,7 @@ screenshots and reports stay in `.test-data/`.
 The Tauri NSIS installation backend retains WebView2 detection, running-process
 checks, updater flags, shortcut ownership checks, uninstall registration, and
 explicit opt-in removal of application data. The production identifier remains
-`app.auren.launcher`. Normal updates retain shortcut preferences.
+`app.aurum.launcher`. Normal updates retain shortcut preferences.
 
 During `/UPDATE`, existing Desktop and Start menu shortcuts are redirected to
 the installed launcher, including links left pointing to an older preview or

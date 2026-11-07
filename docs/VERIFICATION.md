@@ -1,4 +1,4 @@
-# Verification history — Auren 0.1.0 to Aurum 0.3.1
+# Verification history — Aurum 0.1.0 to Aurum 0.3.1
 
 These records describe checks performed for each update. Historical installer paths, sizes, and hashes refer to those specific builds; the public 0.3.1 artifact is recorded at the end.
 
@@ -116,7 +116,7 @@ Production TypeScript/Vite build and all 11 Vitest tests passed. Both new home U
 After Aurum closes and reopens, game status is restored from real Java processes whose exact `--gameDir` belongs to an existing instance. Relaunching or modifying a running instance is blocked; **Stop** works for restored processes. Status updates automatically when a game exits. Command lines and tokens are not persisted. On Windows, stopping checks process creation time on the same HANDLE used for termination, protecting against PID reuse.
 
 - 46 regular Rust tests passed, including a check that a mismatched creation time never terminates a process. Workspace/all-target Clippy with `-D warnings` passed.
-- Three Java tests were explicitly run with `AURUM_PROCESS_TEST_JAVA=C:\Program Files\Java\jdk-25.0.2\bin\java.exe`: restoration after a new Engine is created and targeted stopping without killing unrelated Java; removal of exited games without stale status after reopening; and two processes for one instance. They are normally ignored because they require a JDK. The explicit command `cargo test -p auren-core --test process_recovery -- --ignored` passed.
+- Three Java tests were explicitly run with `AURUM_PROCESS_TEST_JAVA=C:\Program Files\Java\jdk-25.0.2\bin\java.exe`: restoration after a new Engine is created and targeted stopping without killing unrelated Java; removal of exited games without stale status after reopening; and two processes for one instance. They are normally ignored because they require a JDK. The explicit command `cargo test -p aurum-core --test process_recovery -- --ignored` passed.
 - Production TypeScript/Vite build and four main-interface Playwright tests passed.
 - `scripts/native-session-smoke.mjs` passed using real WebView2/IPC: launching an owned Java fixture through normal game launch, closing through **Close Aurum**, preserving the game process, reopening with **Running**/**Stop**, stopping through the UI, then a second launch/close/reopen cycle and automatic status removal after external termination of the test process. No real Minecraft instance was launched in this test. Result: `.test-data/native-session-1791932698089/result.json`; screenshot: `.test-data/screenshots/session-restored-native.png`. User games were not stopped.
 
@@ -163,7 +163,7 @@ Release code compiled, but the normal open launcher prevented replacement of `ta
 
 ## Original 0.1.0 verification environment
 
-Date: October 13, 2026. Environment: Windows x64, WebView2, Node.js 22.21, local Rust GNU 1.99, and LLVM-MinGW. All real installations used `.test-data/live`, separate from user data, with the offline profile AurenTest. The implementation is independent; third-party launchers were neither run nor copied.
+Date: October 13, 2026. Environment: Windows x64, WebView2, Node.js 22.21, local Rust GNU 1.99, and LLVM-MinGW. All real installations used `.test-data/live`, separate from user data, with the offline profile AurumTest. The implementation is independent; third-party launchers were neither run nor copied.
 
 ### Automated checks
 
@@ -196,7 +196,7 @@ Checks exposed and helped fix loss of Forge client/universal classifiers during 
 
 ### Real desktop window
 
-`scripts/native-smoke.mjs` passed on the final `target/release/auren.exe`. It controls Tauri WebView2 through local CDP and invokes real Rust commands, without mocked IPC or API responses. Checks covered:
+`scripts/native-smoke.mjs` passed on the final `target/release/aurum.exe`. It controls Tauri WebView2 through local CDP and invokes real Rust commands, without mocked IPC or API responses. Checks covered:
 
 - State and offline-account loading.
 - Real Modrinth search for Sodium and project details.
@@ -216,7 +216,7 @@ A separate Rust test verified uploading a PNG skin with the Alex model and retai
 
 ### Release artifacts
 
-Production Rust/Tauri build and NSIS generation succeeded. Installer: `target/release/bundle/nsis/Auren_0.1.0_x64-setup.exe` (approximately 4.05 MiB).
+Production Rust/Tauri build and NSIS generation succeeded. Installer: `target/release/bundle/nsis/Aurum_0.1.0_x64-setup.exe` (approximately 4.05 MiB).
 
 SHA256: `EAEDA8549612E0065B7DBC3DC3208D2F36E6ED90A2EA8CAE3A736BC806F0F6D6`.
 
@@ -239,11 +239,11 @@ The release has no publisher signature. Generating an NSIS package does not veri
 Main commands are in the README. Additional checks:
 
 ```powershell
-./scripts/cargo.ps1 -CargoArguments @('run','-p','auren-core','--example','live_smoke','--','vanilla','latest')
-./scripts/cargo.ps1 -CargoArguments @('run','-p','auren-core','--example','vault_smoke')
+./scripts/cargo.ps1 -CargoArguments @('run','-p','aurum-core','--example','live_smoke','--','vanilla','latest')
+./scripts/cargo.ps1 -CargoArguments @('run','-p','aurum-core','--example','vault_smoke')
 ```
 
-Run real smoke tests using `.test-data/live` sequentially: the standalone core example does not share the native application's instance lock. Normal Auren permits one application instance. CDP is disabled during normal launch; close the test app and local port afterward.
+Run real smoke tests using `.test-data/live` sequentially: the standalone core example does not share the native application's instance lock. Normal Aurum permits one application instance. CDP is disabled during normal launch; close the test app and local port afterward.
 
 ## Microsoft sign-in — October 14, 2026
 
@@ -325,7 +325,7 @@ Checks passed: 89 regular Rust workspace tests, the separate native vault test, 
 To repeat the native storage check:
 
 ```powershell
-./scripts/cargo.ps1 -CargoArguments @('test','-p','auren-core','windows_vault_large_secret_round_trip','--lib','--','--ignored')
+./scripts/cargo.ps1 -CargoArguments @('test','-p','aurum-core','windows_vault_large_secret_round_trip','--lib','--','--ignored')
 ```
 
 ## Local Windows installer 0.4.2 — October 17, 2026

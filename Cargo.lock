@@ -364,7 +364,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 
 [[package]]
-name = "auren-core"
+name = "aurum"
+version = "0.6.7"
+dependencies = [
+ "anyhow",
+ "aurum-core",
+ "aurum-social",
+ "dunce",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-opener",
+ "tauri-plugin-single-instance",
+ "tauri-plugin-updater",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "aurum-core"
 version = "0.2.0"
 dependencies = [
  "anyhow",
@@ -399,27 +420,6 @@ dependencies = [
  "windows",
  "windows-sys 0.61.2",
  "zip",
-]
-
-[[package]]
-name = "aurum"
-version = "0.6.7"
-dependencies = [
- "anyhow",
- "auren-core",
- "aurum-social",
- "dunce",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-opener",
- "tauri-plugin-single-instance",
- "tauri-plugin-updater",
- "tempfile",
- "tokio",
 ]
 
 [[package]]

@@ -42,7 +42,7 @@ test("honest browser state, navigation and persistent appearance", async ({
     .getByRole("button", { name: "Локальный профиль", exact: true })
     .click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  await page.getByRole("textbox", { name: "Ник игрока" }).fill("AurenTest");
+  await page.getByRole("textbox", { name: "Ник игрока" }).fill("AurumTest");
   await page.getByRole("button", { name: "Добавить профиль" }).click();
   await expect(page.getByRole("alert")).toContainText("desktop-приложении");
   await page.keyboard.press("Escape");

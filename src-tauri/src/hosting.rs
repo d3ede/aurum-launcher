@@ -1,5 +1,5 @@
 use crate::{err, param};
-use auren_core::{
+use aurum_core::{
     hosting::{HostingInstall, HostingUpdate},
     Engine,
 };
@@ -74,7 +74,7 @@ pub async fn rpc(
         "hostingInspect" => {
             let root: std::path::PathBuf = param(payload, "root")?;
             Ok(json!(tauri::async_runtime::spawn_blocking(move || {
-                auren_core::hosting::inspect(&root)
+                aurum_core::hosting::inspect(&root)
             })
             .await
             .map_err(err)?

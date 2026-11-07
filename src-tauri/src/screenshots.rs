@@ -1,5 +1,5 @@
 use crate::{err, param};
-use auren_core::Engine;
+use aurum_core::Engine;
 use serde_json::{json, Value};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
@@ -102,7 +102,7 @@ pub async fn rpc(
             } else {
                 e.screenshot_bytes(&id).await.map_err(err)?
             };
-            auren_core::screenshots::dimensions(&bytes).map_err(err)?;
+            aurum_core::screenshots::dimensions(&bytes).map_err(err)?;
             let extension = if bytes.starts_with(b"\x89PNG") {
                 "png"
             } else if bytes.starts_with(b"\xff\xd8") {

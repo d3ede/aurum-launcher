@@ -91,7 +91,7 @@ for All The Forge 6, FTB Evolution and The 1.12.2 Pack, then downloads and verif
 one small component per provider. It uses only `.test-data/` and no player account:
 
 ```powershell
-.\scripts\cargo.ps1 -CargoArguments @('test','-p','auren-core','--test','pack_catalog_live','--','--ignored','--nocapture')
+.\scripts\cargo.ps1 -CargoArguments @('test','-p','aurum-core','--test','pack_catalog_live','--','--ignored','--nocapture')
 ```
 
 This live check does not download or launch all three complete modpacks.

@@ -1,4 +1,4 @@
-// Build debug with identifier app.auren.launcher.content-manager-smoke and run the content_manager_fixture example first.
+// Build debug with identifier app.aurum.launcher.content-manager-smoke and run the content_manager_fixture example first.
 // Exercises actual Modrinth recognition and downloads in an owned .test-data profile, never starts a game.
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";

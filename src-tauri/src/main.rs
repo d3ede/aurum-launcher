@@ -9,7 +9,7 @@ mod social_runtime;
 mod server_shortcuts;
 mod maintenance;
 mod uninstall;
-use auren_core::Engine;
+use aurum_core::Engine;
 use serde_json::{json, Value};
 use tauri::{Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
@@ -126,7 +126,7 @@ async fn rpc(
                 e.copy_data(&path, &task).await?;
                 let config = app.path().app_config_dir()?;
                 std::fs::create_dir_all(&config)?;
-                let profile = auren_core::layout::application(&e.root).parent().unwrap().join("webview");
+                let profile = aurum_core::layout::application(&e.root).parent().unwrap().join("webview");
                 if profile.is_dir() {
                     std::fs::write(config.join("webview-source.json"), serde_json::to_vec(&profile)?)?;
                 }
@@ -179,10 +179,10 @@ async fn rpc(
         "takeServerShortcut" => Ok(json!(app.state::<server_shortcuts::Shortcuts>().take()?)),
         "scanModrinth" => {
             let extra: Vec<std::path::PathBuf> = param(&payload, "directories")?;
-            let mut roots = auren_core::modrinth_import::default_directories();
+            let mut roots = aurum_core::modrinth_import::default_directories();
             roots.extend(extra);
             Ok(json!(tauri::async_runtime::spawn_blocking(move || {
-                auren_core::modrinth_import::scan(&roots)
+                aurum_core::modrinth_import::scan(&roots)
             })
             .await
             .map_err(err)?))
@@ -228,22 +228,22 @@ async fn rpc(
             .map_err(err)?)),
         "chooseProfileIcon" => {
             let path = choose_file(&app, "Значок сборки", &["png", "jpg", "jpeg", "webp"]).await?;
-            path.map(|path| auren_core::store::prepare_profile_icon(&path).map_err(err))
+            path.map(|path| aurum_core::store::prepare_profile_icon(&path).map_err(err))
                 .transpose()
                 .map(|icon| json!(icon))
         }
         "createProfile" => {
-            let icon_style = serde_json::from_value::<Option<auren_core::model::ProfileIconStyle>>(
+            let icon_style = serde_json::from_value::<Option<aurum_core::model::ProfileIconStyle>>(
                 payload.get("iconStyle").cloned().unwrap_or(Value::Null),
             )
             .map_err(err)?
             .as_ref()
-            .map(auren_core::store::validate_profile_icon_style)
+            .map(aurum_core::store::validate_profile_icon_style)
             .transpose()
             .map_err(err)?;
             let icon = payload["icon"]
                 .as_str()
-                .map(auren_core::store::validate_profile_icon)
+                .map(aurum_core::store::validate_profile_icon)
                 .transpose()
                 .map_err(err)?;
             let mut profile = e
@@ -326,7 +326,7 @@ async fn rpc(
                 .map_err(|_| "Дождитесь завершения текущей операции".to_string())?;
             let extra: Vec<std::path::PathBuf> = param(&payload, "directories")?;
             let roots = if extra.is_empty() {
-                auren_core::modrinth_import::default_directories()
+                aurum_core::modrinth_import::default_directories()
             } else {
                 extra
             };
@@ -344,7 +344,7 @@ async fn rpc(
             .account_avatar(&param::<String>(&payload, "id")?)
             .await
             .map_err(err)?)),
-        "defaultSkinTexture" => Ok(json!(auren_core::skins::default_texture(
+        "defaultSkinTexture" => Ok(json!(aurum_core::skins::default_texture(
             &param::<String>(&payload, "id")?,
             &param::<String>(&payload, "model")?
         )
@@ -358,7 +358,7 @@ async fn rpc(
                 return Err("PNG должен быть меньше 1 МБ".into());
             }
             let bytes = std::fs::read(&path).map_err(err)?;
-            let normalized = auren_core::skins::validate_texture(
+            let normalized = aurum_core::skins::validate_texture(
                 &bytes,
                 payload["cape"].as_bool().unwrap_or(false),
             )
@@ -437,7 +437,7 @@ async fn rpc(
             .await?;
             Ok(json!(path.map(|p| p.to_string_lossy().into_owned())))
         }
-        "checkJava" => Ok(json!(auren_core::minecraft::java_version(
+        "checkJava" => Ok(json!(aurum_core::minecraft::java_version(
             std::path::Path::new(&param::<String>(&payload, "path")?)
         )
         .await
@@ -621,7 +621,7 @@ async fn rpc(
                     "importModrinth" => {
                         let extra: Vec<std::path::PathBuf> =
                             param(&payload, "directories").map_err(anyhow::Error::msg)?;
-                        let mut roots = auren_core::modrinth_import::default_directories();
+                        let mut roots = aurum_core::modrinth_import::default_directories();
                         roots.extend(extra);
                         Ok(json!(
                             e.import_modrinth_with_cleanup(
@@ -709,7 +709,7 @@ async fn rpc(
                         }
                     }
                     "downloadPack"
-                        if auren_core::pack_catalog::is_pack_source(
+                        if aurum_core::pack_catalog::is_pack_source(
                             payload["source"].as_str().unwrap_or(""),
                         ) =>
                     {
@@ -804,12 +804,18 @@ async fn choose_file(
 fn main() {
     if let Some(code) = maintenance::command() { std::process::exit(code); }
     let context: tauri::Context<tauri::Wry> = tauri::generate_context!();
+    if context.config().identifier == aurum_core::identity::APPLICATION_ID
+        && std::env::var_os("AURUM_DATA_DIR").is_none()
+    {
+        aurum_core::identity::migrate_user_directories()
+            .expect("Unable to migrate application identity; existing data was preserved");
+    }
     #[cfg(windows)]
     if let Some(action) = std::env::args().nth(1).filter(|arg| {
         matches!(arg.as_str(), "--social-cleanup" | "--social-firewall-remove")
     }) {
         let result = if action == "--social-firewall-remove" {
-            if context.config().identifier == "app.auren.launcher" {
+            if context.config().identifier == "app.aurum.launcher" {
                 aurum_social::firewall::remove_owned_rules()
             } else {
                 Ok(())
@@ -841,41 +847,42 @@ fn main() {
         .setup(|app| {
             maintenance::clean_old_updaters();
             let handle = app.handle().clone();
-            let isolated_data = std::env::var_os("AURUM_DATA_DIR").is_some() || std::env::var_os("AUREN_DATA_DIR").is_some();
+            let isolated_data = std::env::var_os("AURUM_DATA_DIR").is_some();
             let location = app.path().app_config_dir()?.join("data-location.json");
             let root = if let Some(path) =
-                std::env::var_os("AURUM_DATA_DIR").or_else(|| std::env::var_os("AUREN_DATA_DIR"))
+                std::env::var_os("AURUM_DATA_DIR")
             {
                 std::path::PathBuf::from(path)
             } else if location.exists() {
                 let selected: std::path::PathBuf =
                     serde_json::from_slice(&std::fs::read(location)?)?;
                 let legacy = app.path().app_data_dir()?;
+                let selected = aurum_core::identity::upgrade_location(selected, &legacy);
                 if selected == legacy {
-                    auren_core::default_data_directory(&legacy)?
+                    aurum_core::default_data_directory(&legacy)?
                 } else {
                     selected
                 }
             } else {
-                auren_core::default_data_directory(&app.path().app_data_dir()?)?
+                aurum_core::default_data_directory(&app.path().app_data_dir()?)?
             };
-            let root = auren_core::layout::prepare(&root)?;
-            let application = auren_core::layout::application(&root);
-            if std::env::var_os("AURUM_DATA_DIR").is_none() && std::env::var_os("AUREN_DATA_DIR").is_none() {
+            let root = aurum_core::layout::prepare(&root)?;
+            let application = aurum_core::layout::application(&root);
+            if !isolated_data {
                 let pending = app.path().app_config_dir()?.join("webview-source.json");
                 if pending.exists() {
                     let source: std::path::PathBuf = serde_json::from_slice(&std::fs::read(&pending)?)?;
-                    if source.file_name().is_none_or(|n| n != "webview") || source.parent().and_then(|p| p.file_name()).is_none_or(|n| n != auren_core::layout::LAUNCHER) {
+                    if source.file_name().is_none_or(|n| n != "webview") || source.parent().and_then(|p| p.file_name()).is_none_or(|n| n != aurum_core::layout::LAUNCHER) {
                         return Err(anyhow::anyhow!("Invalid interface profile migration source").into());
                     }
-                    auren_core::layout::relocate_webview(&source, &root)?;
+                    aurum_core::layout::relocate_webview(&source, &root)?;
                     std::fs::remove_file(pending)?;
                 }
-                auren_core::layout::relocate_webview(&app.path().app_local_data_dir()?, &root)?;
+                aurum_core::layout::relocate_webview(&app.path().app_local_data_dir()?, &root)?;
             }
             // Delete only disposable browser caches, before any WebView process opens this profile.
             if application.join("clear-browser-cache").exists() {
-                auren_core::storage_manager::clean_browser_cache(&root)?;
+                aurum_core::storage_manager::clean_browser_cache(&root)?;
             }
             let mut config = app.config().app.windows[0].clone();
             config.create = true;
@@ -889,6 +896,12 @@ fn main() {
             let engine = tauri::async_runtime::block_on(Engine::new(root, move |event| {
                 let _ = handle.emit("aurum:event", event);
             }))?;
+            if !isolated_data && app.config().identifier == aurum_core::identity::APPLICATION_ID {
+                let db = tauri::async_runtime::block_on(engine.db.lock());
+                aurum_core::auth::migrate_account_keys(db.accounts.iter()
+                    .filter(|account| account.kind == "microsoft")
+                    .map(|account| account.id.as_str()))?;
+            }
             app.manage(engine.clone());
             #[cfg(windows)]{
                 app.manage(social::Links::default());
@@ -914,7 +927,7 @@ fn main() {
                             api.prevent_close();
                             let _ = closing.emit(
                                 "aurum:event",
-                                auren_core::model::Event {
+                                aurum_core::model::Event {
                                     id: String::new(),
                                     profile_id: None,
                                     pack_name: None,

@@ -1,4 +1,4 @@
-// The debug binary must be built with identifier app.auren.launcher.auth-smoke.
+// The debug binary must be built with identifier app.aurum.launcher.auth-smoke.
 // Opens the real Microsoft page, then cancels it. Never enters account credentials.
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";

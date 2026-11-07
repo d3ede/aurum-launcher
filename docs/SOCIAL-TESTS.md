@@ -227,7 +227,7 @@ the status remains NOT READY.
 
 ## Automatic native LAN joining and recovery (2026-11-07)
 
-The ignored `auren-core/tests/lan_autojoin.rs` integration test launched actual
+The ignored `aurum-core/tests/lan_autojoin.rs` integration test launched actual
 Minecraft clients in disposable `.test-data` directories with an offline test
 player. Vanilla 26.3 and Fabric 1.21.11 (loader 0.19.5) automatically sent the
 login handshake and Login Start to an owned loopback TCP fixture without menu

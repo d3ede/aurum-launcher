@@ -1,4 +1,4 @@
-// Build target/debug/aurum.exe with identifier app.auren.launcher.instance-smoke first.
+// Build target/debug/aurum.exe with identifier app.aurum.launcher.instance-smoke first.
 // Uses an owned data directory, opens its missing folder, starts installation through UI, then cancels.
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";

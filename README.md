@@ -104,9 +104,9 @@ Already using Modrinth App? Choose **Import → From Modrinth** on the home scre
 - Offline skins are launcher previews. Vanilla does not apply them in-game, and other players will not see them. Uploaded local capes are also preview-only.
 - Change the language instantly in **Settings → Interface language**. Your choice is saved; new installations follow the system language.
 - On Windows, game data defaults to `%APPDATA%\Aurum Launcher`, with profiles in `instances\Profile name`. Duplicate names receive a numbered suffix; characters Windows cannot use in folder names are replaced. Renaming a profile also renames its folder.
-- Existing data in `app.auren.launcher` and UUID profile folders migrates automatically at startup, preserving worlds, mods, accounts, and settings. Migration waits until Minecraft is closed. Interrupted profile moves resume on the next launch; existing nonempty data roots are never merged automatically.
+- Existing application data and UUID profile folders migrate automatically at startup, preserving worlds, mods, accounts, and settings. Migration waits until Minecraft is closed. Interrupted profile moves resume on the next launch; existing nonempty data roots are never merged automatically.
 - Settings let you open the data directory or copy data into a new empty folder while preserving the original files. Custom data locations remain unchanged.
-- Set `AURUM_DATA_DIR` to use a separate data directory. The legacy `AUREN_DATA_DIR` variable is also supported.
+- Set `AURUM_DATA_DIR` to use a separate data directory.
 
 </details>
 
@@ -195,14 +195,14 @@ The Cloudflare API lives in [`services/aurum-api`](services/aurum-api/README.md)
 ```text
 src/                 React interface, components, and localization
 src-tauri/           Tauri application and desktop commands
-crates/auren-core/   Game installation, loaders, accounts, and data
+crates/aurum-core/   Game installation, loaders, accounts, and data
 config/              Public application configuration
 tests/               Frontend and UI checks
 scripts/             Build tools and smoke tests
 docs/                Architecture, guides, and screenshots
 ```
 
-The Rust crate name `auren-core` and identifier `app.auren.launcher` are retained for compatibility with earlier Auren versions.
+The Rust crate and system identifier are `aurum-core` and `app.aurum.launcher`. Startup upgrades the previous application-data identity and OS vault keys without signing existing accounts out. A legacy identifier remains solely as a read-only migration marker.
 
 ## Documentation and feedback
 

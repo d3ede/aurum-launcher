@@ -366,3 +366,5 @@
     gap: 10px 16px;
   }
 }
+
+.data-directory-change { align-self: flex-start; width: fit-content; }

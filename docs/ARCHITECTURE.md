@@ -5,7 +5,7 @@ The native application permits one running instance using Tauri's [Single Instan
 Independent implementation. No third-party launcher code or artwork is used.
 
 `src/`: localized React UI, typed IPC, theme tokens, catalog, profiles, accounts, settings.
-`crates/auren-core/`: platform-independent service library. Persistence, verified transfers, Minecraft metadata, loader installers, Java runtime, process supervision, OAuth, OS credential vault, catalog adapters and archive import.
+`crates/aurum-core/`: platform-independent service library. Persistence, verified transfers, Minecraft metadata, loader installers, Java runtime, process supervision, OAuth, OS credential vault, catalog adapters and archive import.
 `src-tauri/`: small native bridge. Dialogs return paths to Rust; the webview has no general filesystem or shell permissions.
 
 Game data defaults to the OS application data directory. Shared assets/libraries/runtime cache are separate from UUID-named isolated instances. Metadata and profile changes are persisted atomically. Credentials are encrypted in the user's local application data directory; the OS vault holds only a short encryption key and file reference, never the full token payload. Credentials never enter profile JSON. One mutating network task at a time prevents shared-cache races. Installation publishes a completed manifest only after every required download succeeds. Cancellation preserves verified cache entries, removes partial files, and never marks a partial installation ready.

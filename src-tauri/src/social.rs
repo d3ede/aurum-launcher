@@ -35,7 +35,7 @@ pub fn resume(app: &tauri::AppHandle, e: &Engine) {
         }
     }
 }
-use auren_core::Engine;
+use aurum_core::Engine;
 use serde_json::{json, Value};
 use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
@@ -134,7 +134,7 @@ pub async fn rpc(
             }
             .to_string();
             let shown = tauri::async_runtime::spawn_blocking(move || {
-                auren_core::social::notification::show(&title, &name, silent).unwrap_or(false)
+                aurum_core::social::notification::show(&title, &name, silent).unwrap_or(false)
             })
             .await
             .map_err(err)?;
@@ -194,7 +194,7 @@ pub async fn rpc(
             let profile: String = param(payload, "profileId")?;
             let friend: String = param(payload, "friend")?;
             let port = param(payload, "port")?;
-            let sharing = auren_core::social::ShareOptions {
+            let sharing = aurum_core::social::ShareOptions {
                 configs: param(payload, "configs")?,
                 sensitive: param(payload, "sensitive")?,
                 with_pack: param(payload, "withPack")?,
@@ -288,7 +288,7 @@ pub async fn rpc(
         "social.launchState" => {
             let profile = param::<String>(payload, "profileId")?;
             if !e.running.lock().await.contains_key(&profile) { return Ok(json!({ "state": "stopped" })); }
-            let state = auren_core::social::launch_state(e, &profile).await.map_err(err)?;
+            let state = aurum_core::social::launch_state(e, &profile).await.map_err(err)?;
             Ok(json!({ "state": state }))
         }
         "social.pending" => {
@@ -332,7 +332,7 @@ pub async fn rpc(
                     return Err("Avatar image exceeds 8 MiB".into());
                 }
                 let avatar =
-                    auren_core::social::normalize_avatar(&std::fs::read(path).map_err(err)?)
+                    aurum_core::social::normalize_avatar(&std::fs::read(path).map_err(err)?)
                         .map_err(err)?;
                 social.set_avatar(Some(avatar)).map_err(err)?;
                 Ok(true)

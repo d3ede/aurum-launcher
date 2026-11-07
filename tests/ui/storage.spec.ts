@@ -130,6 +130,8 @@ async function fixture(page: Page, language = "ru", theme = "light") {
   const destination = page.getByRole("button", { name: /Хранилище/ });
   await expect(destination.locator("..")).toHaveClass("settings-form");
   await expect(destination.locator("xpath=preceding-sibling::*[1]")).toContainText("Файлы и версии");
+  await expect(page.getByRole("button", { name: "Изменить папку данных", exact: true }))
+    .toHaveClass(/\bbutton secondary\b/);
   await destination.scrollIntoViewIfNeeded();
   await page.screenshot({ path: `.test-data/screenshots/storage-placement-${theme}.png` });
   await page.getByRole("button", { name: /Хранилище/ }).click();

@@ -1,6 +1,6 @@
 [workspace]
-members = ["crates/auren-core", "crates/aurum-social", "crates/aurum-social-worker", "src-tauri"]
-default-members = ["crates/auren-core"]
+members = ["crates/aurum-core", "crates/aurum-social", "crates/aurum-social-worker", "src-tauri"]
+default-members = ["crates/aurum-core"]
 resolver = "2"
 
 [profile.release]
