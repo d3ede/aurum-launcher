@@ -458,9 +458,15 @@ test("safe HTML images render; gallery carousel and zoom restore modal and focus
     name: "Просмотр изображения",
     exact: true,
   });
-  await expect(lightbox.locator("img")).toHaveAttribute("src", /second/);
+  await expect(lightbox.locator(".lightbox-image img")).toHaveAttribute(
+    "src",
+    /second/,
+  );
   await page.keyboard.press("ArrowRight");
-  await expect(lightbox.locator("img")).toHaveAttribute("src", /third/);
+  await expect(lightbox.locator(".lightbox-image img")).toHaveAttribute(
+    "src",
+    /third/,
+  );
   await lightbox
     .locator(".lightbox-toolbar")
     .getByRole("button", { name: "Увеличить изображение" })
@@ -577,8 +583,17 @@ for (const theme of ["light", "dark"]) {
         .toBe(sizes[i][0]);
       const frame = (await stage.boundingBox())!;
       const picture = (await img.boundingBox())!;
-      expect(picture.width).toBeGreaterThanOrEqual(frame.width - 1);
-      expect(picture.height).toBeGreaterThanOrEqual(frame.height - 1);
+      expect(picture.width).toBeLessThanOrEqual(frame.width + 1);
+      expect(picture.height).toBeLessThanOrEqual(frame.height + 1);
+      expect(
+        Math.min(
+          Math.abs(picture.width - frame.width),
+          Math.abs(picture.height - frame.height),
+        ),
+      ).toBeLessThanOrEqual(1);
+      const hitbox = (await lightbox.locator(".lightbox-image").boundingBox())!;
+      expect(Math.abs(hitbox.width - picture.width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(hitbox.height - picture.height)).toBeLessThanOrEqual(1);
       await expect(img).toHaveCSS("object-fit", "contain");
       expect(frame.x).toBeGreaterThanOrEqual(0);
       expect(frame.y + frame.height).toBeLessThanOrEqual(820);

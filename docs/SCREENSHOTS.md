@@ -16,6 +16,14 @@ them together. Selected screenshots remain highlighted while inspecting another
 image. The preview button appears on hover or keyboard focus and has a delayed
 tooltip. Reduced-motion preferences disable gallery animations.
 
+The viewer follows the current library's filtering, sorting and grouping order,
+including screenshots beyond the first thumbnail page. Use the keyboard's left
+and right arrows or the plain side chevrons to browse. Clicking outside the
+actual image closes the viewer. Right-click an image to zoom at that point;
+hold Ctrl and scroll for continuous zoom. Drag an enlarged image with the left
+mouse button to pan. A temporary percentage appears while zooming. The toolbar
+zoom-out button or Ctrl+0 restores the fitted view.
+
 ## Delivery
 
 Sending creates encrypted local copies and commits the batch to a durable

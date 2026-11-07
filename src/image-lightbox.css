@@ -1,0 +1,221 @@
+.image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: #090d14f5;
+  color: #fff;
+  animation: lightbox-reveal 160ms ease-out;
+}
+.lightbox-toolbar {
+  position: absolute;
+  top: 20px;
+  left: 64px;
+  right: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 14px;
+  z-index: 3;
+}
+.lightbox-toolbar > div {
+  display: flex;
+  gap: 8px;
+}
+.lightbox-toolbar button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: #ffffff15;
+  color: white;
+  border: 1px solid #ffffff25;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.lightbox-toolbar button:hover {
+  background: #ffffff30;
+}
+.lightbox-stage {
+  position: absolute;
+  inset: 80px 64px 28px;
+  overflow: hidden;
+}
+.lightbox-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.lightbox-picture {
+  display: block;
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  line-height: 0;
+  touch-action: none;
+  user-select: none;
+  pointer-events: auto;
+  transform-origin: center;
+  transition: none;
+}
+.image-lightbox button.lightbox-picture:not(:disabled) {
+  cursor: zoom-in;
+}
+.image-lightbox button.lightbox-picture.zoomed:not(:disabled) {
+  cursor: grab;
+}
+.image-lightbox button.lightbox-picture.dragging:not(:disabled) {
+  cursor: grabbing;
+}
+.lightbox-picture:focus-visible {
+  outline: 2px solid #fff8;
+  outline-offset: 4px;
+}
+.lightbox-picture img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+.lightbox-slide.leaving {
+  pointer-events: none;
+  animation: lightbox-leave 260ms ease-in both;
+}
+.lightbox-slide.entering {
+  animation: lightbox-enter 280ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.lightbox-slide.forward {
+  --slide-from: 48px;
+  --slide-to: -48px;
+}
+.lightbox-slide.backward {
+  --slide-from: -48px;
+  --slide-to: 48px;
+}
+.lightbox-slide.leaving img {
+  object-fit: contain;
+  max-width: 100%;
+  max-height: 100%;
+}
+.lightbox-message {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  padding: 30px;
+  color: #c6cbd3;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.lightbox-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 80px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #ffffffa0;
+  z-index: 3;
+  transition:
+    color 0.16s,
+    transform 0.16s;
+  cursor: pointer;
+}
+.lightbox-arrow svg {
+  width: 32px;
+  height: 32px;
+  stroke-width: 1.7;
+}
+.lightbox-arrow.previous {
+  left: 4px;
+}
+.lightbox-arrow.next {
+  right: 4px;
+}
+.lightbox-arrow:hover {
+  color: white;
+  transform: translateY(-50%) scale(1.12);
+}
+.lightbox-scale {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  padding: 8px 13px;
+  color: #fffd;
+  background: #090d14a8;
+  border: 0;
+  border-radius: 9px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  animation: lightbox-reveal 0.12s ease-out;
+}
+@keyframes lightbox-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes lightbox-enter {
+  from {
+    opacity: 0;
+    transform: translateX(var(--slide-from, 0));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes lightbox-leave {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(var(--slide-to, 0));
+  }
+}
+@media (max-width: 700px) {
+  .lightbox-toolbar {
+    top: 16px;
+    left: 20px;
+    right: 20px;
+  }
+  .lightbox-stage {
+    inset: 76px 42px 24px;
+  }
+  .lightbox-arrow {
+    width: 40px;
+  }
+  .lightbox-arrow.previous {
+    left: 0;
+  }
+  .lightbox-arrow.next {
+    right: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .image-lightbox,
+  .image-lightbox * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

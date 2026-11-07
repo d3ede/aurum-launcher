@@ -387,3 +387,165 @@ test("a missing screenshot preview preserves the picker and its selection", asyn
     picker.getByText("Selected: 1 / 10", { exact: true }),
   ).toBeVisible();
 });
+
+test("viewer uses all screenshots, keyboard paging and unobtrusive side arrows", async ({
+  page,
+}) => {
+  await fixture(page);
+  await nav(page, "Screenshots").click();
+  await page.locator(".shot-select").nth(2).click();
+  const viewer = page.locator("[data-image-lightbox]");
+  await expect(viewer.locator(".lightbox-toolbar")).toContainText(
+    "Image 3 of 12",
+  );
+  await expect(viewer.locator(".lightbox-picture img")).toBeVisible();
+  const requests = await page.evaluate(() =>
+    (window as any).shotRequests.filter(
+      (r: any) => r.action === "screenshots.image" && !r.payload.thumbnail,
+    ),
+  );
+  expect(
+    new Set(
+      requests.map(
+        (request: { payload: { id: string } }) => request.payload.id,
+      ),
+    ).size,
+  ).toBe(1);
+  await page.keyboard.press("ArrowRight");
+  await expect(viewer.locator(".lightbox-toolbar")).toContainText(
+    "Image 4 of 12",
+  );
+  await expect(viewer.locator(".lightbox-slide.entering")).toHaveCSS(
+    "animation-name",
+    "lightbox-enter",
+  );
+  await viewer
+    .getByRole("button", { name: "Previous image", exact: true })
+    .click();
+  await expect(viewer.locator(".lightbox-toolbar")).toContainText(
+    "Image 3 of 12",
+  );
+  await expect(viewer.locator(".lightbox-arrow").first()).toHaveCSS(
+    "border-top-width",
+    "0px",
+  );
+  await expect(viewer.locator(".lightbox-arrow").first()).toHaveCSS(
+    "background-color",
+    "rgba(0, 0, 0, 0)",
+  );
+  await page.keyboard.press("Escape");
+  await page.getByRole("combobox", { name: "Instance", exact: true }).click();
+  await page
+    .getByRole("option", { name: "Adventure world", exact: true })
+    .click();
+  await page.locator(".shot-select").nth(1).click();
+  await expect(viewer.locator(".lightbox-toolbar")).toContainText(
+    "Image 2 of 5",
+  );
+});
+
+test("viewer dismisses clicks in letterboxing instead of treating it as the image", async ({
+  page,
+}) => {
+  await fixture(page);
+  await nav(page, "Screenshots").click();
+  await page.locator(".shot-select").first().click();
+  const viewer = page.locator("[data-image-lightbox]");
+  const image = viewer.locator(".lightbox-picture img");
+  await expect(image).toBeVisible();
+  await expect
+    .poll(async () => (await image.boundingBox())!.width)
+    .toBeGreaterThan(1000);
+  const bounds = (await image.boundingBox())!;
+  const hitbox = (await viewer.locator(".lightbox-picture").boundingBox())!;
+  expect(Math.abs(hitbox.height - bounds.height)).toBeLessThan(1);
+  const stage = (await viewer.locator(".lightbox-stage").boundingBox())!;
+  expect(bounds.y - stage.y).toBeGreaterThan(10);
+  await page.mouse.click(stage.x + stage.width / 2, stage.y + 3);
+  await expect(viewer).toHaveCount(0);
+});
+
+test("right click anchors zoom, Ctrl wheel stays free, and grabbed images pan", async ({
+  page,
+}) => {
+  await fixture(page);
+  await nav(page, "Screenshots").click();
+  await page.locator(".shot-select").first().click();
+  const viewer = page.locator("[data-image-lightbox]");
+  const picture = viewer.locator(".lightbox-picture");
+  await expect(picture.locator("img")).toBeVisible();
+  await expect
+    .poll(async () => (await picture.boundingBox())!.width)
+    .toBeGreaterThan(1000);
+  await picture.click({ button: "right", position: { x: 300, y: 250 } });
+  await expect(viewer).toHaveAttribute("data-scale", "2");
+  const x = () =>
+    picture.evaluate(
+      (element) => new DOMMatrix(getComputedStyle(element).transform).m41,
+    );
+  expect(await x()).toBeGreaterThan(0);
+  const stage = (await viewer.locator(".lightbox-stage").boundingBox())!;
+  await page.mouse.move(stage.x + stage.width / 2, stage.y + stage.height / 2);
+  const browserScale = await page.evaluate(() => window.visualViewport!.scale);
+  await page.keyboard.down("Control");
+  await page.mouse.wheel(0, -1200);
+  await page.keyboard.up("Control");
+  await expect
+    .poll(async () => Number(await viewer.getAttribute("data-scale")))
+    .toBeGreaterThan(10);
+  expect(await page.evaluate(() => window.visualViewport!.scale)).toBe(
+    browserScale,
+  );
+  await expect(viewer.locator(".lightbox-scale")).toBeVisible();
+  await expect(picture).toHaveCSS("cursor", "grab");
+  const before = await x();
+  await page.mouse.down();
+  await expect(picture).toHaveCSS("cursor", "grabbing");
+  await page.mouse.move(
+    stage.x + stage.width / 2 + 70,
+    stage.y + stage.height / 2 + 30,
+    { steps: 5 },
+  );
+  await page.mouse.up();
+  expect((await x()) - before).toBeCloseTo(70, 0);
+  await expect(viewer.locator(".lightbox-scale")).toHaveCount(0, {
+    timeout: 3000,
+  });
+  await page.keyboard.press("Control+0");
+  await expect(viewer).toHaveAttribute("data-scale", "1");
+  expect(await x()).toBe(0);
+  await picture.click({ button: "right", position: { x: 300, y: 200 } });
+  await viewer
+    .getByRole("button", { name: "Reset zoom (Ctrl+0)", exact: true })
+    .click();
+  await expect(viewer).toHaveAttribute("data-scale", "1");
+  await page.screenshot({
+    path: ".test-data/screenshots/viewer-fit.png",
+    animations: "disabled",
+  });
+});
+
+test("paging reaches images beyond the thumbnail page", async ({ page }) => {
+  await fixture(page);
+  await page.evaluate(() => {
+    const w = window as any;
+    const source = w.shotItems[0];
+    w.shotItems = Array.from({ length: 85 }, (_, i) => ({
+      ...source,
+      id: `local:${source.profileId}:shot${i}`,
+      name: `screenshot-${i}.png`,
+      createdAt: source.createdAt + i * 1000,
+    }));
+  });
+  await nav(page, "Screenshots").click();
+  await expect(page.locator(".shot-select")).toHaveCount(80);
+  await page.locator(".shot-select").nth(79).click();
+  const viewer = page.locator("[data-image-lightbox]");
+  await expect(viewer.locator(".lightbox-toolbar")).toContainText(
+    "Image 80 of 85",
+  );
+  await page.keyboard.press("ArrowRight");
+  await expect(viewer.locator(".lightbox-toolbar")).toContainText(
+    "Image 81 of 85",
+  );
+});

@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Просмотр скриншотов: плавное перелистывание, свободный масштаб Ctrl + колесо и перемещение увеличенного изображения мышью.":
+    "Screenshot viewer: smooth paging, free zoom with Ctrl + wheel, and dragging to pan enlarged images.",
   "Скриншоты каждой сборки и общая библиотека с поиском, сортировкой и просмотром вблизи.":
     "Instance screenshots and a shared library with search, sorting and a closer view.",
   "До 10 скриншотов другу за раз: зашифрованная очередь сохраняется до следующего соединения.":

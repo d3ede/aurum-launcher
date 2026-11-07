@@ -1,4 +1,5 @@
 export const screenshotsEnglish: Record<string, string> = {
+  "@shots.zoom.reset": "Reset zoom (Ctrl+0)",
   "@shots.remove": "Delete received screenshot",
   "@shots.remove.confirm": "Delete this received screenshot?",
   "@shots.removed": "Received screenshot deleted",
@@ -64,6 +65,7 @@ export const screenshotsEnglish: Record<string, string> = {
   "@shots.received.notice": "New screenshots from a friend",
 };
 export const screenshotsRussian: Record<string, string> = {
+  "@shots.zoom.reset": "Сбросить масштаб (Ctrl+0)",
   "@shots.remove": "Удалить полученный скриншот",
   "@shots.remove.confirm": "Удалить этот полученный скриншот?",
   "@shots.removed": "Полученный скриншот удалён",

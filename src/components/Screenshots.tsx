@@ -98,37 +98,26 @@ function Thumbnail({ shot }: { shot: Screenshot }) {
   );
 }
 function ScreenshotViewer({
-  shot,
+  shots,
+  initialIndex,
   onClose,
 }: {
-  shot: Screenshot;
+  shots: Screenshot[];
+  initialIndex: number;
   onClose: () => void;
 }) {
-  const [url, setUrl] = useState("");
-  const [error, setError] = useState("");
-  useEffect(() => {
-    let alive = true;
-    void rpc("screenshots.image", { id: shot.id, thumbnail: false })
-      .then((url) => {
-        if (alive) setUrl(url);
-      })
-      .catch((error) => {
-        if (alive) setError(String(error));
-      });
-    return () => {
-      alive = false;
-    };
-  }, [shot.id]);
-  if (url)
-    return <ImageLightbox images={[url]} initialIndex={0} onClose={onClose} />;
+  const images = useMemo(() => shots.map((shot) => shot.id), [shots]);
+  const resolveImage = useCallback(
+    (id: string) => rpc("screenshots.image", { id, thumbnail: false }),
+    [],
+  );
   return (
-    <Modal title={shot.name} onClose={onClose} className="shot-loading-modal">
-      {error ? (
-        <ErrorBox error={error} />
-      ) : (
-        <Loading label={t("@shots.loading")} />
-      )}
-    </Modal>
+    <ImageLightbox
+      images={images}
+      initialIndex={initialIndex}
+      resolveImage={resolveImage}
+      onClose={onClose}
+    />
   );
 }
 export function ScreenshotLibrary({
@@ -153,7 +142,10 @@ export function ScreenshotLibrary({
   const [group, setGroup] = useState("date");
   const [visibleCount, setVisibleCount] = useState(80);
   useEffect(() => setVisibleCount(80), [query, filter, sort, group]);
-  const [view, setView] = useState<Screenshot | null>(null);
+  const [view, setView] = useState<{
+    shots: Screenshot[];
+    initialIndex: number;
+  } | null>(null);
   const [removing, setRemoving] = useState<Screenshot | null>(null);
   const revision = useRef(0);
   const refresh = useCallback(async () => {
@@ -192,7 +184,7 @@ export function ScreenshotLibrary({
       window.removeEventListener("focus", onFocus);
     };
   }, [refresh]);
-  const [groups, totalMatches] = useMemo(() => {
+  const [groups, totalMatches, gallery] = useMemo(() => {
     const search = query.trim().toLocaleLowerCase();
     const filtered = items.filter(
       (shot) =>
@@ -210,7 +202,7 @@ export function ScreenshotLibrary({
           : b.createdAt - a.createdAt,
     );
     const result = new Map<string, Screenshot[]>();
-    for (const shot of filtered.slice(0, visibleCount)) {
+    for (const shot of filtered) {
       const key =
         group === "profile"
           ? shot.profileName
@@ -223,11 +215,27 @@ export function ScreenshotLibrary({
       if (!result.has(key)) result.set(key, []);
       result.get(key)!.push(shot);
     }
-    return [[...result], filtered.length] as const;
+    let remaining = visibleCount;
+    const visible = [...result]
+      .map(([key, shots]): [string, Screenshot[]] => {
+        const batch = shots.slice(0, Math.max(0, remaining));
+        remaining -= batch.length;
+        return [key, batch];
+      })
+      .filter(([, shots]) => shots.length);
+    return [visible, filtered.length, [...result.values()].flat()] as const;
   }, [items, filter, query, sort, group, visibleCount]);
+  const openViewer = (shot: Screenshot) =>
+    setView({
+      shots: gallery,
+      initialIndex: Math.max(
+        0,
+        gallery.findIndex((item) => item.id === shot.id),
+      ),
+    });
   const toggle = (shot: Screenshot) => {
     if (!selection || !onSelection) {
-      setView(shot);
+      openViewer(shot);
       return;
     }
     const next = new Set(selection);
@@ -389,7 +397,7 @@ export function ScreenshotLibrary({
                       className="shot-inspect"
                       aria-label={`${t("@shots.preview")}: ${shot.name}`}
                       data-tooltip={t("@shots.preview")}
-                      onClick={() => setView(shot)}
+                      onClick={() => openViewer(shot)}
                     >
                       <ZoomIn size={19} />
                     </button>
@@ -440,7 +448,13 @@ export function ScreenshotLibrary({
           </button>
         </div>
       )}
-      {view && <ScreenshotViewer shot={view} onClose={() => setView(null)} />}
+      {view && (
+        <ScreenshotViewer
+          shots={view.shots}
+          initialIndex={view.initialIndex}
+          onClose={() => setView(null)}
+        />
+      )}
       {removing && (
         <Modal
           title={t("@shots.remove.confirm")}
@@ -616,7 +630,9 @@ export function ScreenshotDeliveries({
               )}
             </div>
             {item.direction === "outgoing" &&
-              ["queued", "connecting", "sending", "failed"].includes(item.status) && (
+              ["queued", "connecting", "sending", "failed"].includes(
+                item.status,
+              ) && (
                 <button
                   type="button"
                   className="icon-button"
