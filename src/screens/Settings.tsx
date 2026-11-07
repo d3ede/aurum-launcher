@@ -293,20 +293,6 @@ function GeneralSettings() {
               </div>
             )}
           </div>
-          <button
-            type="button"
-            className="settings-destination storage-destination"
-            onClick={() => openSettings("storage")}
-          >
-            <span className="settings-destination-icon">
-              <HardDrive size={25} />
-            </span>
-            <span>
-              <b>{t("Хранилище")}</b>
-              <small>{t("Занятое место, очистка и корзина")}</small>
-            </span>
-            <ArrowRight size={19} />
-          </button>
           <label className="checkbox-label">
             <input
               type="checkbox"
@@ -321,6 +307,20 @@ function GeneralSettings() {
             </div>
           </label>
         </section>
+        <button
+          type="button"
+          className="settings-destination storage-destination"
+          onClick={() => openSettings("storage")}
+        >
+          <span className="settings-destination-icon">
+            <HardDrive size={25} />
+          </span>
+          <span>
+            <b>{t("Хранилище")}</b>
+            <small>{t("Занятое место, очистка и корзина")}</small>
+          </span>
+          <ArrowRight size={19} />
+        </button>
         <div className="settings-save">
           <span>
             {t("Изменения параметров применятся при следующем запуске игры.")}

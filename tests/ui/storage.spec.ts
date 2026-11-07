@@ -127,6 +127,11 @@ async function fixture(page: Page, language = "ru", theme = "light") {
   );
   await page.goto("/");
   await page.getByRole("button", { name: "Настройки", exact: true }).click();
+  const destination = page.getByRole("button", { name: /Хранилище/ });
+  await expect(destination.locator("..")).toHaveClass("settings-form");
+  await expect(destination.locator("xpath=preceding-sibling::*[1]")).toContainText("Файлы и версии");
+  await destination.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: `.test-data/screenshots/storage-placement-${theme}.png` });
   await page.getByRole("button", { name: /Хранилище/ }).click();
   await expect(
     page.getByRole("heading", { name: "Хранилище", exact: true }),

@@ -329,7 +329,7 @@
 }
 .storage-destination {
   width: 100%;
-  margin: 16px 0;
+  margin: 0;
 }
 .storage-destination > span:nth-child(2) {
   flex: 1;
