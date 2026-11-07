@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Готовится обновление": "Upcoming update",
+  "Исправлен сбой при загрузке одинаковых ресурсов Minecraft.": "Fixed an error when downloading duplicate Minecraft resources.",
   "Social и автоматический вход": "Social and automatic joining",
   "Приглашения и подключение": "Invitations and connection",
   "Minecraft подключается к миру друга автоматически.": "Minecraft joins your friend's world automatically.",

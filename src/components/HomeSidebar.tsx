@@ -85,6 +85,10 @@ export function HomeSidebar() {
             tabIndex={0}
             aria-label={t("Новости лаунчера")}
           >
+            <article className="home-news-version home-news-upcoming">
+              <h3>{t("Готовится обновление")}</h3>
+              <p>{t("Исправлен сбой при загрузке одинаковых ресурсов Minecraft.")}</p>
+            </article>
             {releaseNotes.slice(0, 3).map((release) => (
               <article className="home-news-version" key={release.version}>
                 <div className="home-news-version-head">
@@ -138,6 +142,10 @@ export function HomeSidebar() {
             tabIndex={0}
             aria-label={t("Все изменения")}
           >
+            <section className="release-section-body">
+              <h4>{t("Готовится обновление")}</h4>
+              <p>{t("Исправлен сбой при загрузке одинаковых ресурсов Minecraft.")}</p>
+            </section>
             {releaseNotes.map((release) => (
               <details
                 className="release-section"

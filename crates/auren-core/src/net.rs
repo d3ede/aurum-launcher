@@ -50,11 +50,12 @@ impl Engine {
             tokio::fs::create_dir_all(p).await?;
         }
         let temp = path.with_file_name(format!(
-            "{}.{}.part",
+            "{}.{}.{}.part",
             path.file_name()
                 .context("Не задано имя файла")?
                 .to_string_lossy(),
-            task.id
+            task.id,
+            uuid::Uuid::new_v4()
         ));
         let result: Result<()> = async {
             let response = self.http.get(url).send().await?.error_for_status()?;

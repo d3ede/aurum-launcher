@@ -7,7 +7,7 @@ use anyhow::{bail, Context, Result};
 use futures_util::{stream, TryStreamExt};
 use serde_json::{json, Value};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
     process::Stdio,
     sync::{
@@ -415,14 +415,22 @@ impl Engine {
         .await?;
         let assets: Value = serde_json::from_slice(&tokio::fs::read(index_path).await?)?;
         let objects = assets["objects"].as_object().context("Нет списка assets")?;
+        // Different logical asset names can share one content-addressed object.
+        // Download it once; virtual/resources mappings below still copy every name.
+        let mut hashes = HashSet::new();
+        let mut downloads = Vec::new();
+        for asset in objects.values() {
+            let hash = text(asset, "hash")?;
+            if hash.len() != 40 || !hash.chars().all(|c| c.is_ascii_hexdigit()) {
+                bail!("Неверный hash asset")
+            }
+            if hashes.insert(hash) { downloads.push(hash); }
+        }
         let completed = AtomicU64::new(0);
-        let total = objects.len() as u64;
-        stream::iter(objects.values().map(Ok::<_, anyhow::Error>))
-            .try_for_each_concurrent(12, |a| async {
-                let hash = text(a, "hash")?;
-                if hash.len() != 40 || !hash.chars().all(|c| c.is_ascii_hexdigit()) {
-                    bail!("Неверный hash asset")
-                }
+        let completed = &completed;
+        let total = downloads.len() as u64;
+        stream::iter(downloads.into_iter().map(Ok::<_, anyhow::Error>))
+            .try_for_each_concurrent(12, |hash| async move {
                 self.download(
                     &format!(
                         "https://resources.download.minecraft.net/{}/{hash}",
