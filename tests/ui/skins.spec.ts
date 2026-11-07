@@ -105,7 +105,15 @@ async function fixture(
               skins: [
                 {
                   id: payload.after ? "b".repeat(32) : "a".repeat(32),
-                  name: payload.after ? "Explorer" : "Knight",
+                  name:
+                    payload.query === "unnamed"
+                      ? null
+                      : payload.query === "catalog-name"
+                        ? "Имя из каталога"
+                        : payload.after
+                          ? "Explorer"
+                          : "Knight",
+                  shortId: "abcd1234",
                   hash: "c".repeat(64),
                 },
               ],
@@ -133,7 +141,15 @@ async function fixture(
               throw new Error("Скин или игрок не найден");
             return {
               id: `${payload.source}:${payload.query}`,
-              name: payload.source === "player" ? payload.query : "Knight",
+              name: ["unnamed", "catalog-name"].includes(
+                w.requests.filter((r: any) => r.action === "browseSkins").at(-1)
+                  ?.payload.query,
+              )
+                ? null
+                : payload.source === "player"
+                  ? payload.query
+                  : "Knight",
+              shortId: "abcd1234",
               model: "alex",
               texture: texture(zuri),
               capeId: null,
@@ -363,6 +379,149 @@ test("skin browser renders models, previews and saves without applying to Micros
   await expect(
     page.getByRole("button", { name: "Выбрать скин Knight" }),
   ).toBeVisible();
+});
+
+test("skin browser separates missing names and IDs and saves a custom name", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page
+    .getByRole("button", { name: "Браузер скинов", exact: true })
+    .click();
+  const browser = page.getByRole("dialog", {
+    name: "Браузер скинов",
+    exact: true,
+  });
+  await browser.getByRole("textbox", { name: "Поиск скинов" }).fill("unnamed");
+  const tile = browser.getByRole("button", {
+    name: "Посмотреть скин Без названия",
+  });
+  await expect(tile.getByText("Без названия", { exact: true })).toBeVisible();
+  await expect(tile.getByText("ID: abcd1234", { exact: true })).toBeVisible();
+  expect(
+    await tile
+      .locator(".browser-skin-id")
+      .evaluate((el) => parseFloat(getComputedStyle(el).fontSize)),
+  ).toBeLessThan(12);
+  await tile.click();
+  await expect(
+    browser.getByRole("heading", { name: "Без названия", exact: true }),
+  ).toBeVisible();
+  const name = browser.getByRole("textbox", { name: "Название образа" });
+  await expect(name).toHaveValue("Без названия");
+  const add = browser.getByRole("button", {
+    name: "Добавить в библиотеку",
+    exact: true,
+  });
+  await name.fill("   ");
+  await expect(add).toBeDisabled();
+  await name.fill("🐉".repeat(31));
+  await expect(add).toBeDisabled();
+  await name.fill("  Синий рыцарь  ");
+  expect(await name.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe("none");
+  await page.setViewportSize({ width: 960, height: 680 });
+  await expect(name).toBeInViewport();
+  await expect(add).toBeInViewport();
+  await page.screenshot({
+    path: ".test-data/screenshots/skin-browser-custom-name.png",
+  });
+  await add.click();
+  await expect(
+    browser.getByRole("button", { name: "Уже в библиотеке" }),
+  ).toBeDisabled();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as any).requests
+          .filter((r: any) => r.action === "saveLibrarySkin")
+          .at(-1)?.payload.name,
+    ),
+  ).toBe("Синий рыцарь");
+  await browser.getByRole("button", { name: "Закрыть диалог" }).click();
+  await expect(
+    page.getByRole("button", { name: "Выбрать скин Синий рыцарь" }),
+  ).toBeVisible();
+  await page.reload();
+  await page
+    .getByRole("button", { name: "Скины и плащи", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Выбрать скин Синий рыцарь" }),
+  ).toBeVisible();
+});
+
+test("skin browser preserves a catalog name when details omit it", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page
+    .getByRole("button", { name: "Браузер скинов", exact: true })
+    .click();
+  const browser = page.getByRole("dialog", {
+    name: "Браузер скинов",
+    exact: true,
+  });
+  await browser
+    .getByRole("textbox", { name: "Поиск скинов" })
+    .fill("catalog-name");
+  await browser
+    .getByRole("button", { name: "Посмотреть скин Имя из каталога" })
+    .click();
+  await expect(
+    browser.getByRole("heading", { name: "Имя из каталога", exact: true }),
+  ).toBeVisible();
+  await expect(
+    browser.getByRole("textbox", { name: "Название образа" }),
+  ).toHaveValue("Имя из каталога");
+});
+
+test("skin browser keeps one search focus border and menus match their triggers", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page
+    .getByRole("button", { name: "Браузер скинов", exact: true })
+    .click();
+  const browser = page.locator(".skin-browser-modal");
+  await browser.getByRole("textbox", { name: "Поиск скинов" }).focus();
+  expect(
+    await browser
+      .getByRole("textbox", { name: "Поиск скинов" })
+      .evaluate((el) => getComputedStyle(el).outlineStyle),
+  ).toBe("none");
+  for (const label of ["Где искать скины", "Порядок скинов"]) {
+    const trigger = browser.getByRole("combobox", {
+      name: label,
+      includeHidden: true,
+    });
+    await trigger.click();
+    const menu = page.getByRole("listbox");
+    await expect(menu).toBeVisible();
+    expect(
+      Math.abs(
+        (await menu.boundingBox())!.width -
+          (await trigger.boundingBox())!.width,
+      ),
+    ).toBeLessThanOrEqual(1);
+    expect(await trigger.evaluate((el) => getComputedStyle(el).boxShadow)).toBe(
+      "none",
+    );
+    await menu.getByRole("option").nth(1).hover();
+    const checked = menu.locator('[data-state="checked"]');
+    expect(
+      await checked.evaluate((el) => getComputedStyle(el).backgroundColor),
+    ).toBe("rgba(0, 0, 0, 0)");
+    await expect(menu.locator("[data-highlighted]")).toHaveCount(1);
+    expect(await menu.evaluate((el) => getComputedStyle(el).transform)).toBe(
+      "none",
+    );
+    await page.screenshot({
+      path: `.test-data/screenshots/skin-browser-menu-${label === "Порядок скинов" ? "sort" : "source"}.png`,
+    });
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    await expect(browser).toBeVisible();
+  }
 });
 
 test("skin browser searches the catalog, pages, sorts, opens players and MineSkin links", async ({

@@ -1,6 +1,6 @@
 //! Read-only skin discovery. Importing an appearance never changes an account.
 use crate::{
-    skins::{encode_texture, validate_texture, SavedSkin},
+    skins::{encode_texture, validate_texture},
     Engine,
 };
 use anyhow::{bail, Context, Result};
@@ -12,8 +12,28 @@ use std::time::Duration;
 #[derive(Debug, Serialize)]
 pub struct BrowserSkin {
     id: String,
-    name: String,
+    name: Option<String>,
+    #[serde(rename = "shortId")]
+    short_id: Option<String>,
     hash: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BrowserAppearance {
+    pub id: String,
+    pub name: Option<String>,
+    pub short_id: Option<String>,
+    pub model: String,
+    pub texture: String,
+}
+
+fn skin_name(skin: &Value) -> Option<String> {
+    skin["name"]
+        .as_str()
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(String::from)
 }
 
 #[derive(Debug, Serialize)]
@@ -136,13 +156,11 @@ impl Engine {
                 }
                 Some(BrowserSkin {
                     id: id.into(),
-                    name: skin["name"]
+                    name: skin_name(skin),
+                    short_id: skin["shortId"]
                         .as_str()
-                        .filter(|s| !s.trim().is_empty())
-                        .unwrap_or(skin["shortId"].as_str().unwrap_or(id))
-                        .chars()
-                        .take(100)
-                        .collect(),
+                        .filter(|id| hex_id(id, 8, 8))
+                        .map(String::from),
                     hash: hash.into(),
                 })
             })
@@ -172,8 +190,8 @@ impl Engine {
         )?))
     }
 
-    pub async fn skin_browser_skin(&self, query: &str, source: &str) -> Result<SavedSkin> {
-        let (id, name, model, url) = if source == "mineskin" {
+    pub async fn skin_browser_skin(&self, query: &str, source: &str) -> Result<BrowserAppearance> {
+        let (id, name, short_id, model, url) = if source == "mineskin" {
             let id = skin_id(query)?;
             let result = self
                 .skin_browser_json(reqwest::Url::parse(&format!(
@@ -194,15 +212,11 @@ impl Engine {
                     "mineskin:{}",
                     skin["uuid"].as_str().context("Скин или игрок не найден")?
                 ),
-                skin["name"]
+                skin_name(skin),
+                skin["shortId"]
                     .as_str()
-                    .filter(|s| !s.trim().is_empty())
-                    .unwrap_or(&id)
-                    .trim()
-                    .char_indices()
-                    .take_while(|(offset, c)| offset + c.len_utf8() <= 120)
-                    .map(|(_, c)| c)
-                    .collect::<String>(),
+                    .filter(|id| hex_id(id, 8, 8))
+                    .map(String::from),
                 model.to_string(),
                 skin["texture"]["url"]["skin"]
                     .as_str()
@@ -253,7 +267,8 @@ impl Engine {
             let skin = &textures["textures"]["SKIN"];
             (
                 format!("player:{uuid}"),
-                result["name"].as_str().unwrap_or(&name).to_string(),
+                Some(result["name"].as_str().unwrap_or(&name).to_string()),
+                None,
                 if skin["metadata"]["model"] == "slim" {
                     "alex"
                 } else {
@@ -278,12 +293,12 @@ impl Engine {
             .path()
             .strip_prefix("/texture/")
             .context("Неверный адрес текстуры скина")?;
-        Ok(SavedSkin {
+        Ok(BrowserAppearance {
             id,
             name,
+            short_id,
             model,
             texture: self.skin_browser_texture(hash).await?,
-            cape_id: None,
         })
     }
 }
@@ -291,6 +306,27 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn preserves_real_names_and_keeps_missing_names_separate_from_ids() {
+        for name in [
+            "Knight",
+            "  Рыцарь ночи  ",
+            "竜の騎士",
+            "none",
+            "a".repeat(100).as_str(),
+        ] {
+            let value =
+                serde_json::json!({"name": name, "uuid": "a".repeat(32), "shortId": "abcd1234"});
+            assert_eq!(skin_name(&value).as_deref(), Some(name.trim()));
+        }
+        for value in [
+            serde_json::json!({"name": null, "shortId": "abcd1234"}),
+            serde_json::json!({"name": "  "}),
+            serde_json::json!({}),
+        ] {
+            assert_eq!(skin_name(&value), None);
+        }
+    }
     #[test]
     fn accepts_only_mineskin_ids_and_links() {
         assert_eq!(

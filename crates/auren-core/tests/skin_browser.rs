@@ -24,14 +24,20 @@ async fn public_skin_discovery_and_import_need_no_player_account() {
     assert!(matches!(skin.model.as_str(), "alex" | "steve"));
     assert!(engine.skin_library().await.unwrap().skins.is_empty());
     let player = engine.skin_browser_skin("Notch", "player").await.unwrap();
-    assert_eq!(player.name, "Notch");
+    assert_eq!(player.name.as_deref(), Some("Notch"));
     assert!(player.texture.starts_with("data:image/png;base64,"));
     use base64::Engine as _;
     let bytes = base64::engine::general_purpose::STANDARD
         .decode(skin.texture.split_once(',').unwrap().1)
         .unwrap();
     engine
-        .save_library_skin(None, skin.name, skin.model, bytes, None)
+        .save_library_skin(
+            None,
+            skin.name.unwrap_or_else(|| "Test skin".into()),
+            skin.model,
+            bytes,
+            None,
+        )
         .await
         .unwrap();
     let restarted = Engine::new(directory.path().into(), |_| {}).await.unwrap();

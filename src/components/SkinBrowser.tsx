@@ -5,11 +5,16 @@ import { t, tMessage } from "../lib/i18n";
 import { textureBytes } from "../lib/defaultSkins";
 import { skinThumbnail } from "../lib/skinThumbnails";
 import type { SavedSkin } from "../types";
-import { ErrorBox, Loading, Modal } from "./ui";
+import {
+  validSkinName,
+  type BrowserAppearance,
+  type BrowserEntry,
+} from "../lib/skin-browser";
+import { ErrorBox, Field, Loading, Modal } from "./ui";
 import { Select } from "./Select";
 import { SkinPreview } from "./SkinPreview";
 
-type Entry = { id: string; name: string; hash: string };
+type Entry = BrowserEntry;
 type Mode = "latest" | "popular" | "random";
 type Source = "catalog" | "player" | "mineskin";
 const errorMessage = (e: unknown) =>
@@ -80,7 +85,9 @@ function BrowserTile({
     <button
       ref={ref}
       className={`wardrobe-tile browser-tile ${selected ? "selected" : ""}`}
-      aria-label={t("Посмотреть скин {{name}}", { name: entry.name })}
+      aria-label={t("Посмотреть скин {{name}}", {
+        name: entry.name || t("Без названия"),
+      })}
       aria-pressed={selected}
       onClick={() => {
         if (failed) setRetry((n) => n + 1);
@@ -96,7 +103,14 @@ function BrowserTile({
           <span className="skin-thumb-loading" />
         )}
       </span>
-      <span className="browser-tile-name">{entry.name}</span>
+      <span className="browser-tile-name">
+        <span title={entry.name || undefined}>
+          {entry.name || t("Без названия")}
+        </span>
+        <small className="browser-skin-id" title={entry.id}>
+          ID: {entry.shortId || entry.id.slice(0, 8)}
+        </small>
+      </span>
     </button>
   );
 }
@@ -115,7 +129,8 @@ export function SkinBrowser({
   const [mode, setMode] = useState<Mode>("latest");
   const [entries, setEntries] = useState<Entry[]>([]);
   const [after, setAfter] = useState<string | null>(null);
-  const [selected, setSelected] = useState<SavedSkin | null>(null);
+  const [selected, setSelected] = useState<BrowserAppearance | null>(null);
+  const [libraryName, setLibraryName] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [loading, setLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -153,7 +168,28 @@ export function SkinBrowser({
     setPreviewLoading(true);
     try {
       const skin = await rpc("skinBrowserSkin", { query: value, source: kind });
-      if (version === previewVersion.current) setSelected(skin);
+      if (version === previewVersion.current) {
+        // Preserve a genuine catalog name if the detail response happens to omit it.
+        const entry =
+          kind === "mineskin"
+            ? entries.find((entry) => entry.id === value)
+            : null;
+        const name = skin.name || entry?.name || null;
+        setSelected({
+          ...skin,
+          name,
+          shortId: skin.shortId || entry?.shortId || null,
+        });
+        setLibraryName(name || t("Без названия"));
+        if (skin.name)
+          setEntries((old) =>
+            old.map((entry) =>
+              entry.id === skin.id.replace("mineskin:", "")
+                ? { ...entry, name: skin.name }
+                : entry,
+            ),
+          );
+      }
     } catch (e) {
       if (version === previewVersion.current) setPreviewError(errorMessage(e));
     } finally {
@@ -235,14 +271,15 @@ export function SkinBrowser({
     }
   }
   async function save() {
-    if (!selected || saved || saveLock.current) return;
+    if (!selected || saved || saveLock.current || !validSkinName(libraryName))
+      return;
     saveLock.current = true;
     setSaving(true);
     setPreviewError("");
     try {
       const value = await rpc("saveLibrarySkin", {
         id: null,
-        name: selected.name,
+        name: libraryName.trim(),
         model: selected.model,
         bytes: textureBytes(selected.texture),
         capeId: null,
@@ -286,6 +323,7 @@ export function SkinBrowser({
           />
         </div>
         <Select
+          menuClassName="skin-browser-select-menu"
           aria-label={t("Где искать скины")}
           value={source}
           disabled={saving}
@@ -298,6 +336,7 @@ export function SkinBrowser({
         />
         {source === "catalog" && (
           <Select
+            menuClassName="skin-browser-select-menu"
             aria-label={t("Порядок скинов")}
             value={mode}
             disabled={saving}
@@ -365,7 +404,7 @@ export function SkinBrowser({
           )}
         </section>
         <aside
-          className="skin-browser-detail"
+          className={`skin-browser-detail ${selected && !saved ? "skin-browser-editable" : ""}`}
           aria-label={t("Просмотр выбранного скина")}
         >
           {previewLoading ? (
@@ -378,13 +417,46 @@ export function SkinBrowser({
                 model={selected.model}
                 onError={setPreviewError}
               />
-              <h3>{selected.name}</h3>
+              <h3>{selected.name || t("Без названия")}</h3>
+              <small
+                className="browser-skin-id"
+                title={selected.id.split(":").at(-1)}
+              >
+                ID: {selected.shortId || selected.id.split(":").at(-1)}
+              </small>
               <small>
                 {t(selected.model === "alex" ? "Тонкие руки" : "Обычные руки")}
               </small>
+              {!saved && (
+                <Field label={t("Название образа")}>
+                  <input
+                    aria-label={t("Название образа")}
+                    value={libraryName}
+                    maxLength={120}
+                    placeholder={t("Без названия")}
+                    disabled={saving}
+                    aria-invalid={!validSkinName(libraryName)}
+                    aria-describedby={
+                      !validSkinName(libraryName)
+                        ? "skin-browser-name-error"
+                        : undefined
+                    }
+                    onChange={(event) => setLibraryName(event.target.value)}
+                  />
+                  {!validSkinName(libraryName) && (
+                    <small id="skin-browser-name-error" role="alert">
+                      {t(
+                        libraryName.trim()
+                          ? "Название слишком длинное. Сократите его."
+                          : "Введите название скина",
+                      )}
+                    </small>
+                  )}
+                </Field>
+              )}
               <button
                 className="button primary"
-                disabled={saving || !!saved}
+                disabled={saving || !!saved || !validSkinName(libraryName)}
                 onClick={() => void save()}
               >
                 {saved ? <Check size={16} /> : <Plus size={16} />}

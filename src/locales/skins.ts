@@ -1,4 +1,8 @@
 export const skinEnglish: Record<string, string> = {
+  "Без названия": "Untitled",
+  "Введите название скина": "Enter a skin name",
+  "Название слишком длинное. Сократите его.":
+    "The name is too long. Shorten it.",
   "Браузер скинов": "Skin browser",
   "Посмотреть скин {{name}}": "View skin {{name}}",
   "Поиск скинов": "Search skins",

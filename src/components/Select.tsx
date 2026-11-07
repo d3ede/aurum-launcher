@@ -16,6 +16,7 @@ export function Select({
   disabled,
   id,
   className = "",
+  menuClassName = "",
   "aria-label": label,
 }: {
   value: string;
@@ -25,6 +26,7 @@ export function Select({
   disabled?: boolean;
   id?: string;
   className?: string;
+  menuClassName?: string;
   "aria-label": string;
 }) {
   const empty = "__aurum_any__";
@@ -55,11 +57,15 @@ export function Select({
       </Dropdown.Trigger>
       <Dropdown.Portal>
         <Dropdown.Content
-          className="select-menu"
+          className={`select-menu ${menuClassName}`}
           position="popper"
           sideOffset={7}
           collisionPadding={12}
-          onEscapeKeyDown={(e) => e.stopPropagation()}
+          onEscapeKeyDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setOpen(false);
+          }}
         >
           <Dropdown.ScrollUpButton className="select-scroll">
             <ChevronUp size={16} />

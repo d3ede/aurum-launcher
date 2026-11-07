@@ -1,4 +1,5 @@
 import { t } from "./i18n";
+import type { BrowserEntry, BrowserAppearance } from "./skin-browser";
 import type { HorizonModStatus } from "./horizon-mods";
 import type {
   SocialSnapshot,
@@ -191,14 +192,14 @@ interface Contract {
       after: string | null;
     },
     {
-      skins: { id: string; name: string; hash: string }[];
+      skins: BrowserEntry[];
       after: string | null;
     },
   ];
   skinBrowserTexture: [{ hash: string }, string];
   skinBrowserSkin: [
     { query: string; source: "mineskin" | "player" },
-    SavedSkin,
+    BrowserAppearance,
   ];
   importModrinthSkins: [{ directories: string[] }, ModrinthSkinImportResult];
   accountAppearance: [{ id: string }, AccountAppearance];
