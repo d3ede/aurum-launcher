@@ -1,4 +1,11 @@
 export const homeEnglish: Record<string, string> = {
+  "Social и автоматический вход": "Social and automatic joining",
+  "Приглашения и подключение": "Invitations and connection",
+  "Minecraft подключается к миру друга автоматически.": "Minecraft joins your friend's world automatically.",
+  "Social восстанавливает соединение, сохраняя ID и друзей.": "Social reconnects while keeping your ID and friends.",
+  "Обновлены приглашения, карточка профиля и показ ID.": "Updated invitations, the profile card and ID reveal.",
+  "Оформление и установка": "Appearance and installation",
+  "Ручная установка модов больше не открывается при старте лаунчера.": "Manual mod installation no longer opens on launcher startup.",
   "В разработке: оформление и перевод":
     "In development: appearance and translation",
   "Украинский перевод переработан и дополнен во всех разделах.":

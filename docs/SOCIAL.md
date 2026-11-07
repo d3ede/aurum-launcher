@@ -59,13 +59,22 @@ Downloads can finish before the direct route is tested: this is preparation,
 not evidence that NAT traversal succeeded. A failed route leaves a visible
 error and can be retried; it does not claim that Minecraft was launched.
 
-For a Social world, Minecraft now starts normally. Open **Multiplayer** and
-choose **Aurum: world name** in its LAN list; leave Aurum running. Vanilla Quick
-Play constructs an ordinary-server entry, which differs from its LAN login
-handling and can produce Invalid Session where joining the native LAN entry
-works. The broker advertises only its approved IPv4 loopback listener by unicast
-to 127.0.0.1:4445. It does not advertise the world onto a physical network or
-modify Minecraft classes, authentication services, account tokens or server mode.
+Supported Java clients join automatically through Minecraft's native LAN
+connector. A small bundled Java agent waits for the title screen and schedules
+the connection on the client thread, constructing a native LAN entry rather
+than ordinary-server Quick Play. It accepts only the approved loopback bridge.
+It does not transform game bytecode, change account tokens, authentication
+services or server mode. Actual automatic LAN login requests were checked on
+Vanilla 26.3 and Fabric 1.21.11; this is not a completed remote gameplay test.
+Unsupported older clients retain **Multiplayer → Aurum: world name** as fallback.
+Keep Aurum running. LAN announcements stay on 127.0.0.1:4445.
+
+A worker failure triggers bounded reconnect attempts inside the same
+AppContainer. The trusted broker keeps the same protected identity and saved
+friends. A missing key at startup requires its backup; it never silently creates
+a replacement ID beside old contacts. Restoring the same ID retains its profile;
+explicitly replacing it with a different ID clears the previous profile and
+contacts. Turning Social off preserves the identity for later reconnection.
 
 Manifest fragments are requested by offset and retried. Identical retransmits
 are idempotent; changed bytes, metadata or hashes are rejected. After 45 seconds
@@ -186,7 +195,10 @@ it explicitly with the fixed helper's `remove` operation under UAC.
 ## Building and limits
 
 Use the checkout's isolated `scripts/cargo.ps1` and `scripts/desktop.ps1` when
-present. `scripts/build-social.ps1 -DebugBuild` prepares debug sidecar resources
+present. Building Windows binaries also requires a JDK 17+ (`JAVA_HOME`, PATH or
+`AURUM_JAVAC`); the LAN agent is compiled to Java 8 bytecode and bundled into the
+launcher. Installed users need no separate compiler or agent download.
+`scripts/build-social.ps1 -DebugBuild` prepares debug sidecar resources
 before raw workspace checks. Desktop production builds prepare release sidecars
 through `scripts/build-desktop-assets.ps1`. The worker is a Windows-subsystem PE;
 its inherited IPC pipes still work. This avoids a real AppContainer console

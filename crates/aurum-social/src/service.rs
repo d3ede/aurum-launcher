@@ -65,6 +65,10 @@ struct Live {
     deliveries: HashMap<String, bool>,
     outgoing: Vec<crate::world::OutgoingInvitation>,
     visible: HashMap<String, bool>,
+    local_activity: Option<WorldSpec>,
+    // Previously authenticated routes survive a worker restart; every new
+    // connection still requires a fresh signed challenge and delegation.
+    known_contacts: HashMap<[u8; 32], String>,
 }
 type Notify = Arc<dyn Fn() + Send + Sync>;
 struct Notification {
@@ -81,9 +85,9 @@ struct Runtime {
 struct ActorInit {
     root: PathBuf,
     executable: PathBuf,
-    identity: Identity,
+    identity: Arc<Identity>,
     stop: Arc<AtomicBool>,
-    commands: mpsc::Receiver<Local>,
+    commands: Arc<Mutex<mpsc::Receiver<Local>>>,
     live: Arc<Mutex<Live>>,
     notify: Notifications,
     lab: Option<u8>,
@@ -160,15 +164,18 @@ impl Service {
             .live
             .lock()
             .map_err(|_| anyhow::anyhow!("Social state unavailable"))?;
+        let id = live.id.clone().or(s.value("publicId")?);
         Ok(Snapshot {
             enabled: live.enabled,
-            status: if live.status.is_empty() {
+            status: if !live.enabled && id.is_some() && !self.root.join("identity.dpapi").exists() {
+                "identity_missing".into()
+            } else if live.status.is_empty() {
                 "disabled".into()
             } else {
                 live.status.clone()
             },
             error: live.error.clone(),
-            id: live.id.clone().or(s.value("publicId")?),
+            id,
             name: s.value("name")?.unwrap_or_else(|| "Player".into()),
             avatar: s.value("avatar")?.filter(|s| !s.is_empty()),
             contact_link: live.contact_link.clone(),
@@ -219,19 +226,31 @@ impl Service {
             return Ok(());
         }
         let store = self.store()?;
-        store.set("name", &name)?;
-        store.set("enabled", "true")?;
         let path = self.root.join("identity.dpapi");
         let identity = if path.exists() {
-            Identity::load(&path)?
+            Identity::load(&path).map_err(|error| {
+                if let Ok(mut live) = self.live.lock() { live.status = "identity_missing".into(); }
+                anyhow::anyhow!("Social identity key cannot be read. Restore your backup: {error}")
+            })?
+        } else if store.value("publicId")?.is_some() || !store.people()?.is_empty() {
+            if let Ok(mut live) = self.live.lock() { live.status = "identity_missing".into(); }
+            bail!("Social identity key is missing. Restore your backup.");
         } else {
             let identity = Identity::generate()?;
             identity.save(&path)?;
             identity
         };
+        if store.value("publicId")?.is_some_and(|id| id != identity.id()) {
+            if let Ok(mut live) = self.live.lock() { live.status = "identity_missing".into(); }
+            bail!("Social identity does not match saved contacts. Restore your backup.");
+        }
+        store.set("name", &name)?;
+        store.set("enabled", "true")?;
         store.set("publicId", &identity.id())?;
         let stop = Arc::new(AtomicBool::new(false));
         let (commands, receiver) = mpsc::sync_channel(32);
+        let receiver = Arc::new(Mutex::new(receiver));
+        let identity = Arc::new(identity);
         {
             let mut live = self
                 .live
@@ -250,35 +269,44 @@ impl Service {
         let kill = Arc::new(Mutex::new(None));
         let actor_kill = kill.clone();
         let join = std::thread::spawn(move || {
-            let result = Actor::run(ActorInit {
-                root,
-                executable,
-                identity,
-                stop: stopping,
-                commands: receiver,
-                live: live.clone(),
-                notify: notify.clone(),
-                lab,
-                kill: actor_kill,
-            });
-            if let Ok(mut state) = live.lock() {
-                state.enabled = false;
-                state.status = if result.is_ok() {
-                    "disabled".into()
-                } else {
-                    "unavailable".into()
-                };
-                state.contact_link = None;
-                state.seen.clear();
-                state.activity.clear();
-                state.active_tunnels = 0;
-                state.invitations.clear();
-                state.outgoing.clear();
-                state.deliveries.clear();
-                state.visible.clear();
-                if let Err(e) = result {
-                    state.error = Some(e.to_string());
+            let mut delay = 1u64;
+            while !stopping.load(Ordering::Acquire) {
+                // This is the same in-memory key, never a regenerated identity.
+                let key_path = root.join("identity.dpapi");
+                if !key_path.exists() { let _ = identity.save(&key_path); }
+                let started = Instant::now();
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Actor::run(ActorInit {
+                    root: root.clone(), executable: executable.clone(), identity: identity.clone(),
+                    stop: stopping.clone(), commands: receiver.clone(), live: live.clone(),
+                    notify: notify.clone(), lab, kill: actor_kill.clone(),
+                }))).unwrap_or_else(|_| Err(anyhow::anyhow!("Social worker stopped unexpectedly")));
+                if stopping.load(Ordering::Acquire) { break; }
+                if let Ok(mut state) = live.lock() {
+                    state.enabled = true;
+                    state.status = "reconnecting".into();
+                    state.error = Some(result.err().map(|e| e.to_string().chars().take(300).collect()).unwrap_or_else(|| "Social worker stopped unexpectedly".into()));
+                    state.contact_link = None;
+                    state.seen.clear(); state.activity.clear(); state.visible.clear();
+                    state.active_tunnels = 0; state.deliveries.clear();
+                    for invitation in &mut state.invitations {
+                        invitation.status = "failed".into(); invitation.join_address = None;
+                        invitation.error = Some("Social connection interrupted. Please retry the invitation.".into());
+                    }
+                    for outgoing in &mut state.outgoing { outgoing.status = "failed".into(); }
                 }
+                signal(&notify);
+                if started.elapsed() >= Duration::from_secs(60) { delay = 1; }
+                let deadline = Instant::now() + Duration::from_secs(delay);
+                while !stopping.load(Ordering::Acquire) && Instant::now() < deadline {
+                    std::thread::sleep(Duration::from_millis(50));
+                }
+                delay = (delay * 2).min(30);
+            }
+            if let Ok(mut state) = live.lock() {
+                state.enabled = false; state.status = "disabled".into(); state.error = None;
+                state.contact_link = None; state.seen.clear(); state.activity.clear();
+                state.active_tunnels = 0; state.invitations.clear(); state.outgoing.clear();
+                state.deliveries.clear(); state.visible.clear(); state.local_activity = None; state.known_contacts.clear();
             }
             signal(&notify);
         });
@@ -466,12 +494,11 @@ impl Service {
     }
     pub fn restore_prepared(&self, identity: Identity, replace: bool) -> Result<()> {
         let path = self.root.join("identity.dpapi");
-        if path.exists() && !replace {
+        let different = self.store()?.value("publicId")?.is_some_and(|id| id != identity.id());
+        if (path.exists() || different) && !replace {
             bail!("Confirm replacement of the current identity");
         }
-        if self.is_enabled() {
-            self.disable()?;
-        }
+        self.shutdown()?;
         let temp = self.root.join("restore.dpapi");
         if temp.exists() {
             std::fs::remove_file(&temp)?;
@@ -498,9 +525,8 @@ impl Service {
                 std::io::Error::last_os_error()
             );
         }
-        let store = self.store()?;
-        store.set("publicId", &identity.id())?;
-        store.set("enabled", "false")?;
+        let mut store = self.store()?;
+        store.restore_identity(&identity.id())?;
         let mut live = self
             .live
             .lock()
@@ -510,6 +536,14 @@ impl Service {
         live.seen.clear();
         drop(live);
         signal(&self.notify);
+        Ok(())
+    }
+    #[cfg(feature = "lab")]
+    pub fn interrupt_worker_for_lab(&self) -> Result<()> {
+        let runtime = self.runtime.lock().map_err(|_| anyhow::anyhow!("Runtime unavailable"))?;
+        let runtime = runtime.as_ref().context("No running worker")?;
+        let killer = runtime.kill.lock().map_err(|_| anyhow::anyhow!("Worker unavailable"))?;
+        killer.as_ref().context("No worker yet")?.terminate();
         Ok(())
     }
 }
@@ -602,7 +636,7 @@ struct Session {
     expires: Instant,
 }
 struct Actor {
-    identity: Identity,
+    identity: Arc<Identity>,
     store: Store,
     worker: WorkerClient,
     stop: Arc<AtomicBool>,
@@ -695,6 +729,8 @@ impl Actor {
         };
         let contact = discovery::sign(&identity, ready)?;
         discovery::verify(&identity.public_key(), &contact)?;
+        let activity = live.lock().map_err(|_| anyhow::anyhow!("Social state unavailable"))?.local_activity.clone();
+        let contacts = live.lock().map_err(|_| anyhow::anyhow!("Social state unavailable"))?.known_contacts.clone();
         let mut actor = Self {
             identity,
             store,
@@ -706,7 +742,7 @@ impl Actor {
             sessions: HashMap::new(),
             retired: HashMap::new(),
             resolving: HashMap::new(),
-            contacts: HashMap::new(),
+            contacts,
             pending: VecDeque::new(),
             unknown_window: Instant::now(),
             unknown_count: 0,
@@ -718,10 +754,11 @@ impl Actor {
             outgoing_worlds: HashMap::new(),
             assemblies: HashMap::new(),
             game,
-            activity: None,
+            activity,
         };
         actor.update_live(|l| {
             l.status = "online".into();
+            l.error = None;
             l.contact_link = Some(format!(
                 "{CONTACT_PREFIX}{}",
                 URL_SAFE_NO_PAD.encode(&actor.contact)
@@ -734,8 +771,11 @@ impl Actor {
         let mut presence_offset = 0usize;
         let mut refresh = Instant::now();
         while !actor.stop.load(Ordering::Acquire) {
+            if !actor.worker.child.running() {
+                bail!("Social worker has stopped");
+            }
             for _ in 0..8 {
-                match commands.try_recv() {
+                match commands.lock().map_err(|_| anyhow::anyhow!("Social command queue unavailable"))?.try_recv() {
                     Ok(Local::Stop) => {
                         actor.stop.store(true, Ordering::Release);
                         break;
@@ -927,6 +967,7 @@ impl Actor {
                 if self.activity == world {
                     return Ok(());
                 }
+                self.update_live(|live| live.local_activity = world.clone());
                 self.activity = world;
                 self.broadcast_activity()?;
             }
@@ -1014,6 +1055,13 @@ impl Actor {
         Ok(())
     }
     fn replace_session(&mut self, peer: [u8; 32], session: Session) {
+        // Messages already signed for the retired session must not delay a new
+        // handshake. User intent in `pending` is signed only after confirmation.
+        self.outbox.retain(|command| match command {
+            Command::Send { bytes, .. } => serde_json::from_slice::<SignedMessage>(bytes)
+                .is_ok_and(|message| message.recipient != peer),
+            _ => true,
+        });
         if let Some(mut old) = self.sessions.insert(peer, session) {
             old.expires = Instant::now() + Duration::from_secs(30);
             let retired = self.retired.entry(peer).or_default();
@@ -1035,6 +1083,7 @@ impl Actor {
             self.contacts.retain(|key, _| keep.contains(key));
         }
         self.contacts.insert(peer, address);
+        self.update_live(|live| live.known_contacts.clone_from(&self.contacts));
         Ok(())
     }
     fn queue(&mut self, peer: [u8; 32], action: PeerAction) -> Result<()> {
@@ -1306,6 +1355,7 @@ impl Actor {
                     // Both peers may start discovery at the same time. The lower
                     // root key wins initiation, without abandoning fresh challenges.
                     if current.outgoing.is_none()
+                        && current.transport == transport
                         && current.expires > Instant::now()
                         && self.identity.public_key() < peer
                     {
@@ -1526,4 +1576,43 @@ fn transport_key(address: &str) -> Result<[u8; 32]> {
         bytes[index] = u8::from_str_radix(std::str::from_utf8(pair)?, 16)?;
     }
     Ok(bytes)
+}
+
+#[cfg(test)]
+mod recovery_tests {
+    use super::*;
+    #[test]
+    fn missing_or_replaced_key_never_creates_a_new_identity_for_saved_contacts() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::open(&dir.path().join("social.sqlite")).unwrap();
+        let old = Identity::generate().unwrap().id();
+        let peer = Identity::generate().unwrap().id();
+        store.set("publicId", &old).unwrap();
+        store.set("name", "Saved player").unwrap();
+        store.request(&peer, "Friend").unwrap();
+        let service = Service::new(dir.path().to_owned());
+        assert_eq!(service.snapshot().unwrap().status, "identity_missing");
+        assert!(service.enable("missing-worker.exe".into(), "Saved player".into(), true).is_err());
+        assert!(!dir.path().join("identity.dpapi").exists());
+        assert_eq!(service.snapshot().unwrap().id.as_deref(), Some(old.as_str()));
+        assert_eq!(service.snapshot().unwrap().people.len(), 1);
+        let replacement = Identity::generate().unwrap();
+        assert!(service.restore_prepared(replacement, false).is_err());
+        let other = Identity::generate().unwrap();
+        other.save(&dir.path().join("identity.dpapi")).unwrap();
+        assert!(service.enable("missing-worker.exe".into(), "Saved player".into(), true).is_err());
+        assert_eq!(service.snapshot().unwrap().id.as_deref(), Some(old.as_str()));
+        assert_eq!(service.snapshot().unwrap().people.len(), 1);
+    }
+    #[test]
+    fn protected_key_creation_is_atomic_and_never_overwrites_an_existing_key() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("identity.dpapi");
+        let first = Identity::generate().unwrap();
+        first.save(&path).unwrap();
+        let second = Identity::generate().unwrap();
+        assert!(second.save(&path).is_err());
+        assert_eq!(Identity::load(&path).unwrap().id(), first.id());
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+    }
 }

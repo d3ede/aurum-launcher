@@ -1,4 +1,25 @@
 export const socialEnglish: Record<string, string> = {
+  "@social.auto.joined": "You are in the world",
+  "@social.auto.stopped": "Minecraft closed",
+  "@social.auto.connecting": "Connecting to the world…",
+  "@social.auto.hint": "Minecraft will join automatically. Keep Aurum open.",
+  "@social.auto.game.screen":
+    "Follow the message in Minecraft to finish connecting.",
+  "@social.auto.retry": "Ask your friend for a new invitation.",
+  "@social.hero.to": "Invite your friend",
+  "@social.hero.from": "World invitation from",
+  "@social.reconnecting": "Reconnecting…",
+  "@social.reconnect": "Reconnect",
+  "@social.connection.off": "Social is offline",
+  "@social.resume.short": "Your ID and friends are saved.",
+  "@social.identity.missing":
+    "Restore your identity backup to recover this ID.",
+  "Social identity key is missing. Restore your backup.":
+    "Social identity key is missing. Restore your backup.",
+  "Social identity does not match saved contacts. Restore your backup.":
+    "Social identity does not match saved contacts. Restore your backup.",
+  "Social connection interrupted. Please retry the invitation.":
+    "Social connection interrupted. Please retry the invitation.",
   "@social.lan.open": "Minecraft is open",
   "@social.lan.pick":
     "Open Multiplayer and choose “Aurum: {{name}}” under LAN worlds. Keep Aurum open.",
@@ -58,7 +79,7 @@ export const socialEnglish: Record<string, string> = {
     "Friends may see your IP address. Windows will ask for network access.",
   "@social.agree.short": "I agree to P2P connections",
   "@social.restore.short":
-    "Social will disconnect and your current Aurum ID will be replaced.",
+    "Social will disconnect. A different ID resets your name, avatar and friends.",
   "@social.restore.choose": "Choose backup",
   "@social.disable.confirm": "Turn off Social?",
   "@social.disable.hint":
@@ -171,10 +192,10 @@ export const socialEnglish: Record<string, string> = {
     "Keep this backup and passphrase safe: losing the key means losing this Aurum ID.",
   "@social.replace": "Replace my current identity",
   "@social.replace.hint":
-    "Turn off Social first. Your contacts will not automatically trust a different ID.",
+    "The same ID keeps your profile. A different ID creates a new identity.",
   "@social.desktop": "Aurum Social requires the Windows desktop app.",
   "@social.name": "Display name",
-  "@social.qr": "Show QR code",
+  "@social.qr": "QR code",
   "@social.ready": "Social enabled",
   "@social.unavailable": "Social unavailable",
   "@social.copied": "Copied",
@@ -185,6 +206,27 @@ export const socialEnglish: Record<string, string> = {
   "@social.network": "Configure network",
 };
 export const socialRussian: Record<string, string> = {
+  "@social.auto.joined": "Вы в мире",
+  "@social.auto.stopped": "Minecraft закрыт",
+  "@social.auto.connecting": "Подключаемся к миру…",
+  "@social.auto.hint":
+    "Minecraft войдёт в мир автоматически. Aurum оставьте открытым.",
+  "@social.auto.game.screen": "Завершите подключение в окне Minecraft.",
+  "@social.auto.retry": "Попросите друга отправить приглашение заново.",
+  "@social.hero.to": "Приглашение для друга",
+  "@social.hero.from": "Приглашает вас в мир",
+  "@social.reconnecting": "Подключаемся…",
+  "@social.reconnect": "Подключиться",
+  "@social.connection.off": "Social не подключён",
+  "@social.resume.short": "Ваш ID и друзья сохранены.",
+  "@social.identity.missing":
+    "Восстановите резервную копию личности для этого ID.",
+  "Social identity key is missing. Restore your backup.":
+    "Не найден ключ Social. Восстановите резервную копию личности.",
+  "Social identity does not match saved contacts. Restore your backup.":
+    "Ключ Social не соответствует вашему ID. Восстановите резервную копию.",
+  "Social connection interrupted. Please retry the invitation.":
+    "Соединение прервалось. Отправьте приглашение заново.",
   "@social.lan.open": "Minecraft открыт",
   "@social.lan.pick":
     "Откройте «Сетевая игра» и выберите LAN-мир «Aurum: {{name}}». Aurum оставьте открытым.",
@@ -269,7 +311,7 @@ export const socialRussian: Record<string, string> = {
     "Друзья могут видеть ваш IP. Windows запросит доступ к сети.",
   "@social.agree.short": "Я согласен на P2P-подключения",
   "@social.restore.short":
-    "Social отключится, а текущий Aurum ID будет заменён.",
+    "Social отключится. При смене ID имя, аватар и друзья сбросятся.",
   "@social.restore.choose": "Выбрать копию",
   "@social.disable.confirm": "Выключить Social?",
   "@social.disable.hint":
@@ -379,10 +421,10 @@ export const socialRussian: Record<string, string> = {
     "Сохраните копию и пароль: потеря ключа означает потерю этого Aurum ID.",
   "@social.replace": "Заменить мою текущую личность",
   "@social.replace.hint":
-    "Сначала выключите Social. Друзья не начнут автоматически доверять другому ID.",
+    "Тот же ID сохранит ваш профиль. Другой ID создаст новую личность.",
   "@social.desktop": "Aurum Social доступен в desktop-приложении для Windows.",
   "@social.name": "Ваш ник",
-  "@social.qr": "Показать QR-код",
+  "@social.qr": "QR-код",
   "@social.ready": "Social включён",
   "@social.unavailable": "Social недоступен",
   "@social.copied": "Скопировано",

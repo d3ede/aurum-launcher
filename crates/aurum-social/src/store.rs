@@ -69,6 +69,20 @@ impl Store {
         self.db.execute("INSERT INTO meta(key,value) VALUES(?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value",params![key,value])?;
         Ok(())
     }
+    /// Only an explicitly restored DIFFERENT key starts a new local identity.
+    pub fn restore_identity(&mut self, id: &str) -> Result<()> {
+        let changed = self.value("publicId")?.is_some_and(|previous| previous != id);
+        let tx = self.db.transaction()?;
+        if changed {
+            tx.execute("DELETE FROM contacts", [])?;
+            tx.execute("DELETE FROM contact_profiles", [])?;
+            tx.execute("DELETE FROM meta WHERE key IN ('avatar','name')", [])?;
+        }
+        tx.execute("INSERT INTO meta(key,value) VALUES('publicId',?1) ON CONFLICT(key) DO UPDATE SET value=excluded.value", [id])?;
+        tx.execute("INSERT INTO meta(key,value) VALUES('enabled','false') ON CONFLICT(key) DO UPDATE SET value='false'", [])?;
+        tx.commit()?;
+        Ok(())
+    }
     pub fn privacy(&self) -> Result<Privacy> {
         Ok(self
             .value("privacy")?
@@ -236,6 +250,25 @@ mod tests {
         store.block(&id.to_uppercase()).unwrap();
         assert!(store.blocked(&id));
         assert!(!store.incoming(&id, "attacker").unwrap());
+    }
+    #[test]
+    fn restoring_the_same_key_preserves_profile_but_a_different_key_resets_it() {
+        let mut store = Store::memory();
+        let own = Identity::generate().unwrap().id();
+        let friend = Identity::generate().unwrap().id();
+        store.set("publicId", &own).unwrap();
+        store.set("name", "Saved player").unwrap();
+        store.set("avatar", "saved-avatar").unwrap();
+        store.request(&friend, "Friend").unwrap();
+        store.restore_identity(&own).unwrap();
+        assert_eq!(store.value("name").unwrap().as_deref(), Some("Saved player"));
+        assert_eq!(store.people().unwrap().len(), 1);
+        let replacement = Identity::generate().unwrap().id();
+        store.restore_identity(&replacement).unwrap();
+        assert!(store.people().unwrap().is_empty());
+        assert!(store.value("name").unwrap().is_none());
+        assert!(store.value("avatar").unwrap().is_none());
+        assert_eq!(store.value("publicId").unwrap().as_deref(), Some(replacement.as_str()));
     }
     #[test]
     fn privacy_and_contacts_are_local_and_blocked_cannot_be_reaccepted() {

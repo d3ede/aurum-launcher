@@ -68,13 +68,14 @@ export function SocialId({ id }: { id: string }) {
         <span>{t(visible ? "@social.hide.id" : "@social.show.id")}</span>
         {visible ? <EyeOff size={15} /> : <Eye size={15} />}
       </button>
-      {visible && (
-        <code className="social-id-value">
-          {id.match(/.{1,8}/g)?.map((part, i) => (
-            <span key={i}>{part}</span>
-          ))}
-        </code>
-      )}
+      <div
+        className={`social-id-reveal ${visible ? "is-visible" : ""}`}
+        inert={!visible}
+      >
+        <div>
+          <code className="social-id-value">{id}</code>
+        </div>
+      </div>
     </div>
   );
 }

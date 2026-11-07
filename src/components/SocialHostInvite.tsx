@@ -74,6 +74,7 @@ export function SocialHostInvite({
       className="social-dialog social-invite-dialog"
     >
       <SocialInviteHero
+        outgoing
         person={friend}
         world={profiles.find((p) => p.id === profileId)}
       />

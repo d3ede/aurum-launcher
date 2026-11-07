@@ -225,6 +225,40 @@ The full all-feature workspace tests, warnings-denied Clippy, frontend build and
 instructions after starting Minecraft. Retest actual login on both computers;
 the status remains NOT READY.
 
+## Automatic native LAN joining and recovery (2026-11-07)
+
+The ignored `auren-core/tests/lan_autojoin.rs` integration test launched actual
+Minecraft clients in disposable `.test-data` directories with an offline test
+player. Vanilla 26.3 and Fabric 1.21.11 (loader 0.19.5) automatically sent the
+login handshake and Login Start to an owned loopback TCP fixture without menu
+interaction. A separate probe against the actual 26.3 classes confirmed that the
+agent-created `ServerData.isLan()` is true. These are real client tests, not a
+world server, Internet traversal test or completed gameplay session.
+
+Run with `--features social-lab --test lan_autojoin -- --ignored --nocapture`,
+providing `AURUM_LAN_FIXTURE_CACHE`, `AURUM_LAN_FIXTURE_META`,
+`AURUM_LAN_FIXTURE_CLIENT`, `AURUM_LAN_FIXTURE_JAVA` (JDK) and
+`AURUM_LAN_FIXTURE_VERSION`. Only public game assets are copied; account tokens,
+worlds and user mods are not copied. The fixture stops only its own game process.
+
+The native `aurum-social-lab --friends` test passed abrupt isolated-worker
+termination twice, recovery with the same ID/name/friend, and repair of the same
+DPAPI key from the broker's live identity after deleting the fixture key file.
+This exposed and fixed fresh-transport handshake tie-breaking and stale signed
+outbox messages. Authenticated routes are retained only in broker memory;
+new transports still require fresh signed delegation and challenge verification.
+The friend, block/unblock, invisible/profile, invitation, manifest and local
+TCP/QUIC bridge scenarios passed after recovery. This is local integration
+coverage and does not establish cross-network reliability.
+
+Final local checks passed: all-feature Rust workspace tests, all-target Clippy
+with warnings denied, the production frontend build, 31 frontend unit tests and
+28 Social/manual-download/home UI tests. The real isolation lab also passed
+AppContainer/low-integrity checks, denied canary/child-process/parent-memory
+access, mutual-TLS rejection, owned TCP/QUIC transport, revocation and shutdown.
+Invitation and identity screenshots were inspected in both themes, including a
+960-pixel window. None of these checks changes the NOT READY Internet status.
+
 ## Outstanding gates
 
 Not run: two physical computers on separate networks; direct NAT traversal and

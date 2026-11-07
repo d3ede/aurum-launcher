@@ -650,26 +650,33 @@ impl Engine {
         }
     }
     pub async fn launch(&self, id: &str) -> Result<()> {
-        self.launch_target(id, None, false, None).await
+        self.launch_target(id, None, false, None, None).await.map(|_| ())
     }
     pub async fn launch_to_server(&self, id: &str, address: &str) -> Result<()> {
         let address = crate::servers::ServerAddress::parse(address)?;
-        self.launch_target(id, Some(address), false, None).await
+        self.launch_target(id, Some(address), false, None, None).await.map(|_| ())
     }
     #[cfg(windows)]
-    pub(crate) async fn launch_social_server(&self,id:&str,address:&str,task:&Task)->Result<()>{
+    pub(crate) async fn launch_social_server(&self,id:&str,address:&str,task:&Task)->Result<bool>{
         let target=crate::servers::ServerAddress::parse(address)?;
         let ip:std::net::IpAddr=target.host.parse()?;if !ip.is_loopback(){bail!("Social target must be the local bridge");}
-        // Quick Play constructs ServerData.Type.OTHER. Social is an opened LAN
-        // world, so keep Minecraft's native LAN selection and login semantics.
-        // The broker advertises the approved bridge to the local LAN list.
-        self.launch_target(id,None,false,Some(task.cancel.clone())).await
+        // Use the native LAN connector on the client thread, preserving its
+        // LAN identity and authentication behavior instead of Quick Play OTHER.
+        self.launch_target(id,None,false,Some(task.cancel.clone()),Some(target)).await
+    }
+    #[cfg(all(windows, feature = "social-lab"))]
+    pub async fn launch_lan_fixture(&self, id: &str, address: &str, _task: &Task) -> Result<bool> {
+        let target = crate::servers::ServerAddress::parse(address)?;
+        if !target.host.parse::<std::net::IpAddr>()?.is_loopback() { bail!("Fixture must be loopback-only"); }
+        // Only the explicit laboratory feature uses an owned TCP fixture instead
+        // of a Social invitation. Production still requires enabled Social.
+        self.launch_target(id, None, false, None, Some(target)).await
     }
     pub async fn launch_without_horizon_mods(&self, id: &str, server: Option<&str>) -> Result<()> {
         let server = server
             .map(crate::servers::ServerAddress::parse)
             .transpose()?;
-        self.launch_target(id, server, true, None).await
+        self.launch_target(id, server, true, None, None).await.map(|_| ())
     }
     async fn launch_target(
         &self,
@@ -677,7 +684,8 @@ impl Engine {
         server: Option<crate::servers::ServerAddress>,
         skip_native: bool,
         cancelled: Option<Arc<AtomicBool>>,
-    ) -> Result<()> {
+        social_target: Option<crate::servers::ServerAddress>,
+    ) -> Result<bool> {
         self.refresh_recovered().await;
         let _guard = self
             .busy
@@ -688,7 +696,7 @@ impl Engine {
         }
         let p = self.profile(id).await?;
         if p.engine == Runtime::Horizon {
-            return self.launch_horizon(p, server, skip_native).await;
+            return self.launch_horizon(p, server, skip_native).await.map(|_| false);
         }
         if p.installed_version.is_none() {
             bail!("Сначала установите Minecraft")
@@ -899,6 +907,10 @@ impl Engine {
             );
             args.push(substitute(text(logging, "argument")?, &vars)?);
         }
+        let social_agent = if let Some(target) = &social_target {
+            crate::social_launch::prepare(self, &instance, &instance.join("client").join(format!("{client}.jar")), &meta, target, &p.name, &task).await?
+        } else { None };
+        if let Some(argument) = &social_agent { args.push(argument.clone()); }
         args.push(text(&meta, "mainClass")?.into());
         if let Some(game) = meta["arguments"]["game"].as_array() {
             args.extend(expand_args(game, &vars, &features)?);
@@ -944,7 +956,8 @@ impl Engine {
         #[cfg(windows)]
         if cancelled.is_some()&&!self.social.is_enabled(){bail!("Social was disabled before Java launch");}
         let child = command.spawn().context("Не удалось запустить Java")?;
-        self.supervise_game(&p, child, token, task, server).await
+        self.supervise_game(&p, child, token, task, server).await?;
+        Ok(social_agent.is_some())
     }
     pub(crate) async fn supervise_game(
         &self,

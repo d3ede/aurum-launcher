@@ -28,6 +28,8 @@ pub mod servers;
 pub mod skins;
 #[cfg(windows)]
 pub mod social;
+#[cfg(windows)]
+mod social_launch;
 pub mod store;
 
 use anyhow::{bail, Context, Result};

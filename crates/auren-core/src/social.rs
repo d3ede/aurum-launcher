@@ -1019,7 +1019,7 @@ impl Engine {
         }
         Ok(p.id)
     }
-    pub async fn social_join(&self, invitation: &str, profile_id: &str, task: &Task) -> Result<()> {
+    pub async fn social_join(&self, invitation: &str, profile_id: &str, task: &Task) -> Result<bool> {
         let result = self.social_join_inner(invitation, profile_id, task).await;
         if result.is_err() {
             let _ = self.social.abandon_join(invitation.into());
@@ -1031,7 +1031,7 @@ impl Engine {
         invitation: &str,
         profile_id: &str,
         task: &Task,
-    ) -> Result<()> {
+    ) -> Result<bool> {
         {
             let db = self.db.lock().await;
             if !db
@@ -1438,3 +1438,7 @@ mod tests {
     }
 }
 pub mod notification;
+
+pub async fn launch_state(engine: &Engine, profile: &str) -> Result<String> {
+    crate::social_launch::state(&engine.instance(profile)?).await
+}

@@ -39,6 +39,8 @@ export function SocialProvider({ children }: { children: ReactNode }) {
   const alerted = useRef(new Set<string>());
   const audio = useRef<AudioContext | null>(null);
   const alive = useRef(true);
+  const refreshing = useRef<Promise<void> | null>(null);
+  const refreshAgain = useRef(false);
   const seen = useRef(new Set<string>());
   const [request, setRequest] = useState<SocialPerson | null>(null);
   const [link, setLink] = useState<string | null>(null);
@@ -156,14 +158,24 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       cleanups.forEach((fn) => fn());
     };
   }, []);
-  const refresh = useCallback(async () => {
-    if (!native) return;
-    try {
-      const state = await rpc("social.snapshot", {});
-      if (alive.current) setSnapshot(state);
-    } catch {
-      /* A transient snapshot error must not open repeated global dialogs. */
-    }
+  const refresh = useCallback((): Promise<void> => {
+    if (!native) return Promise.resolve();
+    refreshAgain.current = true;
+    if (refreshing.current) return refreshing.current;
+    refreshing.current = (async () => {
+      while (refreshAgain.current && alive.current) {
+        refreshAgain.current = false;
+        try {
+          const state = await rpc("social.snapshot", {});
+          if (alive.current && !refreshAgain.current) setSnapshot(state);
+        } catch {
+          // Keep the last identity and contacts during a transient IPC failure.
+        }
+      }
+    })().finally(() => {
+      refreshing.current = null;
+    });
+    return refreshing.current;
   }, []);
   useEffect(() => {
     alive.current = true;
@@ -182,10 +194,10 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     };
   }, [refresh]);
   useEffect(() => {
-    if (!snapshot?.enabled) return;
+    if (!native) return;
     const interval = setInterval(() => void refresh(), 2000);
     return () => clearInterval(interval);
-  }, [snapshot?.enabled, refresh]);
+  }, [refresh]);
   const act = useCallback(
     async (job: () => Promise<unknown>) => {
       ++pending.current;

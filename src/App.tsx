@@ -97,7 +97,12 @@ function Shell({
   const [importing, setImporting] = useState(false);
   const [activity, setActivity] = useState(false);
   const [manualProfileId, setManualProfileId] = useState<string | null>(null);
-  const shownManualProfiles = useRef(new Set<string>());
+  // Existing incomplete imports belong in their instance, not in a startup modal.
+  const shownManualProfiles = useRef(
+    new Set(
+      data.profiles.filter((p) => p.manualDownloads?.length).map((p) => p.id),
+    ),
+  );
   useEffect(() => {
     if (busy || project || importing || creating || manualProfileId) return;
     const pending = data.profiles.find(

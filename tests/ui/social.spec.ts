@@ -135,6 +135,10 @@ async function fixture(
             await new Promise<void>((resolve) => (w.finishExternal = resolve));
           if (action === "social.join" && w.socialJoinFail)
             throw "World connection timed out";
+          if (action === "social.join")
+            return { automatic: w.manualLanFallback !== true };
+          if (action === "social.launchState")
+            return { state: w.lanLaunchState || "connecting" };
           if (action === "social.invite" && w.socialInviteFail)
             throw "Invitation was not delivered. Check that your friend is online and try again.";
           if (action === "social.restoreIdentity" && w.socialRestoreCancel)
@@ -155,6 +159,8 @@ async function fixture(
           )
             return true;
           if (action === "social.configureFirewall") return null;
+          if (action === "social.firewallStatus")
+            return [{ present: true, scoped: true }];
           if (action === "social.enable") {
             social.enabled = true;
             social.status = "online";
@@ -273,7 +279,7 @@ test("fresh install requires explicit P2P and scoped Firewall consent", async ({
     .getByRole("button", { name: "Turn off Social", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Meet in Aurum" }),
+    page.getByRole("heading", { name: "Social is offline" }),
   ).toBeVisible();
 });
 for (const theme of ["dark", "light"]) {
@@ -423,7 +429,7 @@ for (const theme of ["light", "dark"]) {
     await expect(
       page.getByText("Peer action has no fresh challenge"),
     ).toHaveCount(0);
-    await expect(page.locator(".social-id-value")).toHaveCount(0);
+    await expect(page.locator(".social-id-value")).not.toBeVisible();
     await page
       .getByRole("button", { name: "Показать Aurum ID", exact: true })
       .click();
@@ -750,9 +756,16 @@ for (const theme of ["light", "dark"]) {
     });
     await page.evaluate(() => (window as any).finishPrepare());
     await expect(
-      modal.getByText("Minecraft is open", { exact: true }),
+      modal.getByText("Connecting to the world…", { exact: true }),
     ).toBeVisible();
-    await expect(modal.getByText(/Open Multiplayer and choose/)).toBeVisible();
+    await expect(
+      modal.getByText(/Minecraft will join automatically/),
+    ).toBeVisible();
+    await expect(modal.getByText(/Open Multiplayer and choose/)).toHaveCount(0);
+    await page.evaluate(() => ((window as any).lanLaunchState = "joined"));
+    await expect(
+      modal.getByText("You are in the world", { exact: true }),
+    ).toBeVisible();
     await modal.getByRole("button", { name: "Got it", exact: true }).click();
     await expect(modal).toHaveCount(0);
     const calls = await page.evaluate(() =>
@@ -778,7 +791,9 @@ test("an ongoing unrelated download disables joining and a route error stays vis
     w.socialJoinFail = true;
   });
   const modal = page.getByRole("dialog");
-  await modal.getByRole("button", { name: "Open Minecraft", exact: true }).click();
+  await modal
+    .getByRole("button", { name: "Open Minecraft", exact: true })
+    .click();
   await expect(
     modal.getByRole("button", { name: "Please wait…", exact: true }),
   ).toBeDisabled();
@@ -933,4 +948,98 @@ test("sent invitations show who is waiting and use theme surfaces", async ({
       .getByRole("checkbox", { name: "Allow friend requests", exact: true })
       .evaluate((el) => getComputedStyle(el).backgroundColor),
   ).toBe("rgb(236, 209, 116)");
+});
+
+for (const width of [960, 1280]) {
+  test(
+    "identity is contiguous, animated and aligned at " + width,
+    async ({ page }) => {
+      await fixture(page, true);
+      await page.setViewportSize({ width, height: 800 });
+      await page
+        .getByRole("button", { name: "Show Aurum ID", exact: true })
+        .click();
+      const id = page.locator(".social-id-value");
+      await expect(id).toHaveText("aur1" + "a".repeat(59));
+      expect((await id.textContent())?.includes(" ")).toBe(false);
+      const status = await page
+        .locator(".social-identity-info .select-trigger")
+        .boundingBox();
+      const action = await page
+        .getByRole("button", { name: "Copy ID", exact: true })
+        .boundingBox();
+      expect(
+        Math.abs(
+          status!.y + status!.height / 2 - action!.y - action!.height / 2,
+        ),
+      ).toBeLessThan(1.5);
+      for (let i = 0; i < 5; i++) {
+        await page
+          .getByRole("button", { name: "Hide Aurum ID", exact: true })
+          .click();
+        await expect(id).not.toBeVisible();
+        await page
+          .getByRole("button", { name: "Show Aurum ID", exact: true })
+          .click();
+      }
+      await page.evaluate(() =>
+        (window as any).socialPatch({
+          status: "reconnecting",
+          enabled: true,
+          online: [],
+        }),
+      );
+      await expect(
+        page.getByRole("combobox", { name: "Status", exact: true }),
+      ).toContainText("Reconnecting");
+      await expect(
+        page.getByRole("button", { name: "Turn on Social", exact: true }),
+      ).toHaveCount(0);
+      await expect(id).toHaveText("aur1" + "a".repeat(59));
+      await page.evaluate(() =>
+        (window as any).socialPatch({ status: "online", enabled: true }),
+      );
+      await expect(
+        page.getByRole("combobox", { name: "Status", exact: true }),
+      ).toContainText("Online");
+      await page.screenshot({
+        path: ".test-data/screenshots/social-identity-" + width + ".png",
+      });
+    },
+  );
+}
+
+test("an offline saved identity reconnects without new-account onboarding", async ({
+  page,
+}) => {
+  await fixture(page, true);
+  await page.evaluate(() =>
+    (window as any).socialPatch({
+      enabled: false,
+      status: "disabled",
+      people: [
+        {
+          id: "aur1" + "b".repeat(59),
+          name: "Friend",
+          state: "friend",
+          updated: 1,
+        },
+      ],
+    }),
+  );
+  await expect(
+    page.getByRole("heading", { name: "Social is offline", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Reconnect", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByText("Friend", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("combobox", { name: "Status", exact: true }),
+  ).toContainText("Online");
+  await page
+    .getByRole("button", { name: "Show Aurum ID", exact: true })
+    .click();
+  await expect(page.locator(".social-id-value")).toHaveText(
+    "aur1" + "a".repeat(59),
+  );
 });

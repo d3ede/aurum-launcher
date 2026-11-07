@@ -52,7 +52,7 @@ verification. Social is optional and disabled until you enable it. Read the
 | **Recent servers** | A weekly server history with status checks, matching-instance launches and Windows desktop shortcuts. See [recent servers](docs/recent-servers.md). |
 | **Interface** | 41 languages, language search, RTL support, light and dark themes, and settings for memory, Java, and game data. |
 
-**New in 0.6.3:** imports preserve datapacks and custom mod folders. Manual downloads are recognized by checksum and can be moved or copied into the instance. [Release notes](docs/releases/v0.6.3.md).
+**New in 0.6.5:** automatic native LAN joining, Social reconnection with the same identity, redesigned invitations, and quieter manual-download recovery. Includes grouped themes and an expanded Ukrainian translation. [Release notes](docs/releases/v0.6.5.md).
 
 Version [0.6.1](docs/releases/v0.6.1.md) added automatic retries after CurseForge rate limits, preserving progress and cancellation.
 

@@ -54,14 +54,25 @@ impl Identity {
     #[cfg(windows)]
     pub fn save(&self, path: &Path) -> Result<()> {
         let bytes = protect(&self.seed[..], true)?;
-        // Create-new prevents accidental silent identity replacement.
-        let mut file = std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(path)?;
-        file.write_all(&bytes)?;
-        file.sync_all()?;
-        Ok(())
+        use std::os::windows::ffi::OsStrExt;
+        use windows_sys::Win32::Storage::FileSystem::{MoveFileExW, MOVEFILE_WRITE_THROUGH};
+        let nonce = u64::from_le_bytes(random()?);
+        let temporary = path.with_extension(format!("{nonce:016x}.pending"));
+        let result = (|| -> Result<()> {
+            let mut file = std::fs::OpenOptions::new().write(true).create_new(true).open(&temporary)?;
+            file.write_all(&bytes)?;
+            file.sync_all()?;
+            drop(file);
+            let from: Vec<u16> = temporary.as_os_str().encode_wide().chain(Some(0)).collect();
+            let to: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+            // No REPLACE_EXISTING: creation is atomic and cannot overwrite an identity.
+            if unsafe { MoveFileExW(from.as_ptr(), to.as_ptr(), MOVEFILE_WRITE_THROUGH) } == 0 {
+                return Err(std::io::Error::last_os_error().into());
+            }
+            Ok(())
+        })();
+        let _ = std::fs::remove_file(temporary);
+        result
     }
     #[cfg(windows)]
     pub fn load(path: &Path) -> Result<Self> {

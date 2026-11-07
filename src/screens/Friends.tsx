@@ -72,6 +72,7 @@ export function Friends() {
     s.status === "online" &&
     !s.privacy.invisible
   );
+  const reconnecting = !!(s?.enabled && s.status !== "online");
   const rows = (state: SocialPerson["state"]) =>
     people(state).map((p) => {
       const active = !!(s?.enabled && s.online.includes(p.id));
@@ -245,11 +246,13 @@ export function Friends() {
                   value={
                     !s.enabled
                       ? "offline"
-                      : s.privacy.invisible
-                        ? "invisible"
-                        : "online"
+                      : reconnecting
+                        ? "reconnecting"
+                        : s.privacy.invisible
+                          ? "invisible"
+                          : "online"
                   }
-                  disabled={!s.enabled || working}
+                  disabled={!s.enabled || reconnecting || working}
                   aria-label={t("@social.status")}
                   onValueChange={(value) =>
                     void act(() =>
@@ -262,6 +265,14 @@ export function Friends() {
                     )
                   }
                   options={[
+                    ...(reconnecting
+                      ? [
+                          {
+                            value: "reconnecting",
+                            label: t("@social.reconnecting"),
+                          },
+                        ]
+                      : []),
                     ...(!s.enabled
                       ? [{ value: "offline", label: t("@social.offline") }]
                       : []),
@@ -303,12 +314,16 @@ export function Friends() {
             <div className="social-card social-onboarding">
               <Users size={30} />
               <div>
-                <h2>{t("@social.off.title")}</h2>
+                <h2>
+                  {t(s.id ? "@social.connection.off" : "@social.off.title")}
+                </h2>
                 <p>
                   {t(
-                    s.status === "unavailable"
-                      ? "@social.off.failed"
-                      : "@social.off.short",
+                    s.status === "identity_missing"
+                      ? "@social.identity.missing"
+                      : s.id
+                        ? "@social.resume.short"
+                        : "@social.off.short",
                   )}
                 </p>
               </div>
@@ -316,11 +331,36 @@ export function Friends() {
                 className="button primary"
                 onClick={() => {
                   setName(s.name);
-                  setDialog("enable");
+                  if (s.id && s.status !== "identity_missing") {
+                    void act(async () => {
+                      const rules = await rpc("social.firewallStatus", {});
+                      if (
+                        !rules.length ||
+                        !rules.every((rule) => rule.present && rule.scoped)
+                      ) {
+                        setDialog("enable");
+                        return;
+                      }
+                      await rpc("social.enable", {
+                        name: s.name,
+                        accepted: true,
+                      });
+                    });
+                    return;
+                  }
+                  setDialog(
+                    s.status === "identity_missing" ? "restore" : "enable",
+                  );
                 }}
               >
                 <Power size={16} />
-                {t("@social.enable")}
+                {t(
+                  s.status === "identity_missing"
+                    ? "@social.restore"
+                    : s.id
+                      ? "@social.reconnect"
+                      : "@social.enable",
+                )}
               </button>
             </div>
           )}

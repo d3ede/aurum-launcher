@@ -30,6 +30,9 @@ export function SocialIncomingInvite({
   const [error, setError] = useState(""),
     [newName, setNewName] = useState("");
   const [lanReady, setLanReady] = useState(false);
+  const [automatic, setAutomatic] = useState(false);
+  const [launchProfile, setLaunchProfile] = useState("");
+  const [launchState, setLaunchState] = useState("waiting");
   const [attempt, setAttempt] = useState(0);
   const planned = useRef(false),
     mounted = useRef(true);
@@ -39,6 +42,33 @@ export function SocialIncomingInvite({
       mounted.current = false;
     };
   }, []);
+  useEffect(() => {
+    if (!lanReady || !automatic || !launchProfile) return;
+    let active = true,
+      pending = false;
+    const poll = async () => {
+      if (pending) return;
+      pending = true;
+      try {
+        const status = await rpc("social.launchState", {
+          profileId: launchProfile,
+        });
+        if (active && status?.state) setLaunchState(status.state);
+      } catch {
+        /* A transient launcher request cannot cancel the game's connection. */
+      } finally {
+        pending = false;
+      }
+    };
+    void poll();
+    const timer = setInterval(() => void poll(), 1200);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [lanReady, automatic, launchProfile]);
+  const manualFallback =
+    !automatic || ["unsupported", "timeout"].includes(launchState);
   const pack = !!invite?.offer.manifestHash;
   const compatible = data.profiles.filter(
     (p) =>
@@ -156,7 +186,14 @@ export function SocialIncomingInvite({
                 operationId,
               });
             if (mounted.current) setStage("connecting");
-            await rpc("social.join", { id, profileId, operationId });
+            const launch = await rpc("social.join", {
+              id,
+              profileId,
+              operationId,
+            });
+            setAutomatic(!!launch?.automatic);
+            setLaunchProfile(profileId);
+            setLaunchState("waiting");
             return true;
           } catch (e) {
             if (mounted.current)
@@ -184,11 +221,36 @@ export function SocialIncomingInvite({
         {lanReady ? (
           <>
             <div className="social-flow-status" role="status">
-              <Check size={22} />
+              {manualFallback ||
+              ["joined", "game-screen"].includes(launchState) ? (
+                <Check size={22} />
+              ) : launchState === "stopped" ? (
+                <AlertCircle size={22} />
+              ) : (
+                <LoaderCircle size={22} className="spin" />
+              )}
               <div>
-                <strong>{t("@social.lan.open")}</strong>
+                <strong>
+                  {t(
+                    manualFallback
+                      ? "@social.lan.open"
+                      : launchState === "joined"
+                        ? "@social.auto.joined"
+                        : launchState === "stopped"
+                          ? "@social.auto.stopped"
+                          : "@social.auto.connecting",
+                  )}
+                </strong>
                 <span>
-                  {t("@social.lan.pick", { name: invite.offer.world.name })}
+                  {manualFallback
+                    ? t("@social.lan.pick", { name: invite.offer.world.name })
+                    : t(
+                        launchState === "game-screen"
+                          ? "@social.auto.game.screen"
+                          : launchState === "stopped"
+                            ? "@social.auto.retry"
+                            : "@social.auto.hint",
+                      )}
                 </span>
               </div>
             </div>

@@ -85,17 +85,6 @@ export function HomeSidebar() {
             tabIndex={0}
             aria-label={t("Новости лаунчера")}
           >
-            <article className="home-news-version home-news-upcoming">
-              <h3>{t("В разработке: оформление и перевод")}</h3>
-              <p>
-                {t("Две светлые палитры и выбор темы без кнопки сохранения.")}
-              </p>
-              <p>
-                {t(
-                  "Украинский перевод переработан и дополнен во всех разделах.",
-                )}
-              </p>
-            </article>
             {releaseNotes.slice(0, 3).map((release) => (
               <article className="home-news-version" key={release.version}>
                 <div className="home-news-version-head">
@@ -149,19 +138,6 @@ export function HomeSidebar() {
             tabIndex={0}
             aria-label={t("Все изменения")}
           >
-            <section className="release-section-body">
-              <h4>{t("В разработке: оформление и перевод")}</h4>
-              <p>
-                {t(
-                  "Темы разделены на светлые и тёмные. Добавлены «Мятный фарфор» и «Песчаный берег». Выбор темы сохраняется сразу; для своей темы можно отдельно выбрать светлую или тёмную основу.",
-                )}
-              </p>
-              <p>
-                {t(
-                  "Украинский перевод переработан и дополнен во всех разделах.",
-                )}
-              </p>
-            </section>
             {releaseNotes.map((release) => (
               <details
                 className="release-section"

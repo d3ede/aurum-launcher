@@ -6,11 +6,13 @@ computers, which must use different independent internet connections.
 
 ## Prepare
 
-For desktop testing, install **the same 0.6.0 installer on both computers** from
-[GitHub Releases](https://github.com/d3ede/aurum-launcher/releases/tag/v0.6.0).
+For desktop testing, install **the same 0.6.5 installer on both computers**.
+Use the locally prepared installer or the matching GitHub release once published;
+do not mix it with earlier Social prototypes.
 Enable Social separately on each PC, exchange IDs, add each other, launch matching
 Minecraft instances and open the host world to LAN. Send an invitation; the guest
-waits for preparation, opens Minecraft and selects **Multiplayer → Aurum: <world>**.
+waits for preparation; supported Minecraft clients join automatically. If the
+launcher explicitly reports manual fallback, select **Multiplayer → Aurum: <world>**.
 Keep both launchers open. Record the outcome on both PCs.
 
 The diagnostic labs below need a source build or a clean portable QA ZIP. Use the
@@ -96,8 +98,8 @@ Minecraft requirements. The echo node must be stopped before enabling Social.
 - Enable Social explicitly on both sides; verify full IDs and complete the
   friend request. First test with empty Java Vanilla instances.
 - A starts a real world and opens it to LAN. Invite B from Friends. Verify the
-  displayed live LAN port, launch a compatible instance and select **Aurum: world
-  name** under Minecraft's native LAN list. Then play/move/chat in
+  displayed live LAN port and automatic joining in a supported client. Use the
+  native LAN list only if manual fallback is reported. Then play/move/chat in
   Minecraft itself, leave and reconnect. Keep records from both computers.
 - Test invite-with-instance using Fabric and a small known Modrinth mod, then
   the approved Forge/NeoForge/Quilt paths and one permitted CurseForge file.

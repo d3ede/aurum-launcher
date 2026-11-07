@@ -1,8 +1,13 @@
 import { test, expect, type Page } from "@playwright/test";
 
-async function fixture(page: Page, language = "ru", theme = "dark") {
+async function fixture(
+  page: Page,
+  language = "ru",
+  theme = "dark",
+  startup = false,
+) {
   await page.addInitScript(
-    ({ language, theme }) => {
+    ({ language, theme, startup }) => {
       localStorage.setItem("aurum:language", language);
       const w = window as any;
       w.isTauri = true;
@@ -39,7 +44,14 @@ async function fixture(page: Page, language = "ru", theme = "dark") {
           if (cmd !== "rpc") return cmd.includes("is_maximized") ? false : 1;
           const { action, payload } = args;
           w.requests.push({ action, payload });
-          if (action === "snapshot") return structuredClone(state);
+          if (action === "snapshot") {
+            if (startup && !state.profiles.length)
+              await w.__TAURI_INTERNALS__.invoke("rpc", {
+                action: "importPack",
+                payload: {},
+              });
+            return structuredClone(state);
+          }
           if (action === "search") return { projects: [], total: 0 };
           if (action === "recentServers") return [];
           if (action === "importPack") {
@@ -100,9 +112,10 @@ async function fixture(page: Page, language = "ru", theme = "dark") {
         },
       };
     },
-    { language, theme },
+    { language, theme, startup },
   );
   await page.goto("/");
+  if (startup) return;
   await page.locator(".sidebar nav button").nth(1).click();
   await page.locator(".library-import-menu > button").click();
   await page.locator(".library-import-options button").nth(1).click();
@@ -287,4 +300,24 @@ test("downloads move by default and copying can be selected", async ({
         ).length,
     ),
   ).toBe(scans);
+});
+
+test("existing incomplete imports stay closed on startup and remain available in their instance", async ({
+  page,
+}) => {
+  await fixture(page, "en", "dark", true);
+  await page.locator(".sidebar nav button").nth(1).click();
+  await expect(
+    page.getByRole("dialog", { name: "Manual installation needed" }),
+  ).toHaveCount(0);
+  await page.locator(".instance-card").first().click();
+  await page.locator(".pack-manual-notice button").click();
+  await expect(
+    page.getByRole("dialog", { name: "Manual installation needed" }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(page.locator(".sidebar")).toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: "Manual installation needed" }),
+  ).toHaveCount(0);
 });

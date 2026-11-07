@@ -143,6 +143,10 @@ pub async fn rpc(
             let accepted: bool = param(payload, "accepted")?;
             let name: String = param(payload, "name")?;
             let executable = worker_path(app)?;
+            let rules = aurum_social::firewall::status(&executable, false).map_err(err)?;
+            if !rules.iter().all(|rule| rule.present && rule.scoped) {
+                return Err("Social firewall setup is required".into());
+            }
             tauri::async_runtime::spawn_blocking(move || social.enable(executable, name, accepted))
                 .await
                 .map_err(err)?
@@ -274,9 +278,16 @@ pub async fn rpc(
                 .await
                 .map_err(err)?;
             let result = e.social_join(&id, &profile, &task).await;
-            e.finish_social_task(&task, &result).await;
-            result.map_err(err)?;
-            Ok(Value::Null)
+            let outcome = result.as_ref().map(|_| ()).map_err(|e| anyhow::anyhow!(e.to_string()));
+            e.finish_social_task(&task, &outcome).await;
+            let automatic = result.map_err(err)?;
+            Ok(json!({ "automatic": automatic }))
+        }
+        "social.launchState" => {
+            let profile = param::<String>(payload, "profileId")?;
+            if !e.running.lock().await.contains_key(&profile) { return Ok(json!({ "state": "stopped" })); }
+            let state = auren_core::social::launch_state(e, &profile).await.map_err(err)?;
+            Ok(json!({ "state": state }))
         }
         "social.pending" => {
             serde_json::to_value(e.social_pending().await.map_err(err)?).map_err(err)

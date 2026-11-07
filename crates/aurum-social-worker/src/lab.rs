@@ -548,6 +548,20 @@ fn friends(root: &Path, worker: &Path) -> Result<()> {
         "PASS",
         json!({"internetProof":false}),
     );
+    let saved_name = a.snapshot()?.name;
+    for cycle in 0..2 {
+        let old_link = a.snapshot()?.contact_link;
+        if cycle == 0 { std::fs::remove_file(root.join("friend-a/identity.dpapi"))?; }
+        a.interrupt_worker_for_lab()?;
+        until(&|| { let state = a.snapshot()?; Ok(state.enabled && state.status == "online" && state.contact_link.is_some() && state.contact_link != old_link) }).with_context(|| format!("Worker restart {cycle}: status={}, error={:?}", a.snapshot().map(|s|s.status).unwrap_or_default(), a.snapshot().ok().and_then(|s|s.error)))?;
+        until(&|| Ok(a.snapshot()?.online.contains(&id_b) && b.snapshot()?.online.contains(&id_a))).with_context(|| format!("Peer reconnect {cycle}: A={:?}, B={:?}", a.snapshot().ok().and_then(|s|s.error), b.snapshot().ok().and_then(|s|s.error)))?;
+        let state = a.snapshot()?;
+        if state.id.as_deref() != Some(&id_a) || state.name != saved_name || !state.people.iter().any(|p| p.id == id_b && p.state == "friend") {
+            bail!("Worker restart changed identity or lost contacts");
+        }
+        if aurum_social::identity::Identity::load(&root.join("friend-a/identity.dpapi"))?.id() != id_a { bail!("Protected key was not repaired"); }
+    }
+    report("Abrupt isolated worker restart preserves identity and friends twice", "PASS", json!({"internetProof":false}));
     for _ in 0..3 {
         b.relationship(id_a.clone(), "block")?;
         until(&|| {

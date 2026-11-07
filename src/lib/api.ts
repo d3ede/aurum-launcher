@@ -67,6 +67,7 @@ interface Contract {
   ];
   "social.rename": [{ name: string }, void];
   "social.configureFirewall": [{ accepted: boolean }, void];
+  "social.firewallStatus": [Empty, { present: boolean; scoped: boolean }[]];
   "social.exportIdentity": [{ password: string }, boolean];
   "social.restoreIdentity": [{ password: string; replace: boolean }, boolean];
   "social.qr": [Empty, string];
@@ -105,7 +106,11 @@ interface Contract {
     { planId: string; operationId: string; accepted: boolean },
     { profileId: string; missing: number },
   ];
-  "social.join": [{ id: string; profileId: string; operationId: string }, void];
+  "social.join": [
+    { id: string; profileId: string; operationId: string },
+    { automatic: boolean },
+  ];
+  "social.launchState": [{ profileId: string }, { state: string }];
   "social.prepare": [
     { id: string; profileId: string | null; operationId: string },
     string,
