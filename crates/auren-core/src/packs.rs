@@ -3,8 +3,57 @@ use anyhow::{bail, Context, Result};
 use serde_json::Value;
 use std::{io::Read, path::Path};
 
+fn bundled_pack_icon(zip: &mut zip::ZipArchive<std::fs::File>) -> Option<String> {
+    for name in [
+        "icon.png",
+        "modpack.png",
+        "overrides/icon.png",
+        "client-overrides/icon.png",
+    ] {
+        let Ok(mut file) = zip.by_name(name) else {
+            continue;
+        };
+        if file.size() > 2_000_000
+            || file
+                .unix_mode()
+                .is_some_and(|mode| mode & 0o170000 == 0o120000)
+        {
+            continue;
+        }
+        let mut bytes = Vec::new();
+        if (&mut file).take(2_000_001).read_to_end(&mut bytes).is_ok() && bytes.len() <= 2_000_000 {
+            if let Ok(icon) = crate::store::prepare_profile_icon_bytes(&bytes) {
+                return Some(icon);
+            }
+        }
+    }
+    None
+}
+
 pub(crate) type DownloadHashCache =
     std::collections::HashMap<(std::path::PathBuf, String), (u64, std::time::SystemTime, String)>;
+
+async fn read_pack_icon(response: reqwest::Response) -> Option<String> {
+    use futures_util::StreamExt;
+    let response = response.error_for_status().ok()?;
+    if response
+        .content_length()
+        .is_some_and(|size| size > 2_000_000)
+    {
+        return None;
+    }
+    // Some CDNs stream without Content-Length. Bound the actual body as well.
+    let mut stream = response.bytes_stream();
+    let mut bytes = Vec::new();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.ok()?;
+        if bytes.len() + chunk.len() > 2_000_000 {
+            return None;
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    crate::store::prepare_profile_icon_bytes(&bytes).ok()
+}
 
 async fn pack_cf<F, Fut>(
     cf: &mut F,
@@ -168,12 +217,44 @@ fn check_pack_overrides(
 }
 
 impl Engine {
+    /// Optional artwork must never prevent a pack from being installed.
+    pub(crate) async fn download_pack_icon(&self, url: &str) -> Option<String> {
+        let parsed = reqwest::Url::parse(url).ok()?;
+        if parsed.scheme() != "https"
+            || parsed.host_str().is_none()
+            || !parsed.username().is_empty()
+            || parsed.password().is_some()
+        {
+            return None;
+        }
+        tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            read_pack_icon(self.http.get(url).send().await.ok()?).await
+        })
+        .await
+        .ok()
+        .flatten()
+    }
+
     pub async fn import_pack(&self, path: &Path, task: &Task) -> Result<String> {
         self.import_pack_with(path, task, |path| async move { self.cf(&path).await })
             .await
     }
 
-    async fn import_pack_with<F, Fut>(&self, path: &Path, task: &Task, mut cf: F) -> Result<String>
+    async fn import_pack_with<F, Fut>(&self, path: &Path, task: &Task, cf: F) -> Result<String>
+    where
+        F: FnMut(String) -> Fut,
+        Fut: std::future::Future<Output = Result<Value>>,
+    {
+        self.import_pack_with_icon(path, task, None, cf).await
+    }
+
+    async fn import_pack_with_icon<F, Fut>(
+        &self,
+        path: &Path,
+        task: &Task,
+        icon: Option<String>,
+        mut cf: F,
+    ) -> Result<String>
     where
         F: FnMut(String) -> Fut,
         Fut: std::future::Future<Output = Result<Value>>,
@@ -335,7 +416,8 @@ impl Engine {
             }
             let manual_downloads = remaining;
             task.check()?;
-            let p=Profile{engine:crate::model::Runtime::Java,id:id.clone(),name,minecraft:mc,loader,loader_version:lv,installed_version:None,ram_mb:None,jvm_args:String::new(),last_played:None,cover:0,icon:None,icon_style:None,manual_downloads,content:vec![]};
+            let icon = icon.or_else(|| bundled_pack_icon(&mut zip));
+            let p=Profile{engine:crate::model::Runtime::Java,id:id.clone(),name,minecraft:mc,loader,loader_version:lv,installed_version:None,ram_mb:None,jvm_args:String::new(),last_played:None,cover:0,icon,icon_style:None,manual_downloads,content:vec![]};
             self.publish_profile(p, Some(&stage)).await
         }.await;
         let _ = tokio::fs::remove_dir_all(self.root.join("staging").join(&task.id)).await;
@@ -650,7 +732,38 @@ impl Engine {
         let path = self.root.join("downloads").join(format!("{}.zip", task.id));
         self.download(&url, &path, Some(("sha1", &hash)), task)
             .await?;
-        self.import_pack(&path, task).await
+        // Archive manifests do not contain the project's catalog artwork.
+        let metadata = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            if source == "modrinth" {
+                self.json(&format!("{}/project/{project}", crate::catalog::MODRINTH))
+                    .await
+            } else {
+                self.cf(&format!("/mods/{project}")).await
+            }
+        })
+        .await;
+        let icon_url = metadata.ok().and_then(Result::ok).and_then(|raw| {
+            if source == "modrinth" {
+                raw["icon_url"].as_str()
+            } else {
+                raw["data"]["logo"]["thumbnailUrl"]
+                    .as_str()
+                    .or_else(|| raw["data"]["logo"]["url"].as_str())
+            }
+            .map(str::to_owned)
+        });
+        let icon = match icon_url {
+            Some(url) => self.download_pack_icon(&url).await,
+            None => None,
+        };
+        task.check()?;
+        self.import_pack_with_icon(
+            &path,
+            task,
+            icon,
+            |path| async move { self.cf(&path).await },
+        )
+        .await
     }
     pub async fn import_folder(
         &self,
@@ -863,6 +976,109 @@ mod tests {
             tokio::fs::write(mods.join(format!("mod-{project}.jar")), b"correct mod")
                 .await
                 .unwrap();
+        }
+    }
+
+    fn artwork(color: [u8; 4]) -> Vec<u8> {
+        let image = image::DynamicImage::ImageRgba8(image::RgbaImage::from_pixel(
+            32,
+            32,
+            image::Rgba(color),
+        ));
+        let mut bytes = std::io::Cursor::new(Vec::new());
+        image.write_to(&mut bytes, image::ImageFormat::Png).unwrap();
+        bytes.into_inner()
+    }
+
+    #[tokio::test]
+    async fn pack_artwork_is_published_and_survives_restart() {
+        for mr in [true, false] {
+            for catalog_icon in [false, true] {
+                let (dir, task) = fixture();
+                let root = dir.path().join("data");
+                let engine = Engine::new(root.clone(), |_| {}).await.unwrap();
+                let path = dir.path().join("artwork.zip");
+                let bundled = artwork([200, 60, 40, 255]);
+                let catalog = artwork([30, 180, 80, 255]);
+                let mut zip = zip::ZipWriter::new(std::fs::File::create(&path).unwrap());
+                let options = zip::write::SimpleFileOptions::default();
+                zip.start_file(
+                    if mr {
+                        "modrinth.index.json"
+                    } else {
+                        "manifest.json"
+                    },
+                    options,
+                )
+                .unwrap();
+                let manifest = if mr {
+                    json!({"formatVersion":1,"game":"minecraft","name":"Art pack","dependencies":{"minecraft":"1.21.1"},"files":[]})
+                } else {
+                    json!({"name":"Art pack","minecraft":{"version":"1.21.1"},"files":[]})
+                };
+                zip.write_all(manifest.to_string().as_bytes()).unwrap();
+                zip.start_file("icon.png", options).unwrap();
+                zip.write_all(&bundled).unwrap();
+                zip.finish().unwrap();
+                let provided = catalog_icon
+                    .then(|| crate::store::prepare_profile_icon_bytes(&catalog).unwrap());
+                let expected = provided
+                    .clone()
+                    .unwrap_or_else(|| crate::store::prepare_profile_icon_bytes(&bundled).unwrap());
+                let id = engine
+                    .import_pack_with_icon(&path, &task, provided, |_| async {
+                        bail!("No CF files expected")
+                    })
+                    .await
+                    .unwrap();
+                assert_eq!(
+                    engine.profile(&id).await.unwrap().icon.as_deref(),
+                    Some(expected.as_str())
+                );
+                drop(engine);
+                let reopened = Engine::new(root, |_| {}).await.unwrap();
+                assert_eq!(
+                    reopened.profile(&id).await.unwrap().icon.as_deref(),
+                    Some(expected.as_str())
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn streamed_pack_artwork_is_bounded_and_validated() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let valid = artwork([40, 80, 200, 255]);
+        for (body, status, accepted) in [
+            (valid.clone(), "200 OK", true),
+            (b"not an image".to_vec(), "200 OK", false),
+            (vec![0; 2_000_001], "200 OK", false),
+            (valid, "404 Not Found", false),
+        ] {
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let address = listener.local_addr().unwrap();
+            let server = tokio::spawn(async move {
+                let (mut socket, _) = listener.accept().await.unwrap();
+                let mut request = [0; 4096];
+                let _ = socket.read(&mut request).await;
+                let header = format!("HTTP/1.1 {status}\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n{:x}\r\n", body.len());
+                if socket.write_all(header.as_bytes()).await.is_ok()
+                    && socket.write_all(&body).await.is_ok()
+                {
+                    let _ = socket.write_all(b"\r\n0\r\n\r\n").await;
+                }
+            });
+            let response = reqwest::Client::new()
+                .get(format!("http://{address}/icon"))
+                .send()
+                .await
+                .unwrap();
+            let icon = read_pack_icon(response).await;
+            assert_eq!(icon.is_some(), accepted);
+            if let Some(icon) = icon {
+                crate::store::validate_profile_icon(&icon).unwrap();
+            }
+            server.await.unwrap();
         }
     }
 

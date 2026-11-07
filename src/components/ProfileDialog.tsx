@@ -24,6 +24,7 @@ import { LoaderLogo } from "./LoaderLogo";
 import { ImportCopyNotice } from "./ImportCopyNotice";
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
+import { randomIconStyle } from "../lib/profile-icons";
 import { ru } from "../lib/i18n";
 import type { Kind, Loader, Profile } from "../types";
 export function CreateProfile({
@@ -51,7 +52,9 @@ export function CreateProfile({
   const [loaders, setLoaders] = useState<string[]>([]);
   const [cover, setCover] = useState(0);
   const [icon, setIcon] = useState<string | null>(null);
-  const [iconStyle, setIconStyle] = useState<Profile["iconStyle"]>(null);
+  const [iconStyle, setIconStyle] =
+    useState<Profile["iconStyle"]>(randomIconStyle);
+  const [iconEdited, setIconEdited] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loaderLoading, setLoaderLoading] = useState(false);
   const [error, setError] = useState("");
@@ -206,14 +209,15 @@ export function CreateProfile({
                       setMc("26.3");
                       setEngine("horizon");
                       setLoader("vanilla");
-                      if (!icon && !iconStyle)
-                        setIconStyle({
+                      if (!icon && !iconEdited)
+                        setIconStyle((style) => ({
+                          ...style!,
                           symbol: "horizon",
-                          color: "#B5A3FF",
-                          background: "#302A46",
-                        });
+                        }));
                     } else {
                       if (horizon) setMc(javaMc || versions[0] || "");
+                      if (horizon && !icon && !iconEdited)
+                        setIconStyle(randomIconStyle());
                       setEngine("java");
                       setLoader(v as Loader);
                     }
@@ -307,6 +311,7 @@ export function CreateProfile({
             <IconPicker
               value={{ cover, icon, iconStyle }}
               onChange={(value) => {
+                setIconEdited(true);
                 setCover(value.cover);
                 setIcon(value.icon || null);
                 setIconStyle(value.iconStyle || null);

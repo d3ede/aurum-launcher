@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Модпаки получают обложку из каталога, а новые сборки — случайный значок с сочетающимися цветами. Кнопка с кубиками меняет вариант.":
+    "Modpacks use their catalog artwork; new instances get a random icon with matching colors. Use the dice button to try another look.",
   "В разработке: браузер скинов и компактный лаунчер":
     "In development: skin browser and a smaller launcher",
   "Браузер MineSkin: поиск по названию и нику, 3D-просмотр и сохранение в библиотеку.":

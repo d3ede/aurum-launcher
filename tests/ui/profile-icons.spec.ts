@@ -174,6 +174,114 @@ test("new instance submits selected symbol and colors", async ({ page }) => {
   ).toBe(true);
 });
 
+test("new instances start randomized and dice save the visible variant", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.setViewportSize({ width: 960, height: 680 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Новая сборка", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  const preview = dialog.locator(".icon-editor-preview .profile-icon");
+  const appearance = () =>
+    preview.evaluate((el) => ({
+      color: (el as HTMLElement).style.color,
+      background: (el as HTMLElement).style.backgroundColor,
+      symbol: el.querySelector("svg")?.getAttribute("class"),
+    }));
+  await expect(preview).toBeVisible();
+  const initial = await appearance();
+  expect(initial.color).toBeTruthy();
+  expect(initial.background).toBeTruthy();
+  await dialog.getByRole("textbox", { name: "Название сборки" }).fill("Кубики");
+  expect(await appearance()).toEqual(initial);
+  await dialog
+    .getByRole("button", { name: "Случайный значок", exact: true })
+    .click();
+  const rolled = await appearance();
+  expect(rolled).not.toEqual(initial);
+  for (const theme of ["light", "dark"]) {
+    await page.evaluate((theme) => {
+      document.documentElement.dataset.theme = theme;
+    }, theme);
+    expect(await appearance()).toEqual(rolled);
+    await dialog
+      .locator(".icon-editor")
+      .screenshot({ path: `.test-data/screenshots/random-icon-${theme}.png` });
+  }
+  const color = await dialog
+    .getByRole("textbox", { name: "Цвет символа HEX" })
+    .inputValue();
+  const background = await dialog
+    .getByRole("textbox", { name: "Цвет фона HEX" })
+    .inputValue();
+  await dialog
+    .getByRole("button", { name: "Создать сборку", exact: true })
+    .click();
+  expect(
+    await page.evaluate(() => (window as any).createdIconProfile.iconStyle),
+  ).toMatchObject({ color, background });
+  await page.getByRole("button", { name: "Главная", exact: true }).click();
+  await page.getByRole("button", { name: "Новая сборка", exact: true }).click();
+  expect(await appearance()).not.toEqual(rolled);
+});
+
+test("dice replace an uploaded image and persist after reopening", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Мои сборки", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Открыть Мир значков", exact: true })
+    .first()
+    .click();
+  await page.getByRole("button", { name: "Изменить значок сборки" }).click();
+  const editor = page.locator(".icon-editor");
+  await editor
+    .getByRole("button", { name: "Свой значок", exact: true })
+    .click();
+  await expect(editor.locator(".profile-icon img")).toBeVisible();
+  const previousColor = await editor
+    .getByRole("textbox", { name: "Цвет символа HEX" })
+    .inputValue();
+  const previousBackground = await editor
+    .getByRole("textbox", { name: "Цвет фона HEX" })
+    .inputValue();
+  await editor
+    .getByRole("button", { name: "Случайный значок", exact: true })
+    .click();
+  await expect(editor.locator(".profile-icon img")).toHaveCount(0);
+  await expect(
+    editor.getByRole("textbox", { name: "Цвет символа HEX" }),
+  ).not.toHaveValue(previousColor);
+  await expect(
+    editor.getByRole("textbox", { name: "Цвет фона HEX" }),
+  ).not.toHaveValue(previousBackground);
+  const color = await editor
+    .getByRole("textbox", { name: "Цвет символа HEX" })
+    .inputValue();
+  const background = await editor
+    .getByRole("textbox", { name: "Цвет фона HEX" })
+    .inputValue();
+  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await page.reload();
+  const profile = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("icon-editor-profile")!),
+  );
+  expect(profile.icon).toBeNull();
+  expect(profile.iconStyle).toMatchObject({ color, background });
+  await page.getByRole("button", { name: "Мои сборки", exact: true }).click();
+  const cardIcon = page
+    .getByRole("button", { name: "Открыть Мир значков", exact: true })
+    .first()
+    .locator(".profile-icon");
+  await expect(cardIcon.locator("svg")).toBeVisible();
+  expect(
+    await cardIcon.evaluate((el) => (el as HTMLElement).style.backgroundColor),
+  ).toBeTruthy();
+});
+
 test("loader symbols retain selected colors after saving and reopening", async ({
   page,
 }) => {

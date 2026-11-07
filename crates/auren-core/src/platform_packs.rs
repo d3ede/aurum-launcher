@@ -534,23 +534,10 @@ impl Engine {
             if let Some(v)=&lv {crate::store::validate_version(v)?;}
             let profile = Profile { engine: crate::model::Runtime::Java,id:id.clone(),name:detail.project.title,minecraft:mc,loader:l,loader_version:lv,installed_version:None,
                 ram_mb:plan.ram.filter(|n|(512..=131072).contains(n)),jvm_args:String::new(),last_played:None,cover:0,icon:None,icon_style:None,manual_downloads: vec![], content: vec![]};
-            // Download and normalize a small icon through the existing image validator.
+            // Persist validated artwork with the profile, including streamed CDN responses.
             let mut profile=profile;
             if let Some(icon)=detail.project.icon {
-                if public_download_url(&icon).is_ok() {
-                    if let Ok(response)=self.http.get(&icon).timeout(std::time::Duration::from_secs(5)).send().await {
-                        if response.status().is_success() && response.content_length().is_some_and(|n|n<=2_000_000) {
-                            if let Ok(bytes)=response.bytes().await {
-                                if bytes.len()<=2_000_000 {
-                                    let path=staging.join("icon");
-                                    if tokio::fs::write(&path,&bytes).await.is_ok() {
-                                        profile.icon=crate::store::prepare_profile_icon(&path).ok();
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                profile.icon=self.download_pack_icon(&icon).await;
             }
             task.check()?;
             self.publish_profile(profile, Some(&game)).await.context("Could not save installed pack profile")

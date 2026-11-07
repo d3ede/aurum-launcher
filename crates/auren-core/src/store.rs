@@ -273,7 +273,14 @@ pub fn prepare_profile_icon(path: &std::path::Path) -> Result<String> {
     if std::fs::metadata(path)?.len() > 8_000_000 {
         bail!("Значок должен быть меньше 8 МБ")
     }
-    let mut reader = image::ImageReader::open(path)?.with_guessed_format()?;
+    prepare_profile_icon_bytes(&std::fs::read(path)?)
+}
+
+pub(crate) fn prepare_profile_icon_bytes(bytes: &[u8]) -> Result<String> {
+    if bytes.len() > 8_000_000 {
+        bail!("Значок должен быть меньше 8 МБ")
+    }
+    let mut reader = image::ImageReader::new(std::io::Cursor::new(bytes)).with_guessed_format()?;
     let mut limits = image::Limits::default();
     limits.max_image_width = Some(4096);
     limits.max_image_height = Some(4096);

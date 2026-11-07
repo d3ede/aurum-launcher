@@ -72,6 +72,69 @@ export const iconBackgrounds = [
   "#F1EEE7",
 ];
 export const validIconColor = (value: string) => /^#[0-9a-f]{6}$/i.test(value);
+
+function hslHex(hue: number, saturation: number, lightness: number): string {
+  const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
+  const component = (offset: number) => {
+    const k = (offset + hue / 30) % 12;
+    return Math.round(
+      255 *
+        (lightness - (chroma / 2) * Math.max(-1, Math.min(k - 3, 9 - k, 1))),
+    )
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${component(0)}${component(8)}${component(4)}`.toUpperCase();
+}
+
+function luminance(hex: string): number {
+  const rgb = [1, 3, 5].map((offset) => {
+    const channel = parseInt(hex.slice(offset, offset + 2), 16) / 255;
+    return channel <= 0.04045
+      ? channel / 12.92
+      : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+}
+
+/** Related hues from the full color wheel, with at least 4.5:1 contrast. */
+export function randomIconStyle(): ProfileIconStyle {
+  const hue = Math.random() * 360;
+  const saturation = 0.35 + Math.random() * 0.4;
+  const lightBackground = Math.random() < 0.5;
+  const background = hslHex(
+    hue,
+    saturation * 0.55,
+    lightBackground ? 0.83 + Math.random() * 0.1 : 0.13 + Math.random() * 0.1,
+  );
+  const symbolHue = (hue + Math.random() * 50 - 25 + 360) % 360;
+  let lightness = lightBackground ? 0.24 : 0.8;
+  let color = hslHex(symbolHue, saturation, lightness);
+  const backgroundLuminance = luminance(background);
+  const contrast = () =>
+    (Math.max(luminance(color), backgroundLuminance) + 0.05) /
+    (Math.min(luminance(color), backgroundLuminance) + 0.05);
+  while (contrast() < 4.5 && lightness > 0 && lightness < 1) {
+    lightness = Math.max(
+      0,
+      Math.min(1, lightness + (lightBackground ? -0.02 : 0.02)),
+    );
+    color = hslHex(symbolHue, saturation, lightness);
+  }
+  // Loader logos describe a specific runtime, so random picks use general symbols.
+  const symbols = iconSymbols.filter(
+    ({ id }) =>
+      !["vanilla", "fabric", "forge", "neoforge", "quilt", "horizon"].includes(
+        id,
+      ),
+  );
+  return {
+    symbol: symbols[Math.floor(Math.random() * symbols.length)].id,
+    color,
+    background,
+  };
+}
+
 export function defaultIconStyle(
   cover: number,
   dark = false,

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { t } from "../lib/i18n";
-import { Upload, RotateCcw } from "lucide-react";
+import { Upload, RotateCcw, Dices } from "lucide-react";
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
 import {
@@ -9,6 +9,7 @@ import {
   iconColors,
   iconBackgrounds,
   validIconColor,
+  randomIconStyle,
 } from "../lib/profile-icons";
 import type { Profile } from "../types";
 
@@ -136,6 +137,17 @@ export function IconPicker({
           <ProfileIcon profile={value} size={64} />
         </div>
         <div className="icon-editor-actions">
+          <button
+            type="button"
+            className="text-button"
+            disabled={busy}
+            onClick={() =>
+              onChange({ ...value, icon: null, iconStyle: randomIconStyle() })
+            }
+          >
+            <Dices size={16} aria-hidden="true" />
+            {t("Случайный значок")}
+          </button>
           <button
             type="button"
             className="text-button"

@@ -1,4 +1,5 @@
 export const profileIconEnglish: Record<string, string> = {
+  "Случайный значок": "Randomize icon",
   "Предпросмотр значка": "Icon preview",
   Символ: "Symbol",
   "Цвет символа": "Symbol color",
