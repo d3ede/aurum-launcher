@@ -489,11 +489,15 @@ test("wheel zoom caps at fifty, shows multipliers and leaves left click for pann
   );
   await expect(viewer.locator(".lightbox-scale")).toHaveCSS(
     "font-weight",
-    "700",
+    "600",
   );
   await expect(viewer.locator(".lightbox-scale")).toHaveCSS(
     "font-size",
-    "24px",
+    "28px",
+  );
+  await expect(viewer.locator(".lightbox-scale")).toHaveCSS(
+    "text-shadow",
+    "none",
   );
   const x = () =>
     picture.evaluate(
@@ -501,6 +505,13 @@ test("wheel zoom caps at fifty, shows multipliers and leaves left click for pann
     );
   expect(await x()).toBeGreaterThan(0);
   const stage = (await viewer.locator(".lightbox-stage").boundingBox())!;
+  const indicator = (await viewer.locator(".lightbox-scale").boundingBox())!;
+  expect(
+    Math.abs(indicator.x + indicator.width / 2 - (stage.x + stage.width / 2)),
+  ).toBeLessThan(1);
+  expect(
+    Math.abs(indicator.y + indicator.height / 2 - (stage.y + stage.height / 2)),
+  ).toBeLessThan(1);
   await page.mouse.move(stage.x + stage.width / 2, stage.y + stage.height / 2);
   const browserScale = await page.evaluate(() => window.visualViewport!.scale);
   await page.mouse.wheel(0, -1200);

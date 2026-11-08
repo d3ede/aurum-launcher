@@ -375,6 +375,11 @@ export function ImageLightbox({
             {error || t("@shots.loading")}
           </div>
         )}
+        {showScale && (
+          <output className="lightbox-scale" aria-live="polite">
+            ×{view.scale.toFixed(1)}
+          </output>
+        )}
       </div>
       {images.length > 1 && (
         <>
@@ -397,11 +402,6 @@ export function ImageLightbox({
             <ChevronRight />
           </button>
         </>
-      )}
-      {showScale && (
-        <output className="lightbox-scale" aria-live="polite">
-          ×{view.scale.toFixed(1)}
-        </output>
       )}
     </div>,
     document.body,

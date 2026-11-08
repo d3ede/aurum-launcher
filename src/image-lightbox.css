@@ -156,12 +156,13 @@
   transform: translate(-50%, -50%);
   z-index: 4;
   padding: 0;
-  color: #fffd;
+  color: rgb(255 255 255 / 72%);
   background: none;
   border: 0;
-  font-size: 24px;
-  font-weight: 700;
-  text-shadow: 0 1px 8px #0009;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1;
+  text-shadow: none;
   font-variant-numeric: tabular-nums;
   pointer-events: none;
   animation: lightbox-reveal 0.12s ease-out;
