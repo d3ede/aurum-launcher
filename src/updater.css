@@ -25,29 +25,99 @@
 .launcher-updates .update-error {
   color: var(--danger);
 }
-.launcher-update-dialog {
+.modal.launcher-update-dialog {
   width: 560px;
+  padding: 30px;
+  border-color: var(--gold-border);
+  border-radius: 20px;
+  isolation: isolate;
+}
+.launcher-update-dialog > :not(.launcher-update-art) {
+  position: relative;
+  z-index: 1;
+}
+.launcher-update-art {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 270px;
+  overflow: hidden;
+  border-radius: 19px 19px 0 0;
+  pointer-events: none;
+  background: linear-gradient(155deg, var(--gold-soft), transparent 75%);
+  mask-image: linear-gradient(#000 48%, transparent 100%);
+}
+.launcher-update-art .home-pattern {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.7;
+  mask-image: linear-gradient(90deg, transparent 30%, #000 80%);
+}
+.launcher-update-art .home-pattern path {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.65;
+}
+.launcher-update-art .home-pattern rect {
+  fill: var(--gold);
+  opacity: 0.45;
+  transform: translate(-65px, 48px);
+}
+.launcher-update-dialog .modal-head {
+  margin-bottom: 30px;
+}
+.launcher-update-dialog .modal-head h2 {
+  font-size: 25px;
+  line-height: 1.2;
+  letter-spacing: -0.8px;
+}
+.launcher-update-dialog .modal-head p {
+  max-width: 340px;
+}
+.launcher-update-dialog .modal-head .icon-button {
+  flex-shrink: 0;
 }
 .launcher-update-release {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 22px;
+  gap: 17px;
+  margin-bottom: 28px;
 }
 .launcher-update-symbol {
+  position: relative;
+  display: block;
+  width: 66px;
+  height: 66px;
+  flex-shrink: 0;
+  border-radius: 19px;
+  box-shadow: 0 8px 26px var(--gold-soft);
+}
+.launcher-update-symbol > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+.launcher-update-symbol > span {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
   display: grid;
   place-items: center;
-  width: 56px;
-  height: 56px;
-  flex-shrink: 0;
-  border-radius: 16px;
-  border: 1px solid var(--gold-border);
-  background: var(--gold-soft);
-  color: var(--accent-ink);
+  width: 25px;
+  height: 25px;
+  border: 3px solid var(--bg);
+  border-radius: 50%;
+  background: var(--gold);
+  color: #382f1b;
 }
 .launcher-update-release strong {
   display: block;
-  font-size: 17px;
+  font-size: 19px;
+  letter-spacing: -0.35px;
 }
 .launcher-update-release div > span {
   display: block;
@@ -61,13 +131,17 @@
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 20px;
-  padding: 18px 20px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--aside);
+  padding: 21px 22px;
+  border: 1px solid var(--gold-border);
+  border-radius: 14px;
+  background: var(--surface);
 }
 .launcher-update-versions > svg {
-  color: var(--muted);
+  box-sizing: content-box;
+  padding: 9px;
+  border-radius: 50%;
+  background: var(--gold-soft);
+  color: var(--accent-ink);
 }
 .launcher-update-versions span {
   display: block;
@@ -76,10 +150,26 @@
 }
 .launcher-update-versions b {
   display: block;
-  margin-top: 7px;
-  font-size: 23px;
+  margin-top: 9px;
+  font-size: 28px;
   font-weight: 650;
+  letter-spacing: -0.8px;
+  line-height: 1.2;
   overflow-wrap: anywhere;
+}
+.launcher-update-versions > div:first-child b {
+  color: var(--muted);
+  font-weight: 500;
+}
+.launcher-update-versions > div:last-child span::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
+  margin-bottom: 1px;
+  border-radius: 50%;
+  background: var(--gold);
 }
 .launcher-update-versions > div:last-child b {
   color: var(--accent-ink);
@@ -105,4 +195,13 @@
 }
 .launcher-update-dialog .modal-actions {
   flex-wrap: wrap;
+  margin-top: 26px;
+  padding-top: 22px;
+}
+.launcher-update-dialog .modal-actions .button {
+  min-height: 44px;
+  border-radius: 10px;
+}
+.launcher-update-dialog .modal-actions .secondary {
+  min-width: 86px;
 }

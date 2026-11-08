@@ -4,6 +4,8 @@ import { formatDecimal, t, useLocale } from "../lib/i18n";
 import { APP_VERSION } from "../lib/version";
 import { useUpdater } from "../updater";
 import { Modal } from "./ui";
+import { HomePattern } from "./TerrainPattern";
+import aurumLogo from "../assets/branding/aurum-gold.svg";
 import "../updater.css";
 
 function UpdateStatus() {
@@ -140,9 +142,15 @@ export function LauncherUpdateDialog() {
       onClose={update.dismiss}
       closeDisabled={working}
     >
+      <div className="launcher-update-art" aria-hidden="true">
+        <HomePattern />
+      </div>
       <div className="launcher-update-release">
         <span className="launcher-update-symbol" aria-hidden="true">
-          <RefreshCw size={26} />
+          <img src={aurumLogo} alt="" />
+          <span>
+            <RefreshCw size={12} />
+          </span>
         </span>
         <div>
           <strong>Aurum Launcher</strong>
