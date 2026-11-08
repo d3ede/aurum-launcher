@@ -2025,7 +2025,20 @@ kbd {
   margin-bottom: 15px;
 }
 .project-install .field {
+  min-width: 0;
   margin-bottom: 12px;
+}
+.project-install > .form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+}
+.project-install .select-trigger > span:first-child {
+  flex: 1;
+}
+.project-install .select-trigger .select-option-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .project-install > small {
   display: block;
