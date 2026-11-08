@@ -2608,6 +2608,9 @@ kbd {
 .loader-glyph.loader-texture {
   background: none;
 }
+.icon-symbols .loader-texture {
+  --fabric-tone: color-mix(in srgb, currentColor 68%, white);
+}
 .horizon-info {
   display: flex;
   gap: 14px;
