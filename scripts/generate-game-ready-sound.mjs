@@ -6,10 +6,10 @@ import { fileURLToPath } from "node:url";
 const sampleRate = 48000;
 const duration = 1.35;
 const frames = Math.round(sampleRate * duration);
+const peakLevel = 0.085;
 const notes = [
-  { start: 0.025, frequency: 587.3295, gain: 0.7 },
-  { start: 0.17, frequency: 739.9888, gain: 0.78 },
-  { start: 0.335, frequency: 880, gain: 0.82 },
+  { start: 0.025, frequency: 220, gain: 1 },
+  { start: 0.025, frequency: 330, gain: 0.16 },
 ];
 const samples = new Float64Array(frames);
 let peak = 0;
@@ -19,13 +19,11 @@ for (let frame = 0; frame < frames; frame++) {
   for (const note of notes) {
     const age = time - note.start;
     if (age < 0) continue;
-    const attack = 1 - Math.exp(-age / 0.012);
-    const decay = Math.exp(-age / 0.23);
+    const attack = Math.sin(Math.min(age / 0.12, 1) * Math.PI / 2) ** 2;
+    const decay = Math.exp(-age / 0.3);
     const phase = 2 * Math.PI * note.frequency * age;
-    // Soft, rounded mallet tone with a quiet upper partial; no sharp click.
-    sample += note.gain * attack * decay * (
-      Math.sin(phase) + 0.12 * Math.exp(-age / 0.14) * Math.sin(2 * phase)
-    );
+    // A low, softly voiced tone, with no note sequence or bright bell partials.
+    sample += note.gain * attack * decay * Math.sin(phase);
   }
   const fade = Math.min(1, Math.max(0, (duration - time) / 0.15));
   samples[frame] = sample * fade * fade;
@@ -45,9 +43,9 @@ wav.writeUInt16LE(16, 34);
 wav.write("data", 36);
 wav.writeUInt32LE(frames * 2, 40);
 for (let frame = 0; frame < frames; frame++) {
-  wav.writeInt16LE(Math.round(samples[frame] / peak * 0.19 * 32767), 44 + frame * 2);
+  wav.writeInt16LE(Math.round(samples[frame] / peak * peakLevel * 32767), 44 + frame * 2);
 }
 const output = resolve(dirname(fileURLToPath(import.meta.url)), "../src/assets/sounds/minecraft-ready.wav");
 mkdirSync(dirname(output), { recursive: true });
 writeFileSync(output, wav);
-console.log(`Created ${output} (${duration}s, ${sampleRate} Hz, peak -14.4 dBFS)`);
+console.log(`Created ${output} (${duration}s, ${sampleRate} Hz, peak ${(20 * Math.log10(peakLevel)).toFixed(1)} dBFS)`);

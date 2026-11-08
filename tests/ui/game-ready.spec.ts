@@ -94,8 +94,8 @@ test("the real cue decodes, ignores launch/loading and plays once per ready sess
     .poll(() => page.evaluate(() => (window as any).readyAudio?.duration))
     .toBeCloseTo(1.35, 2);
   const peak = await page.evaluate(() => (window as any).readyAudio.peak);
-  expect(peak).toBeGreaterThan(0.18);
-  expect(peak).toBeLessThan(0.2);
+  expect(peak).toBeGreaterThan(0.08);
+  expect(peak).toBeLessThan(0.09);
   await page.evaluate(() => {
     for (const phase of ["running", "log", "loader"])
       (window as any).emitGameEvent(phase);
