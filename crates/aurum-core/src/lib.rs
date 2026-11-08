@@ -12,6 +12,7 @@ pub mod hosting;
 mod import_cleanup;
 mod java_runtime;
 mod launch_cache;
+mod game_ready;
 pub mod layout;
 mod temporary;
 pub mod storage_manager;

@@ -461,7 +461,7 @@ impl Engine {
             cancel: Arc::new(AtomicBool::new(false)),
             emit: self.emit.clone(),
         };
-        self.supervise_game(&profile, child, token, task, server)
+        self.supervise_game(&profile, child, token, task, server, None)
             .await
     }
 }

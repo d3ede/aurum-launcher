@@ -1,4 +1,7 @@
 export const homeEnglish: Record<string, string> = {
+  "Главное меню Minecraft готово": "Minecraft's main menu is ready",
+  "Minecraft подаёт мягкий звуковой сигнал, когда главное меню готово к игре.":
+    "A soft Minecraft readiness chime plays after the main menu finishes loading.",
   "Скриншоты: копирование изображения и сохранение через меню по правой кнопке мыши; кнопка копирования в просмотрщике.":
     "Screenshots: copy images or save them from the right-click menu, with a copy button in the viewer toolbar.",
   "Новая версия лаунчера предлагается в диалоге: можно обновиться с перезапуском или отложить установку.":

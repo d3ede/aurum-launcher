@@ -901,7 +901,7 @@ impl Engine {
             Ok(agent) => agent,
             Err(error) => { task.check()?; task.progress("log", format!("Social auto-join unavailable: {error}"), 0, 0); None }
         };
-        if let Some(argument) = &social_agent { args.push(argument.clone()); }
+        if let Some(agent) = &social_agent { args.push(agent.argument.clone()); }
         args.push(text(&meta, "mainClass")?.into());
         if let Some(game) = meta["arguments"]["game"].as_array() {
             args.extend(expand_args(game, &vars, &features)?);
@@ -947,8 +947,9 @@ impl Engine {
         #[cfg(windows)]
         if cancelled.is_some()&&!self.social.is_enabled(){bail!("Social was disabled before Java launch");}
         let child = command.spawn().context("Не удалось запустить Java")?;
-        self.supervise_game(&p, child, token, task, server).await?;
-        Ok(social_agent.is_some())
+        let bridge_available = social_agent.is_some();
+        self.supervise_game(&p, child, token, task, server, social_agent.map(|agent| agent.ready)).await?;
+        Ok(bridge_available)
     }
     pub(crate) async fn supervise_game(
         &self,
@@ -957,6 +958,7 @@ impl Engine {
         token: String,
         task: Task,
         server: Option<crate::servers::ServerAddress>,
+        readiness: Option<PathBuf>,
     ) -> Result<()> {
         let id = p.id.as_str();
         let instance = self.instance(id)?;
@@ -1003,13 +1005,24 @@ impl Engine {
                 .await
                 .ok();
             let mut stream_open = true;
+            let mut readiness = readiness;
+            let mut health = tokio::time::interval(std::time::Duration::from_millis(200));
             let status = loop {
                 tokio::select! {
                     status=child.wait()=>break status,
                     line=rx.recv(), if stream_open => if let Some(line)=line { if let Some(f)=log.as_mut() { let _=f.write_all(format!("{line}\n").as_bytes()).await; } task.progress("log",line,0,0); }else{stream_open=false;},
-                    _=tokio::time::sleep(std::time::Duration::from_millis(200))=>if stop.load(Ordering::Relaxed) { let _=child.kill().await; break child.wait().await; }
+                    _=health.tick()=> {
+                        if stop.load(Ordering::Relaxed) { let _=child.kill().await; break child.wait().await; }
+                        if let Some(path) = &readiness {
+                            if crate::game_ready::consume(path).await {
+                                task.progress("game-ready", "Главное меню Minecraft готово", 0, 0);
+                                readiness = None;
+                            }
+                        }
+                    }
                 }
             };
+            if let Some(path) = readiness { let _ = tokio::fs::remove_file(path).await; }
             // Capture buffered crash output even when the process exits before the readers finish.
             while let Ok(Some(line)) =
                 tokio::time::timeout(std::time::Duration::from_secs(2), rx.recv()).await

@@ -3,7 +3,12 @@ use crate::{servers::ServerAddress, Task};
 use anyhow::{bail, Context, Result};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
-use std::{collections::BTreeMap, path::Path};
+use std::{collections::BTreeMap, path::{Path, PathBuf}};
+
+pub(crate) struct PreparedAgent {
+    pub argument: String,
+    pub ready: PathBuf,
+}
 
 const AGENT: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/aurum-lan-join.jar"));
 const CLASSES: &[(&str, &str)] = &[
@@ -117,7 +122,7 @@ pub(crate) async fn prepare(
     target: Option<&ServerAddress>,
     name: &str,
     task: &Task,
-) -> Result<Option<String>> {
+) -> Result<Option<PreparedAgent>> {
     let root = &engine.root;
     let directory = instance.join(".aurum/social");
     tokio::fs::create_dir_all(&directory).await?;
@@ -177,17 +182,19 @@ pub(crate) async fn prepare(
         tokio::fs::write(&jar, AGENT).await?;
     }
     let session = uuid::Uuid::new_v4();
+    let ready = directory.join(format!("{session}.ready"));
     let configuration = format!("{session}.properties");
     let status = directory.join("agent-state");
     tokio::fs::write(&status, "idle\n").await?;
     let mut properties = format!(
-        "request={}\nstatus={}\nmethod.disconnect={}\nmethod.disconnectScreen={}\n",
+        "request={}\nstatus={}\nready={}\nmethod.disconnect={}\nmethod.disconnectScreen={}\n",
         property(
             &directory
                 .join(format!("{session}.request"))
                 .to_string_lossy()
         ),
         property(&status.to_string_lossy()),
+        property(&ready.to_string_lossy()),
         disconnect_aliases(&mappings, "void disconnect()"),
         disconnect_aliases(
             &mappings,
@@ -202,9 +209,10 @@ pub(crate) async fn prepare(
     if let Some(target) = target {
         request(instance, target, name).await?;
     }
-    Ok(Some(format!(
-        "-javaagent:.aurum/social/{filename}=.aurum/social/{configuration}"
-    )))
+    Ok(Some(PreparedAgent {
+        argument: format!("-javaagent:.aurum/social/{filename}=.aurum/social/{configuration}"),
+        ready,
+    }))
 }
 
 pub(crate) async fn state(instance: &Path) -> Result<String> {
@@ -255,11 +263,13 @@ mod tests {
         std::fs::write(&jar, AGENT).unwrap();
         let inbox = root.path().join("inbox");
         let status = root.path().join("state");
+        let ready = root.path().join("menu.ready");
         let configuration = root.path().join("agent.properties");
         let mut properties = format!(
-            "request={}\nstatus={}\n",
+            "request={}\nstatus={}\nready={}\n",
             property(&inbox.to_string_lossy()),
-            property(&status.to_string_lossy())
+            property(&status.to_string_lossy()),
+            property(&ready.to_string_lossy())
         );
         for (role, fixture) in [
             ("minecraft", "Client"),
@@ -289,6 +299,7 @@ mod tests {
             .arg("LanJoinAgentProbe")
             .arg(inbox)
             .arg(status)
+            .arg(ready)
             .output()
             .unwrap();
         assert!(

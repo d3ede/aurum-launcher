@@ -14,6 +14,7 @@ import type { SettingsTab } from "./lib/personalization";
 import { Modal } from "./components/ui";
 import { NativeModNotice } from "./components/NativeModNotice";
 import type { HorizonModStatus } from "./lib/horizon-mods";
+import { GameReadySound } from "./lib/game-ready-sound";
 export interface MicrosoftLoginState {
   id: string;
   status: "active" | "cancelling" | "success" | "error" | "cancelled";
@@ -98,6 +99,20 @@ export function Provider({
     message: string;
     error: boolean;
   } | null>(null);
+  const gameReadySound = useRef<GameReadySound | null>(null);
+  useEffect(() => {
+    const sound = new GameReadySound();
+    gameReadySound.current = sound;
+    const unlock = () => void sound.unlock();
+    document.addEventListener("pointerdown", unlock, { once: true });
+    document.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      document.removeEventListener("pointerdown", unlock);
+      document.removeEventListener("keydown", unlock);
+      sound.dispose();
+      gameReadySound.current = null;
+    };
+  }, []);
   const notify = useCallback(
     (message: string, error = false) =>
       setToast({ message: tMessage(message), error }),
@@ -148,6 +163,14 @@ export function Provider({
         if (live) setFatal(e.message);
       });
     events((event) => {
+      if (event.phase === "game-ready") {
+        gameReadySound.current?.handle(event);
+        setLogs((old) => [
+          ...old.slice(-499),
+          { ...event, message: tMessage(event.message) },
+        ]);
+        return;
+      }
       if (event.phase === "game-settings-partial") {
         const message = t("@game.partial", {
           applied: event.done,

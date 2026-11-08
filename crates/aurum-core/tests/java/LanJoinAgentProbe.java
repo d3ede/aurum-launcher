@@ -59,7 +59,25 @@ public class LanJoinAgentProbe {
     }
     public static void main(String[] args) throws Exception {
         Path inbox = Paths.get(args[0]), status = Paths.get(args[1]);
+        Path ready = Paths.get(args[2]);
         Client client = Client.getInstance();
+        Thread.sleep(1200);
+        if (Files.exists(ready)) throw new AssertionError("A running world is not the main menu");
+        client.level = null; client.player = null;
+        client.screen = new Title(); client.overlay = new Overlay();
+        Thread.sleep(1600);
+        if (Files.exists(ready)) throw new AssertionError("Title beneath loading overlay is not ready");
+        client.screen = new Screen(); client.overlay = null;
+        Thread.sleep(1200);
+        if (Files.exists(ready)) throw new AssertionError("An arbitrary screen is not the main menu");
+        client.screen = new Title();
+        long menuDeadline = System.nanoTime() + 10000000000L;
+        while (!Files.exists(ready) && System.nanoTime() < menuDeadline) Thread.sleep(50);
+        if (!Files.exists(ready) || !new String(Files.readAllBytes(ready), StandardCharsets.UTF_8).equals("ready\n"))
+            throw new AssertionError("An unobstructed main menu must signal readiness");
+        Files.delete(ready);
+        // Restore a world for the existing auto-join regression checks.
+        client.level = new Level(); client.player = new Player(); client.screen = null;
         for (int count = 1; count <= 2; count++) {
             request(inbox, "127.0.0.1"); await(status, "joined", count);
             if (client.saves != count) throw new AssertionError("Native save/disconnect was skipped or repeated");
@@ -68,6 +86,7 @@ public class LanJoinAgentProbe {
         request(inbox, "127.0.0.1"); await(status, "joined", 3);
         Thread.sleep(1200);
         if (Connect.connections != 3 || client.saves != 3 || Files.exists(inbox)) throw new AssertionError("A consumed request replayed");
-        System.out.println("PASS: same JVM saved/left its world and joined three times; remote request rejected; no replay");
+        if (Files.exists(ready)) throw new AssertionError("Returning to the menu replayed the ready signal");
+        System.out.println("PASS: readiness requires unobstructed main menu; no repeat; same JVM saved/left its world and joined three times; remote request rejected; no replay");
     }
 }

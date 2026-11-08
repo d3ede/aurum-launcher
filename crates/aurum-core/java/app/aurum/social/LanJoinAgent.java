@@ -10,7 +10,7 @@ import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/** Uses the game's native LAN entry. No transformers, token changes or network listeners. */
+/** Observes title-screen readiness and uses the native LAN entry. No transformers or network listeners. */
 public final class LanJoinAgent {
     private static final AtomicBoolean queued = new AtomicBoolean();
     private static volatile boolean finished;
@@ -19,6 +19,9 @@ public final class LanJoinAgent {
     private static Properties config;
     private static Path status;
     private static Path request;
+    private static Path ready;
+    private static volatile boolean menuReady;
+    private static long menuReadySince;
     private static Object resolver;
     private static Method mapClass;
 
@@ -30,6 +33,8 @@ public final class LanJoinAgent {
             try (Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) { config.load(reader); }
             status = Paths.get(config.getProperty("status"));
             request = Paths.get(config.getProperty("request"));
+            String readyPath = config.getProperty("ready");
+            ready = readyPath == null ? null : Paths.get(readyPath);
             finished = true;
             Thread thread = new Thread(new Runnable() { public void run() { watch(instrumentation); } }, "Aurum LAN join");
             thread.setDaemon(true);
@@ -39,6 +44,7 @@ public final class LanJoinAgent {
 
     private static void watch(Instrumentation instrumentation) {
         long deadline = 0;
+        Class<?> minecraft = null;
         while (true) {
             try {
                 if (!queued.get() && Files.isRegularFile(request)) {
@@ -53,25 +59,30 @@ public final class LanJoinAgent {
                     } catch (Exception invalid) { finished = true; report("unsupported"); }
                     finally { Files.deleteIfExists(request); }
                 }
-                if (finished) { Thread.sleep(400); continue; }
-                if (System.nanoTime() >= deadline) { finished = true; report("timeout"); continue; }
-                Class<?> minecraft = null;
-                Class<?>[] loaded = instrumentation.getAllLoadedClasses();
-                if (resolver == null) findFabricResolver(loaded);
-                Set<String> names = names("minecraft");
-                for (Class<?> candidate : loaded) if (names.contains(candidate.getName())) { minecraft = candidate; break; }
+                if (finished && (ready == null || menuReady)) { Thread.sleep(400); continue; }
+                if (!finished && System.nanoTime() >= deadline) { finished = true; report("timeout"); continue; }
+                if (minecraft == null) {
+                    Class<?>[] loaded = instrumentation.getAllLoadedClasses();
+                    if (resolver == null) findFabricResolver(loaded);
+                    Set<String> names = names("minecraft");
+                    for (Class<?> candidate : loaded) if (names.contains(candidate.getName())) { minecraft = candidate; break; }
+                }
                 if (minecraft != null) {
                     final Object client = singleton(minecraft);
-                    if (!finished && client instanceof Executor && queued.compareAndSet(false, true)) {
+                    if (client instanceof Executor && queued.compareAndSet(false, true)) {
                         ((Executor) client).execute(new Runnable() { public void run() {
-                            try { tick(client); } catch (Throwable error) { finished = true; report("unsupported"); }
+                            // Read game UI state on the render thread. Readiness is independent
+                            // of Social requests and must never trigger an auto-join.
+                            try { signalReady(client); }
+                            catch (Throwable ignored) { menuReadySince = 0; }
+                            try { if (!finished) tick(client); } catch (Throwable error) { finished = true; report("unsupported"); }
                             finally { queued.set(false); }
                         }});
                     }
                 }
                 Thread.sleep(400);
             } catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); return; }
-              catch (ReflectiveOperationException | LinkageError | IOException ignored) { /* The loader may still be initializing. */ }
+              catch (ReflectiveOperationException | LinkageError | IOException | RuntimeException ignored) { /* The loader may still be initializing. */ }
         }
     }
 
@@ -150,6 +161,28 @@ public final class LanJoinAgent {
     private static Object ui(Object client, Class<?> wanted, ClassLoader loader) throws ReflectiveOperationException {
         try { return value(client, wanted); }
         catch (NoSuchFieldException missing) { return value(value(client, type("gui", loader)), wanted); }
+    }
+
+    private static void signalReady(Object client) throws ReflectiveOperationException, IOException {
+        if (ready == null || menuReady) return;
+        ClassLoader loader = client.getClass().getClassLoader();
+        Object current = ui(client, type("screen", loader), loader);
+        if (current == null || !type("title", loader).isInstance(current)
+                || ui(client, type("overlay", loader), loader) != null
+                || value(client, type("level", loader)) != null) {
+            menuReadySince = 0;
+            return;
+        }
+        // A title screen may exist underneath the resource-loading overlay.
+        // Require it to remain unobstructed across render-thread observations.
+        long now = System.nanoTime();
+        if (menuReadySince == 0) { menuReadySince = now; return; }
+        if (now - menuReadySince < 750000000L) return;
+        Path temporary = ready.resolveSibling(ready.getFileName().toString() + ".part");
+        Files.write(temporary, "ready\n".getBytes(StandardCharsets.UTF_8));
+        try { Files.move(temporary, ready, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
+        catch (AtomicMoveNotSupportedException unsupported) { Files.move(temporary, ready, StandardCopyOption.REPLACE_EXISTING); }
+        menuReady = true;
     }
 
     private static void tick(Object client) throws ReflectiveOperationException {
