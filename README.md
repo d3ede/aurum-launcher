@@ -47,13 +47,15 @@ verification. Social is optional and disabled until you enable it. Read the
 | **Catalog favorites** | Save projects across sources and install one, a selection, or all compatible items through a cancellable queue. See [favorites](docs/favorites.md). |
 | **Horizon mods** | A separate native source catalog, explicit compilation, progress, logs and cancellation. Play offers compilation or launching without user mods when the selection has changed. |
 | **Import** | Modrinth App, `.mrpack`, CurseForge ZIP and existing game folders. Originals are kept by default; recycling after a verified copy is a separate option. |
-| **Accounts** | Microsoft sign-in in a dedicated window, encrypted token storage with keys in the OS credential vault, and local offline profiles. |
+| **Accounts** | Microsoft sign-in in your browser, encrypted token storage with keys in the OS credential vault, and local offline profiles. |
 | **Skins and capes** | PNG library, nine default characters, wide/slim arms and animated 3D previews. Cached skins appear independently of cape downloads. Apply skins and owned capes to a Microsoft account. |
+| **Screenshots** | Per-instance and combined libraries, filters, full-screen browsing and zoom, and encrypted queued sharing with friends. See [screenshots](docs/SCREENSHOTS.md). |
+| **Storage** | Disk usage by category, recoverable instance and file deletion, cache cleanup and removal of unused installations. |
 | **Local hosting** | Import server folders and proxy networks, install official server distributions including Fabric, Forge and NeoForge, use console and player controls, and manage a network with one launch button. See [local hosting](docs/local-hosting.md). |
 | **Recent servers** | A weekly server history with status checks, matching-instance launches and Windows desktop shortcuts. See [recent servers](docs/recent-servers.md). |
 | **Interface** | 41 languages, language search, RTL support, light and dark themes, and settings for memory, Java, and game data. |
 
-**New in 0.6.7:** catalog favorites with queued installation, local Fabric/Forge/NeoForge server setup, and a fix for duplicate Minecraft resource downloads. [Release notes](docs/releases/v0.6.7.md).
+**New in 0.7.0:** screenshot libraries and encrypted friend sharing, MineSkin browsing, storage management and a smaller launcher with Social downloaded on activation. [Release notes](docs/releases/v0.7.0.md).
 
 Version [0.6.1](docs/releases/v0.6.1.md) added automatic retries after CurseForge rate limits, preserving progress and cancellation.
 

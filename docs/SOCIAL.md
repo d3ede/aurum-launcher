@@ -7,7 +7,7 @@ been verified after the latest fixes. See the
 
 ## Using it
 
-The upcoming screenshot library and encrypted friend-sharing queue are described
+The screenshot library and encrypted friend-sharing queue are described
 in [Screenshot library and sharing](SCREENSHOTS.md).
 
 Friends is immediately above Hosting. Social starts disabled on a fresh data
@@ -17,7 +17,7 @@ rule still matches the verified worker. Turning Social off persists that choice.
 Turning it off requires confirmation and disconnects Social tunnels without
 stopping Minecraft. The control is below the identity-backup actions.
 
-In upcoming published builds, the installer no longer bundles the Social executables.
+In the 0.7.0 release, the installer no longer bundles the Social executables.
 The first explicit activation downloads the worker and Firewall helper from the
 same GitHub release as the launcher. The dialog shows download progress and
 allows cancellation before Firewall configuration. Both compressed downloads

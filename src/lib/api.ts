@@ -48,12 +48,6 @@ export const native = isTauri();
 type Empty = Record<string, never>;
 import type { ScreenshotLibrary, ScreenshotTransfer } from "./screenshots";
 interface Contract {
-  storageRemoveVersion: [{ id: string }, number];
-  storageRemoveComponent: [{ category: string }, number];
-  storageSnapshot: [Empty, import("../screens/Storage").StorageSnapshot];
-  storageClean: [{ category: string }, number];
-  storageTrash: [{ ids: string[]; restore: boolean }, number];
-  optimizeJava: [{ operationId: string }, number];
   "screenshots.list": [{ profileId: string | null }, ScreenshotLibrary];
   "screenshots.image": [{ id: string; thumbnail: boolean }, string];
   "screenshots.send": [{ friend: string; ids: string[] }, string[]];
@@ -63,6 +57,12 @@ interface Contract {
   "screenshots.removeReceived": [{ id: string }, void];
   "screenshots.openFolder": [{ profileId: string }, void];
   "screenshots.save": [{ id: string }, boolean];
+  storageRemoveVersion: [{ id: string }, number];
+  storageRemoveComponent: [{ category: string }, number];
+  storageSnapshot: [Empty, import("../screens/Storage").StorageSnapshot];
+  storageClean: [{ category: string }, number];
+  storageTrash: [{ ids: string[]; restore: boolean }, number];
+  optimizeJava: [{ operationId: string }, number];
   "social.takeLink": [Empty, string | null];
   hostingLoaderVersions: [
     { core: string; version: string; experimental: boolean },

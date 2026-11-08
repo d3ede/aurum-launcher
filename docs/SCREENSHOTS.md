@@ -1,6 +1,6 @@
 # Screenshot library and sharing
 
-This is an upcoming feature. The current published release is unchanged.
+Available in Aurum 0.7.0 for Windows.
 
 Each instance has a **Screenshots** tab between Content and Settings. The main
 Screenshots section, directly below Browse projects, combines the screenshots

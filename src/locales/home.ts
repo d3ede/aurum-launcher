@@ -1,4 +1,10 @@
 export const homeEnglish: Record<string, string> = {
+  "Скриншоты, скины и хранилище": "Screenshots, skins and storage",
+  "Библиотека скриншотов и отправка друзьям":
+    "Screenshot library and friend sharing",
+  "Скины и профили": "Skins and instances",
+  "Хранилище и запуск": "Storage and startup",
+  "Компактный лаунчер и Social": "Smaller launcher and Social",
   "Просмотр скриншотов: плавное перелистывание, масштаб колесом до ×50 и перемещение увеличенного изображения мышью.":
     "Screenshot viewer: smooth paging, wheel zoom up to ×50, and dragging to pan enlarged images.",
   "Скриншоты каждой сборки и общая библиотека с поиском, сортировкой и просмотром вблизи.":

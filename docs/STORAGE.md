@@ -19,7 +19,7 @@ Aurum Launcher/
     trash/
 ```
 
-Existing game data is moved using same-volume renames. Migration resumes after an interruption, rejects ambiguous destinations and preserves unknown files. An explicit Java path inside the previous data root follows the move. The application identifier and credential-vault namespace remain unchanged so existing Microsoft accounts keep their credentials.
+Existing game data is moved using same-volume renames. Migration resumes after an interruption, rejects ambiguous destinations and preserves unknown files. An explicit Java path inside the previous data root follows the move. The application identifier is now `app.aurum.launcher`; upgrade migration reads the previous application-data and credential-vault namespaces so existing Microsoft accounts keep their credentials.
 
 Settings → Files and versions → Storage shows disk usage, cache and download cleanup, installed versions and trash. Used versions cannot be removed. Deleting an instance or supported content creates recovery metadata; individual items or the whole trash can be restored. Restoring never replaces an existing file. Permanent deletion requires confirmation. Items from older versions without recovery metadata remain removable but cannot be restored automatically.
 
