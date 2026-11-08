@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  ArrowLeft,
   Check,
   ChevronDown,
   Download,
@@ -54,7 +55,7 @@ const motions: { value: SkinMotion; label: string }[] = [
   { value: "walk", label: "Ходьба" },
   { value: "run", label: "Бег" },
   { value: "wave", label: "Помахать" },
-  { value: "crouch", label: "Присесть" },
+  { value: "crouch", label: "Красться" },
   { value: "hit", label: "Удар" },
 ];
 type Draft = {
@@ -439,7 +440,16 @@ export function Skins() {
   return (
     <>
       <div className="page-heading wardrobe-heading">
-        <div>
+        <div className="wardrobe-heading-title">
+          <button
+            type="button"
+            className="icon-button"
+            aria-label={t("Назад к профилям")}
+            title={t("Назад к профилям")}
+            onClick={() => navigate("accounts")}
+          >
+            <ArrowLeft size={21} />
+          </button>
           <h1>{t("Скины и плащи")}</h1>
         </div>
         <div className="wardrobe-heading-actions">

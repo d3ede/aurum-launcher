@@ -222,7 +222,9 @@ for (const theme of ["light", "garnet"]) {
     await expect(
       nav.getByRole("button", { name: "Скины и плащи", exact: true }),
     ).toHaveCount(0);
-    await nav.getByRole("button", { name: "Профили", exact: true }).click();
+    const back = page.getByRole("button", { name: "Назад к профилям" });
+    await expect(back).toBeInViewport();
+    await back.click();
     await expect(card).toBeVisible();
   });
 }

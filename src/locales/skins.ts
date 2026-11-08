@@ -1,4 +1,5 @@
 export const skinEnglish: Record<string, string> = {
+  "Назад к профилям": "Back to profiles",
   "Загрузка PNG и библиотека": "PNG uploads and saved skins",
   "Поиск по названию и нику": "Search by skin or player name",
   "Плащи и 3D-просмотр": "Capes and 3D preview",
@@ -78,7 +79,7 @@ export const skinEnglish: Record<string, string> = {
   Ходьба: "Walk",
   Бег: "Run",
   Помахать: "Wave",
-  Присесть: "Crouch",
+  Красться: "Sneak",
   Удар: "Swing",
   "Выбрать скин {{name}}": "Select skin {{name}}",
   "Применён к аккаунту": "Applied to account",

@@ -933,6 +933,18 @@ test("dedicated wardrobe has all defaults, still manual view, animations and bot
   const before = await canvas.screenshot();
   await page.waitForTimeout(750);
   expect((await canvas.screenshot()).equals(before)).toBe(true);
+  await page.getByRole("combobox", { name: "Анимация персонажа" }).click();
+  await page.getByRole("option", { name: "Красться", exact: true }).click();
+  await expect(canvas).toHaveAttribute("data-motion", "crouch");
+  await page.waitForTimeout(600);
+  const crouched = await canvas.screenshot();
+  expect(crouched.equals(before)).toBe(false);
+  await page.waitForTimeout(750);
+  expect((await canvas.screenshot()).equals(crouched)).toBe(true);
+  await page.getByRole("combobox", { name: "Анимация персонажа" }).click();
+  await page.getByRole("option", { name: "Без анимации", exact: true }).click();
+  await page.waitForTimeout(500);
+  expect((await canvas.screenshot()).equals(before)).toBe(true);
   const bounds = await canvas.boundingBox();
   await page.mouse.move(
     bounds!.x + bounds!.width * 0.5,
@@ -964,6 +976,16 @@ test("dedicated wardrobe has all defaults, still manual view, animations and bot
     animations: "disabled",
   });
   await page.setViewportSize({ width: 960, height: 680 });
+  const animation = page.getByRole("combobox", { name: "Анимация персонажа" });
+  const caption = page.locator(".wardrobe-character .field > span");
+  const selectBox = (await animation.boundingBox())!;
+  const captionBox = (await caption.boundingBox())!;
+  expect(
+    Math.abs(
+      captionBox.y + captionBox.height / 2 - selectBox.y - selectBox.height / 2,
+    ),
+  ).toBeLessThanOrEqual(1);
+  await expect(caption).toHaveCSS("font-size", "14px");
   expect(
     await page
       .locator(".content-scroll")

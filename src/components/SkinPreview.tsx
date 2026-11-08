@@ -220,6 +220,10 @@ export function SkinPreview({
   useEffect(() => {
     const v = viewer.current;
     if (!v) return;
+    const crouch = new CrouchAnimation();
+    crouch.runOnce = true;
+    crouch.showProgress = true;
+    crouch.speed = 0.5;
     v.animation =
       motion === "still"
         ? null
@@ -230,7 +234,7 @@ export function SkinPreview({
             : motion === "wave"
               ? new WaveAnimation()
               : motion === "crouch"
-                ? new CrouchAnimation()
+                ? crouch
                 : motion === "hit"
                   ? new HitAnimation()
                   : new IdleAnimation();
