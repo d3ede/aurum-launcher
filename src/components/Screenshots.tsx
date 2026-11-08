@@ -28,6 +28,18 @@ export { ScreenshotNotifications } from "./ScreenshotRequests";
 import "../screens/screenshots.css";
 
 const thumbnails = new Map<string, string>();
+function useScreenshotActions() {
+  const { notify } = useApp();
+  return {
+    onCopy: async (id: string) => {
+      await rpc("screenshots.copy", { id });
+      notify(t("@shots.copied"));
+    },
+    onSave: async (id: string) => {
+      if (await rpc("screenshots.save", { id })) notify(t("@shots.saved"));
+    },
+  };
+}
 function useTransfers() {
   const [items, setItems] = useState<ScreenshotTransfer[]>([]);
   const [error, setError] = useState("");
@@ -107,6 +119,7 @@ function ScreenshotViewer({
   initialIndex: number;
   onClose: () => void;
 }) {
+  const actions = useScreenshotActions();
   const images = useMemo(() => shots.map((shot) => shot.id), [shots]);
   const initial = shots[initialIndex];
   const preview =
@@ -118,6 +131,7 @@ function ScreenshotViewer({
   );
   return (
     <ImageLightbox
+      {...actions}
       images={images}
       initialIndex={initialIndex}
       resolveImage={resolveImage}
@@ -575,6 +589,7 @@ export function ScreenshotDeliveries({
   items: ScreenshotTransfer[];
   refresh: () => Promise<void>;
 }) {
+  const actions = useScreenshotActions();
   const { notify } = useApp();
   const { snapshot } = useSocial();
   const [view, setView] = useState<string | null>(null);
@@ -725,6 +740,7 @@ export function ScreenshotDeliveries({
       })}
       {view && (
         <ImageLightbox
+          {...actions}
           images={[view]}
           initialIndex={0}
           resolveImage={(id) =>

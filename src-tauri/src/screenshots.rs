@@ -106,21 +106,31 @@ pub async fn rpc(
                 .map_err(err)?;
             Ok(Value::Null)
         }
+        "screenshots.copy" => {
+            #[cfg(windows)]
+            {
+                use tauri::Manager;
+                let id: String = param(payload, "id")?;
+                let window = app
+                    .get_webview_window("main")
+                    .ok_or("Launcher window is unavailable")?;
+                let owner = window.hwnd().map_err(err)?.0 as isize;
+                let bytes = screenshot_bytes(e, &id).await?;
+                tauri::async_runtime::spawn_blocking(move || {
+                    aurum_core::screenshots::clipboard::copy_image(&bytes, owner).map_err(err)
+                })
+                .await
+                .map_err(err)??;
+                Ok(Value::Null)
+            }
+            #[cfg(not(windows))]
+            {
+                Err("Screenshot clipboard currently requires Windows".into())
+            }
+        }
         "screenshots.save" => {
             let id: String = param(payload, "id")?;
-            let bytes = if let Some(id) = id.strip_prefix("received:") {
-                #[cfg(windows)]
-                {
-                    e.social.received_screenshot(id).map_err(err)?
-                }
-                #[cfg(not(windows))]
-                {
-                    let _ = id;
-                    return Err("Social screenshots require Windows".into());
-                }
-            } else {
-                e.screenshot_bytes(&id).await.map_err(err)?
-            };
+            let bytes = screenshot_bytes(e, &id).await?;
             aurum_core::screenshots::dimensions(&bytes).map_err(err)?;
             let extension = if bytes.starts_with(b"\x89PNG") {
                 "png"
@@ -148,5 +158,21 @@ pub async fn rpc(
             Ok(json!(saved))
         }
         _ => Err("Unknown screenshot command".into()),
+    }
+}
+
+async fn screenshot_bytes(e: &Engine, id: &str) -> Result<Vec<u8>, String> {
+    if let Some(id) = id.strip_prefix("received:") {
+        #[cfg(windows)]
+        {
+            e.social.received_screenshot(id).map_err(err)
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = id;
+            Err("Social screenshots require Windows".into())
+        }
+    } else {
+        e.screenshot_bytes(id).await.map_err(err)
     }
 }

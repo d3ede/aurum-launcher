@@ -6,7 +6,16 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, ChevronRight, X, ZoomIn, ZoomOut } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  Copy,
+  Download,
+  X,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 import { t } from "../lib/i18n";
 import "../image-lightbox.css";
 
@@ -22,13 +31,23 @@ export function ImageLightbox({
   onClose,
   resolveImage,
   initialPreview,
+  onCopy,
+  onSave,
 }: {
   images: string[];
   initialIndex: number;
   onClose: () => void;
   resolveImage?: (id: string) => Promise<string>;
   initialPreview?: { url: string; width: number; height: number };
+  onCopy?: (id: string) => Promise<unknown>;
+  onSave?: (id: string) => Promise<unknown>;
 }) {
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const menuElement = useRef<HTMLDivElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [index, setIndex] = useState(
     Math.max(0, Math.min(initialIndex, images.length - 1)),
   );
@@ -69,6 +88,29 @@ export function ImageLightbox({
   const url = content.url;
   const error = failure.id === id ? failure.error : "";
   const displayedIndex = Math.max(0, images.indexOf(content.id));
+  const dismissMenu = () => {
+    setMenu(null);
+    closeButton.current?.focus();
+  };
+  const runAction = async (action: (id: string) => Promise<unknown>) => {
+    if (busy) return;
+    dismissMenu();
+    setBusy(true);
+    setActionError("");
+    const actionId = content.id;
+    try {
+      await action(actionId);
+      if (action === onCopy && displayed.current.id === actionId) {
+        setCopied(true);
+        clearTimeout(copiedTimer.current);
+        copiedTimer.current = setTimeout(() => setCopied(false), 1800);
+      }
+    } catch (reason) {
+      setActionError(String(reason));
+    } finally {
+      setBusy(false);
+    }
+  };
   const fit = Math.min(
     size.width / content.width,
     size.height / content.height,
@@ -181,6 +223,9 @@ export function ImageLightbox({
   );
   const change = useCallback(
     (step: number) => {
+      setMenu(null);
+      setActionError("");
+      setCopied(false);
       if (images.length < 2) return;
       const next =
         (requestedIndex.current + step + images.length) % images.length;
@@ -196,6 +241,18 @@ export function ImageLightbox({
     [images],
   );
 
+  useLayoutEffect(() => {
+    if (!menu || !menuElement.current) return;
+    const element = menuElement.current;
+    element.style.left = `${Math.max(8, Math.min(menu.x, window.innerWidth - element.offsetWidth - 8))}px`;
+    element.style.top = `${Math.max(8, Math.min(menu.y, window.innerHeight - element.offsetHeight - 8))}px`;
+    element.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+  }, [menu]);
+  useEffect(() => {
+    const close = () => setMenu(null);
+    window.addEventListener("resize", close);
+    return () => window.removeEventListener("resize", close);
+  }, []);
   useLayoutEffect(() => {
     const element = stage.current;
     if (!element) return;
@@ -261,6 +318,7 @@ export function ImageLightbox({
   useEffect(() => {
     const element = root.current!;
     const wheel = (event: WheelEvent) => {
+      setMenu(null);
       event.preventDefault();
       event.stopPropagation();
       const delta =
@@ -275,12 +333,43 @@ export function ImageLightbox({
     element.addEventListener("wheel", wheel, { passive: false });
     return () => element.removeEventListener("wheel", wheel);
   }, [zoomAt, size.height]);
-  const latest = useRef({ onClose, change, zoomAt });
-  latest.current = { onClose, change, zoomAt };
+  const latest = useRef({ onClose, change, zoomAt, menu, dismissMenu });
+  latest.current = { onClose, change, zoomAt, menu, dismissMenu };
   useEffect(() => {
     const focused = document.activeElement as HTMLElement | null;
     closeButton.current?.focus();
     const keys = (event: KeyboardEvent) => {
+      if (latest.current.menu) {
+        if (event.key === "Escape" || event.key === "Tab") {
+          event.preventDefault();
+          event.stopPropagation();
+          latest.current.dismissMenu();
+          return;
+        }
+        if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+          event.preventDefault();
+          event.stopPropagation();
+          const buttons = [
+            ...menuElement.current!.querySelectorAll<HTMLButtonElement>(
+              "button:not(:disabled)",
+            ),
+          ];
+          const current = buttons.indexOf(
+            document.activeElement as HTMLButtonElement,
+          );
+          const next =
+            event.key === "Home"
+              ? 0
+              : event.key === "End"
+                ? buttons.length - 1
+                : (current +
+                    (event.key === "ArrowUp" ? -1 : 1) +
+                    buttons.length) %
+                  buttons.length;
+          buttons[next]?.focus();
+          return;
+        }
+      }
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
@@ -314,6 +403,7 @@ export function ImageLightbox({
     return () => {
       document.removeEventListener("keydown", keys, true);
       clearTimeout(scaleTimer.current);
+      clearTimeout(copiedTimer.current);
       focused?.focus();
     };
   }, []);
@@ -328,6 +418,16 @@ export function ImageLightbox({
       data-image-lightbox
       data-scale={view.scale}
       onPointerDown={(event) => {
+        if (event.button !== 0) return;
+        if (
+          menu &&
+          !(event.target as HTMLElement).closest(".lightbox-context-menu")
+        ) {
+          dismissMenu();
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
         if (
           !(event.target as HTMLElement).closest(
             "[data-lightbox-picture], [data-lightbox-control]",
@@ -345,6 +445,18 @@ export function ImageLightbox({
           })}
         </span>
         <div>
+          {onCopy && (
+            <button
+              type="button"
+              data-lightbox-control
+              aria-label={t("@shots.copy")}
+              title={t(copied ? "@shots.copied" : "@shots.copy")}
+              disabled={busy || !url}
+              onClick={() => void runAction(onCopy)}
+            >
+              {copied ? <Check aria-label={t("@shots.copied")} /> : <Copy />}
+            </button>
+          )}
           <button
             type="button"
             data-lightbox-control
@@ -402,10 +514,12 @@ export function ImageLightbox({
               }}
               onContextMenu={(event) => {
                 event.preventDefault();
-                zoomAt(view.scale > 1 ? 1 : 2, event.clientX, event.clientY);
+                if (onCopy || onSave) {
+                  setMenu({ x: event.clientX, y: event.clientY });
+                }
               }}
               onPointerDown={(event) => {
-                if (event.button !== 0 || view.scale <= 1) return;
+                if (menu || event.button !== 0 || view.scale <= 1) return;
                 event.preventDefault();
                 event.currentTarget.setPointerCapture(event.pointerId);
                 drag.current = {
@@ -468,6 +582,44 @@ export function ImageLightbox({
           </output>
         )}
       </div>
+      {actionError && (
+        <div className="lightbox-action-error" role="status">
+          {actionError}
+        </div>
+      )}
+      {menu && (
+        <div
+          ref={menuElement}
+          className="lightbox-context-menu"
+          role="menu"
+          aria-label={t("@shots.actions")}
+          data-lightbox-control
+          style={{ left: menu.x, top: menu.y }}
+        >
+          {onCopy && (
+            <button
+              type="button"
+              role="menuitem"
+              disabled={busy}
+              onClick={() => void runAction(onCopy)}
+            >
+              <Copy size={18} />
+              {t("@shots.copy")}
+            </button>
+          )}
+          {onSave && (
+            <button
+              type="button"
+              role="menuitem"
+              disabled={busy}
+              onClick={() => void runAction(onSave)}
+            >
+              <Download size={18} />
+              {t("@shots.save.as")}
+            </button>
+          )}
+        </div>
+      )}
       {images.length > 1 && (
         <>
           <button

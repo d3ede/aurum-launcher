@@ -19,8 +19,8 @@ tooltip. Reduced-motion preferences disable gallery animations.
 The viewer follows the current library's filtering, sorting and grouping order,
 including screenshots beyond the first thumbnail page. Use the keyboard's left
 and right arrows or the plain side chevrons to browse. Clicking outside the
-actual image closes the viewer. Right-click an image to zoom at that point;
-scroll for continuous zoom from ×1.0 to ×50.0. Left-clicking does not change zoom.
+actual image closes the viewer. Scroll for continuous zoom from ×1.0 to ×50.0.
+Left-clicking does not change zoom.
 Drag an enlarged image with the left mouse button to pan. A temporary multiplier
 appears while zooming. The toolbar zoom-out button or Ctrl+0 restores the fitted
 view.
@@ -31,6 +31,12 @@ stays visible until the next one is ready, then transitions directly into it
 without a loading caption. Opening a local screenshot can initially use its
 existing thumbnail. Full-size reads have separate concurrency slots so they
 do not wait behind the gallery's thumbnail decoders.
+
+The next update replaces right-click zoom with a context menu: **Copy screenshot**
+puts the image pixels on the Windows clipboard, and **Save as…** opens the native
+file dialog. The copy button immediately before the toolbar zoom button does the
+same. These actions use the currently visible frame, including received images
+and delivery previews. Escape dismisses the menu before closing the viewer.
 
 ## Delivery
 

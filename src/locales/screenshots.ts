@@ -1,4 +1,8 @@
 export const screenshotsEnglish: Record<string, string> = {
+  "@shots.copy": "Copy screenshot",
+  "@shots.copied": "Screenshot copied",
+  "@shots.save.as": "Save as…",
+  "@shots.actions": "Screenshot actions",
   "@shots.count.one": "{{count}} screenshot",
   "@shots.count.few": "{{count}} screenshots",
   "@shots.count.many": "{{count}} screenshots",
@@ -85,6 +89,10 @@ export const screenshotsEnglish: Record<string, string> = {
   "@shots.received.notice": "New screenshots from a friend",
 };
 export const screenshotsRussian: Record<string, string> = {
+  "@shots.copy": "Копировать скриншот",
+  "@shots.copied": "Скриншот скопирован",
+  "@shots.save.as": "Сохранить как…",
+  "@shots.actions": "Действия со скриншотом",
   "@shots.count.one": "{{count}} скриншот",
   "@shots.count.few": "{{count}} скриншота",
   "@shots.count.many": "{{count}} скриншотов",

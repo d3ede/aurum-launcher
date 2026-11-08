@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Скриншоты: копирование изображения и сохранение через меню по правой кнопке мыши; кнопка копирования в просмотрщике.":
+    "Screenshots: copy images or save them from the right-click menu, with a copy button in the viewer toolbar.",
   "Новая версия лаунчера предлагается в диалоге: можно обновиться с перезапуском или отложить установку.":
     "New launcher versions appear in a dialog: update and restart, or postpone installation.",
   "Каталог: переход к любой странице, общее число страниц и листание без сброса прокрутки; крупные изображения и цельные плитки проектов.":

@@ -72,6 +72,7 @@ interface Contract {
   "screenshots.removeReceived": [{ id: string }, void];
   "screenshots.openFolder": [{ profileId: string }, void];
   "screenshots.save": [{ id: string }, boolean];
+  "screenshots.copy": [{ id: string }, null];
   storageRemoveVersion: [{ id: string }, number];
   storageRemoveComponent: [{ category: string }, number];
   storageSnapshot: [Empty, import("../screens/Storage").StorageSnapshot];

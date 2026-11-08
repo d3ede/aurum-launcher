@@ -1,4 +1,6 @@
 //! Read-only discovery of screenshots belonging to registered instances.
+#[cfg(windows)]
+pub mod clipboard;
 use crate::Engine;
 use anyhow::{bail, Context, Result};
 use base64::{

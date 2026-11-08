@@ -216,7 +216,11 @@ async function fixture(page: Page, theme = "dark", notifications = true) {
             );
             return null;
           }
-          if (action === "screenshots.save") return true;
+          if (action === "screenshots.save") return w.shotSaveResult ?? true;
+          if (action === "screenshots.copy") {
+            if (w.shotCopyError) throw new Error(w.shotCopyError);
+            return null;
+          }
           if (action === "search") return { projects: [], total: 0 };
           return [];
         },
@@ -873,7 +877,7 @@ test("wheel zoom caps at fifty, shows multipliers and leaves left click for pann
   await expect(picture).toHaveCSS("cursor", "default");
   await picture.click({ position: { x: 300, y: 250 } });
   await expect(viewer).toHaveAttribute("data-scale", "1");
-  await picture.click({ button: "right", position: { x: 300, y: 250 } });
+  await viewer.getByRole("button", { name: "Zoom in", exact: true }).click();
   await expect(viewer).toHaveAttribute("data-scale", "2");
   await expect(viewer.locator(".lightbox-scale")).toHaveText("×2.0");
   await expect(viewer.locator(".lightbox-scale")).toHaveCSS(
@@ -896,7 +900,7 @@ test("wheel zoom caps at fifty, shows multipliers and leaves left click for pann
     picture.evaluate(
       (element) => new DOMMatrix(getComputedStyle(element).transform).m41,
     );
-  expect(await x()).toBeGreaterThan(0);
+  expect(await x()).toBe(0);
   const stage = (await viewer.locator(".lightbox-stage").boundingBox())!;
   const indicator = (await viewer.locator(".lightbox-scale").boundingBox())!;
   expect(
@@ -941,7 +945,7 @@ test("wheel zoom caps at fifty, shows multipliers and leaves left click for pann
   await page.keyboard.press("Control+0");
   await expect(viewer).toHaveAttribute("data-scale", "1");
   expect(await x()).toBe(0);
-  await picture.click({ button: "right", position: { x: 300, y: 200 } });
+  await viewer.getByRole("button", { name: "Zoom in", exact: true }).click();
   await viewer
     .getByRole("button", { name: "Reset zoom (Ctrl+0)", exact: true })
     .click();
@@ -975,4 +979,214 @@ test("paging reaches images beyond the thumbnail page", async ({ page }) => {
   await expect(viewer.locator(".lightbox-toolbar")).toContainText(
     "Image 81 of 85",
   );
+});
+
+for (const theme of ["dark", "light"]) {
+  test(`screenshot context menu copies, saves and dismisses without zooming (${theme})`, async ({
+    page,
+  }) => {
+    await fixture(page, theme);
+    await nav(page, "Screenshots").click();
+    await page.locator(".shot-select").first().click();
+    const viewer = page.locator("[data-image-lightbox]");
+    const picture = viewer.locator(".lightbox-picture");
+    await expect(picture.locator("img")).toBeVisible();
+    await picture.click({ button: "right", position: { x: 300, y: 200 } });
+    const menu = viewer.getByRole("menu", { name: "Screenshot actions" });
+    await expect(menu).toBeVisible();
+    await expect(viewer).toHaveAttribute("data-scale", "1");
+    await expect(
+      menu.getByRole("menuitem", { name: "Copy screenshot" }),
+    ).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(
+      menu.getByRole("menuitem", { name: "Save as…" }),
+    ).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    await expect(viewer).toBeVisible();
+    const copy = viewer.getByRole("button", {
+      name: "Copy screenshot",
+      exact: true,
+    });
+    const zoom = viewer.getByRole("button", { name: "Zoom in", exact: true });
+    expect((await copy.boundingBox())!.x).toBeLessThan(
+      (await zoom.boundingBox())!.x,
+    );
+    await copy.click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as any).shotRequests.filter(
+              (r: any) => r.action === "screenshots.copy",
+            ).length,
+        ),
+      )
+      .toBe(1);
+    const expected = await page.evaluate(
+      () => (window as any).shotItems[11].id,
+    );
+    expect(
+      await page.evaluate(
+        () =>
+          (window as any).shotRequests.find(
+            (r: any) => r.action === "screenshots.copy",
+          ).payload.id,
+      ),
+    ).toBe(expected);
+    await picture.click({ button: "right", position: { x: 300, y: 200 } });
+    await menu.getByRole("menuitem", { name: "Copy screenshot" }).click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as any).shotRequests.filter(
+              (r: any) => r.action === "screenshots.copy",
+            ).length,
+        ),
+      )
+      .toBe(2);
+    await picture.click({ button: "right", position: { x: 300, y: 200 } });
+    await page.screenshot({
+      path: ".test-data/screenshots/context-menu-" + theme + ".png",
+      animations: "disabled",
+    });
+    await menu.getByRole("menuitem", { name: "Save as…" }).click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as any).shotRequests.filter(
+              (r: any) => r.action === "screenshots.save",
+            ).length,
+        ),
+      )
+      .toBe(1);
+    await expect(menu).toHaveCount(0);
+    await expect(viewer).toHaveAttribute("data-scale", "1");
+    await picture.click({ button: "right", position: { x: 300, y: 200 } });
+    await page.keyboard.press("ArrowRight");
+    await expect(menu).toHaveCount(0);
+    await expect(viewer.locator(".lightbox-toolbar")).toContainText(
+      "Image 2 of 12",
+    );
+  });
+}
+
+test("copy acts on the visible frame during a slow read and reports errors", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.evaluate(() => {
+    const w = window as any;
+    w.holdShotImage = w.shotItems[8].id;
+  });
+  await nav(page, "Screenshots").click();
+  await page.locator(".shot-select").nth(2).click();
+  const viewer = page.locator("[data-image-lightbox]");
+  await expect
+    .poll(() => page.evaluate(() => typeof (window as any).releaseShotImage))
+    .toBe("function");
+  await page.keyboard.press("ArrowRight");
+  await viewer
+    .getByRole("button", { name: "Copy screenshot", exact: true })
+    .click();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as any).shotRequests.find(
+          (r: any) => r.action === "screenshots.copy",
+        ).payload.id,
+    ),
+  ).toBe(await page.evaluate(() => (window as any).shotItems[9].id));
+  await page.evaluate(() => {
+    const w = window as any;
+    w.releaseShotImage();
+    w.holdShotImage = null;
+    w.shotCopyError = "Clipboard is busy";
+  });
+  await expect(viewer.locator(".lightbox-toolbar")).toContainText(
+    "Image 4 of 12",
+  );
+  await viewer
+    .getByRole("button", { name: "Copy screenshot", exact: true })
+    .click();
+  await expect(viewer.getByRole("status")).toContainText("Clipboard is busy");
+  await expect(viewer).toBeVisible();
+});
+
+test("received screenshots support edge-clamped menus and cancelling Save as", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.evaluate(() => {
+    const w = window as any;
+    w.shotSaveResult = false;
+    w.shotTransfers = [
+      {
+        ...w.shotItems[0],
+        id: "received1",
+        batch: "batch1",
+        peer: `aur1${"b".repeat(59)}`,
+        direction: "incoming",
+        status: "received",
+        transferred: 1024,
+        error: null,
+      },
+    ];
+  });
+  await nav(page, "Screenshots").click();
+  await page
+    .getByRole("button", { name: "From friends", exact: false })
+    .click();
+  await page.locator(".shot-select").click();
+  const viewer = page.locator("[data-image-lightbox]");
+  const picture = viewer.locator(".lightbox-picture");
+  await expect
+    .poll(async () => (await picture.boundingBox())!.width)
+    .toBeGreaterThan(1000);
+  await viewer
+    .getByRole("button", { name: "Copy screenshot", exact: true })
+    .click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as any).shotRequests.find(
+            (r: any) => r.action === "screenshots.copy",
+          )?.payload.id,
+      ),
+    )
+    .toBe("received:received1");
+  const bounds = (await picture.boundingBox())!;
+  await picture.click({
+    button: "right",
+    position: { x: bounds.width - 3, y: bounds.height - 3 },
+  });
+  const menu = viewer.getByRole("menu");
+  const menuBounds = (await menu.boundingBox())!;
+  expect(menuBounds.x + menuBounds.width).toBeLessThanOrEqual(
+    page.viewportSize()!.width - 7,
+  );
+  expect(menuBounds.y + menuBounds.height).toBeLessThanOrEqual(
+    page.viewportSize()!.height - 7,
+  );
+  await menu.getByRole("menuitem", { name: "Save as…" }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as any).shotRequests.find(
+            (r: any) => r.action === "screenshots.save",
+          )?.payload.id,
+      ),
+    )
+    .toBe("received:received1");
+  await expect(page.locator(".toast")).not.toContainText("Screenshot saved");
+  await expect(viewer).toBeVisible();
+  await picture.click({ button: "right", position: { x: 300, y: 200 } });
+  await picture.click({ position: { x: 30, y: 30 } });
+  await expect(menu).toHaveCount(0);
+  await expect(viewer).toBeVisible();
 });
