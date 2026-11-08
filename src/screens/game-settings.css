@@ -64,6 +64,17 @@
 .game-settings-library > .text-button {
   justify-content: center;
 }
+.game-settings-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  max-width: 100%;
+}
+.game-settings-empty-actions > .button {
+  max-width: 100%;
+  white-space: normal;
+}
 .game-settings-section-head {
   display: flex;
   align-items: center;

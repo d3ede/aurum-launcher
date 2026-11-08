@@ -393,22 +393,24 @@ export function GameSettings() {
               title={t("@game.empty")}
               text={t("@game.emptyText")}
             >
-              <button
-                className="button primary"
-                disabled={busy}
-                onClick={() => setImportOpen(true)}
-              >
-                <Download size={17} />
-                {t("@game.import")}
-              </button>
-              <button
-                className="button secondary"
-                disabled={busy}
-                onClick={() => setCreate(true)}
-              >
-                <Plus size={17} />
-                {t("@game.new")}
-              </button>
+              <div className="game-settings-empty-actions">
+                <button
+                  className="button primary"
+                  disabled={busy}
+                  onClick={() => setImportOpen(true)}
+                >
+                  <Download size={17} />
+                  {t("@game.import")}
+                </button>
+                <button
+                  className="button secondary"
+                  disabled={busy}
+                  onClick={() => setCreate(true)}
+                >
+                  <Plus size={17} />
+                  {t("@game.new")}
+                </button>
+              </div>
             </EmptyState>
           )}
         </section>

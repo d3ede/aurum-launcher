@@ -6,9 +6,9 @@ const messages: Record<string, [string, string, string]> = {
     "Збережіть звичні налаштування Minecraft та вибирайте профіль під час установлення збірки.",
   ],
   destination: [
-    "Minecraft preferences and up to five settings profiles",
-    "Настройки Minecraft и до пяти профилей",
-    "Налаштування Minecraft і до п’яти профілів",
+    "Minecraft preferences",
+    "Настройки Minecraft",
+    "Налаштування Minecraft",
   ],
   intro: [
     "Your Minecraft, in any instance",
