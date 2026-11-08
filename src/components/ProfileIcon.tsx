@@ -200,58 +200,35 @@ export function IconPicker({
           <svg
             key={roll}
             className={`randomizer-die${roll ? " is-rolling" : ""}`}
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
+            width="28"
+            height="28"
+            viewBox="0 0 32 32"
             fill="none"
             aria-hidden="true"
           >
             <g
               stroke="currentColor"
-              strokeWidth="1.7"
+              strokeWidth="1.8"
               strokeLinejoin="round"
               strokeLinecap="round"
             >
-              <path d="m12 2.5 9 5v9l-9 5-9-5v-9Z" />
-              <path d="m3 7.5 9 5 9-5m-9 5v9" />
+              <path d="M16 3 27.258 9.5v13L16 29 4.742 22.5v-13Z" />
+              <path d="M4.742 9.5 16 16l11.258-6.5M16 16v13" />
             </g>
             <g fill="currentColor">
-              <ellipse cx="12" cy="7.4" rx="1.3" ry=".8" />
-              <ellipse
-                cx="6"
-                cy="11.5"
-                rx="1"
-                ry="1.2"
-                transform="rotate(-25 6 11.5)"
-              />
-              <ellipse
-                cx="9"
-                cy="16.8"
-                rx="1"
-                ry="1.2"
-                transform="rotate(-25 9 16.8)"
-              />
-              <ellipse
-                cx="18"
-                cy="11.3"
-                rx="1"
-                ry="1.2"
-                transform="rotate(25 18 11.3)"
-              />
-              <ellipse
-                cx="16.5"
-                cy="14.4"
-                rx="1"
-                ry="1.2"
-                transform="rotate(25 16.5 14.4)"
-              />
-              <ellipse
-                cx="15"
-                cy="17.5"
-                rx="1"
-                ry="1.2"
-                transform="rotate(25 15 17.5)"
-              />
+              {/* Project the pips on the same three planes as the cube edges. */}
+              <g transform="matrix(.866 .5 -.866 .5 16 3)">
+                <circle cx="6.5" cy="6.5" r="1.45" />
+              </g>
+              <g transform="matrix(.866 .5 0 1 4.742 9.5)">
+                <circle cx="4.16" cy="4.16" r="1.45" />
+                <circle cx="8.84" cy="8.84" r="1.45" />
+              </g>
+              <g transform="matrix(.866 -.5 0 1 16 16)">
+                <circle cx="3.25" cy="3.25" r="1.45" />
+                <circle cx="6.5" cy="6.5" r="1.45" />
+                <circle cx="9.75" cy="9.75" r="1.45" />
+              </g>
             </g>
           </svg>
         </button>

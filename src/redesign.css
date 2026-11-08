@@ -787,23 +787,19 @@ textarea {
 }
 @keyframes randomizer-roll {
   0% {
-    transform: perspective(90px) translateY(0) rotateX(0) rotateY(0) rotateZ(0);
+    transform: translateY(0) rotate(0);
   }
-  25% {
-    transform: perspective(90px) translateY(-2px) rotateX(80deg) rotateY(60deg)
-      rotateZ(-16deg);
+  20% {
+    transform: translateY(-3px) rotate(-28deg);
   }
-  55% {
-    transform: perspective(90px) translateY(-3px) rotateX(195deg)
-      rotateY(210deg) rotateZ(12deg);
+  65% {
+    transform: translateY(-3px) rotate(280deg);
   }
-  80% {
-    transform: perspective(90px) translateY(0) rotateX(335deg) rotateY(350deg)
-      rotateZ(-6deg);
+  85% {
+    transform: translateY(1px) rotate(350deg);
   }
   100% {
-    transform: perspective(90px) translateY(0) rotateX(360deg) rotateY(360deg)
-      rotateZ(0);
+    transform: translateY(0) rotate(360deg);
   }
 }
 @media (prefers-reduced-motion: reduce) {
