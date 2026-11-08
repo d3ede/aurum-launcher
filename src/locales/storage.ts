@@ -171,6 +171,13 @@ Object.assign(storageEnglish, {
     "Java and file management now live in Storage, with cleaner settings.",
 });
 Object.assign(storageEnglish, { Автоматически: "Automatic" });
+Object.assign(storageEnglish, {
+  "Остановите игру и серверы, чтобы удалять компоненты.":
+    "Stop the game and servers to remove components.",
+  "Обновляем размеры…": "Updating sizes…",
+  "Хранилище открывается сразу с последним подсчётом; список компонентов доступен во время игры.":
+    "Storage opens immediately with the last disk usage result; the component list is available while playing.",
+});
 export const storageRussian = Object.fromEntries(
   Object.keys(storageEnglish).map((key) => [key, key]),
 );

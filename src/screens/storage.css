@@ -13,6 +13,58 @@
   align-items: flex-start;
   gap: 24px;
 }
+.storage-overview-top > .icon-button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  padding: 0;
+  margin-top: -7px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.storage-overview-top > .icon-button svg {
+  display: block;
+}
+.storage-scan-label {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  margin-left: 7px;
+}
+.storage-number-placeholder {
+  display: block;
+  width: 160px;
+  height: 44px;
+  border-radius: 7px;
+  background: var(--border);
+  animation: storage-placeholder 1.4s ease-in-out infinite alternate;
+}
+.storage-number-placeholder.is-small {
+  width: 70px;
+  height: 29px;
+  margin-left: auto;
+}
+.storage-components-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+@keyframes storage-placeholder {
+  to {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .storage-number-placeholder {
+    animation: none;
+  }
+}
 .storage-total {
   flex: 1;
 }
@@ -37,6 +89,7 @@
   color: var(--muted);
 }
 .storage-reclaim > strong {
+  line-height: 1.25;
   font-size: 23px;
   letter-spacing: -0.5px;
   color: var(--text);
@@ -506,6 +559,8 @@
 }
 .storage-spinning {
   animation: storage-spin 1.2s linear infinite;
+  transform-origin: center;
+  transform-box: fill-box;
 }
 .storage-destination {
   width: 100%;

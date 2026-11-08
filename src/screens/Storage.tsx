@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   HardDrive,
   RefreshCw,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
+import { storageCache } from "../lib/storage-cache";
 import { t, getLocale } from "../lib/i18n";
 import { Modal } from "../components/ui";
 import { SettingsPageHeading } from "../components/SettingsPageHeading";
@@ -71,8 +72,31 @@ export function storageSize(bytes: number) {
 
 export function StorageSettings() {
   const { openSettings, run, operation, busy, notify, data } = useApp();
-  const [snapshot, setSnapshot] = useState<StorageSnapshot | null>(null);
-  const [loading, setLoading] = useState(false);
+  const directory = data.dataDir || "";
+  const signature = useMemo(
+    () =>
+      JSON.stringify({
+        profiles: data.profiles.map((p) => [
+          p.id,
+          p.name,
+          p.engine,
+          p.minecraft,
+          p.installedVersion,
+          (p.content || []).map((c) => [c.filename, c.versionId, c.enabled]),
+        ]),
+        running: data.running,
+        hosting: data.hostingRunning,
+        java: data.settings.javaPath,
+      }),
+    [data.profiles, data.running, data.hostingRunning, data.settings.javaPath],
+  );
+  const [snapshot, setSnapshot] = useState<StorageSnapshot | null>(() =>
+    storageCache.peek(directory),
+  );
+  const [loading, setLoading] = useState(
+    () => !storageCache.fresh(directory, signature),
+  );
+  const request = useRef(0);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [componentsOpen, setComponentsOpen] = useState(false);
@@ -84,26 +108,37 @@ export function StorageSettings() {
     actionLabel?: string;
   } | null>(null);
   const refresh = useCallback(async () => {
+    const current = ++request.current;
     setLoading(true);
     setError("");
     try {
-      const next = await rpc("storageSnapshot", {});
-      if (!next) throw new Error(t("Не удалось прочитать хранилище"));
+      const next = await storageCache.read(directory, signature, async () => {
+        const result = await rpc("storageSnapshot", {});
+        if (!result) throw new Error(t("Не удалось прочитать хранилище"));
+        return result;
+      });
+      if (request.current !== current) return;
       setSnapshot(next);
       setSelected((old) =>
         old.filter((id) => next.trash.some((e) => e.id === id)),
       );
     } catch (reason) {
+      if (request.current !== current) return;
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
-      setLoading(false);
+      if (request.current === current) setLoading(false);
     }
-  }, []);
+  }, [directory, signature]);
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
-  const blocked =
-    busy || loading || !!data.running.length || !!data.hostingRunning?.length;
+    setSnapshot(storageCache.peek(directory));
+    if (!storageCache.fresh(directory, signature)) void refresh();
+    else setLoading(false);
+    return () => {
+      request.current++;
+    };
+  }, [directory, signature, refresh]);
+  const playing = !!data.running.length || !!data.hostingRunning?.length;
+  const blocked = busy || loading || playing;
   async function clean(category: string) {
     const result = await run(() => rpc("storageClean", { category }));
     if (result !== undefined)
@@ -186,19 +221,38 @@ export function StorageSettings() {
         title="Хранилище"
         onBack={() => openSettings("general")}
       />
-      <section className="storage-overview" aria-label={t("Занятое место")}>
+      <section
+        className="storage-overview"
+        aria-label={t("Занятое место")}
+        aria-busy={loading}
+      >
         <div className="storage-overview-top">
           <div className="storage-total">
             <span>
               <HardDrive size={18} />
               {t("Занято Aurum")}
+              {!snapshot && loading && (
+                <small className="storage-scan-label" role="status">
+                  {t("Считаем файлы…")}
+                </small>
+              )}
             </span>
-            <strong>{snapshot ? storageSize(snapshot.totalBytes) : "—"}</strong>
+            <strong>
+              {snapshot ? (
+                storageSize(snapshot.totalBytes)
+              ) : (
+                <span className="storage-number-placeholder" />
+              )}
+            </strong>
           </div>
           <div className="storage-reclaim">
             <span>{t("Можно очистить")}</span>
             <strong>
-              {snapshot ? storageSize(snapshot.cleanableBytes) : "—"}
+              {snapshot ? (
+                storageSize(snapshot.cleanableBytes)
+              ) : (
+                <span className="storage-number-placeholder is-small" />
+              )}
             </strong>
             <small>{t("Кэш, загрузки, журналы и корзина")}</small>
           </div>
@@ -208,10 +262,11 @@ export function StorageSettings() {
             disabled={loading || busy}
             onClick={() => void refresh()}
           >
-            <RefreshCw
-              size={18}
-              className={loading ? "storage-spinning" : ""}
-            />
+            {loading ? (
+              <LoaderCircle size={18} className="storage-spinning" />
+            ) : (
+              <RefreshCw size={18} />
+            )}
           </button>
         </div>
         <div
@@ -247,12 +302,6 @@ export function StorageSettings() {
       {error && (
         <p className="dialog-note" role="alert">
           {error}
-        </p>
-      )}
-      {!snapshot && loading && (
-        <p className="storage-loading" role="status">
-          <LoaderCircle size={19} className="storage-spinning" />
-          {t("Считаем файлы…")}
         </p>
       )}
       <StorageFilesSettings launcherDirectory={snapshot?.launcherDirectory} />
@@ -313,7 +362,6 @@ export function StorageSettings() {
               </div>
               <button
                 className="button secondary storage-remove-button"
-                disabled={blocked}
                 aria-label={t("Удаление компонентов")}
                 onClick={() => setComponentsOpen(true)}
               >
@@ -593,7 +641,6 @@ export function StorageSettings() {
         <Modal
           title={t("Удаление компонентов")}
           onClose={() => setComponentsOpen(false)}
-          closeDisabled={busy || loading}
           className="storage-components-modal"
         >
           <p className="storage-components-intro">
@@ -601,6 +648,17 @@ export function StorageSettings() {
               "Выберите категорию целиком. Отдельные сборки можно удалить в разделе «Сборки и миры».",
             )}
           </p>
+          {playing && (
+            <p className="storage-components-notice" role="status">
+              {t("Остановите игру и серверы, чтобы удалять компоненты.")}
+            </p>
+          )}
+          {loading && !playing && (
+            <p className="storage-components-notice" role="status">
+              <LoaderCircle size={15} className="storage-spinning" />
+              {t("Обновляем размеры…")}
+            </p>
+          )}
           <div className="storage-list storage-component-list">
             {snapshot.categories
               .filter((c) => c.bytes > 0)
@@ -628,7 +686,6 @@ export function StorageSettings() {
           <div className="dialog-actions">
             <button
               className="button secondary"
-              disabled={busy || loading}
               onClick={() => setComponentsOpen(false)}
             >
               {t("Закрыть")}

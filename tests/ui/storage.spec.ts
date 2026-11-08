@@ -1,8 +1,13 @@
 import { test, expect, type Page } from "@playwright/test";
 
-async function fixture(page: Page, language = "ru", theme = "light") {
+async function fixture(
+  page: Page,
+  language = "ru",
+  theme = "light",
+  running = false,
+) {
   await page.addInitScript(
-    ({ language, theme }) => {
+    ({ language, theme, running }) => {
       localStorage.setItem("aurum:language", language);
       const w = window as any;
       w.isTauri = true;
@@ -10,7 +15,7 @@ async function fixture(page: Page, language = "ru", theme = "light") {
         profiles: [],
         accounts: [],
         selectedAccount: null,
-        running: [],
+        running: running ? ["active"] : [],
         dataDir: "C:/Aurum Launcher/Game Files",
         settings: {
           language,
@@ -113,7 +118,16 @@ async function fixture(page: Page, language = "ru", theme = "light") {
           }
           if (action === "changeDataDirectory")
             return w.cancelDirectory ? null : "C:/New Aurum/Game Files";
-          if (action === "storageSnapshot") return structuredClone(storage);
+          if (action === "storageSnapshot") {
+            if (w.delayStorageSnapshot)
+              await new Promise<void>((resolve) => {
+                w.releaseStorageSnapshot = () => {
+                  w.delayStorageSnapshot = false;
+                  resolve();
+                };
+              });
+            return structuredClone(storage);
+          }
           if (action === "storageTrash") {
             storage.trash = storage.trash.filter(
               (e) => !payload.ids.includes(e.id),
@@ -155,7 +169,7 @@ async function fixture(page: Page, language = "ru", theme = "light") {
         },
       };
     },
-    { language, theme },
+    { language, theme, running },
   );
   await page.goto("/");
   await page.getByRole("button", { name: "Настройки", exact: true }).click();
@@ -178,9 +192,12 @@ async function fixture(page: Page, language = "ru", theme = "light") {
   await expect(
     page.getByRole("heading", { name: "Хранилище", exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Изменить папку данных", exact: true }),
-  ).toBeEnabled();
+  const relocate = page.getByRole("button", {
+    name: "Изменить папку данных",
+    exact: true,
+  });
+  if (running) await expect(relocate).toBeDisabled();
+  else await expect(relocate).toBeEnabled();
   await expect(
     page.getByRole("textbox", { name: "Путь к Java", exact: true }),
   ).toBeVisible();
@@ -605,4 +622,88 @@ test("folder relocation supports cancellation and presents restart only after a 
         ).length,
     ),
   ).toBe(1);
+});
+
+test("storage reuses counts on navigation and keeps them visible during refresh", async ({
+  page,
+}) => {
+  await fixture(page);
+  const overview = page.getByRole("region", {
+    name: "Занятое место",
+    exact: true,
+  });
+  await expect(overview).toHaveAttribute("aria-busy", "false");
+  await expect(overview).toContainText("8 ГиБ");
+  const count = () =>
+    page.evaluate(
+      () =>
+        (window as any).storageRequests.filter(
+          (r: any) => r.action === "storageSnapshot",
+        ).length,
+    );
+  expect(await count()).toBe(1);
+  await page
+    .getByRole("button", { name: "Назад к настройкам", exact: true })
+    .click();
+  await page.getByRole("button", { name: /Хранилище/ }).click();
+  await expect(overview).toContainText("8 ГиБ");
+  await expect(overview).toHaveAttribute("aria-busy", "false");
+  expect(await count()).toBe(1);
+  await page.evaluate(() => {
+    (window as any).delayStorageSnapshot = true;
+  });
+  await page
+    .getByRole("button", { name: "Пересчитать размер", exact: true })
+    .click();
+  await expect(overview).toHaveAttribute("aria-busy", "true");
+  await expect(overview).toContainText("8 ГиБ");
+  await expect(overview.locator("button .storage-spinning")).toBeVisible();
+  await expect(page.locator(".storage-loading")).toHaveCount(0);
+  await expect(page.getByText("Считаем файлы…", { exact: true })).toHaveCount(
+    0,
+  );
+  await page.screenshot({
+    path: ".test-data/screenshots/storage-cached-refresh.png",
+  });
+  await expect.poll(count).toBe(2);
+  await page.evaluate(() => (window as any).releaseStorageSnapshot());
+  await expect(overview).toHaveAttribute("aria-busy", "false");
+});
+
+test("component list opens during a game and explains disabled removal", async ({
+  page,
+}) => {
+  await fixture(page, "ru", "dark", true);
+  const open = page.getByRole("button", {
+    name: "Удаление компонентов",
+    exact: true,
+  });
+  await expect(open).toBeEnabled();
+  await open.click();
+  const list = page.getByRole("dialog", {
+    name: "Удаление компонентов",
+    exact: true,
+  });
+  await expect(list).toBeVisible();
+  await expect(list.getByRole("status")).toHaveText(
+    "Остановите игру и серверы, чтобы удалять компоненты.",
+  );
+  const remove = list.getByRole("button", { name: /^Удалить компонент/ });
+  expect(await remove.count()).toBeGreaterThan(0);
+  for (const button of await remove.all()) await expect(button).toBeDisabled();
+  await page.screenshot({
+    path: ".test-data/screenshots/storage-components-playing.png",
+  });
+  await list.getByRole("button", { name: "Закрыть", exact: true }).click();
+  await expect(list).toHaveCount(0);
+  await open.click();
+  await page.keyboard.press("Escape");
+  await expect(list).toHaveCount(0);
+  expect(
+    await page.evaluate(() =>
+      (window as any).storageRequests.filter(
+        (r: any) => r.action === "storageRemoveComponent",
+      ),
+    ),
+  ).toEqual([]);
 });
