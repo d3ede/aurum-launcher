@@ -91,3 +91,33 @@ encrypted storage and restart recovery, tampering, duplicate receipts and real
 local QUIC streaming. Browser fixtures cover placement, filtering, sorting,
 selection limits, previews, both themes and offline queue controls. These local
 checks do not constitute a two-network delivery test.
+
+## Native self-preview
+
+The Windows `screenshot_self_preview` example prepares an isolated, one-shot
+approval preview. Give it a **new** session directory directly inside this
+checkout's `.test-data` and the existing `Game Files` directory as arguments.
+It reads only display settings, public profile fields and one local screenshot
+from the existing installation. All generated identities, contacts, queued
+objects and received images stay inside the session directory.
+
+Build it with:
+
+```powershell
+scripts/cargo.ps1 -CargoArguments @('build','-p','aurum-core','--example','screenshot_self_preview','--locked')
+```
+
+Run `target/debug/examples/screenshot_self_preview.exe` with the two directories.
+After `preview.json` reports `prepared`, launch the current desktop binary with
+`AURUM_DATA_DIR` pointing at the session's `Game Files`. Close other Aurum windows
+first, or use a separate test identifier, because the desktop uses a single
+instance. Optionally write the app or development controller process ID into
+`app-pid.txt` in the session so the helper exits with that process.
+
+Click the launcher once to enable notification audio, then create an empty
+`show-request` file in the session. The incoming request uses the real native
+queue and consent RPC. A local helper supplies the encrypted bytes only after
+acceptance, or records the sender's refusal status. It does not start networking
+or demonstrate P2P connectivity. This preview does not add self-messaging to the
+ordinary friend protocol. The helper exits after one decision, when the recorded
+app process exits, or after two hours.
