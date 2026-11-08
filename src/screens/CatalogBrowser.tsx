@@ -27,7 +27,7 @@ import {
   type CatalogSearchSource,
 } from "../lib/catalog-search";
 import { catalogSources, packSource } from "../lib/catalog-sources";
-import { ProjectIcon } from "./Catalog";
+import { ProjectDialog, ProjectIcon } from "./Catalog";
 import { Select } from "../components/Select";
 import { EmptyState, ErrorBox, Loading } from "../components/ui";
 import { CatalogSourceLogo } from "../components/CatalogSourceLogo";
@@ -55,6 +55,7 @@ export function Catalog({
   const { data, operation, run, busy } = useApp();
   const { items: favorites } = useFavorites(data.dataDir);
   const [favoritesOpen, setFavoritesOpen] = useState(false);
+  const [installProject, setInstallProject] = useState<Project | null>(null);
   const [pending, setPending] = useState<{
     projectId: string;
     source: string;
@@ -250,19 +251,22 @@ export function Catalog({
       action: "installing",
     });
     try {
+      const detail = await run(() =>
+        rpc("project", {
+          source: project.source,
+          id: project.id,
+          minecraft: profile.minecraft,
+          ...(kind === "mod" ? { loader: profile.loader } : {}),
+        }),
+      );
+      if (!detail) return;
+      if (detail.versions.length !== 1) {
+        setInstallProject(project);
+        return;
+      }
+      const version = detail.versions[0];
       await operation(
         async (operationId) => {
-          const detail = await rpc("project", {
-            source: project.source,
-            id: project.id,
-            minecraft: profile.minecraft,
-            ...(kind === "mod" ? { loader: profile.loader } : {}),
-          });
-          const version = detail.versions[0];
-          if (!version)
-            throw new Error(
-              t("Для этой сборки нет совместимой версии проекта"),
-            );
           await rpc("installContent", {
             id: profile.id,
             source: project.source,
@@ -318,6 +322,15 @@ export function Catalog({
   };
   return (
     <>
+      {installProject && (
+        <ProjectDialog
+          key={`${installProject.source}:${installProject.id}`}
+          project={installProject}
+          initialProfileId={target.profileId}
+          installationOnly
+          onClose={() => setInstallProject(null)}
+        />
+      )}
       {favoritesOpen && (
         <FavoritesDialog
           initialProfileId={target.profileId}
@@ -601,7 +614,7 @@ export function Catalog({
                               !reloadableContent(project.kind))
                           }
                           onClick={() => {
-                            if (!bound) onProject(project);
+                            if (!bound) setInstallProject(project);
                             else if (installed)
                               void remove(project, installed.id);
                             else void install(project);

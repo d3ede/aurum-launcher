@@ -153,16 +153,18 @@ async function fixture(
                 "https://media.example.test/second.svg",
                 "https://media.example.test/third.svg",
               ],
-              versions: withProfiles
-                ? [
-                    {
-                      id: "version-1",
-                      name: "1.0",
-                      gameVersions: ["1.21.1"],
-                      loaders: ["fabric"],
-                    },
-                  ]
-                : [],
+              versions:
+                w.projectVersions ??
+                (withProfiles
+                  ? [
+                      {
+                        id: "version-1",
+                        name: "1.0",
+                        gameVersions: ["1.21.1"],
+                        loaders: ["fabric"],
+                      },
+                    ]
+                  : []),
               url: "https://modrinth.com/project/test",
             };
           return null;
@@ -641,6 +643,173 @@ async function bindRadiance(page: Page, resultCount = 9) {
   await expect(page.locator(".catalog-result")).toHaveCount(resultCount);
 }
 
+test("project header installs directly when the instance and only version are known", async ({
+  page,
+}) => {
+  await fixture(page, "ru", true);
+  await bindRadiance(page);
+  await page.locator(".catalog-card").nth(1).click();
+  const project = page.getByRole("dialog", { name: "Project 2", exact: true });
+  await expect(project.getByRole("combobox")).toHaveCount(0);
+  await project
+    .getByRole("button", { name: "Установить", exact: true })
+    .click();
+  await expect(
+    page.getByRole("dialog", { name: "Установить проект" }),
+  ).toHaveCount(0);
+  await expect
+    .poll(() => page.evaluate(() => typeof (window as any).finishCatalogAction))
+    .toBe("function");
+  await page.evaluate(() => (window as any).finishCatalogAction());
+  await expect(project).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as any).catalogRequests.find(
+          (r: any) => r.action === "installContent",
+        ).payload,
+    ),
+  ).toMatchObject({ id: "radiance", versionId: "version-1" });
+});
+
+for (const entry of ["catalog", "project", "unbound"]) {
+  test(`variant selection from ${entry} installs the chosen version and instance`, async ({
+    page,
+  }) => {
+    await fixture(page, "ru", true);
+    if (entry !== "unbound") await bindRadiance(page);
+    await page.evaluate(() => {
+      (window as any).projectVersions = ["Short", "Tall"].map((name) => ({
+        id: name.toLowerCase(),
+        name: `Colorful Grass · ${name}`,
+        gameVersions: ["1.21.1"],
+        loaders: ["fabric"],
+      }));
+    });
+    if (entry === "project") {
+      await page.locator(".catalog-card").nth(1).click();
+      await page
+        .getByRole("button", { name: "Установить", exact: true })
+        .click();
+    } else await page.locator(".catalog-install-button").nth(1).click();
+    const dialog = page.getByRole("dialog", {
+      name: "Установить проект",
+      exact: true,
+    });
+    await expect(dialog).toBeVisible();
+    expect(
+      await page.evaluate(() =>
+        (window as any).catalogRequests.some(
+          (r: any) => r.action === "installContent",
+        ),
+      ),
+    ).toBe(false);
+    await dialog.getByRole("combobox", { name: "Установить в сборку" }).click();
+    await page
+      .getByRole("option", {
+        name: "Other instance · 1.21.1 / Fabric",
+        exact: true,
+      })
+      .click();
+    await dialog.getByRole("combobox", { name: "Версия проекта" }).click();
+    await page
+      .getByRole("option", { name: "Colorful Grass · Tall", exact: true })
+      .click();
+    await dialog
+      .getByRole("button", { name: "Установить", exact: true })
+      .click();
+    await expect
+      .poll(() =>
+        page.evaluate(() => typeof (window as any).finishCatalogAction),
+      )
+      .toBe("function");
+    await page.evaluate(() => (window as any).finishCatalogAction());
+    await expect(dialog).toHaveCount(0);
+    expect(
+      await page.evaluate(
+        () =>
+          (window as any).catalogRequests.find(
+            (r: any) => r.action === "installContent",
+          ).payload,
+      ),
+    ).toMatchObject({ id: "other", versionId: "tall" });
+  });
+}
+
+test("unbound installs require choosing an instance, cancellation restores the project and both themes fit", async ({
+  page,
+}) => {
+  await fixture(page, "ru", true);
+  await page.locator(".catalog-card").nth(1).click();
+  const project = page.getByRole("dialog", { name: "Project 2", exact: true });
+  const install = project.getByRole("button", {
+    name: "Установить",
+    exact: true,
+  });
+  await expect(project.getByRole("combobox")).toHaveCount(0);
+  await page.setViewportSize({ width: 960, height: 680 });
+  for (const theme of ["light", "dark"]) {
+    await page.evaluate(
+      (theme) => (document.documentElement.dataset.theme = theme),
+      theme,
+    );
+    await project.screenshot({
+      path: `.test-data/screenshots/project-install-header-${theme}.png`,
+      animations: "disabled",
+    });
+    await install.click();
+    const dialog = page.getByRole("dialog", {
+      name: "Установить проект",
+      exact: true,
+    });
+    await expect(
+      dialog.getByRole("combobox", { name: "Установить в сборку" }),
+    ).toHaveText("Выберите сборку");
+    await expect(
+      dialog.getByRole("button", { name: "Установить", exact: true }),
+    ).toBeDisabled();
+    expect(await dialog.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(
+      true,
+    );
+    await dialog.screenshot({
+      path: `.test-data/screenshots/project-install-choice-${theme}.png`,
+      animations: "disabled",
+    });
+    await page.keyboard.press("Escape");
+    await expect(project).toBeVisible();
+    await expect(install).toBeFocused();
+  }
+  expect(
+    await page.evaluate(() =>
+      (window as any).catalogRequests.some(
+        (r: any) => r.action === "installContent",
+      ),
+    ),
+  ).toBe(false);
+});
+
+test("no compatible versions keeps the chooser available without installing", async ({
+  page,
+}) => {
+  await fixture(page, "ru", true);
+  await bindRadiance(page);
+  await page.evaluate(() => ((window as any).projectVersions = []));
+  await page.locator(".catalog-install-button").nth(1).click();
+  const dialog = page.getByRole("dialog", {
+    name: "Установить проект",
+    exact: true,
+  });
+  await expect(
+    dialog.getByRole("combobox", { name: "Версия проекта" }),
+  ).toHaveText("Совместимых версий нет");
+  await expect(
+    dialog.getByRole("button", { name: "Установить", exact: true }),
+  ).toBeDisabled();
+  await expect(dialog).toContainText(
+    "Для этой сборки нет совместимой версии проекта",
+  );
+});
+
 test("catalog installs, animates and removes only from the selected instance", async ({
   page,
 }) => {
@@ -649,7 +818,7 @@ test("catalog installs, animates and removes only from the selected instance", a
   const button = second.locator(".catalog-install-button");
   // An unbound install opens the existing instance/version chooser.
   await button.click();
-  const dialog = page.getByRole("dialog", { name: "Project 2", exact: true });
+  const dialog = page.getByRole("dialog", { name: "Установить проект", exact: true });
   await expect(
     dialog.getByRole("combobox", { name: "Установить в сборку" }),
   ).toBeVisible();
@@ -841,7 +1010,7 @@ test("running instances disable catalog mutations and English action labels tran
   await page.locator(".catalog-card").nth(1).click();
   await expect(
     page.getByRole("button", {
-      name: "Set up with dependencies",
+      name: "Install",
       exact: true,
     }),
   ).toBeDisabled();
@@ -866,7 +1035,7 @@ for (const source of ["Modrinth", "CurseForge"]) {
       await page.locator(".catalog-card").nth(1).click();
       await expect(
         page.getByRole("button", {
-          name: "Установить с зависимостями",
+          name: "Установить",
           exact: true,
         }),
       ).toBeEnabled();

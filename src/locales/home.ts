@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Установка из каталога: одна кнопка в шапке проекта, выбор сборки и версии — в отдельном окне.":
+    "Catalog installation: one button in the project header, with instance and version selection in a separate dialog.",
   "Просмотр скриншотов: соседние кадры загружаются заранее, без надписи о загрузке при перелистывании.":
     "The screenshot viewer preloads nearby images and pages without a loading caption.",
   "Ошибки установки называют недостающую зависимость, нужный аддон и версию игры; совместимые установленные моды учитываются в Modrinth и CurseForge.":

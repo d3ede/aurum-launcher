@@ -2005,6 +2005,7 @@ kbd {
 }
 .project-detail-head > div:not(.project-icon) {
   flex: 1;
+  min-width: 0;
 }
 .project-detail-head b {
   font-size: 14px;
@@ -2018,11 +2019,37 @@ kbd {
   margin-top: 6px;
 }
 .project-install {
-  padding: 16px;
-  border: 1px solid var(--gold-border);
-  background: var(--aside);
-  border-radius: 10px;
-  margin-bottom: 15px;
+  padding: 20px 0;
+}
+.project-install-action {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding-inline: 20px;
+}
+.project-install-dialog {
+  width: 520px;
+}
+.project-install-summary {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.project-install-summary > div:not(.project-icon) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.project-install-summary b {
+  font-size: 16px;
+}
+.project-install-summary small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+}
+.project-install-footer {
+  margin-top: 0;
 }
 .project-install .field {
   min-width: 0;

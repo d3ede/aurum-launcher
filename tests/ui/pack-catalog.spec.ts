@@ -175,10 +175,18 @@ for (const language of ["ru", "en"]) {
     await page.locator(".catalog-card").click();
     await page
       .getByRole("button", {
-        name:
-          language === "ru"
-            ? "Создать сборку из модпака"
-            : "Creating an instance from a mod pack",
+        name: language === "ru" ? "Установить" : "Install",
+        exact: true,
+      })
+      .click();
+    await page
+      .getByRole("dialog", {
+        name: language === "ru" ? "Установить проект" : "Install project",
+        exact: true,
+      })
+      .getByRole("button", {
+        name: language === "ru" ? "Установить" : "Install",
+        exact: true,
       })
       .click();
     const panel = page.locator(".operation-panel");
@@ -271,12 +279,14 @@ test("FTB version installs as a new profile without login", async ({
   await fixture(page);
   await source(page, "FTB");
   await page.locator(".catalog-card").click();
-  const dialog = page.getByRole("dialog");
+  await page.getByRole("button", { name: "Установить", exact: true }).click();
+  const dialog = page.getByRole("dialog", {
+    name: "Установить проект",
+    exact: true,
+  });
   await dialog.getByRole("combobox", { name: "Версия проекта" }).click();
   await page.getByRole("option", { name: "1.0", exact: true }).click();
-  await dialog
-    .getByRole("button", { name: "Создать сборку из модпака" })
-    .click();
+  await dialog.getByRole("button", { name: "Установить", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   const call = await page.evaluate(
     () =>
@@ -297,9 +307,13 @@ test("ATLauncher optional selection requests browser files and passes chosen pat
   await fixture(page);
   await source(page, "ATLauncher");
   await page.locator(".catalog-card").click();
-  const install = page.getByRole("button", {
-    name: "Создать сборку из модпака",
-  });
+  await page.getByRole("button", { name: "Установить", exact: true }).click();
+  const install = page
+    .getByRole("dialog", { name: "Установить проект", exact: true })
+    .getByRole("button", {
+      name: "Установить",
+      exact: true,
+    });
   await expect(install).toBeEnabled();
   await page
     .getByRole("checkbox", { name: "Optional map An optional minimap" })
@@ -326,12 +340,16 @@ test("unsupported pack preflight keeps install disabled and project page accessi
   await fixture(page, "en", true);
   await source(page, "Technic", "en");
   await page.locator(".catalog-card").click();
+  await page.getByRole("button", { name: "Install", exact: true }).click();
   await expect(
     page.getByText("This legacy pack requires unsupported custom jar patches"),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Creating an instance from a mod pack" }),
+    page
+      .getByRole("dialog", { name: "Install project", exact: true })
+      .getByRole("button", { name: "Install", exact: true }),
   ).toBeDisabled();
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Project page" }).click();
   expect(
     await page.evaluate(() =>

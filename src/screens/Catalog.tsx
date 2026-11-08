@@ -1,16 +1,6 @@
 import { t } from "../lib/i18n";
 import { useEffect, useState } from "react";
-import {
-  Search,
-  SlidersHorizontal,
-  Download,
-  ArrowRight,
-  Compass,
-  ChevronLeft,
-  ChevronRight,
-  ExternalLink,
-  PackagePlus,
-} from "lucide-react";
+import { Download, Compass, ExternalLink, LoaderCircle } from "lucide-react";
 import {
   ImageLightbox,
   ProjectDescription,
@@ -18,10 +8,10 @@ import {
   safeImageUrl,
 } from "../components/ProjectMedia";
 import { useApp } from "../context";
-import { native, rpc, compatible } from "../lib/api";
+import { rpc, compatible } from "../lib/api";
 import { ru, formatNumber } from "../lib/i18n";
-import type { Kind, Loader, Project, ProjectDetail } from "../types";
-import { Modal, Loading, ErrorBox, EmptyState, Field } from "../components/ui";
+import type { Project, ProjectDetail } from "../types";
+import { Modal, Loading, ErrorBox, Field } from "../components/ui";
 import { NativeModNotice } from "../components/NativeModNotice";
 import { Select } from "../components/Select";
 import { FavoriteButton } from "../components/FavoriteButton";
@@ -50,22 +40,17 @@ export function ProjectDialog({
   onClose,
   initialProfileId,
   onInstalled,
+  installationOnly = false,
 }: {
   project: Project;
   initialProfileId?: string;
   onClose: () => void;
   onInstalled?: (profileId: string) => void;
+  installationOnly?: boolean;
 }) {
   const { data, operation, busy, run } = useApp();
-  const [profileId, setProfileId] = useState(
-    initialProfileId ||
-      data.profiles.find((p) =>
-        project.source === "horizon"
-          ? p.engine === "horizon"
-          : p.engine !== "horizon",
-      )?.id ||
-      "",
-  );
+  const [profileId, setProfileId] = useState(initialProfileId || "");
+  const [installOpen, setInstallOpen] = useState(false);
   const [detail, setDetail] = useState<ProjectDetail | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -96,6 +81,7 @@ export function ProjectDialog({
     let live = true;
     setLoading(true);
     setError("");
+    setVersionId("");
     rpc("project", {
       source: project.source,
       id: project.id,
@@ -125,6 +111,7 @@ export function ProjectDialog({
     project.id,
     project.source,
     project.kind,
+    profileId,
     profile?.minecraft,
     profile?.loader,
     retry,
@@ -140,6 +127,10 @@ export function ProjectDialog({
   const install = async () => {
     if (
       !selected ||
+      loading ||
+      error ||
+      !canInstall ||
+      !platformReady ||
       runtimeBlocked ||
       busy ||
       (project.kind === "modpack" &&
@@ -184,13 +175,180 @@ export function ProjectDialog({
       onClose();
     }
   };
+  const installDisabled =
+    busy ||
+    loading ||
+    !!error ||
+    runtimeBlocked ||
+    !canInstall ||
+    !platformReady ||
+    (project.kind === "modpack" &&
+      gameSettingsProfileId !== undefined &&
+      !data.gameSettingsProfiles?.some((p) => p.id === gameSettingsProfileId));
+  const installButton = (confirm = false) => (
+    <button
+      className="button primary project-install-action"
+      disabled={
+        confirm ? installDisabled : busy || loading || !!error || runtimeBlocked
+      }
+      onClick={() => {
+        if (
+          confirm ||
+          (project.kind !== "modpack" &&
+            profile &&
+            canInstall &&
+            detail?.versions.length === 1)
+        )
+          void install();
+        else setInstallOpen(true);
+      }}
+    >
+      {busy ? (
+        <LoaderCircle size={18} className="spin" />
+      ) : (
+        <Download size={18} />
+      )}
+      {busy ? t("Установка…") : t("Установить")}
+    </button>
+  );
+  const installation = (
+    <>
+      <div className="project-install-summary">
+        <ProjectIcon project={project} />
+        <div>
+          <b>{project.title}</b>
+          <small>{catalogSources[project.source]}</small>
+        </div>
+      </div>
+      <div className="project-install">
+        {project.source === "horizon" && <NativeModNotice />}
+        {project.kind !== "modpack" && (
+          <Field label={t("Установить в сборку")}>
+            <Select
+              value={profileId}
+              aria-label={t("Установить в сборку")}
+              disabled={busy}
+              onValueChange={(id) => {
+                setProfileId(id);
+                setVersionId("");
+                setLoading(true);
+              }}
+              options={[
+                { value: "", label: t("Выберите сборку") },
+                ...data.profiles.map((p) => ({
+                  disabled:
+                    project.source === "horizon"
+                      ? p.engine !== "horizon"
+                      : p.engine === "horizon",
+                  value: p.id,
+                  label: `${p.name} · ${p.minecraft} / ${p.engine === "horizon" ? "Horizon" : ru.loaders[p.loader]}`,
+                })),
+              ]}
+            />
+          </Field>
+        )}
+        {loading ? (
+          <Loading label={t("Получаем проект и совместимые версии…")} />
+        ) : error ? (
+          <ErrorBox error={error} retry={() => setRetry((v) => v + 1)} />
+        ) : (
+          detail && (
+            <Field label={t("Версия проекта")}>
+              <Select
+                value={versionId}
+                aria-label={t("Версия проекта")}
+                disabled={busy}
+                onValueChange={setVersionId}
+                options={[
+                  {
+                    value: "",
+                    label: detail.versions.length
+                      ? t("Выберите версию")
+                      : t("Совместимых версий нет"),
+                  },
+                  ...detail.versions.map((v) => ({
+                    value: v.id,
+                    label: v.name,
+                  })),
+                ]}
+              />
+            </Field>
+          )
+        )}
+        {project.kind === "modpack" ? (
+          <GamePresetChoice
+            value={gameSettingsProfileId}
+            onChange={setGameSettingsProfileId}
+            disabled={busy}
+          />
+        ) : !profile ? (
+          <small>
+            {data.profiles.length
+              ? t("Выберите сборку")
+              : t("Сначала создайте игровую сборку.")}
+          </small>
+        ) : runtimeBlocked ? (
+          <small>{t("Сначала остановите эту сборку")}</small>
+        ) : !loading && !error && !detail?.versions.length ? (
+          <small>{t("Для этой сборки нет совместимой версии проекта")}</small>
+        ) : selected && !canInstall ? (
+          <small>{t("Версия не подходит для выбранной сборки.")}</small>
+        ) : (
+          <small>
+            {t("Необходимые зависимости установятся автоматически.")}
+          </small>
+        )}
+        {packSource(project.source) && versionId && !loading && !error && (
+          <PlatformPackOptions
+            key={configurationKey}
+            project={project}
+            versionId={versionId}
+            onChange={setPackConfig}
+            disabled={busy}
+          />
+        )}
+      </div>
+      <div className="modal-actions project-install-footer">
+        <button
+          className="button secondary"
+          disabled={busy}
+          onClick={installationOnly ? onClose : () => setInstallOpen(false)}
+        >
+          {t("Отмена")}
+        </button>
+        {installButton(true)}
+      </div>
+    </>
+  );
+  if (installationOnly)
+    return (
+      <Modal
+        title={t("Установить проект")}
+        className="project-install-dialog"
+        onClose={onClose}
+        closeDisabled={busy}
+      >
+        {installation}
+      </Modal>
+    );
   return (
     <Modal
       title={project.title}
       subtitle={project.description}
       wide
+      className="project-detail-dialog"
       onClose={onClose}
     >
+      {installOpen && (
+        <Modal
+          title={t("Установить проект")}
+          className="project-install-dialog"
+          onClose={() => setInstallOpen(false)}
+          closeDisabled={busy}
+        >
+          {installation}
+        </Modal>
+      )}
       {viewer && (
         <ImageLightbox
           images={viewer.images}
@@ -207,6 +365,7 @@ export function ProjectDialog({
             {t(" загрузок \u00B7")} {catalogSources[project.source]}
           </p>
         </div>
+        {installButton()}
         <button
           className="text-button"
           onClick={() =>
@@ -233,97 +392,6 @@ export function ProjectDialog({
       ) : (
         detail && (
           <>
-            <div className="project-install">
-              {project.source === "horizon" && <NativeModNotice />}
-              <div className="form-grid">
-                {project.kind !== "modpack" && (
-                  <Field label={t("Установить в сборку")}>
-                    <Select
-                      value={profileId}
-                      aria-label={t("Установить в сборку")}
-                      onValueChange={setProfileId}
-                      options={[
-                        { value: "", label: t("Выберите сборку") },
-                        ...data.profiles.map((p) => ({
-                          disabled:
-                            project.source === "horizon"
-                              ? p.engine !== "horizon"
-                              : p.engine === "horizon",
-                          value: p.id,
-                          label: `${p.name} · ${p.minecraft} / ${p.engine === "horizon" ? "Horizon" : ru.loaders[p.loader]}`,
-                        })),
-                      ]}
-                    />
-                  </Field>
-                )}
-                <Field label={t("Версия проекта")}>
-                  <Select
-                    value={versionId}
-                    aria-label={t("Версия проекта")}
-                    onValueChange={setVersionId}
-                    options={[
-                      {
-                        value: "",
-                        label: detail.versions.length
-                          ? t("Выберите версию")
-                          : t("Совместимых версий нет"),
-                      },
-                      ...detail.versions.map((v) => ({
-                        value: v.id,
-                        label: v.name,
-                      })),
-                    ]}
-                  />
-                </Field>
-              </div>
-              {project.kind === "modpack" && (
-                <GamePresetChoice
-                  value={gameSettingsProfileId}
-                  onChange={setGameSettingsProfileId}
-                  disabled={busy}
-                />
-              )}
-              <button
-                className="button primary"
-                disabled={
-                  busy ||
-                  runtimeBlocked ||
-                  !canInstall ||
-                  !platformReady ||
-                  (project.kind === "modpack" &&
-                    gameSettingsProfileId !== undefined &&
-                    !data.gameSettingsProfiles?.some(
-                      (p) => p.id === gameSettingsProfileId,
-                    ))
-                }
-                onClick={() => void install()}
-              >
-                <PackagePlus size={16} />{" "}
-                {project.kind === "modpack"
-                  ? t("Создать сборку из модпака")
-                  : project.source === "horizon"
-                    ? t("Скачать исходники")
-                    : t("Установить с зависимостями")}
-              </button>
-              {project.kind !== "modpack" && !profile && (
-                <small>{t("Сначала создайте игровую сборку.")}</small>
-              )}
-              {runtimeBlocked && (
-                <small>{t("Сначала остановите эту сборку")}</small>
-              )}
-              {selected && !canInstall && profile && (
-                <small>{t("Версия не подходит для выбранной сборки.")}</small>
-              )}
-              {packSource(project.source) && versionId && (
-                <PlatformPackOptions
-                  key={configurationKey}
-                  project={project}
-                  versionId={versionId}
-                  onChange={setPackConfig}
-                  disabled={busy}
-                />
-              )}
-            </div>
             <div className="tabs">
               {(
                 [

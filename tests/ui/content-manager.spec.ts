@@ -447,7 +447,7 @@ test("installing from a mod page refreshes content without hiding the list or re
   await open.click();
   const dialog = page.getByRole("dialog", { name: "Sodium", exact: true });
   await dialog
-    .getByRole("button", { name: "Установить с зависимостями" })
+    .getByRole("button", { name: "Установить", exact: true })
     .click();
   await expect(dialog).toHaveCount(0);
   await expect

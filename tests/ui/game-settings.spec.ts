@@ -441,11 +441,13 @@ test("new-instance and catalog installation expose one profile choice without ca
   await page.getByRole("button", { name: "Модпаки", exact: true }).click();
   await page.locator(".catalog-card").first().click();
   const pack = page.getByRole("dialog", { name: "Test modpack", exact: true });
-  await pack
+  await pack.getByRole("button", { name: "Установить", exact: true }).click();
+  const installation = page.getByRole("dialog", { name: "Установить проект", exact: true });
+  await installation
     .getByRole("checkbox", { name: "Использовать мои настройки", exact: true })
     .check();
-  await pack
-    .getByRole("button", { name: "Создать сборку из модпака", exact: true })
+  await installation
+    .getByRole("button", { name: "Установить", exact: true })
     .click();
   await expect
     .poll(() =>
