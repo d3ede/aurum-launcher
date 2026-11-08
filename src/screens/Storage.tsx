@@ -15,6 +15,10 @@ import { rpc } from "../lib/api";
 import { t, getLocale } from "../lib/i18n";
 import { Modal } from "../components/ui";
 import { SettingsPageHeading } from "../components/SettingsPageHeading";
+import {
+  StorageFilesSettings,
+  StorageJavaSettings,
+} from "./StoragePreferences";
 import "./storage.css";
 
 export interface StorageEntry {
@@ -180,7 +184,6 @@ export function StorageSettings() {
     <div className="settings-page storage-page" data-settings-page="storage">
       <SettingsPageHeading
         title="Хранилище"
-        description="Всё, что занимает место: от миров до временных файлов."
         onBack={() => openSettings("general")}
       />
       <section className="storage-overview" aria-label={t("Занятое место")}>
@@ -252,6 +255,7 @@ export function StorageSettings() {
           {t("Считаем файлы…")}
         </p>
       )}
+      <StorageFilesSettings launcherDirectory={snapshot?.launcherDirectory} />
       {snapshot && (
         <>
           <section className="storage-section">
@@ -317,50 +321,35 @@ export function StorageSettings() {
                 <ArrowRight size={15} />
               </button>
             </div>
-            <div className="storage-java">
-              <span className="settings-destination-icon">
-                <Coffee size={24} />
-              </span>
-              <div>
-                <h3>{t("Компактная Java")}</h3>
-                <p>
-                  {t(
-                    "Замените полные JDK на среду запуска без инструментов разработчика. Нужные версии сохранятся.",
-                  )}
-                </p>
-              </div>
-              <button
-                className="button secondary"
-                disabled={blocked}
-                onClick={() => {
-                  setConfirm({
-                    title: t("Оптимизировать Java?"),
-                    text: t(
-                      "Aurum скачает компактные среды запуска и проверит их перед заменой. Указанная вручную Java останется без изменений.",
-                    ),
-                    apply: async () => {
-                      const result = await operation((operationId) =>
-                        rpc("optimizeJava", { operationId }),
-                      );
-                      if (result !== undefined)
-                        notify(
-                          t("Освобождено: {{v1}}", { v1: storageSize(result) }),
-                        );
-                      await refresh();
-                    },
-                  });
-                }}
-              >
-                {t("Оптимизировать Java")}
-                <ArrowRight size={15} />
-              </button>
-            </div>
           </section>
+          <StorageJavaSettings
+            managedSize={storageSize(
+              snapshot.categories.find((c) => c.id === "java")?.bytes || 0,
+            )}
+            optimizeDisabled={blocked}
+            onOptimize={() => {
+              setConfirm({
+                title: t("Оптимизировать Java?"),
+                text: t(
+                  "Aurum скачает компактные среды запуска и проверит их перед заменой. Указанная вручную Java останется без изменений.",
+                ),
+                apply: async () => {
+                  const result = await operation((operationId) =>
+                    rpc("optimizeJava", { operationId }),
+                  );
+                  if (result !== undefined)
+                    notify(
+                      t("Освобождено: {{v1}}", { v1: storageSize(result) }),
+                    );
+                  await refresh();
+                },
+              });
+            }}
+          />
           <section className="storage-section">
             <div className="storage-section-heading">
               <div>
                 <h2>{t("Сборки и миры")}</h2>
-                <p>{t("Удалённые сборки сначала попадают в корзину Aurum.")}</p>
               </div>
               <span className="storage-count">{snapshot.profiles.length}</span>
             </div>
@@ -598,17 +587,6 @@ export function StorageSettings() {
               </div>
             )}
           </section>
-          <section className="storage-section storage-paths">
-            <h2>{t("Где хранятся файлы")}</h2>
-            <label>
-              {t("Лаунчер")}
-              <code>{snapshot.launcherDirectory}</code>
-            </label>
-            <label>
-              {t("Игровые файлы")}
-              <code>{snapshot.gameDirectory}</code>
-            </label>
-          </section>
         </>
       )}
       {componentsOpen && snapshot && (
@@ -659,7 +637,11 @@ export function StorageSettings() {
         </Modal>
       )}
       {confirm && (
-        <Modal title={confirm.title} onClose={() => setConfirm(null)} className={confirm.destructive ? "storage-component-confirm" : ""}>
+        <Modal
+          title={confirm.title}
+          onClose={() => setConfirm(null)}
+          className={confirm.destructive ? "storage-component-confirm" : ""}
+        >
           <p>{confirm.text}</p>
           <div className="dialog-actions">
             <button

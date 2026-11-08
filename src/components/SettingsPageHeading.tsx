@@ -13,7 +13,7 @@ export function SettingsPageHeading({
   backLabel = "Назад к настройкам",
 }: {
   title: string;
-  description: string;
+  description?: string;
   onBack?: () => void;
   backLabel?: string;
 }) {
@@ -30,7 +30,7 @@ export function SettingsPageHeading({
         </button>
       )}
       <h1>{t(title)}</h1>
-      <p>{t(description)}</p>
+      {description && <p>{t(description)}</p>}
     </header>
   );
 }

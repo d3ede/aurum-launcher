@@ -102,6 +102,17 @@ async function fixture(page: Page, language = "ru", theme = "light") {
           const { action, payload } = args;
           w.storageRequests.push({ action, payload });
           if (action === "snapshot") return structuredClone(state);
+          if (action === "saveSettings") {
+            state.settings = structuredClone(payload.settings);
+            return structuredClone(state.settings);
+          }
+          if (action === "chooseJava") return "C:/Java/bin/java.exe";
+          if (action === "checkJava") {
+            if (w.javaCheckFails) throw new Error("Java is not available");
+            return 17;
+          }
+          if (action === "changeDataDirectory")
+            return w.cancelDirectory ? null : "C:/New Aurum/Game Files";
           if (action === "storageSnapshot") return structuredClone(storage);
           if (action === "storageTrash") {
             storage.trash = storage.trash.filter(
@@ -149,13 +160,16 @@ async function fixture(page: Page, language = "ru", theme = "light") {
   await page.goto("/");
   await page.getByRole("button", { name: "Настройки", exact: true }).click();
   const destination = page.getByRole("button", { name: /Хранилище/ });
-  await expect(destination.locator("..")).toHaveClass("settings-form");
+  await expect(destination.locator("..")).toHaveClass("settings-destinations");
   await expect(
     destination.locator("xpath=preceding-sibling::*[1]"),
-  ).toContainText("Файлы и версии");
+  ).toContainText("Внешний вид");
   await expect(
     page.getByRole("button", { name: "Изменить папку данных", exact: true }),
-  ).toHaveClass(/\bbutton secondary\b/);
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("textbox", { name: "Путь к Java", exact: true }),
+  ).toHaveCount(0);
   await destination.scrollIntoViewIfNeeded();
   await page.screenshot({
     path: `.test-data/screenshots/storage-placement-${theme}.png`,
@@ -163,6 +177,12 @@ async function fixture(page: Page, language = "ru", theme = "light") {
   await page.getByRole("button", { name: /Хранилище/ }).click();
   await expect(
     page.getByRole("heading", { name: "Хранилище", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Изменить папку данных", exact: true }),
+  ).toBeEnabled();
+  await expect(
+    page.getByRole("textbox", { name: "Путь к Java", exact: true }),
   ).toBeVisible();
 }
 
@@ -254,9 +274,9 @@ for (const theme of ["light", "dark"]) {
     });
     const card = entry.locator("..");
     await expect(card).toHaveClass(/storage-components-card/);
-    await expect(card.locator("xpath=following-sibling::*[1]")).toContainText(
-      "Компактная Java",
-    );
+    await expect(
+      card.locator("..").locator("xpath=following-sibling::*[1]"),
+    ).toHaveClass(/storage-java-settings/);
     await card.scrollIntoViewIfNeeded();
     await page.screenshot({
       path: `.test-data/screenshots/components-card-${theme}.png`,
@@ -266,9 +286,14 @@ for (const theme of ["light", "dark"]) {
       name: "Удаление компонентов",
       exact: true,
     });
-      await list.locator(".storage-component-list").hover();
-      await page.mouse.wheel(0, 900);
-      await expect(list.getByRole("button", { name: "Удалить компонент Корзина", exact: true })).toBeInViewport();
+    await list.locator(".storage-component-list").hover();
+    await page.mouse.wheel(0, 900);
+    await expect(
+      list.getByRole("button", {
+        name: "Удалить компонент Корзина",
+        exact: true,
+      }),
+    ).toBeInViewport();
     await expect(
       list.getByRole("button", {
         name: "Удалить компонент Общие файлы Minecraft",
@@ -378,15 +403,206 @@ test("bulk profile removal explains recovery and leaves individual controls belo
   ).toBeVisible();
 });
 
-test("launcher removal opens the uninstaller only after confirmation", async ({page}) => {
+test("launcher removal opens the uninstaller only after confirmation", async ({
+  page,
+}) => {
   await fixture(page);
-  await page.getByRole("button",{name:"Удаление компонентов",exact:true}).click();
-  const list=page.getByRole("dialog",{name:"Удаление компонентов",exact:true});
-  await list.getByRole("button",{name:"Удалить компонент Лаунчер",exact:true}).click();
-  const confirmation=page.getByRole("dialog",{name:"Удалить «Лаунчер»?",exact:true});
+  await page
+    .getByRole("button", { name: "Удаление компонентов", exact: true })
+    .click();
+  const list = page.getByRole("dialog", {
+    name: "Удаление компонентов",
+    exact: true,
+  });
+  await list
+    .getByRole("button", { name: "Удалить компонент Лаунчер", exact: true })
+    .click();
+  const confirmation = page.getByRole("dialog", {
+    name: "Удалить «Лаунчер»?",
+    exact: true,
+  });
   await expect(confirmation).toContainText("Откроется деинсталлятор");
-  expect(await page.evaluate(() => (window as any).storageRequests.filter((r:any)=>r.action==="uninstall"))).toEqual([]);
-  await confirmation.getByRole("button",{name:"Открыть деинсталлятор",exact:true}).click();
-  await expect.poll(async()=>page.evaluate(()=>(window as any).storageRequests.filter((r:any)=>r.action==="uninstall").length)).toBe(1);
-  expect(await page.evaluate(() => (window as any).storageRequests.filter((r:any)=>r.action==="storageRemoveComponent"))).toEqual([]);
+  expect(
+    await page.evaluate(() =>
+      (window as any).storageRequests.filter(
+        (r: any) => r.action === "uninstall",
+      ),
+    ),
+  ).toEqual([]);
+  await confirmation
+    .getByRole("button", { name: "Открыть деинсталлятор", exact: true })
+    .click();
+  await expect
+    .poll(async () =>
+      page.evaluate(
+        () =>
+          (window as any).storageRequests.filter(
+            (r: any) => r.action === "uninstall",
+          ).length,
+      ),
+    )
+    .toBe(1);
+  expect(
+    await page.evaluate(() =>
+      (window as any).storageRequests.filter(
+        (r: any) => r.action === "storageRemoveComponent",
+      ),
+    ),
+  ).toEqual([]);
+});
+
+for (const theme of ["light", "dark"]) {
+  test(`storage owns Java, folders and version preferences without verbose hints in ${theme}`, async ({
+    page,
+  }) => {
+    await fixture(page, "ru", theme);
+    const files = page.getByRole("region", {
+      name: "Файлы и версии",
+      exact: true,
+    });
+    await expect(
+      files.getByRole("heading", { name: "Где хранятся файлы", exact: true }),
+    ).toBeVisible();
+    await expect(
+      files.getByText("C:/Aurum Launcher/Game Files", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      files.getByText("C:/Aurum Launcher/Launcher", { exact: true }),
+    ).toBeVisible();
+    const java = page.getByRole("region", { name: "Java", exact: true });
+    const path = java.getByRole("textbox", {
+      name: "Путь к Java",
+      exact: true,
+    });
+    await expect(path).toHaveValue("");
+    await expect(
+      java.getByRole("button", { name: "Проверить Java", exact: true }),
+    ).toHaveCount(0);
+    for (const text of [
+      "Оставьте достаточно памяти для операционной системы. Для каждой сборки можно задать отдельное значение.",
+      "Память и classpath Aurum задаёт сам. Оставьте поле пустым, если дополнительные параметры не нужны.",
+      "Подходящий runtime устанавливается автоматически",
+      "Пустое поле — автоматическая установка Eclipse Temurin. Для новых версий игры требуется новая Java.",
+    ])
+      await expect(page.getByText(text, { exact: true })).toHaveCount(0);
+    await java.getByRole("button", { name: "Обзор", exact: true }).click();
+    await expect(path).toHaveValue("C:/Java/bin/java.exe");
+    await java
+      .getByRole("button", { name: "Проверить Java", exact: true })
+      .click();
+    await expect(java.getByRole("status")).toHaveText("Java 17 — доступна");
+    await java.scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: `.test-data/screenshots/storage-java-${theme}.png`,
+    });
+    await java.getByRole("button", { name: "Сохранить", exact: true }).click();
+    await files
+      .getByRole("checkbox", {
+        name: "Показывать снапшоты Minecraft",
+        exact: true,
+      })
+      .check();
+    await expect(files.getByRole("checkbox")).toBeChecked();
+    let saved = await page.evaluate(
+      () =>
+        (window as any).storageRequests
+          .filter((r: any) => r.action === "saveSettings")
+          .at(-1).payload.settings,
+    );
+    expect(saved.javaPath).toBe("C:/Java/bin/java.exe");
+    expect(saved.showSnapshots).toBe(true);
+    expect(saved.ramMb).toBe(4096);
+    expect(saved.theme).toBe(theme);
+    await java
+      .getByRole("button", { name: "Автоматически", exact: true })
+      .click();
+    await expect(path).toHaveValue("");
+    saved = await page.evaluate(
+      () =>
+        (window as any).storageRequests
+          .filter((r: any) => r.action === "saveSettings")
+          .at(-1).payload.settings,
+    );
+    expect(saved.javaPath).toBe("");
+    expect(saved.showSnapshots).toBe(true);
+    await page.setViewportSize({ width: 960, height: 680 });
+    await files.scrollIntoViewIfNeeded();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: `.test-data/screenshots/storage-files-minimum-${theme}.png`,
+    });
+  });
+}
+
+test("editing Java clears its previous check and a failed check stays actionable", async ({
+  page,
+}) => {
+  await fixture(page);
+  const java = page.getByRole("region", { name: "Java", exact: true });
+  const input = java.getByRole("textbox", { name: "Путь к Java", exact: true });
+  await input.fill("C:/Java/bin/java.exe");
+  await java
+    .getByRole("button", { name: "Проверить Java", exact: true })
+    .click();
+  await expect(java.getByRole("status")).toHaveText("Java 17 — доступна");
+  await input.fill("C:/Other Java/bin/java.exe");
+  await expect(java.getByRole("status")).toHaveCount(0);
+  await page.evaluate(() => {
+    (window as any).javaCheckFails = true;
+  });
+  await java
+    .getByRole("button", { name: "Проверить Java", exact: true })
+    .click();
+  await expect(java.getByRole("status")).toHaveText(
+    "Проверка Java не пройдена",
+  );
+  await expect(
+    java.getByRole("button", { name: "Проверить Java", exact: true }),
+  ).toBeEnabled();
+});
+
+test("folder relocation supports cancellation and presents restart only after a new folder is selected", async ({
+  page,
+}) => {
+  await fixture(page);
+  const files = page.getByRole("region", {
+    name: "Файлы и версии",
+    exact: true,
+  });
+  await page.evaluate(() => {
+    (window as any).cancelDirectory = true;
+  });
+  await files
+    .getByRole("button", { name: "Изменить папку данных", exact: true })
+    .click();
+  await expect(
+    files.getByRole("button", { name: "Перезапустить Aurum", exact: true }),
+  ).toHaveCount(0);
+  await page.evaluate(() => {
+    (window as any).cancelDirectory = false;
+  });
+  await files
+    .getByRole("button", { name: "Изменить папку данных", exact: true })
+    .click();
+  await expect(files.getByRole("status")).toContainText(
+    "C:/New Aurum/Game Files",
+  );
+  await expect(
+    files.getByRole("button", { name: "Изменить папку данных", exact: true }),
+  ).toBeDisabled();
+  await files
+    .getByRole("button", { name: "Перезапустить Aurum", exact: true })
+    .click();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as any).storageRequests.filter(
+          (r: any) => r.action === "restart",
+        ).length,
+    ),
+  ).toBe(1);
 });

@@ -1,6 +1,8 @@
 export const upcomingChanges = {
   title: "В разработке: браузер скинов и компактный лаунчер",
-  items: [] as string[],
+  items: [
+    "Java и управление файлами собраны в хранилище. Настройки стали компактнее.",
+  ],
 };
 
 export const releaseNotes = [

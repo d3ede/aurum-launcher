@@ -160,6 +160,17 @@ Object.assign(storageEnglish, {
   "Удаление компонентов по категориям: игровые файлы можно установить заново, а сборки и миры восстановить из корзины.":
     "Remove components by category: reinstall game files or restore instances and worlds from the trash.",
 });
+Object.assign(storageEnglish, {
+  "Файлы, версии и Java": "Files, versions and Java",
+  "Открыть игровые файлы": "Open game files",
+  "Java в Aurum": "Java in Aurum",
+  "Путь к Java": "Java path",
+  "Проверка Java не пройдена": "Java check failed",
+  "Проверяем Java…": "Checking Java…",
+  "Java и управление файлами собраны в хранилище. Настройки стали компактнее.":
+    "Java and file management now live in Storage, with cleaner settings.",
+});
+Object.assign(storageEnglish, { Автоматически: "Automatic" });
 export const storageRussian = Object.fromEntries(
   Object.keys(storageEnglish).map((key) => [key, key]),
 );
