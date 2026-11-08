@@ -822,6 +822,9 @@ textarea {
   gap: 8px;
   align-items: center;
 }
+.icon-custom-color input {
+  min-height: 34px;
+}
 .icon-custom-color input[type="color"] {
   flex-shrink: 0;
   width: 34px;
@@ -829,6 +832,17 @@ textarea {
   padding: 3px;
   border-radius: 8px;
   cursor: pointer;
+}
+.icon-custom-color input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.icon-custom-color input[type="color"]::-webkit-color-swatch {
+  border: 0;
+  border-radius: 4px;
+}
+.icon-custom-color input[type="color"]::-moz-color-swatch {
+  border: 0;
+  border-radius: 4px;
 }
 .icon-custom-color input[type="text"] {
   width: 100%;

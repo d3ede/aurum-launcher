@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import fabric from "../assets/loaders/fabric.png";
+import fabric from "../assets/loaders/fabric.svg";
 import forge from "../assets/loaders/forge.png";
 import neoforge from "../assets/loaders/neoforge.png";
 import quilt from "../assets/loaders/quilt.svg";

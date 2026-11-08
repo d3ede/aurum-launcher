@@ -7,6 +7,9 @@ do not imply endorsement of Aurum. These marks are excluded from Aurum's
 PolyForm license; their respective owners retain their rights.
 
 - Fabric: FabricMC's project mark, [fabricmc.net](https://fabricmc.net/).
+  `fabric.svg` traces the original `fabric.png` palette regions with smoothed
+  pixel corners, retaining the original fold, orientation and beige palette
+  for small selectors.
 - Forge: Minecraft Forge's anvil mark, [minecraftforge.net](https://minecraftforge.net/).
 - NeoForge: the project mark by Ridanisaurus, under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
   [NeoForged artwork](https://github.com/neoforged/.github/tree/main/art). The editable
@@ -28,8 +31,8 @@ PolyForm license; their respective owners retain their rights.
   `horizon-mask.svg` monochrome adaptation retains its H and horizon-line motif.
   The license is preserved in `HORIZON-LICENSE`.
 
-The color selector uses the original images, except for the geometric Vanilla
-block. The instance icon editor offers
+The color selector uses the original images, except for the smooth Fabric
+roll and geometric Vanilla block. The instance icon editor offers
 monochrome adaptations for user-selected colors. `forge-mask.png` removes the
 original background using `scripts/loader-masks.ps1`; `fabric-mask.svg` traces
 the original `fabric.png` silhouette and palette regions with smoothed pixel
