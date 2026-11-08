@@ -57,7 +57,8 @@ describe("reviewed Ukrainian localization", () => {
           if (entry.name !== "tests") scan(file);
           continue;
         }
-        if (!file.endsWith(".rs")) continue;
+        // Separate Rust test modules contain assertion fragments, not UI copy.
+        if (!file.endsWith(".rs") || file.endsWith("_tests.rs")) continue;
         const text = readFileSync(file, "utf8").split("#[cfg(test)]")[0];
         for (const match of text.matchAll(/"((?:[^"\\]|\\.)*)"/g)) {
           const value = match[1].replaceAll("\\n", "\n").replaceAll('\\"', '"');
