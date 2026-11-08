@@ -782,6 +782,8 @@ textarea {
 .randomizer-die {
   display: block;
   object-fit: contain;
+  opacity: 0.88;
+  filter: saturate(0.75);
   transform-origin: center;
 }
 .randomizer-die.is-rolling {
