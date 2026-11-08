@@ -32,13 +32,13 @@ export function CatalogPagination({
     >
       <button
         type="button"
-        className="icon-button"
+        className="button secondary"
         aria-label={t("Предыдущая страница")}
-        title={t("Предыдущая страница")}
         disabled={loading || page <= 1}
         onClick={() => onPage(page - 1)}
       >
-        <ChevronLeft size={18} />
+        <ChevronLeft size={16} />
+        {t("Назад")}
       </button>
       <form
         onSubmit={(event) => {
@@ -48,16 +48,18 @@ export function CatalogPagination({
       >
         <input
           aria-label={t("Номер страницы")}
-          title={t("Введите номер страницы и нажмите Enter")}
           inputMode="numeric"
           value={value}
           disabled={loading}
           autoComplete="off"
           style={{
-            width: `${Math.max(2, value.length, String(pages).length)}ch`,
+            width: `${Math.max(2, String(pages).length)}ch`,
           }}
-          onFocus={(event) => event.currentTarget.select()}
-          onChange={(event) => setValue(event.target.value)}
+          onChange={(event) => {
+            const next = event.target.value;
+            if (/^\d*$/.test(next))
+              setValue(next === "" ? "" : String(Math.min(pages, Number(next))));
+          }}
           onBlur={jump}
           onKeyDown={(event) => {
             if (event.key === "Escape") setValue(String(page));
@@ -70,13 +72,13 @@ export function CatalogPagination({
       </form>
       <button
         type="button"
-        className="icon-button"
+        className="button secondary"
         aria-label={t("Следующая страница")}
-        title={t("Следующая страница")}
         disabled={loading || page >= pages}
         onClick={() => onPage(page + 1)}
       >
-        <ChevronRight size={18} />
+        {t("Вперёд")}
+        <ChevronRight size={16} />
       </button>
     </nav>
   );

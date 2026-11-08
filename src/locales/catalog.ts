@@ -1,4 +1,6 @@
 export const catalogEnglish: Record<string, string> = {
+  "Назад": "Back",
+  "Вперёд": "Next",
   "Страницы каталога": "Catalog pages",
   "Предыдущая страница": "Previous page",
   "Следующая страница": "Next page",

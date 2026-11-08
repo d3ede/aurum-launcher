@@ -250,10 +250,16 @@ for (const view of ["list", "grid"]) {
       .toBe(499 * 24);
     await expect(input).toHaveValue("500");
     await input.fill("9999");
+    await expect(input).toHaveValue("925");
+    await input.fill("9".repeat(100));
+    await expect(input).toHaveValue("925");
     await input.press("Enter");
     await expect(input).toBeEnabled();
     await expect(input).toHaveValue("925");
     await expect(next).toBeDisabled();
+    await expect(previous).toHaveText("Назад");
+    await expect(next).toHaveText("Вперёд");
+    await expect(input).not.toHaveAttribute("title");
     await expect(page.locator(".catalog-result")).toHaveCount(23);
     expect(
       await page.locator(".content-scroll").evaluate((e) => e.scrollTop),
@@ -275,6 +281,59 @@ for (const view of ["list", "grid"]) {
     await expect(input).toHaveValue("1");
   });
 }
+
+test("compact pagination previews stay stable while entering the last page", async ({
+  page,
+}) => {
+  await fixture(page, "ru", false, false, true);
+  await page.evaluate(() => {
+    (window as any).catalogTotal = 3268 * 24;
+  });
+  await page.getByRole("textbox", { name: "Поиск проектов" }).fill("preview");
+  const pagination = page.getByRole("navigation", {
+    name: "Страницы каталога",
+  });
+  const input = pagination.getByRole("textbox", { name: "Номер страницы" });
+  const next = pagination.getByRole("button", { name: "Следующая страница" });
+  await expect(pagination.getByLabel("Всего страниц: 3268")).toBeVisible();
+  await expect(next).toBeEnabled();
+  await next.click();
+  await expect(input).toHaveValue("2");
+  await expect(input).toBeEnabled();
+  for (const theme of ["light", "dark"]) {
+    await page.evaluate((theme) => {
+      document.documentElement.dataset.theme = theme;
+    }, theme);
+    await pagination.scrollIntoViewIfNeeded();
+    await page.mouse.move(0, 0);
+    const bounds = (await pagination.boundingBox())!;
+    const clip = {
+      x: bounds.x,
+      y: bounds.y - 18,
+      width: bounds.width,
+      height: bounds.height + 36,
+    };
+    await page.screenshot({
+      path: `.test-data/screenshots/catalog-pagination-refined-${theme}.png`,
+      animations: "disabled",
+      clip,
+    });
+    const width = (await input.boundingBox())!.width;
+    await input.fill("222222222222222222222222");
+    await expect(input).toHaveValue("3268");
+    expect((await input.boundingBox())!.width).toBe(width);
+    await expect(input).toBeFocused();
+    await expect(input).toHaveCSS("outline-style", "none");
+    await page.screenshot({
+      path: `.test-data/screenshots/catalog-pagination-clamped-${theme}.png`,
+      animations: "disabled",
+      clip,
+    });
+    // Restore the draft without fetching another page for the next theme preview.
+    await input.fill("2");
+    await input.evaluate((e) => e.blur());
+  }
+});
 
 test("catalog page controls translate and combined catalogs use the largest provider page count", async ({
   page,
