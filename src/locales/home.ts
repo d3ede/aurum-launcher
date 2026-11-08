@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Ресурспаки и шейдеры: установка, обновление и управление файлами без остановки игры. Применяйте пак в настройках Minecraft.":
+    "Resource packs and shaders: install, update and manage files while the game is running. Apply the pack in Minecraft settings.",
   "Скины и плащи открываются из профилей. Отдельный пункт меню убран.":
     "Skins and capes open from Accounts. The separate sidebar item has been removed.",
   "Скриншоты от друзей приходят после подтверждения: уведомления со звуком, ответ отправителю и миниатюры в отправках.":

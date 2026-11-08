@@ -17,6 +17,7 @@ import {
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
 import { contentVersion } from "../lib/content-version";
+import { contentReloadHint, reloadableContent } from "../lib/content-runtime";
 import { t, ru } from "../lib/i18n";
 import type { Content, ContentUpdate, Kind, Profile, Project } from "../types";
 import { ProjectDialog } from "../screens/Catalog";
@@ -71,6 +72,11 @@ export function InstanceContent({
   const [checkTick, setCheckTick] = useState(0);
   const [project, setProject] = useState<Project | null>(null);
   const running = data.running.includes(profile.id);
+  const editable = (kind: string) => !running || reloadableContent(kind);
+  const availableUpdates = updates.filter((u) => {
+    const item = content.find((c) => c.id === u.contentId);
+    return item && editable(item.kind);
+  });
   const filterCount = [status, source, author].filter(
     (v) => v !== "all",
   ).length;
@@ -208,7 +214,7 @@ export function InstanceContent({
     const result = await operation((operationId) =>
       rpc("updateAllContent", {
         id: profile.id,
-        contentIds: updates.map((u) => u.contentId),
+        contentIds: availableUpdates.map((u) => u.contentId),
         operationId,
       }),
     );
@@ -353,14 +359,16 @@ export function InstanceContent({
         </div>
         <div className="installed-toolbar-actions">
           <button
-            className={`button secondary content-update-all ${updates.length ? "available" : ""}`}
-            disabled={busy || running || checking || !updates.length}
+            className={`button secondary content-update-all ${availableUpdates.length ? "available" : ""}`}
+            disabled={busy || checking || !availableUpdates.length}
             onClick={() => void updateAll()}
           >
             <Download size={16} />
             {t("Обновить всё")}
-            {updates.length > 0 && (
-              <span className="content-update-count">{updates.length}</span>
+            {availableUpdates.length > 0 && (
+              <span className="content-update-count">
+                {availableUpdates.length}
+              </span>
             )}
           </button>
           <button
@@ -374,7 +382,7 @@ export function InstanceContent({
           </button>
           <button
             className="text-button"
-            disabled={busy || running}
+            disabled={busy || !editable(kind === "all" ? "mod" : kind)}
             onClick={async () => {
               await run(() =>
                 rpc("importContent", {
@@ -390,6 +398,9 @@ export function InstanceContent({
           </button>
         </div>
       </div>
+      {running && (
+        <p className="catalog-provider-note">{t(contentReloadHint)}</p>
+      )}
       <div className="installed-content-summary" role="status">
         <span>
           {t("Показано {{v1}} из {{v2}}", {
@@ -485,7 +496,7 @@ export function InstanceContent({
                     {update && (
                       <button
                         className="content-version-update"
-                        disabled={busy || running}
+                        disabled={busy || !editable(item.kind)}
                         onClick={() => void updateOne(item)}
                         title={t("Обновить до {{v1}}", {
                           v1: update.versionName,
@@ -506,7 +517,7 @@ export function InstanceContent({
                         title={t("Обновить до {{v1}}", {
                           v1: update.versionName,
                         })}
-                        disabled={busy || running}
+                        disabled={busy || !editable(item.kind)}
                         onClick={() => void updateOne(item)}
                       >
                         <Download size={19} />
@@ -519,7 +530,7 @@ export function InstanceContent({
                     aria-checked={item.enabled}
                     aria-label={`${item.enabled ? t("Отключить") : t("Включить")} ${item.name}`}
                     title={item.enabled ? t("Отключить") : t("Включить")}
-                    disabled={busy || running}
+                    disabled={busy || !editable(item.kind)}
                     onClick={() => void manage(item, "toggle")}
                   >
                     <span />
@@ -528,7 +539,7 @@ export function InstanceContent({
                     className="icon-button content-delete"
                     aria-label={t("Удалить {{v1}}", { v1: item.name })}
                     title={t("Переместить в корзину")}
-                    disabled={busy || running}
+                    disabled={busy || !editable(item.kind)}
                     onClick={() => void manage(item, "remove")}
                   >
                     <Trash2 size={19} />

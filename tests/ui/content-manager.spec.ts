@@ -6,9 +6,10 @@ async function fixture(
   running = false,
   language = "ru",
   extraRows = 0,
+  packUpdates = false,
 ) {
   await page.addInitScript(
-    ({ theme, running, language, extraRows }) => {
+    ({ theme, running, language, extraRows, packUpdates }) => {
       localStorage.setItem("aurum:language", language);
       const w = window as any;
       w.isTauri = true;
@@ -103,6 +104,24 @@ async function fixture(
         },
         { contentId: "mr:iris", versionId: "new-iris", versionName: "1.8.11" },
       ];
+      if (packUpdates) {
+        for (const kind of ["resourcepack", "shader"]) {
+          const id = `mr:${kind}`;
+          content.push({
+            ...content[0],
+            id,
+            projectId: kind,
+            kind,
+            name: kind,
+            filename: `${kind}.zip`,
+          });
+          updates.push({
+            contentId: id,
+            versionId: `new-${kind}`,
+            versionName: "2.0",
+          });
+        }
+      }
       const profile = {
         id: "profile-test",
         name: language === "en" ? "Cozy World" : "Уютный мир",
@@ -192,6 +211,7 @@ async function fixture(
             }
             return null;
           }
+          if (action === "importContent") return null;
           if (action === "updateContent") {
             apply(payload.contentId);
             return null;
@@ -250,7 +270,7 @@ async function fixture(
         },
       };
     },
-    { theme, running, language, extraRows },
+    { theme, running, language, extraRows, packUpdates },
   );
   await page.goto("/");
   await page
@@ -272,7 +292,9 @@ async function fixture(
   ).toBeVisible();
   await expect(
     page.getByText(
-      language === "en" ? "Updates available: 2" : "Доступно обновлений: 2",
+      language === "en"
+        ? `Updates available: ${packUpdates ? 4 : 2}`
+        : `Доступно обновлений: ${packUpdates ? 4 : 2}`,
     ),
   ).toBeVisible();
 }
@@ -609,18 +631,81 @@ test("single updates, partial bulk failure and offline recheck keep the content 
   await expect(page.getByText("Совместимых обновлений нет")).toBeVisible();
 });
 
-test("a running game prevents updates, toggles and removal", async ({
+test("a running game prevents mod updates, toggles and removal", async ({
   page,
 }) => {
   await fixture(page, "dark", true);
   await expect(
-    page.getByRole("button", { name: "Обновить всё 2", exact: true }),
+    page.getByRole("button", { name: "Обновить всё", exact: true }),
   ).toBeDisabled();
   await expect(
     page.getByRole("switch", { name: "Отключить Sodium", exact: true }),
   ).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "Удалить Sodium", exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByRole("switch", { name: "Отключить Fresh Animations", exact: true })
+    .click();
+  await expect(
+    page.getByRole("switch", {
+      name: "Включить Fresh Animations",
+      exact: true,
+    }),
+  ).toBeEnabled();
+  await page.getByRole("button", { name: "Ресурспаки", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Добавить файл", exact: true })
+    .click();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window as any).requests.some(
+          (r: any) =>
+            r.action === "importContent" && r.payload.kind === "resourcepack",
+        ),
+      ),
+    )
+    .toBe(true);
+  await page
+    .getByRole("button", { name: "Удалить Fresh Animations", exact: true })
+    .click();
+  await expect(
+    page.getByRole("switch", {
+      name: "Включить Fresh Animations",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+});
+
+test("bulk updates while running include packs and shaders and leave mods alone", async ({
+  page,
+}) => {
+  await fixture(page, "light", true, "ru", 0, true);
+  await expect(
+    page.getByRole("button", { name: "Обновить Sodium", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Обновить resourcepack", exact: true }),
+  ).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Обновить shader", exact: true }),
+  ).toBeEnabled();
+  await page
+    .getByRole("button", { name: "Обновить всё 2", exact: true })
+    .click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as any).requests.find(
+            (r: any) => r.action === "updateAllContent",
+          )?.payload.contentIds,
+      ),
+    )
+    .toEqual(["mr:resourcepack", "mr:shader"]);
+  await expect(
+    page.getByRole("button", { name: "Обновить Sodium", exact: true }),
   ).toBeDisabled();
 });
 

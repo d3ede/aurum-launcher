@@ -543,6 +543,19 @@ test("running profiles block content changes; compact Ukrainian favorites stay i
       exact: true,
     }),
   ).toBeDisabled();
+  await row(page, "modrinth shade")
+    .getByRole("button", { name: "Установити modrinth shade", exact: true })
+    .click();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window as any).favoriteRequests
+          .filter((r: any) => r.action === "installContent")
+          .map((r: any) => r.payload.projectId),
+      ),
+    )
+    .toEqual(["shade"]);
+  await expect(row(page, "modrinth shade")).toContainText("Встановлено");
   expect(await dialog.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(
     false,
   );

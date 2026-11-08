@@ -5,7 +5,7 @@ use crate::{
     Engine, Task,
 };
 use anyhow::{bail, Context, Result};
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 pub fn folder(kind: &str) -> Result<&'static str> {
     match kind {
@@ -15,6 +15,7 @@ pub fn folder(kind: &str) -> Result<&'static str> {
         _ => bail!("Этот тип контента нельзя установить в существующую сборку"),
     }
 }
+
 pub fn compatible(version: &ProjectVersion, p: &Profile, kind: &str) -> bool {
     p.engine != Runtime::Horizon
         && version.game_versions.contains(&p.minecraft)
@@ -22,7 +23,33 @@ pub fn compatible(version: &ProjectVersion, p: &Profile, kind: &str) -> bool {
             || (p.loader != Loader::Vanilla
                 && version.loaders.contains(&p.loader.key().to_string())))
 }
+fn reloadable(kind: &str) -> bool {
+    matches!(kind, "shader" | "resourcepack")
+}
 impl Engine {
+    pub(crate) async fn ensure_content_change(
+        &self,
+        id: &str,
+        kinds: &[&str],
+        task_id: Option<&str>,
+    ) -> Result<()> {
+        self.refresh_recovered().await;
+        if self.running.lock().await.contains_key(id) && kinds.iter().any(|kind| !reloadable(kind))
+        {
+            bail!("Сначала остановите игру")
+        }
+        if self
+            .operations
+            .lock()
+            .await
+            .keys()
+            .any(|id| Some(id.as_str()) != task_id)
+        {
+            bail!("Дождитесь завершения текущей операции")
+        }
+        Ok(())
+    }
+
     pub async fn install_content(
         &self,
         profile_id: &str,
@@ -36,9 +63,6 @@ impl Engine {
                 .install_horizon_mod(profile_id, project_id, version_id, task)
                 .await;
         }
-        if self.running.lock().await.contains_key(profile_id) {
-            bail!("Сначала остановите игру")
-        }
         crate::store::validate_version(project_id)?;
         crate::store::validate_version(version_id)?;
         let profile = self.profile(profile_id).await?;
@@ -49,9 +73,9 @@ impl Engine {
         let stage = self.root.join("staging").join(&task.id);
         tokio::fs::create_dir_all(&stage).await?;
         let result:Result<()>=async {
-            let mut queue=vec![(project_id.to_string(),version_id.to_string())]; let mut seen=HashSet::new(); let mut plan=vec![]; let mut conflicts=vec![];
+            let mut queue=vec![(project_id.to_string(),version_id.to_string())]; let mut seen=HashMap::new(); let mut plan=vec![]; let mut conflicts=vec![];
             while let Some((project,version))=queue.pop() {
-                task.check()?; if !seen.insert(project.clone()) { if plan.iter().any(|c:&Content|c.project_id==project && c.version_id!=version) { bail!("Конфликт версий зависимости {project}") } continue }
+                task.check()?; if let Some(previous) = seen.insert(project.clone(), version.clone()) { if previous != version { bail!("Конфликт версий зависимости {project}") } continue }
                 if seen.len()>150 { bail!("Слишком много зависимостей") }
                 let (raw,kind,name)=if source=="modrinth" { let raw=self.json(&format!("{MODRINTH}/version/{version}")).await?; let project_data=self.json(&format!("{MODRINTH}/project/{project}")).await?; if raw["project_id"]!=project { bail!("Версия относится к другому проекту") } (raw,project_data["project_type"].as_str().context("Нет типа")?.to_string(),project_data["title"].as_str().unwrap_or(&project).to_string()) }
                 else if source=="curseforge" {
@@ -84,6 +108,14 @@ impl Engine {
                     (raw["fileName"].as_str().context("Нет имени файла")?.to_string(),url,Some(("sha1".to_string(),hash.to_string())))
                 };
                 if filename.contains('/') { bail!("Неверное имя файла контента") } crate::safe_join(&instance,&filename)?;
+                // Keep a verified, enabled dependency in place, including mods already
+                // loaded by the game. Missing, disabled or changed dependencies still
+                // go through the runtime guard and the transactional install below.
+                if project != project_id && profile.content.iter().any(|c| c.source == source && c.project_id == project && c.version_id == version && c.kind == kind && c.filename == filename && c.enabled) {
+                    let existing = instance.join(directory).join(&filename);
+                    if existing.is_file() && crate::net::verify(&existing, hash.as_ref().map(|(a,h)|(a.as_str(),h.as_str()))).await? { continue }
+                }
+                self.ensure_content_change(profile_id, &[&kind], Some(&task.id)).await?;
                 if profile.content.iter().any(|c|c.filename==filename && c.project_id!=project && c.kind==kind) || plan.iter().any(|c:&Content|c.filename==filename && c.project_id!=project && c.kind==kind) { bail!("Конфликт имён файлов: {filename}") }
                 task.progress("content",format!("Загружаем {name}"),plan.len() as u64,0);
                 self.download(&url,&stage.join(directory).join(&filename),hash.as_ref().map(|(a,h)|(a.as_str(),h.as_str())),task).await?;
@@ -93,6 +125,12 @@ impl Engine {
             }
             for incompatible in conflicts { if plan.iter().any(|c|c.project_id==incompatible) || profile.content.iter().any(|c|c.project_id==incompatible && c.enabled) { bail!("Установка конфликтует с проектом {incompatible}") } }
             task.check()?;
+            // Check every dependency again before publishing: a pack may require a mod,
+            // or the game may have started while the downloads were in progress.
+            let kinds: Vec<_> = plan.iter().map(|c| c.kind.as_str()).chain(
+                profile.content.iter().filter(|old| plan.iter().any(|new| new.source == old.source && new.project_id == old.project_id)).map(|c| c.kind.as_str())
+            ).collect();
+            self.ensure_content_change(profile_id, &kinds, Some(&task.id)).await?;
             // Prepare rollback copies before publishing the new content set.
             let backup=stage.join("backup"); let mut moved:Vec<(std::path::PathBuf,std::path::PathBuf)>=vec![]; let mut published=vec![];
             let commit:Result<()>=async {
@@ -173,12 +211,12 @@ impl Engine {
         if self.profile(id).await?.engine == Runtime::Horizon {
             return self.manage_horizon_mod(id, content_id, action).await;
         }
-        self.ensure_idle(id).await?;
         let list = self.list_content(id).await?;
         let item = list
             .iter()
             .find(|c| c.id == content_id)
             .context("Файл не найден")?;
+        self.ensure_content_change(id, &[&item.kind], None).await?;
         let base = self.instance(id)?.join(folder(&item.kind)?);
         let source = crate::safe_join(
             &base,
@@ -228,8 +266,7 @@ impl Engine {
         if self.profile(id).await?.engine == Runtime::Horizon {
             bail!("Для Horizon добавляйте совместимый контент через папку сборки")
         }
-        self.ensure_idle(id).await?;
-        self.profile(id).await?;
+        self.ensure_content_change(id, &[kind], None).await?;
         let name = path
             .file_name()
             .context("Нет имени файла")?
@@ -243,8 +280,18 @@ impl Engine {
             bail!("Файл уже установлен")
         }
         tokio::fs::create_dir_all(dest.parent().unwrap()).await?;
-        tokio::fs::copy(path, dest).await?;
-        Ok(())
+        // Minecraft must only see complete archives when it scans the pack folder.
+        let pending = dest.with_file_name(format!(".aurum-{}.tmp", uuid::Uuid::new_v4()));
+        let result = async {
+            tokio::fs::copy(path, &pending).await?;
+            self.ensure_content_change(id, &[kind], None).await?;
+            tokio::fs::rename(&pending, dest).await?;
+            Ok(())
+        }.await;
+        if result.is_err() {
+            let _ = tokio::fs::remove_file(pending).await;
+        }
+        result
     }
     pub async fn update_content(&self, id: &str, content_id: &str, task: &Task) -> Result<bool> {
         let p = self.profile(id).await?;
@@ -256,6 +303,7 @@ impl Engine {
         if item.source == "local" {
             bail!("Для локального файла обновление через API недоступно")
         }
+        self.ensure_content_change(id, &[&item.kind], Some(&task.id)).await?;
         self.remember_content(id, &content).await?;
         let versions = if item.source == "modrinth" {
             self.mr_versions(
@@ -298,3 +346,6 @@ impl Engine {
         Ok(true)
     }
 }
+
+#[cfg(test)]
+mod runtime_tests;

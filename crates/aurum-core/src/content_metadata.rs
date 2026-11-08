@@ -521,25 +521,14 @@ impl Engine {
         content_ids: &[String],
         task: &Task,
     ) -> Result<ContentUpdateResult> {
-        self.refresh_recovered().await;
-        if self.running.lock().await.contains_key(id) {
-            anyhow::bail!("Сначала остановите игру");
-        }
-        if self
-            .operations
-            .lock()
-            .await
-            .keys()
-            .any(|operation| operation != &task.id)
-        {
-            anyhow::bail!("Дождитесь завершения текущей операции");
-        }
         let mut result = ContentUpdateResult::default();
         let content = self.list_content(id).await?;
         let planned: Vec<_> = content
             .iter()
             .filter(|c| content_ids.contains(&c.id) && c.source != "local")
             .collect();
+        let kinds: Vec<_> = planned.iter().map(|c| c.kind.as_str()).collect();
+        self.ensure_content_change(id, &kinds, Some(&task.id)).await?;
         for (i, item) in planned.iter().enumerate() {
             if task.check().is_err() {
                 result.cancelled = true;

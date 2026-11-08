@@ -25,6 +25,7 @@ import { Modal, Loading, ErrorBox, EmptyState, Field } from "../components/ui";
 import { NativeModNotice } from "../components/NativeModNotice";
 import { Select } from "../components/Select";
 import { FavoriteButton } from "../components/FavoriteButton";
+import { contentReloadHint, reloadableContent } from "../lib/content-runtime";
 import {
   catalogSources,
   catalogWebsite,
@@ -127,12 +128,15 @@ export function ProjectDialog({
     retry,
   ]);
   const selected = detail?.versions.find((v) => v.id === versionId);
+  const running = !!profile && data.running.includes(profile.id);
+  const runtimeBlocked =
+    project.kind !== "modpack" && running && !reloadableContent(project.kind);
   const canInstall =
     selected &&
     (project.kind === "modpack" ||
       (profile && compatible(selected, profile, project.kind)));
   const install = async () => {
-    if (!selected) return;
+    if (!selected || runtimeBlocked || busy) return;
     const ok = await operation(
       async (operationId) => {
         if (project.kind === "modpack")
@@ -262,7 +266,9 @@ export function ProjectDialog({
               </div>
               <button
                 className="button primary"
-                disabled={busy || !canInstall || !platformReady}
+                disabled={
+                  busy || runtimeBlocked || !canInstall || !platformReady
+                }
                 onClick={() => void install()}
               >
                 <PackagePlus size={16} />{" "}
@@ -274,6 +280,12 @@ export function ProjectDialog({
               </button>
               {project.kind !== "modpack" && !profile && (
                 <small>{t("Сначала создайте игровую сборку.")}</small>
+              )}
+              {runtimeBlocked && (
+                <small>{t("Сначала остановите эту сборку")}</small>
+              )}
+              {running && reloadableContent(project.kind) && (
+                <small>{t(contentReloadHint)}</small>
               )}
               {selected && !canInstall && profile && (
                 <small>{t("Версия не подходит для выбранной сборки.")}</small>

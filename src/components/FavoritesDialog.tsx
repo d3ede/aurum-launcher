@@ -28,6 +28,7 @@ import {
 } from "./PlatformPackOptions";
 import { ProjectIcon } from "../screens/Catalog";
 import { NativeModNotice } from "./NativeModNotice";
+import { contentReloadHint, reloadableContent } from "../lib/content-runtime";
 
 type Plan = {
   loading: boolean;
@@ -223,7 +224,8 @@ export function FavoritesDialog({
       !plan.error &&
       (item.project.kind === "modpack" ||
         (matchesEngine(item.project, profile) &&
-          !data.running.includes(profileId))) &&
+          (!data.running.includes(profileId) ||
+            reloadableContent(item.project.kind)))) &&
       (!packSource(item.project.source) || configuration(item)?.ready)
     );
   };
@@ -302,7 +304,10 @@ export function FavoritesDialog({
                 throw new Error(
                   t("Для этой сборки нет совместимой версии проекта"),
                 );
-              if (current.running.includes(target.id))
+              if (
+                current.running.includes(target.id) &&
+                !reloadableContent(project.kind)
+              )
                 throw new Error(t("Сначала остановите эту сборку"));
               // An earlier project may already have installed this dependency.
               if (
@@ -465,14 +470,18 @@ export function FavoritesDialog({
                             ? ""
                             : plan?.error ||
                               (project.kind !== "modpack" &&
-                              data.running.includes(profileId)
+                              data.running.includes(profileId) &&
+                              !reloadableContent(project.kind)
                                 ? t("Сначала остановите эту сборку")
                                 : packSource(project.source) &&
                                     !configuration(item)?.ready
                                   ? t(
                                       "Проверьте параметры модпака и выберите обязательные файлы.",
                                     )
-                                  : t("Готово к установке"));
+                                  : data.running.includes(profileId) &&
+                                      reloadableContent(project.kind)
+                                    ? t(contentReloadHint)
+                                    : t("Готово к установке"));
               return (
                 <article
                   className="favorite-row"

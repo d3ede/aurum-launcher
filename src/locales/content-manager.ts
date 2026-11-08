@@ -1,4 +1,6 @@
 export const contentManagerEnglish: Record<string, string> = {
+  "Ресурспаки и шейдеры можно менять без выхода из игры. Выберите пак в настройках Minecraft; для перезагрузки текстур нажмите F3+T, для шейдеров используйте меню шейдеров.":
+    "Resource packs and shaders can be changed while the game is running. Select the pack in Minecraft settings; press F3+T to reload textures, or use the shader menu to reload shaders.",
   Фильтр: "Filter",
   "Добавить файл": "Add file",
   Проект: "Project",

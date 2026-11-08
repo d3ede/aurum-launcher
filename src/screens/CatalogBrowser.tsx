@@ -36,6 +36,7 @@ import { categoryKey } from "../lib/catalog-categories";
 import { FavoriteButton } from "../components/FavoriteButton";
 import { FavoritesDialog } from "../components/FavoritesDialog";
 import { useFavorites } from "../lib/favorites";
+import { contentReloadHint, reloadableContent } from "../lib/content-runtime";
 export function Catalog({
   query,
   setQuery,
@@ -236,7 +237,12 @@ export function Catalog({
     needsLoader,
   ]);
   const install = async (project: Project) => {
-    if (!profile || busy || data.running.includes(profile.id)) return;
+    if (
+      !profile ||
+      busy ||
+      (data.running.includes(profile.id) && !reloadableContent(project.kind))
+    )
+      return;
     setPending({
       projectId: project.id,
       source: project.source,
@@ -275,7 +281,12 @@ export function Catalog({
     }
   };
   const remove = async (project: Project, contentId: string) => {
-    if (!profile || busy || data.running.includes(profile.id)) return;
+    if (
+      !profile ||
+      busy ||
+      (data.running.includes(profile.id) && !reloadableContent(project.kind))
+    )
+      return;
     setPending({
       projectId: project.id,
       source: project.source,
@@ -337,6 +348,11 @@ export function Catalog({
           {bound && <span>{t("Только совместимые проекты")}</span>}
         </div>
       )}
+      {bound &&
+        data.running.includes(profile.id) &&
+        reloadableContent(kind) && (
+          <p className="catalog-provider-note">{t(contentReloadHint)}</p>
+        )}
       {source === "horizon" && (
         <p className="catalog-provider-note">
           {t(
@@ -584,7 +600,10 @@ export function Catalog({
                           state={action}
                           title={project.title}
                           disabled={
-                            busy || (bound && data.running.includes(profile.id))
+                            busy ||
+                            (bound &&
+                              data.running.includes(profile.id) &&
+                              !reloadableContent(project.kind))
                           }
                           onClick={() => {
                             if (!bound) onProject(project);

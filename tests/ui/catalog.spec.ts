@@ -809,7 +809,53 @@ test("running instances disable catalog mutations and English action labels tran
   );
   await expect(page.locator(".catalog-install-button").first()).toBeDisabled();
   await expect(page.locator(".catalog-install-button").nth(1)).toBeDisabled();
+  await page.locator(".catalog-card").nth(1).click();
+  await expect(
+    page.getByRole("button", {
+      name: "Set up with dependencies",
+      exact: true,
+    }),
+  ).toBeDisabled();
 });
+
+for (const source of ["Modrinth", "CurseForge"]) {
+  for (const kind of ["Ресурспаки", "Шейдеры"]) {
+    test(`running instances can install and remove ${kind} from ${source}`, async ({
+      page,
+    }) => {
+      await fixture(page, "ru", true, true);
+      if (source === "CurseForge") {
+        await page
+          .getByRole("combobox", { name: "Источник проектов", exact: true })
+          .click();
+        await page.getByRole("option", { name: source, exact: true }).click();
+      }
+      await bindRadiance(page);
+      await page.getByRole("button", { name: kind, exact: true }).click();
+      await expect(page.locator(".catalog-provider-note")).toContainText(
+        "F3+T",
+      );
+      const install = page.locator(".catalog-install-button").nth(1);
+      await expect(install).toBeEnabled();
+      await page.locator(".catalog-card").nth(1).click();
+      await expect(
+        page.getByRole("button", {
+          name: "Установить с зависимостями",
+          exact: true,
+        }),
+      ).toBeEnabled();
+      await page.keyboard.press("Escape");
+      await install.click();
+      await expect(install).toHaveAttribute("aria-busy", "true");
+      await page.evaluate(() => (window as any).finishCatalogAction());
+      await expect(install).toHaveClass(/is-installed/);
+      await install.click();
+      await expect(install).toHaveAttribute("aria-busy", "true");
+      await page.evaluate(() => (window as any).finishCatalogAction());
+      await expect(install).not.toHaveClass(/is-installed/);
+    });
+  }
+}
 
 test("CurseForge opens project versions and installs into the selected instance", async ({
   page,
