@@ -97,8 +97,8 @@ async function fixture(
           if (action === "snapshot") return structuredClone(state);
           if (action === "installContent" || action === "manageContent") {
             await new Promise<void>((resolve, reject) => {
-              w.finishCatalogAction = (fail = false) =>
-                fail ? reject(new Error("Fixture action failed")) : resolve();
+              w.finishCatalogAction = (fail: boolean | string = false) =>
+                fail ? reject(new Error(typeof fail === "string" ? fail : "Fixture action failed")) : resolve();
             });
             const profile = profiles.find((p) => p.id === payload.id)!;
             if (action === "installContent")
@@ -758,6 +758,35 @@ test("failed catalog actions restore controls, including installed state after f
     await expect(button).toBeEnabled();
     await expect(button).toHaveClass(index ? /is-available/ : /is-installed/);
     await expect(page.locator(".toast")).toContainText("Fixture action failed");
+  }
+});
+
+test("dependency errors identify the addon and missing mod and remain readable in both themes", async ({ page }) => {
+  await fixture(page, "ru", true);
+  await bindRadiance(page);
+  await page.setViewportSize({width: 960, height: 720});
+  const message = "Не удалось установить «Immersive Weathering + Nature's Delight: Bark Stripping»: нужна зависимость «Farmer's Delight Refabricated», но в Modrinth нет версии для Minecraft 1.20.1 / Forge.\nВыберите другую версию аддона или проверьте требования зависимости: https://modrinth.com/project/7vxePowz";
+  for (const theme of ["light", "dark"]) {
+    if (theme === "dark") await page.getByRole("button", {name: "Переключить тему"}).click();
+    await page.locator(".catalog-install-button").nth(1).click();
+    await expect.poll(() => page.evaluate(() => typeof (window as any).finishCatalogAction)).toBe("function");
+    await page.evaluate((text) => (window as any).finishCatalogAction(text), message);
+    const toast = page.getByRole("alert");
+    await expect(toast).toContainText("Farmer's Delight Refabricated");
+    await expect(toast).toContainText("Bark Stripping");
+    await expect(toast).toContainText("1.20.1 / Forge");
+    await expect(toast).toContainText("https://modrinth.com/project/7vxePowz");
+    const text = toast.locator("span").first();
+    await expect(text).toHaveCSS("white-space", "pre-line");
+    await expect(text).toHaveCSS("user-select", "text");
+    const bounds = (await toast.boundingBox())!;
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(960);
+    expect(bounds.y).toBeGreaterThanOrEqual(0);
+    expect(await text.evaluate(e => e.scrollWidth <= e.clientWidth)).toBe(true);
+    await toast.screenshot({path:`.test-data/dependency-error-${theme}.png`, animations:"disabled"});
+    await toast.getByRole("button",{name:"Закрыть уведомление"}).click();
+    await expect(toast).toHaveCount(0);
   }
 });
 

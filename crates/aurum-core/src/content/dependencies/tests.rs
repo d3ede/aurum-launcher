@@ -194,3 +194,101 @@ async fn pin_without_project_id_can_reuse_but_mismatched_project_is_rejected() {
     .await;
     assert!(result.is_err());
 }
+
+#[tokio::test]
+async fn reuses_unrelated_mods_by_catalog_identity_not_a_superb_warfare_allowlist() {
+    let (_dir, profile, instance, mut item) = fixture().await;
+    item.project_id = "unrelated-library".into();
+    item.version_id = "installed-library-release".into();
+    item.name = "A completely different library".into();
+    let mut raw = installed_version();
+    raw["project_id"] = json!(item.project_id);
+    raw["id"] = json!(item.version_id);
+    let result = reusable_modrinth_dependency(
+        &profile,
+        &instance,
+        &[item],
+        &json!({"project_id":"unrelated-library"}),
+        None,
+        |_| std::future::ready(Ok(raw.clone())),
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        result,
+        Some((
+            "unrelated-library".into(),
+            "installed-library-release".into()
+        ))
+    );
+}
+
+#[tokio::test]
+async fn curseforge_reuses_verified_installed_mod_and_rejects_foreign_or_changed_files() {
+    for scenario in [
+        "valid",
+        "minecraft",
+        "loader",
+        "project",
+        "changed",
+        "disabled",
+    ] {
+        let (_dir, profile, instance, mut item) = fixture().await;
+        item.source = "curseforge".into();
+        item.project_id = "12345".into();
+        item.version_id = "67890".into();
+        let mut raw = json!({"id":67890,"modId":12345,"gameVersions":["1.20.1","Forge"],
+            "fileName":item.filename,"hashes":[{"algo":1,"value":format!("{:x}", Sha1::digest(BYTES))}]});
+        match scenario {
+            "minecraft" => raw["gameVersions"] = json!(["1.21.1", "Forge"]),
+            "loader" => raw["gameVersions"] = json!(["1.20.1", "Fabric"]),
+            "project" => raw["modId"] = json!(99999),
+            "changed" => {
+                std::fs::write(instance.join("mods").join(&item.filename), b"replaced file")
+                    .unwrap()
+            }
+            "disabled" => item.enabled = false,
+            _ => {}
+        }
+        let result = reusable_installed_dependency(
+            &profile,
+            &instance,
+            &[item],
+            "curseforge",
+            "12345",
+            |_| std::future::ready(Ok(raw.clone())),
+        )
+        .await
+        .unwrap();
+        assert_eq!(result.is_some(), scenario == "valid", "{scenario}");
+    }
+}
+
+#[tokio::test]
+async fn missing_dependency_explains_parent_dependency_profile_catalog_and_recovery() {
+    let (_dir, profile, _, _) = fixture().await;
+    let error = unavailable_dependency(
+        "modrinth",
+        "Bark Stripping",
+        "7vxePowz",
+        Some("Farmer's Delight Refabricated"),
+        &profile,
+    )
+    .to_string();
+    for detail in [
+        "Bark Stripping",
+        "Farmer's Delight Refabricated",
+        "Minecraft 1.20.1 / Forge",
+        "Modrinth",
+        "https://modrinth.com/project/7vxePowz",
+    ] {
+        assert!(error.contains(detail), "Missing {detail}: {error}");
+    }
+    for title in [None, Some(" ")] {
+        let fallback =
+            unavailable_dependency("curseforge", "Addon", "12345", title, &profile).to_string();
+        assert!(fallback.contains("«12345»"));
+        assert!(fallback.contains("CurseForge"));
+        assert!(fallback.contains("https://www.curseforge.com/projects/12345"));
+    }
+}

@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Ошибки установки называют недостающую зависимость, нужный аддон и версию игры; совместимые установленные моды учитываются в Modrinth и CurseForge.":
+    "Installation errors identify the missing dependency, the addon that needs it and the game version; verified installed mods are reused on Modrinth and CurseForge.",
   "Установка аддонов сохраняет проверенный совместимый мод, если зависимость ошибочно указывает на другую версию Minecraft или загрузчик.":
     "Addon installation keeps a verified compatible mod when a dependency incorrectly targets another Minecraft version or loader.",
   "Приглашения Social используют запущенную совместимую сборку без открытия второго Minecraft.":

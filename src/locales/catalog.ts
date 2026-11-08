@@ -1,4 +1,6 @@
 export const catalogEnglish: Record<string, string> = {
+  "Не удалось установить «{{v1}}»: нужна зависимость «{{v2}}», но в {{v3}} нет версии для Minecraft {{v4}} / {{v5}}.\nВыберите другую версию аддона или проверьте требования зависимости: {{v6}}":
+    "Could not install “{{v1}}”: the required dependency “{{v2}}” has no version for Minecraft {{v4}} / {{v5}} on {{v3}}.\nChoose another addon version or check the dependency requirements: {{v6}}",
   "Скачайте недостающие файлы по ссылкам. Лаунчер проверяет «Загрузки» и файлы в сборке по контрольной сумме, даже если имя изменено. Файл из другой папки можно выбрать вручную.":
     "Download the missing files using the links. The launcher checks Downloads and files already in the instance by checksum, even if renamed. Files from other folders can be selected manually.",
   "Переносить скачанные файлы в сборку после проверки":

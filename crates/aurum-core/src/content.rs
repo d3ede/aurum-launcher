@@ -106,9 +106,32 @@ impl Engine {
                         ).await?;
                         if let Some(dependency) = reuse { queue.push(dependency); }
                         else if let Some(r) = pinned { queue.push((r["project_id"].as_str().context("Нет project ID зависимости")?.into(),dep["version_id"].as_str().context("Нет версии зависимости")?.into())); }
-                        else if let Some(p)=dep["project_id"].as_str() { let options=self.mr_versions(p,Some(&profile.minecraft),Some(profile.loader.key())).await?; let v=options.first().context("Нет совместимой обязательной зависимости")?; queue.push((p.into(),v["id"].as_str().context("Нет версии зависимости")?.into())); }
+                        else if let Some(p)=dep["project_id"].as_str() {
+                            let options=self.mr_versions(p,Some(&profile.minecraft),Some(profile.loader.key())).await?;
+                            let Some(v)=options.iter().find(|v| compatible(&mr_version(v), &profile, "mod")) else {
+                                let details = self.json(&format!("{MODRINTH}/project/{p}")).await.ok();
+                                return Err(dependencies::unavailable_dependency(source, &name, p, details.as_ref().and_then(|v| v["title"].as_str()), &profile));
+                            };
+                            queue.push((p.into(),v["id"].as_str().context("Нет версии зависимости")?.into()));
+                        }
                         else { bail!("Зависимость доступна только как локальный файл; добавьте её вручную") }
-                    } else { let p=dep["modId"].to_string(); let options=self.cf_versions(&p,Some(&profile.minecraft),Some(profile.loader.key())).await?; let v=options.first().context("Нет совместимой зависимости CurseForge")?; queue.push((p,v["id"].to_string())); }
+                    } else {
+                        let p=dep["modId"].to_string();
+                        if installed.is_none() { installed = Some(self.list_content(profile_id).await?); }
+                        let reuse = dependencies::reusable_installed_dependency(
+                            &profile, &instance, installed.as_deref().unwrap_or_default(), source, &p,
+                            |v| { let project = p.clone(); async move { Ok(self.cf(&format!("/mods/{project}/files/{v}")).await?["data"].clone()) } },
+                        ).await?;
+                        if let Some(dependency) = reuse { queue.push(dependency); }
+                        else {
+                            let options=self.cf_versions(&p,Some(&profile.minecraft),Some(profile.loader.key())).await?;
+                            let Some(v)=options.iter().find(|v| compatible(&cf_version(v), &profile, "mod")) else {
+                                let details = self.cf(&format!("/mods/{p}")).await.ok();
+                                return Err(dependencies::unavailable_dependency(source, &name, &p, details.as_ref().and_then(|v| v["data"]["name"].as_str()), &profile));
+                            };
+                            queue.push((p,v["id"].to_string()));
+                        }
+                    }
                 } }
                 let (filename,url,hash)=if source=="modrinth" {
                     let files=raw["files"].as_array().context("Нет файлов версии")?; let file=files.iter().find(|f|f["primary"]==true).or(files.first()).context("Версия не содержит файлов")?;

@@ -2148,6 +2148,12 @@ kbd {
   border-color: var(--danger-border);
   color: var(--danger);
 }
+.toast > span {
+  min-width: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
 .toast > button {
   border: 0;
   background: none;

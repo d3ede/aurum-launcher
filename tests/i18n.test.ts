@@ -20,6 +20,15 @@ afterEach(async () => {
   await setLanguagePreference("ru");
 });
 describe("offline language packs", () => {
+  it("translates dependency diagnostics while preserving names, loader and recovery link", async () => {
+    const message = "Не удалось установить «Bark Stripping»: нужна зависимость «Farmer's Delight Refabricated», но в Modrinth нет версии для Minecraft 1.20.1 / Forge.\nВыберите другую версию аддона или проверьте требования зависимости: https://modrinth.com/project/7vxePowz";
+    await setLanguagePreference("en");
+    expect(tMessage(message)).toBe("Could not install “Bark Stripping”: the required dependency “Farmer's Delight Refabricated” has no version for Minecraft 1.20.1 / Forge on Modrinth.\nChoose another addon version or check the dependency requirements: https://modrinth.com/project/7vxePowz");
+    await setLanguagePreference("uk");
+    expect(tMessage(message)).toContain("Farmer's Delight Refabricated");
+    expect(tMessage(message)).toContain("https://modrinth.com/project/7vxePowz");
+    expect(tMessage(message)).toContain("Не вдалося встановити");
+  });
   it("uses the current language for the Friends navigation label",async()=>{
     await setLanguagePreference("ru");expect(ru.routes.friends).toBe("Друзья");
     await setLanguagePreference("en");expect(ru.routes.friends).toBe("Friends");
