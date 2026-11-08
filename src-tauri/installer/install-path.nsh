@@ -1,5 +1,5 @@
-; Input/output: $0. Disk/share roots receive a dedicated product directory.
-; Preserve explicitly chosen folders; inputs without a root remain for validation.
+; Input/output: $0. Rooted selections use a dedicated product/Launcher directory.
+; Already-final Launcher directories are preserved; unrooted inputs stay invalid.
 Function AurumNormalizeInstallPath
   Push $1
   Push $2
@@ -28,13 +28,13 @@ Function AurumNormalizeInstallPath
         StrCpy $0 "$1\${PRODUCTNAME}"
       ${EndIf}
     ${EndIf}
-  ${EndIf}
-  ${GetFileName} "$0" $1
-  ${If} $1 != "Launcher"
-    ${If} $1 != "${PRODUCTNAME}"
-      StrCpy $0 "$0\${PRODUCTNAME}"
+    ${GetFileName} "$0" $1
+    ${If} $1 != "Launcher"
+      ${If} $1 != "${PRODUCTNAME}"
+        StrCpy $0 "$0\${PRODUCTNAME}"
+      ${EndIf}
+      StrCpy $0 "$0\Launcher"
     ${EndIf}
-    StrCpy $0 "$0\Launcher"
   ${EndIf}
   Pop $2
   Pop $1

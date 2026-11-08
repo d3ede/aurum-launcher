@@ -4,7 +4,7 @@ $storageProject=Split-Path -Parent $PSScriptRoot
 $storageSetup=(Resolve-Path -LiteralPath $SetupPath).Path
 if((Get-Item -LiteralPath $storageSetup).VersionInfo.ProductName -ne 'Aurum Installer QA') { throw 'Only the isolated QA installer is accepted.' }
 $storageTest=[IO.Path]::GetFullPath((Join-Path $storageProject '.test-data/storage-uninstall'))
-$storageInstall=[IO.Path]::GetFullPath((Join-Path $storageProject '.test-data/installer-smoke/installed'))
+$storageInstall=[IO.Path]::GetFullPath((Join-Path $storageProject '.test-data/installer-smoke/installed/Launcher'))
 $storageState=@{profiles=@();accounts=@();selectedAccount=$null;settings=@{language='ru';theme='light';javaPath='';ramMb=4096;jvmArgs='';resolutionWidth=1280;resolutionHeight=720;showSnapshots=$false}} | ConvertTo-Json -Depth 8
 function Invoke-StorageProcess([string]$File,[string]$Arguments,[int]$Expected=0) {
   $storageProcess=Start-Process -FilePath $File -ArgumentList $Arguments -WindowStyle Hidden -PassThru

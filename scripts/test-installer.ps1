@@ -5,7 +5,7 @@ $installerSetup=(Resolve-Path -LiteralPath $SetupPath).Path
 if((Get-Item -LiteralPath $installerSetup).VersionInfo.ProductName -ne 'Aurum Installer QA') {
   throw 'This test only accepts the isolated Aurum Installer QA bundle.'
 }
-$installerTest=[IO.Path]::GetFullPath((Join-Path $installerProject '.test-data/installer-smoke/installed'))
+$installerTest=[IO.Path]::GetFullPath((Join-Path $installerProject '.test-data/installer-smoke/installed/Launcher'))
 $installerRegistry='Software\AurumInstallerQA\Aurum Installer QA'
 $installerUninstallRegistry='Software\Microsoft\Windows\CurrentVersion\Uninstall\Aurum Installer QA'
 $installerDesktop=Join-Path ([Environment]::GetFolderPath('Desktop')) 'Aurum Installer QA.lnk'
