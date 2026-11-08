@@ -336,7 +336,7 @@ test("loader symbols retain selected colors after saving and reopening", async (
       .getByRole("textbox", { name: "Цвет фона HEX" })
       .fill("#123456");
     await expect(editor.locator(".profile-icon .loader-glyph")).toHaveCSS(
-      "background-color",
+      "color",
       "rgb(171, 205, 239)",
     );
     await expect(editor.locator(".profile-icon")).toHaveCSS(
@@ -352,8 +352,72 @@ test("loader symbols retain selected colors after saving and reopening", async (
     .first()
     .locator(".profile-icon");
   await expect(icon.locator(".loader-glyph")).toHaveCSS(
-    "background-color",
+    "color",
     "rgb(171, 205, 239)",
   );
   await expect(icon).toHaveCSS("background-color", "rgb(18, 52, 86)");
+});
+
+test("Fabric texture keeps opaque highlights and shadows on either background", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Мои сборки", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Открыть Мир значков", exact: true })
+    .first()
+    .click();
+  await page.getByRole("button", { name: "Изменить значок сборки" }).click();
+  const editor = page.locator(".icon-editor");
+  await editor.getByRole("button", { name: "Fabric", exact: true }).click();
+  await editor
+    .getByRole("textbox", { name: "Цвет символа HEX" })
+    .fill("#7394BD");
+  const texture = editor.locator(".profile-icon svg.loader-texture");
+  let previous: number[][] | undefined;
+  for (const background of ["#FFFFFF", "#000000"]) {
+    await editor
+      .getByRole("textbox", { name: "Цвет фона HEX" })
+      .fill(background);
+    const samples = await texture.evaluate(async (element) => {
+      const clone = element.cloneNode(true) as SVGSVGElement;
+      const sourcePaths = element.querySelectorAll("path");
+      clone.querySelectorAll("path").forEach((path, index) => {
+        path.setAttribute("fill", getComputedStyle(sourcePaths[index]).fill);
+      });
+      clone.setAttribute("width", "150");
+      clone.setAttribute("height", "160");
+      const url = URL.createObjectURL(
+        new Blob([new XMLSerializer().serializeToString(clone)], {
+          type: "image/svg+xml",
+        }),
+      );
+      try {
+        const image = new Image();
+        image.src = url;
+        await image.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = 150;
+        canvas.height = 160;
+        const context = canvas.getContext("2d")!;
+        context.drawImage(image, 0, 0);
+        // Cloth surface, dark fold, lower rim and the highlighted rolled edge.
+        return [
+          [55, 85],
+          [85, 45],
+          [55, 125],
+          [95, 35],
+        ].map(([x, y]) => Array.from(context.getImageData(x, y, 1, 1).data));
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    });
+    for (const pixel of samples) expect(pixel[3]).toBe(255);
+    expect(
+      new Set(samples.map((pixel) => pixel.slice(0, 3).join(","))).size,
+    ).toBeGreaterThanOrEqual(3);
+    if (previous) expect(samples).toEqual(previous);
+    previous = samples;
+  }
 });

@@ -5,16 +5,16 @@ import neoforge from "../assets/loaders/neoforge.png";
 import quilt from "../assets/loaders/quilt.svg";
 import vanilla from "../assets/loaders/vanilla.svg";
 import vanillaMask from "../assets/loaders/grass-block.png";
-import fabricMask from "../assets/loaders/fabric-mask.svg";
 import horizon from "../assets/loaders/horizon.svg";
 import forgeMask from "../assets/loaders/forge-mask.png";
 import quiltMask from "../assets/loaders/quilt-mask.svg";
 import neoforgeMask from "../assets/loaders/neoforge-mask.svg";
 import horizonMask from "../assets/loaders/horizon-mask.svg";
+export { FabricGlyph } from "./FabricGlyph";
 
 export const loaderBrands = {
   vanilla: { name: "Vanilla", source: vanilla, mask: vanillaMask },
-  fabric: { name: "Fabric", source: fabric, mask: fabricMask },
+  fabric: { name: "Fabric", source: fabric },
   forge: { name: "Forge", source: forge, mask: forgeMask },
   neoforge: { name: "NeoForge", source: neoforge, mask: neoforgeMask },
   quilt: { name: "Quilt", source: quilt, mask: quiltMask },
@@ -41,7 +41,7 @@ export function LoaderLogo({
   );
 }
 
-const glyph = (brand: LoaderBrand) =>
+const glyph = (brand: Exclude<LoaderBrand, "fabric">) =>
   function BrandGlyph({
     size = 24,
   }: {
@@ -63,7 +63,6 @@ const glyph = (brand: LoaderBrand) =>
       />
     );
   };
-export const FabricGlyph = glyph("fabric");
 export const ForgeGlyph = glyph("forge");
 export const NeoForgeGlyph = glyph("neoforge");
 export const QuiltGlyph = glyph("quilt");

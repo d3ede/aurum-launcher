@@ -2605,6 +2605,9 @@ kbd {
   -webkit-mask-size: contain;
   -webkit-mask-position: center;
 }
+.loader-glyph.loader-texture {
+  background: none;
+}
 .horizon-info {
   display: flex;
   gap: 14px;

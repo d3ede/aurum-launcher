@@ -17,7 +17,7 @@ import purpur from "../assets/hosting/purpur.svg";
 import spigot from "../assets/hosting/spigot.svg";
 import type { HostingProfile } from "../lib/hosting";
 import { hostingCores } from "../lib/hosting";
-import { loaderBrands } from "./LoaderLogo";
+import { FabricGlyph, loaderBrands } from "./LoaderLogo";
 
 export const hostingSymbols = [
   { id: "core", Icon: Layers3, label: "Значок ядра" },
@@ -41,7 +41,7 @@ const hostingBrands: Record<string, { source: string; mask?: boolean }> = {
   velocity: { source: velocity },
   purpur: { source: purpur, mask: true },
   spigot: { source: spigot, mask: true },
-  fabric: { source: loaderBrands.fabric.mask, mask: true },
+  fabric: { source: loaderBrands.fabric.source },
   forge: { source: loaderBrands.forge.mask, mask: true },
   neoforge: { source: loaderBrands.neoforge.mask, mask: true },
 };
@@ -86,7 +86,9 @@ export function HostingIcon({
           variant === "glyph" ? "transparent" : profile.icon.background,
       }}
     >
-      {brand?.mask ? (
+      {iconCore === "fabric" ? (
+        <FabricGlyph className="hosting-brand-texture" label="Fabric" />
+      ) : brand?.mask ? (
         <span
           className="hosting-brand-mask"
           role="img"
