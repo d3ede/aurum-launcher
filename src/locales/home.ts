@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Установка аддонов сохраняет проверенный совместимый мод, если зависимость ошибочно указывает на другую версию Minecraft или загрузчик.":
+    "Addon installation keeps a verified compatible mod when a dependency incorrectly targets another Minecraft version or loader.",
   "Приглашения Social используют запущенную совместимую сборку без открытия второго Minecraft.":
     "Social invitations reuse a running compatible instance without opening a second Minecraft.",
   "Модпаки: ручная замена файлов с подтверждением, обновлённое окно загрузок и восстановление обложек CurseForge.":

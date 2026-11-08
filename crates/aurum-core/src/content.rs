@@ -6,6 +6,7 @@ use crate::{
 };
 use anyhow::{bail, Context, Result};
 use std::collections::HashMap;
+mod dependencies;
 
 pub fn folder(kind: &str) -> Result<&'static str> {
     match kind {
@@ -73,6 +74,7 @@ impl Engine {
         let stage = self.root.join("staging").join(&task.id);
         tokio::fs::create_dir_all(&stage).await?;
         let result:Result<()>=async {
+            let mut installed = None;
             let mut queue=vec![(project_id.to_string(),version_id.to_string())]; let mut seen=HashMap::new(); let mut plan=vec![]; let mut conflicts=vec![];
             while let Some((project,version))=queue.pop() {
                 task.check()?; if let Some(previous) = seen.insert(project.clone(), version.clone()) { if previous != version { bail!("Конфликт версий зависимости {project}") } continue }
@@ -94,7 +96,16 @@ impl Engine {
                     if incompatible { if let Some(p)=dep["project_id"].as_str() {conflicts.push(p.to_string());} }
                     if !required { continue }
                     if source=="modrinth" {
-                        if let Some(v)=dep["version_id"].as_str() { let r=self.json(&format!("{MODRINTH}/version/{v}")).await?; queue.push((r["project_id"].as_str().context("Нет project ID зависимости")?.into(),v.into())); }
+                        let pinned = if let Some(v) = dep["version_id"].as_str() {
+                            Some(self.json(&format!("{MODRINTH}/version/{v}")).await?)
+                        } else { None };
+                        if installed.is_none() { installed = Some(self.list_content(profile_id).await?); }
+                        let reuse = dependencies::reusable_modrinth_dependency(
+                            &profile, &instance, installed.as_deref().unwrap_or_default(), dep,
+                            pinned.as_ref(), |v| async move { self.json(&format!("{MODRINTH}/version/{v}")).await },
+                        ).await?;
+                        if let Some(dependency) = reuse { queue.push(dependency); }
+                        else if let Some(r) = pinned { queue.push((r["project_id"].as_str().context("Нет project ID зависимости")?.into(),dep["version_id"].as_str().context("Нет версии зависимости")?.into())); }
                         else if let Some(p)=dep["project_id"].as_str() { let options=self.mr_versions(p,Some(&profile.minecraft),Some(profile.loader.key())).await?; let v=options.first().context("Нет совместимой обязательной зависимости")?; queue.push((p.into(),v["id"].as_str().context("Нет версии зависимости")?.into())); }
                         else { bail!("Зависимость доступна только как локальный файл; добавьте её вручную") }
                     } else { let p=dep["modId"].to_string(); let options=self.cf_versions(&p,Some(&profile.minecraft),Some(profile.loader.key())).await?; let v=options.first().context("Нет совместимой зависимости CurseForge")?; queue.push((p,v["id"].to_string())); }
@@ -111,7 +122,7 @@ impl Engine {
                 // Keep a verified, enabled dependency in place, including mods already
                 // loaded by the game. Missing, disabled or changed dependencies still
                 // go through the runtime guard and the transactional install below.
-                if project != project_id && profile.content.iter().any(|c| c.source == source && c.project_id == project && c.version_id == version && c.kind == kind && c.filename == filename && c.enabled) {
+                if project != project_id && installed.as_deref().unwrap_or(&profile.content).iter().any(|c| c.source == source && c.project_id == project && c.version_id == version && c.kind == kind && c.filename == filename && c.enabled) {
                     let existing = instance.join(directory).join(&filename);
                     if existing.is_file() && crate::net::verify(&existing, hash.as_ref().map(|(a,h)|(a.as_str(),h.as_str()))).await? { continue }
                 }
