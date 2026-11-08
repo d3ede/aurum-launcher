@@ -58,7 +58,12 @@ export function ProfileCard({
   );
   if (layout === "row") {
     return (
-      <article className="instance-card instance-card-row">
+      <article
+        className="instance-card instance-card-row"
+        onClick={(event) => {
+          if (!(event.target as Element).closest("button")) onOpen();
+        }}
+      >
         <div className="instance-card-grip">{reorderHandle}</div>
         <button
           className="instance-card-open"
@@ -81,16 +86,16 @@ export function ProfileCard({
               {status}
             </span>
           </div>
-          <ChevronRight
-            className="instance-card-chevron"
-            size={16}
-            aria-hidden="true"
-          />
         </button>
         <div className="instance-card-launch">{launch}</div>
         <div className="instance-card-menu">
           <ProfileActions profile={profile} />
         </div>
+        <ChevronRight
+          className="instance-card-chevron"
+          size={16}
+          aria-hidden="true"
+        />
       </article>
     );
   }

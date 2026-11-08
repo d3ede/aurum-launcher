@@ -43,26 +43,26 @@
 }
 .instance-card-row .instance-card-open {
   position: relative;
-  grid-column: 2 / -1;
+  grid-column: 2;
   grid-row: 1;
   align-self: stretch;
   gap: 12px;
   padding: 14px 10px;
-  padding-inline-end: 184px;
+  padding-inline-end: 10px;
   text-align: start;
 }
 .instance-card-row .instance-card-open:hover {
   background: transparent;
 }
-.instance-card-row .instance-card-open > .instance-card-chevron {
-  position: absolute;
-  inset-inline-end: 8px;
-  top: 50%;
-  transform: translateY(-50%);
+.instance-card-row > .instance-card-chevron {
+  grid-column: 5;
+  grid-row: 1;
+  justify-self: center;
+  color: var(--muted);
   pointer-events: none;
 }
-[dir="rtl"] .instance-card-row .instance-card-open > .instance-card-chevron {
-  transform: translateY(-50%) scaleX(-1);
+[dir="rtl"] .instance-card-row > .instance-card-chevron {
+  transform: scaleX(-1);
 }
 .instance-card-row .instance-card-open h3 {
   font-size: 16px;
@@ -159,10 +159,7 @@
   }
   .instance-card-row .instance-card-open {
     gap: 8px;
-    padding-inline-end: 148px;
-  }
-  .instance-card-row .instance-card-open > .instance-card-chevron {
-    inset-inline-end: 4px;
+    padding-inline-end: 10px;
   }
   .instance-card-row .instance-card-play {
     width: 84px;
