@@ -33,9 +33,10 @@ PolyForm license; their respective owners retain their rights.
 The color selector uses the original images, except for the smooth Fabric
 roll and geometric Vanilla block. The instance icon editor offers
 monochrome adaptations for user-selected colors. `forge-mask.png` removes the
-original background using `scripts/loader-masks.ps1`; `fabric-mask.svg` uses
-the original `fabric.png` silhouette with smoothed pixel corners and a transparent
-fold detail. Its fill is fully opaque, with no palette texture or tonal layers.
+original background using `scripts/loader-masks.ps1`; `fabric-mask.svg` retains
+the original `fabric.png` silhouette with smoothed pixel corners. Its monochrome
+surfaces distinguish the rolled edge, cloth sheet and lower folded rim using
+controlled opacity, omitting the source's small palette speckles.
 Both monochrome SVG masks are used in hosting and the instance icon editor.
 The Vanilla mask uses the original alpha channel. Colors and backgrounds
 chosen for an instance are user customization, not replacement official logos.
