@@ -3,6 +3,7 @@ import { t } from "../lib/i18n";
 import { Upload, RotateCcw } from "lucide-react";
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
+import gameDie from "../assets/ui/game-die.svg";
 import {
   defaultIconStyle,
   iconSymbols,
@@ -197,40 +198,15 @@ export function IconPicker({
             onChange({ ...value, icon: null, iconStyle: randomIconStyle() });
           }}
         >
-          <svg
+          <img
             key={roll}
             className={`randomizer-die${roll ? " is-rolling" : ""}`}
+            src={gameDie}
             width="28"
             height="28"
-            viewBox="0 0 32 32"
-            fill="none"
+            alt=""
             aria-hidden="true"
-          >
-            <g
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            >
-              <path d="M16 3 27.258 9.5v13L16 29 4.742 22.5v-13Z" />
-              <path d="M4.742 9.5 16 16l11.258-6.5M16 16v13" />
-            </g>
-            <g fill="currentColor">
-              {/* Project the pips on the same three planes as the cube edges. */}
-              <g transform="matrix(.866 .5 -.866 .5 16 3)">
-                <circle cx="6.5" cy="6.5" r="1.45" />
-              </g>
-              <g transform="matrix(.866 .5 0 1 4.742 9.5)">
-                <circle cx="4.16" cy="4.16" r="1.45" />
-                <circle cx="8.84" cy="8.84" r="1.45" />
-              </g>
-              <g transform="matrix(.866 -.5 0 1 16 16)">
-                <circle cx="3.25" cy="3.25" r="1.45" />
-                <circle cx="6.5" cy="6.5" r="1.45" />
-                <circle cx="9.75" cy="9.75" r="1.45" />
-              </g>
-            </g>
-          </svg>
+          />
         </button>
       </div>
       <div className="icon-editor-colors">

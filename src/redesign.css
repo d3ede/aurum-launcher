@@ -780,6 +780,8 @@ textarea {
   border-color: #82728f;
 }
 .randomizer-die {
+  display: block;
+  object-fit: contain;
   transform-origin: center;
 }
 .randomizer-die.is-rolling {

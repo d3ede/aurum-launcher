@@ -24,6 +24,10 @@ License, Copyright (c) 2019 Anand Chowdhary.
 See src/assets/languages/LICENSE for the complete license and README.md in
 that directory for asset provenance.
 
+The Game die randomizer artwork is from Microsoft Fluent Emoji, under the MIT
+License, Copyright (c) Microsoft Corporation. See src/assets/ui/README.md and
+src/assets/ui/FLUENT-EMOJI-LICENSE for its source and complete license.
+
 Commercial permissions beyond this license require a separate agreement with
 the relevant copyright holder. Contact d3ede through the project repository.
 
