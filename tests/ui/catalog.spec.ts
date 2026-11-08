@@ -5,6 +5,7 @@ async function fixture(
   language = "ru",
   withProfiles = false,
   running = false,
+  paged = false,
 ) {
   await page.route("https://media.example.test/**", (route) =>
     route.fulfill({
@@ -13,12 +14,12 @@ async function fixture(
     }),
   );
   await page.addInitScript(
-    ({ language, withProfiles, running }) => {
+    ({ language, withProfiles, running, paged }) => {
       localStorage.setItem("aurum:language", language);
       const w = window as any;
       w.isTauri = true;
       w.catalogRequests = [];
-      const projects = Array.from({ length: 9 }, (_, i) => ({
+      const projects = Array.from({ length: paged ? 24 : 9 }, (_, i) => ({
         id: `project-${i}`,
         source: "modrinth",
         kind: "mod",
@@ -117,15 +118,22 @@ async function fixture(
             return null;
           }
           if (action === "search") {
+            if (w.holdCatalogPage)
+              await new Promise<void>((resolve) => {
+                w.finishPageSearch = resolve;
+              });
             if (w.failedSource === payload.query.source)
               throw new Error("Source offline");
+            const total = w.catalogTotal ?? (paged ? 22199 : 9);
             return {
-              projects: projects.map((p) => ({
-                ...p,
-                source: payload.query.source,
-                kind: payload.query.kind,
-              })),
-              total: 9,
+              projects: projects
+                .slice(0, Math.max(0, total - payload.query.offset))
+                .map((p) => ({
+                  ...p,
+                  source: payload.query.source,
+                  kind: payload.query.kind,
+                })),
+              total,
             };
           }
           if (action === "versions")
@@ -171,12 +179,115 @@ async function fixture(
         },
       };
     },
-    { language, withProfiles, running },
+    { language, withProfiles, running, paged },
   );
   await page.goto("/");
   await page.locator(".sidebar nav button").nth(2).click();
   await page.locator(".catalog-result").first().waitFor();
 }
+
+for (const view of ["list", "grid"]) {
+  test(`catalog pagination jumps directly and preserves scroll in ${view} view`, async ({
+    page,
+  }) => {
+    await fixture(page, "ru", false, false, true);
+    if (view === "grid")
+      await page.getByRole("button", { name: "Плитки", exact: true }).click();
+    const pagination = page.getByRole("navigation", {
+      name: "Страницы каталога",
+    });
+    const input = pagination.getByRole("textbox", { name: "Номер страницы" });
+    const previous = pagination.getByRole("button", {
+      name: "Предыдущая страница",
+    });
+    const next = pagination.getByRole("button", { name: "Следующая страница" });
+    await expect(input).toHaveValue("1");
+    await expect(pagination.getByLabel("Всего страниц: 925")).toHaveText("925");
+    await expect(previous).toBeDisabled();
+    await next.scrollIntoViewIfNeeded();
+    const scrollTop = await page
+      .locator(".content-scroll")
+      .evaluate((e) => e.scrollTop);
+    expect(scrollTop).toBeGreaterThan(500);
+    await page.evaluate(() => {
+      (window as any).holdCatalogPage = true;
+    });
+    await next.click();
+    await expect(page.locator(".catalog-result-list")).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+    await expect(page.locator(".catalog-result")).toHaveCount(24);
+    await expect(next).toBeDisabled();
+    expect(
+      await page.locator(".content-scroll").evaluate((e) => e.scrollTop),
+    ).toBeCloseTo(scrollTop, 0);
+    await expect
+      .poll(() => page.evaluate(() => typeof (window as any).finishPageSearch))
+      .toBe("function");
+    await page.evaluate(() => {
+      const w = window as any;
+      w.holdCatalogPage = false;
+      w.finishPageSearch();
+    });
+    await expect(next).toBeEnabled();
+    await expect(input).toHaveValue("2");
+    expect(
+      await page.locator(".content-scroll").evaluate((e) => e.scrollTop),
+    ).toBeCloseTo(scrollTop, 0);
+    await input.fill("500");
+    await input.press("Enter");
+    await expect(next).toBeEnabled();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as any).catalogRequests
+              .filter((r: any) => r.action === "search")
+              .at(-1).payload.query.offset,
+        ),
+      )
+      .toBe(499 * 24);
+    await expect(input).toHaveValue("500");
+    await input.fill("9999");
+    await input.press("Enter");
+    await expect(input).toBeEnabled();
+    await expect(input).toHaveValue("925");
+    await expect(next).toBeDisabled();
+    await expect(page.locator(".catalog-result")).toHaveCount(23);
+    expect(
+      await page.locator(".content-scroll").evaluate((e) => e.scrollTop),
+    ).toBeCloseTo(scrollTop, 0);
+    for (const invalid of ["", "abc", "2.5"]) {
+      await input.fill(invalid);
+      await input.press("Enter");
+      await expect(input).toHaveValue("925");
+    }
+    await input.fill("0");
+    await input.press("Enter");
+    await expect(input).toBeEnabled();
+    await expect(input).toHaveValue("1");
+    await expect(previous).toBeDisabled();
+    await input.fill("10");
+    await input.press("Enter");
+    await expect(input).toBeEnabled();
+    await page.getByRole("textbox", { name: "Поиск проектов" }).fill("forest");
+    await expect(input).toHaveValue("1");
+  });
+}
+
+test("catalog page controls translate and combined catalogs use the largest provider page count", async ({
+  page,
+}) => {
+  await fixture(page, "en", false, false, true);
+  const input = page.getByRole("textbox", { name: "Page number" });
+  await expect(input).toHaveValue("1");
+  await expect(page.getByLabel("Total pages: 925")).toHaveText("925");
+  await page.getByRole("combobox", { name: "Project source" }).click();
+  await page.getByRole("option", { name: "All sources", exact: true }).click();
+  await expect(page.locator(".catalog-result")).toHaveCount(48);
+  await expect(page.getByLabel("Total pages: 925")).toHaveText("925");
+});
 
 test("list/grid persist, adapt beside filters and preserve dropdown pointer/toggle", async ({
   page,
@@ -965,10 +1076,17 @@ test("large block tiles fit both themes and respect reduced motion", async ({
   await fixture(page, "ru", true);
   await bindRadiance(page);
   await page.getByRole("button", { name: "Плитки", exact: true }).click();
-  await expect(page.locator(".catalog-card .project-icon").first()).toHaveCSS(
-    "width",
-    "100px",
+  const tile = page.locator(".catalog-result").first();
+  const artwork = await tile.locator(".project-icon").boundingBox();
+  const card = await tile.boundingBox();
+  expect(artwork!.width / card!.width).toBeGreaterThan(0.8);
+  await expect(tile.locator(".catalog-project-heading")).toHaveCSS(
+    "text-align",
+    "center",
   );
+  const description = await tile.locator("p").boundingBox();
+  const downloads = await tile.locator("small").boundingBox();
+  expect(downloads!.y - description!.y - description!.height).toBeLessThan(14);
   for (const theme of ["light", "dark"]) {
     if (theme === "dark")
       await page.getByRole("button", { name: "Переключить тему" }).click();

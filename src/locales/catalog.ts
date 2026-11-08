@@ -1,4 +1,11 @@
 export const catalogEnglish: Record<string, string> = {
+  "Страницы каталога": "Catalog pages",
+  "Предыдущая страница": "Previous page",
+  "Следующая страница": "Next page",
+  "Номер страницы": "Page number",
+  "Введите номер страницы и нажмите Enter": "Enter a page number and press Enter",
+  "Всего страниц: {{count}}": "Total pages: {{count}}",
+  "Загрузка страницы…": "Loading page…",
   "Установить проект": "Install project",
   "Необходимые зависимости установятся автоматически.":
     "Required dependencies will be installed automatically.",

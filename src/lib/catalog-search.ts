@@ -55,6 +55,7 @@ export async function searchAllSources(
   const failed: CatalogSource[] = [];
   let total = 0;
   let hasMore = false;
+  let pageCount = 1;
   replies.forEach((reply, index) => {
     if (reply.status === "rejected") {
       failed.push(sources[index]);
@@ -64,6 +65,7 @@ export async function searchAllSources(
     // Keep actual origin IDs: equally named projects on different services are distinct.
     pages.push(page.projects.filter((p) => p.source === sources[index]));
     total += page.total;
+    pageCount = Math.max(pageCount, Math.ceil(page.total / 24));
     hasMore ||= query.offset + 24 < page.total;
   });
   const projects: Project[] = [];
@@ -84,6 +86,7 @@ export async function searchAllSources(
   return {
     projects,
     total,
+    pages: pageCount,
     hasMore,
     failed,
     allFailed: failed.length === sources.length,

@@ -44,6 +44,7 @@ describe("combined catalog search", () => {
     ]);
     expect(result.hasMore).toBe(false); // Sum is 48, but neither provider has another page.
     expect(result.total).toBe(48);
+    expect(result.pages).toBe(1);
     expect(search).toHaveBeenCalledTimes(2);
     expect(search.mock.calls[0][0]).toMatchObject({
       minecraft: "1.21.1",
@@ -56,6 +57,7 @@ describe("combined catalog search", () => {
       async (q) => ({ projects: [], total: q.source === "modrinth" ? 80 : 2 }),
     );
     expect(second.hasMore).toBe(true);
+    expect(second.pages).toBe(4);
   });
   it("keeps successful results when one provider fails, with actionable source identities", async () => {
     const result = await searchAllSources(query, async (q) => {

@@ -294,15 +294,15 @@
 }
 .catalog-result-grid {
   display: grid;
+  align-content: start;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 .catalog-result-grid .catalog-result {
   flex-direction: column;
   align-items: stretch;
-  gap: 18px;
-  padding: 20px;
-  min-height: 350px;
+  gap: 16px;
+  padding: 16px;
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
@@ -315,13 +315,26 @@
 }
 .catalog-result-grid .catalog-card {
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 15px;
   width: 100%;
 }
+.catalog-result-grid .catalog-project-artwork {
+  width: 100%;
+  align-self: stretch;
+}
 .catalog-result-grid .catalog-card .project-icon {
-  width: 100px;
-  height: 100px;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  padding: 12px;
+  border-radius: 11px;
+}
+.catalog-result-grid .catalog-project-heading {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 3px;
 }
 .catalog-result-grid .catalog-card > div:last-child {
   display: flex;
@@ -340,14 +353,54 @@
 .catalog-result-grid .catalog-card p {
   -webkit-line-clamp: 3;
   line-height: 1.55;
-  margin: 4px 0 12px;
+  margin: 4px 0 8px;
 }
 .catalog-result-grid .catalog-card small {
-  margin-top: auto;
+  margin-top: 0;
   flex-wrap: wrap;
   gap: 5px;
   font-size: 12px;
   overflow-wrap: anywhere;
+}
+.catalog-result-grid .catalog-result-actions {
+  margin-top: auto;
+}
+.catalog-pagination {
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.catalog-pagination form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.catalog-pagination input {
+  box-sizing: content-box;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  text-align: center;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.catalog-pagination input:hover:not(:disabled) {
+  border-color: var(--border);
+  background: var(--input-soft);
+}
+.catalog-pagination input:focus-visible {
+  border-color: var(--gold-border);
+  outline: 2px solid var(--gold-border);
+  outline-offset: 2px;
+}
+.catalog-pagination .icon-button {
+  width: 36px;
+  height: 36px;
+}
+.catalog-result-list[aria-busy="true"] {
+  opacity: 0.65;
 }
 .catalog-result-grid .catalog-card small span {
   overflow: hidden;

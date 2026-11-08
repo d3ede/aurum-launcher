@@ -1,11 +1,9 @@
 import { t, formatCount } from "../lib/i18n";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Search,
   Download,
   Check,
-  ChevronLeft,
-  ChevronRight,
   X,
   Compass,
   LayoutGrid,
@@ -32,6 +30,7 @@ import { Select } from "../components/Select";
 import { EmptyState, ErrorBox, Loading } from "../components/ui";
 import { CatalogSourceLogo } from "../components/CatalogSourceLogo";
 import { CatalogInstallButton } from "../components/CatalogInstallButton";
+import { CatalogPagination } from "../components/CatalogPagination";
 import { categoryKey } from "../lib/catalog-categories";
 import { FavoriteButton } from "../components/FavoriteButton";
 import { FavoritesDialog } from "../components/FavoritesDialog";
@@ -72,6 +71,7 @@ export function Catalog({
     localStorage.getItem("aurum:catalog-view") === "grid" ? "grid" : "list",
   );
   const changeView = (value: "list" | "grid") => {
+    setPageHeight(0);
     setView(value);
     localStorage.setItem("aurum:catalog-view", value);
   };
@@ -103,7 +103,15 @@ export function Catalog({
   const [offset, setOffset] = useState(0);
   const [results, setResults] = useState<Project[]>([]);
   const [total, setTotal] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
+  const [pages, setPages] = useState(1);
+  const resultList = useRef<HTMLDivElement>(null);
+  const [pageHeight, setPageHeight] = useState(0);
+  const changePage = (page: number) => {
+    const nextOffset = (page - 1) * 24;
+    if (nextOffset === offset || loading) return;
+    setPageHeight(resultList.current?.getBoundingClientRect().height || 0);
+    setOffset(nextOffset);
+  };
   const [failedSources, setFailedSources] = useState<CatalogSource[]>([]);
   const [error, setError] = useState("");
   const [filterError, setFilterError] = useState("");
@@ -156,6 +164,7 @@ export function Catalog({
   }, [source, kind, data.curseforgeConfigured, retry]);
   useEffect(() => {
     setOffset(0);
+    setPageHeight(0);
   }, [query, source, kind, mc, loader, category, sort, profile?.id]);
   useEffect(() => {
     if (profile?.engine === "horizon") setSource("horizon");
@@ -193,7 +202,7 @@ export function Catalog({
             : rpc("search", { query: { ...request, source } }).then(
                 (result) => ({
                   ...result,
-                  hasMore: offset + 24 < result.total,
+                  pages: Math.max(1, Math.ceil(result.total / 24)),
                   failed: [] as CatalogSource[],
                   allFailed: false,
                 }),
@@ -203,7 +212,7 @@ export function Catalog({
             if (!live) return;
             setResults(r.projects);
             setTotal(r.total);
-            setHasMore(r.hasMore);
+            setPages(r.pages);
             setFailedSources(r.failed);
             if (r.allFailed)
               setError(t("Не удалось загрузить каталоги. Повторите попытку."));
@@ -515,7 +524,7 @@ export function Catalog({
                 {t("Найти ресурспаки")}
               </button>
             </EmptyState>
-          ) : loading ? (
+          ) : loading && !results.length ? (
             <Loading
               label={t("Поиск в {{v1}}\u2026", {
                 v1:
@@ -530,8 +539,13 @@ export function Catalog({
             <>
               <div className="result-summary">
                 <span>{formatCount(total)}</span>
+                <span role="status">{loading ? t("Загрузка страницы…") : ""}</span>
               </div>
               <div
+                ref={resultList}
+                style={{ minHeight: pageHeight || undefined }}
+                aria-busy={loading}
+                inert={loading}
                 className={`catalog-result-list ${view === "grid" ? "catalog-result-grid" : ""}`}
               >
                 {results.map((project) => {
@@ -626,25 +640,12 @@ export function Catalog({
                   );
                 })}
               </div>
-              <div className="pagination">
-                <button
-                  className="button secondary"
-                  disabled={!offset}
-                  onClick={() => setOffset((v) => Math.max(0, v - 24))}
-                >
-                  <ChevronLeft size={17} />
-                  {t(" Назад")}
-                </button>
-                <span>{Math.floor(offset / 24) + 1}</span>
-                <button
-                  className="button secondary"
-                  disabled={!hasMore}
-                  onClick={() => setOffset((v) => v + 24)}
-                >
-                  {t("Далее ")}
-                  <ChevronRight size={17} />
-                </button>
-              </div>
+              <CatalogPagination
+                page={Math.floor(offset / 24) + 1}
+                pages={pages}
+                loading={loading}
+                onPage={changePage}
+              />
             </>
           ) : (
             <EmptyState

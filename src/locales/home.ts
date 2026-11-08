@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Каталог: переход к любой странице, общее число страниц и листание без сброса прокрутки; крупные изображения и цельные плитки проектов.":
+    "Catalog: jump to any page, see the total page count and browse without losing your scroll position; larger images and cohesive project tiles.",
   "Установка из каталога: одна кнопка в шапке проекта, выбор сборки и версии — в отдельном окне.":
     "Catalog installation: one button in the project header, with instance and version selection in a separate dialog.",
   "Просмотр скриншотов: соседние кадры загружаются заранее, без надписи о загрузке при перелистывании.":
