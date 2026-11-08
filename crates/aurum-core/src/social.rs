@@ -1002,7 +1002,7 @@ impl Engine {
         if !p.manual_downloads.is_empty() {
             bail!("Add the missing files before joining this world");
         }
-        if p.installed_version.is_none() {
+        if p.installed_version.is_none() && !self.running.lock().await.contains_key(&p.id) {
             task.progress("social-prepare", "Preparing Minecraft", 0, 1);
             let engine = self.social_http()?;
             let future = engine.install(&p.id, task);
@@ -1024,9 +1024,11 @@ impl Engine {
         profile_id: &str,
         task: &Task,
     ) -> Result<bool> {
+        self.refresh_recovered().await;
+        let running = self.running.lock().await.contains_key(profile_id);
         {
             let db = self.db.lock().await;
-            if !db
+            if !running && !db
                 .accounts
                 .iter()
                 .any(|a| Some(&a.id) == db.selected_account.as_ref())
@@ -1053,7 +1055,7 @@ impl Engine {
         if !p.manual_downloads.is_empty() {
             bail!("Add the missing files before joining this world");
         }
-        if p.installed_version.is_none() {
+        if p.installed_version.is_none() && !self.running.lock().await.contains_key(profile_id) {
             let _guard = self
                 .busy
                 .try_lock()

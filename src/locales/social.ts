@@ -1,4 +1,10 @@
 export const socialEnglish: Record<string, string> = {
+  "@social.profile.running": "{{name}} · Running",
+  "@social.join.running": "Join in Minecraft",
+  "@social.reuse.hint":
+    "Join in the open Minecraft window, using its current player. Minecraft will save and leave the current world before connecting.",
+  "@social.auto.menu":
+    "Return to the Minecraft title screen to join automatically.",
   "Social component is not published for this build. Install the offline build or update Aurum.":
     "The Social component is unavailable for this build. Install the offline build or update Aurum.",
   "@social.auto.joined": "You are in the world",
@@ -211,6 +217,12 @@ export const socialEnglish: Record<string, string> = {
   "@social.network": "Configure network",
 };
 export const socialRussian: Record<string, string> = {
+  "@social.profile.running": "{{name}} · Запущена",
+  "@social.join.running": "Войти в Minecraft",
+  "@social.reuse.hint":
+    "Войдём в открытом Minecraft под текущим игроком. Перед подключением Minecraft сохранит и закроет текущий мир.",
+  "@social.auto.menu":
+    "Вернитесь в главное меню Minecraft — подключение продолжится автоматически.",
   "Social component is not published for this build. Install the offline build or update Aurum.":
     "Компонент Social для этой сборки не опубликован. Установите сборку с Social внутри или обновите Aurum.",
   "@social.auto.joined": "Вы в мире",

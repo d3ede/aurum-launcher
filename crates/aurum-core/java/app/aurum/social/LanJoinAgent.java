@@ -15,8 +15,10 @@ public final class LanJoinAgent {
     private static final AtomicBoolean queued = new AtomicBoolean();
     private static volatile boolean finished;
     private static volatile boolean connecting;
+    private static boolean leaving;
     private static Properties config;
     private static Path status;
+    private static Path request;
     private static Object resolver;
     private static Method mapClass;
 
@@ -26,13 +28,9 @@ public final class LanJoinAgent {
             if (Files.size(path) > 16384) throw new IOException("Configuration exceeds limit");
             config = new Properties();
             try (Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) { config.load(reader); }
-            String host = config.getProperty("host", "");
-            if (!(host.equals("127.0.0.1") || host.equals("::1")) || !InetAddress.getByName(host).isLoopbackAddress())
-                throw new IOException("Only the local broker bridge is allowed");
-            int port = Integer.parseInt(config.getProperty("port", "0"));
-            if (port < 1 || port > 65535) throw new IOException("Invalid local port");
             status = Paths.get(config.getProperty("status"));
-            report("waiting");
+            request = Paths.get(config.getProperty("request"));
+            finished = true;
             Thread thread = new Thread(new Runnable() { public void run() { watch(instrumentation); } }, "Aurum LAN join");
             thread.setDaemon(true);
             thread.start();
@@ -40,9 +38,23 @@ public final class LanJoinAgent {
     }
 
     private static void watch(Instrumentation instrumentation) {
-        long deadline = System.nanoTime() + 600000000000L;
-        while (!finished && System.nanoTime() < deadline) {
+        long deadline = 0;
+        while (true) {
             try {
+                if (!queued.get() && Files.isRegularFile(request)) {
+                    try {
+                        Properties incoming = readRequest(request);
+                        config.setProperty("host", incoming.getProperty("host"));
+                        config.setProperty("port", incoming.getProperty("port"));
+                        config.setProperty("name", incoming.getProperty("name", "Aurum"));
+                        connecting = false; leaving = false; finished = false;
+                        deadline = System.nanoTime() + 600000000000L;
+                        report("waiting");
+                    } catch (Exception invalid) { finished = true; report("unsupported"); }
+                    finally { Files.deleteIfExists(request); }
+                }
+                if (finished) { Thread.sleep(400); continue; }
+                if (System.nanoTime() >= deadline) { finished = true; report("timeout"); continue; }
                 Class<?> minecraft = null;
                 Class<?>[] loaded = instrumentation.getAllLoadedClasses();
                 if (resolver == null) findFabricResolver(loaded);
@@ -50,7 +62,7 @@ public final class LanJoinAgent {
                 for (Class<?> candidate : loaded) if (names.contains(candidate.getName())) { minecraft = candidate; break; }
                 if (minecraft != null) {
                     final Object client = singleton(minecraft);
-                    if (client instanceof Executor && queued.compareAndSet(false, true)) {
+                    if (!finished && client instanceof Executor && queued.compareAndSet(false, true)) {
                         ((Executor) client).execute(new Runnable() { public void run() {
                             try { tick(client); } catch (Throwable error) { finished = true; report("unsupported"); }
                             finally { queued.set(false); }
@@ -59,9 +71,22 @@ public final class LanJoinAgent {
                 }
                 Thread.sleep(400);
             } catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); return; }
-              catch (ReflectiveOperationException | LinkageError ignored) { /* The loader may still be initializing. */ }
+              catch (ReflectiveOperationException | LinkageError | IOException ignored) { /* The loader may still be initializing. */ }
         }
-        if (!finished) report("timeout");
+    }
+
+    private static Properties readRequest(Path path) throws IOException {
+        if (Files.size(path) > 16384) throw new IOException("Request exceeds limit");
+        Properties incoming = new Properties();
+        try (Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) { incoming.load(reader); }
+        String host = incoming.getProperty("host", "");
+        if (!(host.equals("127.0.0.1") || host.equals("::1")) || !InetAddress.getByName(host).isLoopbackAddress())
+            throw new IOException("Only the local broker bridge is allowed");
+        int port;
+        try { port = Integer.parseInt(incoming.getProperty("port", "0")); }
+        catch (NumberFormatException invalid) { throw new IOException("Invalid local port", invalid); }
+        if (port < 1 || port > 65535) throw new IOException("Invalid local port");
+        return incoming;
     }
 
     private static void findFabricResolver(Class<?>[] loaded) {
@@ -139,7 +164,27 @@ public final class LanJoinAgent {
             }
             return;
         }
-        if (current == null || !type("title", loader).isInstance(current)) return;
+        if (value(client, type("level", loader)) != null) {
+            if (!leaving) {
+                leaving = true;
+                // Run Minecraft's normal disconnect/save path on its own thread.
+                // Only exact mapped disconnect overloads are allowed; never
+                // guess an arbitrary obfuscated method.
+                Method screenDisconnect = disconnectMethod(client, "disconnectScreen", new Class<?>[] { screen, Boolean.TYPE });
+                if (screenDisconnect != null) {
+                    Object title = type("title", loader).getConstructor().newInstance();
+                    screenDisconnect.invoke(client, title, false); return;
+                }
+                Method disconnect = disconnectMethod(client, "disconnect", new Class<?>[0]);
+                if (disconnect != null) { disconnect.invoke(client); return; }
+            }
+            report("menu-required"); return;
+        }
+        if (current == null || !(type("title", loader).isInstance(current)
+                || type("multiplayer", loader).isInstance(current)
+                || type("disconnect", loader).isInstance(current))) {
+            report("menu-required"); return;
+        }
         if (ui(client, type("overlay", loader), loader) != null) return;
         Class<?> serverType = type("server", loader);
         Object entry = lanEntry(serverType, config.getProperty("name", "Aurum"), address());
@@ -164,6 +209,24 @@ public final class LanJoinAgent {
         connecting = true;
         report("connecting");
         System.out.println("[Aurum Social] Native LAN connection started");
+    }
+
+    private static Method disconnectMethod(Object client, String role, Class<?>[] parameters) {
+        Set<String> aliases = new LinkedHashSet<String>(Arrays.asList(config.getProperty("method." + role, "disconnect").split(",")));
+        if (resolver != null) try {
+            Method mapper = mapClass.getDeclaringClass().getMethod("mapMethodName", String.class, String.class, String.class, String.class);
+            for (String owner : config.getProperty("class.minecraft", "").split(","))
+                for (String name : new ArrayList<String>(aliases))
+                    for (String screen : config.getProperty("class.screen", "").split(",")) {
+                        String descriptor = parameters.length == 0 ? "()V" : "(L" + screen.replace('.', '/') + ";Z)V";
+                        aliases.add((String) mapper.invoke(resolver, "official", owner, name, descriptor));
+                    }
+        } catch (ReflectiveOperationException ignored) { }
+        for (String name : aliases) try {
+            Method method = client.getClass().getMethod(name, parameters);
+            if (method.getReturnType() == Void.TYPE && !Modifier.isStatic(method.getModifiers())) return method;
+        } catch (NoSuchMethodException ignored) { }
+        return null;
     }
 
     /** Exposed only so integration probes can exercise the actual game constructor. */

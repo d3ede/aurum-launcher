@@ -127,6 +127,19 @@ restricted files use the launcher's manual-file workflow with exact hashes.
 An interrupted installation can be reviewed again under Interrupted installations.
 It reuses verified cache and staging; reopening Aurum never silently resumes it.
 
+Invitations prefer an already running instance with the same Minecraft and loader
+versions. The receiver can choose another compatible instance explicitly. New
+Java launches include a dormant, launcher-owned file inbox, so accepting an
+invitation can invoke Minecraft's native LAN connector inside that JVM. Requests
+are session-specific, loopback-only and consumed once; the inbox stays available
+for later invitations. The game uses its current player and normal disconnect/save
+path before switching worlds. If the mapped connector or disconnect method is
+unavailable, Aurum offers the native LAN list or asks the player to return to the
+title screen. A compatible game started by an older Aurum build is reused via LAN
+discovery without launching a second client. A different Minecraft/loader version
+still needs a separate compatible instance. Existing instances' mod sets are not
+silently replaced by a friend's shared pack.
+
 Config sharing is off by default. When enabled, a heuristic excludes likely
 secrets unless the sender separately opts in to include flagged files. This is
 not a complete secret detector. Worlds, account databases, logs, credentials,

@@ -640,6 +640,11 @@ impl Engine {
     pub(crate) async fn launch_social_server(&self,id:&str,address:&str,task:&Task)->Result<bool>{
         let target=crate::servers::ServerAddress::parse(address)?;
         let ip:std::net::IpAddr=target.host.parse()?;if !ip.is_loopback(){bail!("Social target must be the local bridge");}
+        self.refresh_recovered().await;
+        if self.running.lock().await.contains_key(id) {
+            task.progress("social-reuse", "Connecting in running Minecraft", 0, 1);
+            return crate::social_launch::request(&self.instance(id)?, &target, &self.profile(id).await?.name).await;
+        }
         // Use the native LAN connector on the client thread, preserving its
         // LAN identity and authentication behavior instead of Quick Play OTHER.
         self.launch_target(id,None,false,Some(task.cancel.clone()),Some(target)).await
@@ -648,6 +653,9 @@ impl Engine {
     pub async fn launch_lan_fixture(&self, id: &str, address: &str, _task: &Task) -> Result<bool> {
         let target = crate::servers::ServerAddress::parse(address)?;
         if !target.host.parse::<std::net::IpAddr>()?.is_loopback() { bail!("Fixture must be loopback-only"); }
+        if self.running.lock().await.contains_key(id) {
+            return crate::social_launch::request(&self.instance(id)?, &target, &self.profile(id).await?.name).await;
+        }
         // Only the explicit laboratory feature uses an owned TCP fixture instead
         // of a Social invitation. Production still requires enabled Social.
         self.launch_target(id, None, false, None, Some(target)).await
@@ -887,9 +895,12 @@ impl Engine {
             );
             args.push(substitute(text(logging, "argument")?, &vars)?);
         }
-        let social_agent = if let Some(target) = &social_target {
-            crate::social_launch::prepare(self, &instance, &instance.join("client").join(format!("{client}.jar")), &meta, target, &p.name, &task).await?
-        } else { None };
+        // Install the dormant inbox on normal launches too, so an invitation can
+        // join this JVM later. Optional bridge setup must never prevent playing.
+        let social_agent = match crate::social_launch::prepare(self, &instance, &instance.join("client").join(format!("{client}.jar")), &meta, social_target.as_ref(), &p.name, &task).await {
+            Ok(agent) => agent,
+            Err(error) => { task.check()?; task.progress("log", format!("Social auto-join unavailable: {error}"), 0, 0); None }
+        };
         if let Some(argument) = &social_agent { args.push(argument.clone()); }
         args.push(text(&meta, "mainClass")?.into());
         if let Some(game) = meta["arguments"]["game"].as_array() {

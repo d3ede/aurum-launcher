@@ -70,14 +70,23 @@ export function SocialIncomingInvite({
   const manualFallback =
     !automatic || ["unsupported", "timeout"].includes(launchState);
   const pack = !!invite?.offer.manifestHash;
-  const compatible = data.profiles.filter(
-    (p) =>
-      p.engine !== "horizon" &&
-      p.minecraft === invite?.offer.world.minecraft &&
-      p.loader === invite?.offer.world.loader &&
-      (p.loaderVersion ?? null) === (invite?.offer.world.loaderVersion ?? null),
-  );
-  const choice = selected ?? ((!pack && compatible[0]?.id) || "new");
+  const compatible = data.profiles
+    .filter(
+      (p) =>
+        p.engine !== "horizon" &&
+        p.minecraft === invite?.offer.world.minecraft &&
+        p.loader === invite?.offer.world.loader &&
+        (p.loaderVersion ?? null) ===
+          (invite?.offer.world.loaderVersion ?? null),
+    )
+    .sort(
+      (a, b) =>
+        Number(data.running.includes(b.id)) -
+        Number(data.running.includes(a.id)),
+    );
+  const runningMatch = compatible.find((p) => data.running.includes(p.id));
+  const choice =
+    selected ?? runningMatch?.id ?? ((!pack && compatible[0]?.id) || "new");
   const profile = compatible.find((p) => p.id === choice);
   const needsPlan = pack && choice === "new";
   const account = data.selectedAccount || data.accounts[0]?.id || "";
@@ -132,13 +141,12 @@ export function SocialIncomingInvite({
   const alreadyRunning = !!profile && data.running.includes(profile.id);
   const consentNeeded = needsPlan && !!review?.plan.items.length;
   const allowed =
-    !!account &&
+    (!!account || alreadyRunning) &&
     !busy &&
     !pending &&
     !waiting &&
     !failed &&
     !missing &&
-    !alreadyRunning &&
     (!needsPlan || !!review) &&
     (!consentNeeded || accepted);
   const phase = stage === "launching" ? 2 : stage === "connecting" ? 1 : 0;
@@ -164,7 +172,7 @@ export function SocialIncomingInvite({
       try {
         const done = await operation(async (operationId) => {
           try {
-            await rpc("selectAccount", { id: account });
+            if (!alreadyRunning) await rpc("selectAccount", { id: account });
             let profileId = choice;
             if (needsPlan) {
               const installed = await rpc("social.install", {
@@ -245,11 +253,13 @@ export function SocialIncomingInvite({
                   {manualFallback
                     ? t("@social.lan.pick", { name: invite.offer.world.name })
                     : t(
-                        launchState === "game-screen"
-                          ? "@social.auto.game.screen"
-                          : launchState === "stopped"
-                            ? "@social.auto.retry"
-                            : "@social.auto.hint",
+                        launchState === "menu-required"
+                          ? "@social.auto.menu"
+                          : launchState === "game-screen"
+                            ? "@social.auto.game.screen"
+                            : launchState === "stopped"
+                              ? "@social.auto.retry"
+                              : "@social.auto.hint",
                       )}
                 </span>
               </div>
@@ -272,12 +282,19 @@ export function SocialIncomingInvite({
                 }}
                 aria-label={t("@social.profile")}
                 options={[
-                  ...compatible.map((p) => ({ value: p.id, label: p.name })),
+                  ...compatible.map((p) => ({
+                    value: p.id,
+                    label: data.running.includes(p.id)
+                      ? t("@social.profile.running", { name: p.name })
+                      : p.name,
+                  })),
                   { value: "new", label: t("@social.flow.new") },
                 ]}
               />
             </Field>
-            {data.accounts.length > 0 ? (
+            {alreadyRunning ? (
+              <p className="social-invite-note">{t("@social.reuse.hint")}</p>
+            ) : data.accounts.length > 0 ? (
               <Field label={t("@social.flow.player")}>
                 <Select
                   value={account}
@@ -413,7 +430,7 @@ export function SocialIncomingInvite({
                 ))}
               </ol>
             )}
-            {(error || failed || missing || alreadyRunning) && (
+            {(error || failed || missing) && (
               <div className="social-flow-error" role="alert">
                 <AlertCircle size={18} />
                 <span>
@@ -474,7 +491,9 @@ export function SocialIncomingInvite({
                     ? "@social.flow.wait"
                     : choice === "new" || !profile?.installedVersion
                       ? "@social.flow.download.join"
-                      : "@social.join",
+                      : alreadyRunning
+                        ? "@social.join.running"
+                        : "@social.join",
                 )}
               </button>
             </div>

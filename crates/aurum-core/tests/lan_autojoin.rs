@@ -50,6 +50,16 @@ async fn packet(stream: &mut tokio::net::TcpStream) -> Result<Vec<u8>> {
 #[tokio::test]
 #[ignore = "requires explicit official Minecraft cache/meta/client/JDK paths; launches a real client only in .test-data"]
 async fn real_minecraft_automatically_opens_the_native_lan_connection() -> Result<()> {
+    run_fixture(false).await
+}
+
+#[tokio::test]
+#[ignore = "requires explicit official Minecraft cache/meta/client/JDK paths; launches a real client only in .test-data"]
+async fn running_minecraft_accepts_repeated_invitations_without_another_jvm() -> Result<()> {
+    run_fixture(true).await
+}
+
+async fn run_fixture(reuse: bool) -> Result<()> {
     let env = |name| {
         std::env::var_os(name)
             .map(PathBuf::from)
@@ -160,7 +170,13 @@ async fn real_minecraft_automatically_opens_the_native_lan_connection() -> Resul
         emit: Arc::new(|_| {}),
     };
     let result: Result<()> = async {
+        if reuse { engine.launch(&profile.id).await?; }
+        let original_process = engine.running.lock().await.get(&profile.id).cloned();
+        for attempt in 0..if reuse { 2 } else { 1 } {
         if !engine.launch_lan_fixture(&profile.id, &format!("127.0.0.1:{port}"), &task).await? { bail!("Automatic native LAN launch was not enabled"); }
+        if let Some(original) = &original_process {
+            assert!(Arc::ptr_eq(original, engine.running.lock().await.get(&profile.id).unwrap()), "Invitation replaced the running game");
+        }
         if version == "26.3" { verify_actual_lan_entry(&java, &root, &instance, &meta).await?; }
         let (mut client, _) = tokio::time::timeout(Duration::from_secs(180), listener.accept()).await.context("Real Minecraft never connected automatically")??;
         let bytes = tokio::time::timeout(Duration::from_secs(10), packet(&mut client)).await??;
@@ -174,7 +190,10 @@ async fn real_minecraft_automatically_opens_the_native_lan_connection() -> Resul
         assert_eq!(varint(&bytes, &mut offset)?, 2, "The client must enter login, not merely ping the LAN list");
         let login = tokio::time::timeout(Duration::from_secs(10), packet(&mut client)).await??;
         assert_eq!(varint(&login, &mut 0)?, 0);
+        drop(client);
         println!("PASS: the actual Minecraft client automatically sent LAN login to the owned loopback fixture, without menu interaction");
+        if reuse && attempt == 0 { tokio::time::sleep(Duration::from_secs(3)).await; }
+        }
         Ok(())
     }.await;
     let _ = engine.stop(&profile.id).await;

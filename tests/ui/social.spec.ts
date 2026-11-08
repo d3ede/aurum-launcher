@@ -858,6 +858,100 @@ for (const theme of ["light", "dark"]) {
     expect(calls[0].payload.profileId).toBeNull();
   });
 }
+for (const theme of ["light", "dark"]) {
+  test(`an invitation prefers a running compatible game and keeps its player (${theme})`, async ({
+    page,
+  }) => {
+    await fixture(page, true, theme);
+    await page.setViewportSize({ width: 960, height: 680 });
+    await worldInvite(page, {
+      profiles: [
+        {
+          id: "stopped",
+          name: "Stopped",
+          minecraft: "1.21.1",
+          loader: "vanilla",
+          installedVersion: "1.21.1",
+          content: [],
+        },
+        {
+          id: "wrong-version",
+          name: "Other version",
+          minecraft: "1.20.1",
+          loader: "vanilla",
+          installedVersion: "1.20.1",
+          content: [],
+        },
+        {
+          id: "running",
+          name: "Open game",
+          minecraft: "1.21.1",
+          loader: "vanilla",
+          installedVersion: "1.21.1",
+          content: [],
+        },
+      ],
+      running: ["wrong-version", "running"],
+    });
+    const modal = page.getByRole("dialog");
+    await expect(
+      modal.getByRole("combobox", { name: "Minecraft profile", exact: true }),
+    ).toContainText("Open game · Running");
+    await expect(
+      modal.getByRole("combobox", { name: "Player", exact: true }),
+    ).toHaveCount(0);
+    await expect(modal.getByText(/using its current player/)).toBeVisible();
+    await page.screenshot({
+      path: `.test-data/screenshots/social-reuse-${theme}.png`,
+    });
+    await modal
+      .getByRole("button", { name: "Join in Minecraft", exact: true })
+      .click();
+    await expect(
+      modal.getByText("Connecting to the world…", { exact: true }),
+    ).toBeVisible();
+    const calls = await page.evaluate(() =>
+      (window as any).socialRequests.filter((r: any) =>
+        [
+          "social.prepare",
+          "social.join",
+          "selectAccount",
+          "social.install",
+        ].includes(r.action),
+      ),
+    );
+    expect(calls.map((r: any) => r.action)).toEqual([
+      "social.prepare",
+      "social.join",
+    ]);
+    expect(calls.every((r: any) => r.payload.profileId === "running")).toBe(
+      true,
+    );
+    await page.evaluate(
+      () => ((window as any).lanLaunchState = "menu-required"),
+    );
+    await expect(
+      modal.getByText(
+        "Return to the Minecraft title screen to join automatically.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+  });
+}
+
+test("an old running game offers LAN joining without another launch", async ({
+  page,
+}) => {
+  await fixture(page, true);
+  await worldInvite(page, { running: ["vanilla"] });
+  await page.evaluate(() => ((window as any).manualLanFallback = true));
+  const modal = page.getByRole("dialog");
+  await modal
+    .getByRole("button", { name: "Join in Minecraft", exact: true })
+    .click();
+  await expect(modal.getByText(/Open Multiplayer and choose/)).toBeVisible();
+});
+
 test("an ongoing unrelated download disables joining and a route error stays visible", async ({
   page,
 }) => {

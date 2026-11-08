@@ -227,6 +227,14 @@ the status remains NOT READY.
 
 ## Automatic native LAN joining and recovery (2026-11-07)
 
+The running-client regression was also checked on 2026-11-08 with Vanilla 26.3
+and Fabric 1.21.1 (loader 0.19.5). Each normally launched client accepted two
+successive loopback login requests while retaining the original supervised game
+process. The shipped Java agent also passed a JVM fixture that starts inside a
+world, invokes the native save/disconnect path before each of three joins,
+rejects a non-loopback request and never replays a consumed request. These tests
+do not establish Internet traversal or completed multiplayer gameplay.
+
 The ignored `aurum-core/tests/lan_autojoin.rs` integration test launched actual
 Minecraft clients in disposable `.test-data` directories with an offline test
 player. Vanilla 26.3 and Fabric 1.21.11 (loader 0.19.5) automatically sent the

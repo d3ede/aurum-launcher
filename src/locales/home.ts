@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Приглашения Social используют запущенную совместимую сборку без открытия второго Minecraft.":
+    "Social invitations reuse a running compatible instance without opening a second Minecraft.",
   "Модпаки: ручная замена файлов с подтверждением, обновлённое окно загрузок и восстановление обложек CurseForge.":
     "Modpacks: confirmed manual file replacements, an updated downloads dialog and CurseForge artwork recovery.",
   "До пяти профилей настроек Minecraft: импорт из сборок, редакторы и выбор профиля при установке.":
