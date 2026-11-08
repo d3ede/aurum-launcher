@@ -832,9 +832,6 @@ for (const source of ["Modrinth", "CurseForge"]) {
       }
       await bindRadiance(page);
       await page.getByRole("button", { name: kind, exact: true }).click();
-      await expect(page.locator(".catalog-provider-note")).toContainText(
-        "F3+T",
-      );
       const install = page.locator(".catalog-install-button").nth(1);
       await expect(install).toBeEnabled();
       await page.locator(".catalog-card").nth(1).click();

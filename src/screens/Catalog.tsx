@@ -26,7 +26,7 @@ import { NativeModNotice } from "../components/NativeModNotice";
 import { Select } from "../components/Select";
 import { FavoriteButton } from "../components/FavoriteButton";
 import { GamePresetChoice } from "../components/GamePresetChoice";
-import { contentReloadHint, reloadableContent } from "../lib/content-runtime";
+import { reloadableContent } from "../lib/content-runtime";
 import {
   catalogSources,
   catalogWebsite,
@@ -310,9 +310,6 @@ export function ProjectDialog({
               )}
               {runtimeBlocked && (
                 <small>{t("Сначала остановите эту сборку")}</small>
-              )}
-              {running && reloadableContent(project.kind) && (
-                <small>{t(contentReloadHint)}</small>
               )}
               {selected && !canInstall && profile && (
                 <small>{t("Версия не подходит для выбранной сборки.")}</small>

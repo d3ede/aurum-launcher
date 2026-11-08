@@ -29,7 +29,7 @@ import {
 import { ProjectIcon } from "../screens/Catalog";
 import { NativeModNotice } from "./NativeModNotice";
 import { GamePresetChoice } from "./GamePresetChoice";
-import { contentReloadHint, reloadableContent } from "../lib/content-runtime";
+import { reloadableContent } from "../lib/content-runtime";
 
 type Plan = {
   loading: boolean;
@@ -494,10 +494,7 @@ export function FavoritesDialog({
                                   ? t(
                                       "Проверьте параметры модпака и выберите обязательные файлы.",
                                     )
-                                  : data.running.includes(profileId) &&
-                                      reloadableContent(project.kind)
-                                    ? t(contentReloadHint)
-                                    : t("Готово к установке"));
+                                  : t("Готово к установке"));
               return (
                 <article
                   className="favorite-row"

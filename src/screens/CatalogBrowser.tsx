@@ -36,7 +36,7 @@ import { categoryKey } from "../lib/catalog-categories";
 import { FavoriteButton } from "../components/FavoriteButton";
 import { FavoritesDialog } from "../components/FavoritesDialog";
 import { useFavorites } from "../lib/favorites";
-import { contentReloadHint, reloadableContent } from "../lib/content-runtime";
+import { reloadableContent } from "../lib/content-runtime";
 export function Catalog({
   query,
   setQuery,
@@ -348,11 +348,6 @@ export function Catalog({
           {bound && <span>{t("Только совместимые проекты")}</span>}
         </div>
       )}
-      {bound &&
-        data.running.includes(profile.id) &&
-        reloadableContent(kind) && (
-          <p className="catalog-provider-note">{t(contentReloadHint)}</p>
-        )}
       {source === "horizon" && (
         <p className="catalog-provider-note">
           {t(

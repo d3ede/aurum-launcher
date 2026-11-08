@@ -17,7 +17,7 @@ import {
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
 import { contentVersion } from "../lib/content-version";
-import { contentReloadHint, reloadableContent } from "../lib/content-runtime";
+import { reloadableContent } from "../lib/content-runtime";
 import { t, ru } from "../lib/i18n";
 import type { Content, ContentUpdate, Kind, Profile, Project } from "../types";
 import { ProjectDialog } from "../screens/Catalog";
@@ -398,9 +398,6 @@ export function InstanceContent({
           </button>
         </div>
       </div>
-      {running && (
-        <p className="catalog-provider-note">{t(contentReloadHint)}</p>
-      )}
       <div className="installed-content-summary" role="status">
         <span>
           {t("Показано {{v1}} из {{v2}}", {
