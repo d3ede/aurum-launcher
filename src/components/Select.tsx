@@ -17,6 +17,7 @@ export function Select({
   id,
   className = "",
   menuClassName = "",
+  fitOptions = false,
   "aria-label": label,
 }: {
   value: string;
@@ -27,6 +28,7 @@ export function Select({
   id?: string;
   className?: string;
   menuClassName?: string;
+  fitOptions?: boolean;
   "aria-label": string;
 }) {
   const empty = "__aurum_any__";
@@ -50,6 +52,7 @@ export function Select({
           if (event.pointerType !== "touch") setPointerOver(true);
         }}
         onPointerLeave={() => setPointerOver(false)}
+        data-fit-options={fitOptions || undefined}
         onPointerDown={(event) => {
           if (open && event.button === 0 && event.pointerType === "mouse") {
             event.preventDefault();
@@ -61,6 +64,13 @@ export function Select({
         <Dropdown.Icon className="select-chevron">
           <ChevronDown size={17} />
         </Dropdown.Icon>
+        {fitOptions && (
+          <span className="select-size" aria-hidden="true">
+            {options.map((option) => (
+              <span key={option.value}>{option.label}</span>
+            ))}
+          </span>
+        )}
       </Dropdown.Trigger>
       <Dropdown.Portal>
         <Dropdown.Content

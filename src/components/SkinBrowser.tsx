@@ -323,6 +323,7 @@ export function SkinBrowser({
           />
         </div>
         <Select
+          fitOptions
           menuClassName="skin-browser-select-menu"
           aria-label={t("Где искать скины")}
           value={source}
@@ -336,6 +337,7 @@ export function SkinBrowser({
         />
         {source === "catalog" && (
           <Select
+            fitOptions
             menuClassName="skin-browser-select-menu"
             aria-label={t("Порядок скинов")}
             value={mode}

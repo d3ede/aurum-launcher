@@ -418,7 +418,9 @@ test("skin browser separates missing names and IDs and saves a custom name", asy
   await name.fill("🐉".repeat(31));
   await expect(add).toBeDisabled();
   await name.fill("  Синий рыцарь  ");
-  expect(await name.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe("none");
+  expect(await name.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe(
+    "none",
+  );
   await page.setViewportSize({ width: 960, height: 680 });
   await expect(name).toBeInViewport();
   await expect(add).toBeInViewport();
@@ -478,7 +480,12 @@ test("skin browser preserves a catalog name when details omit it", async ({
 test("skin browser keeps one search focus border and menus match their triggers", async ({
   page,
 }) => {
-  await fixture(page);
+  await fixture(page, "offline", "spring");
+  await page.setViewportSize({ width: 960, height: 680 });
+  await page.addStyleTag({
+    content:
+      '.skin-browser-toolbar .select-trigger, .skin-browser-select-menu .select-option { font-family: "Segoe UI", sans-serif; font-weight: 600; }',
+  });
   await page
     .getByRole("button", { name: "Браузер скинов", exact: true })
     .click();
@@ -497,6 +504,22 @@ test("skin browser keeps one search focus border and menus match their triggers"
     await trigger.click();
     const menu = page.getByRole("listbox");
     await expect(menu).toBeVisible();
+    const options = menu.getByRole("option");
+    for (let index = 0; index < (await options.count()); index++) {
+      const option = options.nth(index);
+      expect(
+        await option
+          .locator(".select-option-label")
+          .evaluate((el) => el.scrollWidth <= el.clientWidth),
+      ).toBe(true);
+      if (index) {
+        const previous = (await options.nth(index - 1).boundingBox())!;
+        const current = (await option.boundingBox())!;
+        expect(current.y - previous.y - previous.height).toBeGreaterThanOrEqual(
+          3.5,
+        );
+      }
+    }
     expect(
       Math.abs(
         (await menu.boundingBox())!.width -
@@ -521,6 +544,26 @@ test("skin browser keeps one search focus border and menus match their triggers"
     await page.keyboard.press("Escape");
     await expect(menu).toHaveCount(0);
     await expect(browser).toBeVisible();
+    await trigger.click();
+    await page
+      .getByRole("option", {
+        name:
+          label === "Порядок скинов" ? "Популярные скины" : "По нику игрока",
+        exact: true,
+      })
+      .click();
+    expect(
+      await trigger
+        .locator(":scope > span:first-child")
+        .evaluate((el) => el.scrollWidth <= el.clientWidth),
+    ).toBe(true);
+    // Restore the catalog before checking the second dropdown.
+    if (label !== "Порядок скинов") {
+      await trigger.click();
+      await page
+        .getByRole("option", { name: "Каталог MineSkin", exact: true })
+        .click();
+    }
   }
 });
 
