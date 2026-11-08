@@ -17,6 +17,8 @@ pub const MAX_IMAGE_BYTES: u64 = 25 * 1024 * 1024;
 const MAX_PIXELS: u64 = 36_000_000;
 // Do not decode a screenful of large PNGs concurrently while Minecraft is running.
 static IMAGE_JOBS: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(2);
+// Opening full images only reads/encodes bytes; it must not queue behind gallery decoders.
+static FULL_IMAGE_JOBS: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(2);
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -236,7 +238,12 @@ impl Engine {
         Ok(bytes)
     }
     pub async fn screenshot_image(&self, id: &str, thumbnail: bool) -> Result<String> {
-        let _permit = IMAGE_JOBS
+        let jobs = if thumbnail {
+            &IMAGE_JOBS
+        } else {
+            &FULL_IMAGE_JOBS
+        };
+        let _permit = jobs
             .acquire()
             .await
             .context("Screenshot decoder unavailable")?;
@@ -298,6 +305,41 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn full_images_do_not_wait_for_busy_thumbnail_decoders() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../.test-data/screenshot-priority");
+        std::fs::create_dir_all(&root).unwrap();
+        let root = tempfile::tempdir_in(root).unwrap();
+        let engine = Engine::new(root.path().into(), |_| {}).await.unwrap();
+        let profile = engine
+            .create_profile(
+                "Preview priority".into(),
+                "1.21.1".into(),
+                crate::model::Loader::Vanilla,
+                None,
+                0,
+            )
+            .await
+            .unwrap();
+        let directory = engine.instance(&profile.id).unwrap().join("screenshots");
+        std::fs::create_dir_all(&directory).unwrap();
+        let mut bytes = Cursor::new(Vec::new());
+        image::DynamicImage::new_rgb8(64, 32)
+            .write_to(&mut bytes, ImageFormat::Png)
+            .unwrap();
+        std::fs::write(directory.join("fixture.png"), bytes.into_inner()).unwrap();
+        let id = token(&profile.id, "fixture.png");
+        let _busy = IMAGE_JOBS.acquire_many(2).await.unwrap();
+        let full = tokio::time::timeout(
+            std::time::Duration::from_secs(2),
+            engine.screenshot_image(&id, false),
+        )
+        .await
+        .expect("Full-size preview was blocked by gallery thumbnails")
+        .unwrap();
+        assert!(full.starts_with("data:image/png;base64,"));
+    }
     #[test]
     fn screenshot_ids_reject_traversal_and_arbitrary_paths() {
         let id = uuid::Uuid::new_v4().to_string();

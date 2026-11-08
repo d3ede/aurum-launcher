@@ -160,6 +160,11 @@ async function fixture(page: Page, theme = "dark", notifications = true) {
             };
           if (action === "screenshots.image") {
             if (w.shotImageFail) throw "Screenshot no longer exists";
+            if (!payload.thumbnail && w.holdShotImage === payload.id) {
+              await new Promise<void>((resolve) => {
+                w.releaseShotImage = resolve;
+              });
+            }
             const index = Number(payload.id.match(/shot(\d+)/)?.[1] || 0);
             const color = index % 2 ? "#347563" : "#758c46";
             return (
@@ -721,6 +726,61 @@ test("a missing screenshot preview preserves the picker and its selection", asyn
   ).toBeVisible();
 });
 
+test("paging preloads nearby screenshots and keeps the picture visible during a slow read", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.evaluate(() => {
+    const w = window as any;
+    w.holdShotImage = w.shotItems[8].id;
+  });
+  await nav(page, "Screenshots").click();
+  await page.locator(".shot-select").nth(2).click();
+  const viewer = page.locator("[data-image-lightbox]");
+  const image = viewer.locator(".lightbox-picture img");
+  await expect
+    .poll(() => page.evaluate(() => typeof (window as any).releaseShotImage))
+    .toBe("function");
+  await expect(image).toBeVisible();
+  const original = await image.getAttribute("src");
+  await page.keyboard.press("ArrowRight");
+  await expect(image).toHaveAttribute("src", original!);
+  await expect(viewer.locator(".lightbox-message")).toHaveCount(0);
+  await expect(viewer.locator(".lightbox-toolbar")).toContainText(
+    "Image 3 of 12",
+  );
+  await page.evaluate(() => {
+    (window as any).releaseShotImage();
+    (window as any).holdShotImage = null;
+  });
+  await expect(viewer.locator(".lightbox-toolbar")).toContainText(
+    "Image 4 of 12",
+  );
+  await expect(image).not.toHaveAttribute("src", original!);
+  await page.keyboard.press("ArrowLeft");
+  await expect(viewer.locator(".lightbox-toolbar")).toContainText(
+    "Image 3 of 12",
+  );
+  await page.keyboard.press("ArrowRight");
+  await expect(viewer.locator(".lightbox-toolbar")).toContainText(
+    "Image 4 of 12",
+  );
+  expect(
+    await page.evaluate(() => {
+      const w = window as any;
+      return w.shotRequests.filter(
+        (r: any) =>
+          r.action === "screenshots.image" &&
+          !r.payload.thumbnail &&
+          r.payload.id === w.shotItems[8].id,
+      ).length;
+    }),
+  ).toBe(1);
+  await expect(
+    viewer.getByText("Loading screenshot…", { exact: true }),
+  ).toHaveCount(0);
+});
+
 test("viewer uses all screenshots, keyboard paging and unobtrusive side arrows", async ({
   page,
 }) => {
@@ -743,7 +803,7 @@ test("viewer uses all screenshots, keyboard paging and unobtrusive side arrows",
         (request: { payload: { id: string } }) => request.payload.id,
       ),
     ).size,
-  ).toBe(1);
+  ).toBeLessThanOrEqual(4);
   await page.keyboard.press("ArrowRight");
   await expect(viewer.locator(".lightbox-toolbar")).toContainText(
     "Image 4 of 12",

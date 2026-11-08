@@ -12,24 +12,34 @@ import "../image-lightbox.css";
 
 type View = { scale: number; x: number; y: number };
 const normal: View = { scale: 1, x: 0, y: 0 };
+type Picture = { id: string; url: string; width: number; height: number };
+type CachedPicture = Picture & { image: HTMLImageElement; bytes: number };
+const CACHE_BYTES = 128 * 1024 * 1024;
 
 export function ImageLightbox({
   images,
   initialIndex,
   onClose,
   resolveImage,
+  initialPreview,
 }: {
   images: string[];
   initialIndex: number;
   onClose: () => void;
   resolveImage?: (id: string) => Promise<string>;
+  initialPreview?: { url: string; width: number; height: number };
 }) {
   const [index, setIndex] = useState(
     Math.max(0, Math.min(initialIndex, images.length - 1)),
   );
-  const [content, setContent] = useState({ id: "", url: "", error: "" });
+  const [content, setContent] = useState<Picture>(() => ({
+    id: images[index],
+    url: initialPreview?.url || "",
+    width: initialPreview?.width || 16,
+    height: initialPreview?.height || 9,
+  }));
+  const [failure, setFailure] = useState({ id: "", error: "" });
   const [size, setSize] = useState({ width: 1, height: 1 });
-  const [natural, setNatural] = useState({ width: 16, height: 9 });
   const [view, setView] = useState<View>(normal);
   const [dragging, setDragging] = useState(false);
   const [showScale, setShowScale] = useState(false);
@@ -42,7 +52,12 @@ export function ImageLightbox({
   const root = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
-  const cache = useRef(new Map<string, string>());
+  const cache = useRef(new Map<string, CachedPicture>());
+  const pending = useRef(new Map<string, Promise<CachedPicture>>());
+  const requestedIndex = useRef(index);
+  const requestedId = useRef(images[index]);
+  const displayed = useRef({ ...content, width: 0, height: 0 });
+  const nextDirection = useRef(1);
   const scaleTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const drag = useRef<{
     id: number;
@@ -51,14 +66,67 @@ export function ImageLightbox({
     origin: View;
   } | null>(null);
   const id = images[index];
-  const url = content.id === id ? content.url : "";
-  const error = content.id === id ? content.error : "";
+  const url = content.url;
+  const error = failure.id === id ? failure.error : "";
+  const displayedIndex = Math.max(0, images.indexOf(content.id));
   const fit = Math.min(
-    size.width / natural.width,
-    size.height / natural.height,
+    size.width / content.width,
+    size.height / content.height,
   );
-  const width = natural.width * fit,
-    height = natural.height * fit;
+  const width = content.width * fit,
+    height = content.height * fit;
+  displayed.current = { ...content, width, height };
+  const trimCache = useCallback(() => {
+    let bytes = [...cache.current.values()].reduce(
+      (sum, entry) => sum + entry.bytes,
+      0,
+    );
+    for (const [key, entry] of cache.current) {
+      if (cache.current.size <= 4 && bytes <= CACHE_BYTES) break;
+      if (key === requestedId.current || key === displayed.current.id) continue;
+      cache.current.delete(key);
+      bytes -= entry.bytes;
+      entry.image.src = "";
+    }
+  }, []);
+  const load = useCallback(
+    (key: string): Promise<CachedPicture> => {
+      const cached = cache.current.get(key);
+      if (cached) {
+        cache.current.delete(key);
+        cache.current.set(key, cached);
+        return Promise.resolve(cached);
+      }
+      const existing = pending.current.get(key);
+      if (existing) return existing;
+      const request = (async () => {
+        const next = resolveImage ? await resolveImage(key) : key;
+        const image = new Image();
+        image.referrerPolicy = "no-referrer";
+        image.decoding = "async";
+        image.src = next;
+        try {
+          await image.decode();
+        } catch {
+          throw new Error(t("Не удалось загрузить изображение"));
+        }
+        const entry = {
+          id: key,
+          url: next,
+          width: image.naturalWidth,
+          height: image.naturalHeight,
+          image,
+          bytes: image.naturalWidth * image.naturalHeight * 4 + next.length * 2,
+        };
+        cache.current.set(key, entry);
+        trimCache();
+        return entry;
+      })().finally(() => pending.current.delete(key));
+      pending.current.set(key, request);
+      return request;
+    },
+    [resolveImage, trimCache],
+  );
   const clamp = useCallback(
     (next: View): View => {
       const limitX = Math.max(0, (width * next.scale - size.width) / 2);
@@ -114,16 +182,18 @@ export function ImageLightbox({
   const change = useCallback(
     (step: number) => {
       if (images.length < 2) return;
-      setPrevious(url ? { url, width, height } : null);
-      setDirection(step);
-      setIndex((current) => (current + step + images.length) % images.length);
+      const next =
+        (requestedIndex.current + step + images.length) % images.length;
+      requestedIndex.current = next;
+      requestedId.current = images[next];
+      nextDirection.current = step;
+      setIndex(next);
       setView(normal);
-      setNatural({ width: 16, height: 9 });
       setShowScale(false);
       setDragging(false);
       drag.current = null;
     },
-    [images.length, url, width, height],
+    [images],
   );
 
   useLayoutEffect(() => {
@@ -139,27 +209,50 @@ export function ImageLightbox({
   useEffect(() => setView((current) => clamp(current)), [clamp]);
   useEffect(() => {
     let alive = true;
-    const cached = cache.current.get(id);
-    if (!resolveImage || cached) {
-      setContent({ id, url: cached || id, error: "" });
-      return;
-    }
-    setContent({ id, url: "", error: "" });
-    void resolveImage(id)
-      .then((next) => {
-        if (!alive) return;
-        if (cache.current.size >= 2)
-          cache.current.delete(cache.current.keys().next().value!);
-        cache.current.set(id, next);
-        setContent({ id, url: next, error: "" });
+    setFailure({ id, error: "" });
+    void load(id)
+      .then(async (next) => {
+        if (!alive || requestedIndex.current !== index) return;
+        const old = displayed.current;
+        if (old.url && old.id !== id) {
+          setPrevious({ url: old.url, width: old.width, height: old.height });
+          setDirection(nextDirection.current);
+          setView(normal);
+        }
+        setContent((current) =>
+          current.id === id && current.url === next.url
+            ? current
+            : { id, url: next.url, width: next.width, height: next.height },
+        );
+        // Decode only a small neighbourhood, never the entire screenshot library.
+        for (const offset of [1, -1, 2]) {
+          if (!alive || images.length < 2) break;
+          if (
+            [...cache.current.values()].reduce(
+              (sum, entry) => sum + entry.bytes,
+              0,
+            ) >= CACHE_BYTES
+          )
+            break;
+          const neighbour =
+            images[(index + offset + images.length) % images.length];
+          if (neighbour === id) continue;
+          try {
+            await load(neighbour);
+          } catch {
+            /* Report a failed neighbour only when it is opened. */
+          }
+        }
       })
       .catch((reason) => {
-        if (alive) setContent({ id, url: "", error: String(reason) });
+        if (alive && requestedIndex.current === index)
+          setFailure({ id, error: String(reason) });
       });
     return () => {
       alive = false;
     };
-  }, [id, resolveImage]);
+  }, [id, index, images, load]);
+  useEffect(trimCache, [content, trimCache]);
   useEffect(() => {
     if (!previous) return;
     const timer = setTimeout(() => setPrevious(null), 300);
@@ -247,7 +340,7 @@ export function ImageLightbox({
       <div className="lightbox-toolbar">
         <span aria-live="polite">
           {t("Изображение {{v1}} из {{v2}}", {
-            v1: index + 1,
+            v1: displayedIndex + 1,
             v2: images.length,
           })}
         </span>
@@ -294,7 +387,7 @@ export function ImageLightbox({
         )}
         {url ? (
           <div
-            key={id}
+            key={content.id}
             className={`lightbox-slide entering ${direction > 0 ? "forward" : "backward"}`}
           >
             <button
@@ -351,28 +444,22 @@ export function ImageLightbox({
                 draggable={false}
                 referrerPolicy="no-referrer"
                 alt={t("Изображение {{v1}} из {{v2}}", {
-                  v1: index + 1,
+                  v1: displayedIndex + 1,
                   v2: images.length,
                 })}
-                onLoad={(event) =>
-                  setNatural({
-                    width: event.currentTarget.naturalWidth,
-                    height: event.currentTarget.naturalHeight,
-                  })
-                }
                 onError={() =>
-                  setContent({
-                    id,
-                    url: "",
+                  setFailure({
+                    id: content.id,
                     error: t("Не удалось загрузить изображение"),
                   })
                 }
               />
             </button>
           </div>
-        ) : (
+        ) : null}
+        {error && (
           <div className="lightbox-message" role="status">
-            {error || t("@shots.loading")}
+            {error}
           </div>
         )}
         {showScale && (

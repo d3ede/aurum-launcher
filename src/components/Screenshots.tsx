@@ -108,6 +108,10 @@ function ScreenshotViewer({
   onClose: () => void;
 }) {
   const images = useMemo(() => shots.map((shot) => shot.id), [shots]);
+  const initial = shots[initialIndex];
+  const preview =
+    initial &&
+    thumbnails.get(`${initial.id}:${initial.createdAt}:${initial.bytes}`);
   const resolveImage = useCallback(
     (id: string) => rpc("screenshots.image", { id, thumbnail: false }),
     [],
@@ -117,6 +121,11 @@ function ScreenshotViewer({
       images={images}
       initialIndex={initialIndex}
       resolveImage={resolveImage}
+      initialPreview={
+        preview
+          ? { url: preview, width: initial.width, height: initial.height }
+          : undefined
+      }
       onClose={onClose}
     />
   );

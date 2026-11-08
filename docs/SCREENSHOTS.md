@@ -25,6 +25,13 @@ Drag an enlarged image with the left mouse button to pan. A temporary multiplier
 appears while zooming. The toolbar zoom-out button or Ctrl+0 restores the fitted
 view.
 
+Nearby images are loaded and decoded ahead of navigation, using a bounded
+in-memory cache rather than loading the whole library. The current picture
+stays visible until the next one is ready, then transitions directly into it
+without a loading caption. Opening a local screenshot can initially use its
+existing thumbnail. Full-size reads have separate concurrency slots so they
+do not wait behind the gallery's thumbnail decoders.
+
 ## Delivery
 
 Sending creates encrypted local copies and commits the batch to a durable

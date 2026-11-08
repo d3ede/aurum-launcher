@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Просмотр скриншотов: соседние кадры загружаются заранее, без надписи о загрузке при перелистывании.":
+    "The screenshot viewer preloads nearby images and pages without a loading caption.",
   "Ошибки установки называют недостающую зависимость, нужный аддон и версию игры; совместимые установленные моды учитываются в Modrinth и CurseForge.":
     "Installation errors identify the missing dependency, the addon that needs it and the game version; verified installed mods are reused on Modrinth and CurseForge.",
   "Установка аддонов сохраняет проверенный совместимый мод, если зависимость ошибочно указывает на другую версию Minecraft или загрузчик.":
