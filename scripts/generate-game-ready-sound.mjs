@@ -6,10 +6,10 @@ import { fileURLToPath } from "node:url";
 const sampleRate = 48000;
 const duration = 1.35;
 const frames = Math.round(sampleRate * duration);
-const peakLevel = 0.085;
+const peakLevel = 0.125;
 const notes = [
-  { start: 0.025, frequency: 220, gain: 1 },
-  { start: 0.025, frequency: 330, gain: 0.16 },
+  { start: 0.025, frequency: 261.6256, gain: 0.9 },
+  { start: 0.245, frequency: 329.6276, gain: 1 },
 ];
 const samples = new Float64Array(frames);
 let peak = 0;
@@ -19,10 +19,10 @@ for (let frame = 0; frame < frames; frame++) {
   for (const note of notes) {
     const age = time - note.start;
     if (age < 0) continue;
-    const attack = Math.sin(Math.min(age / 0.12, 1) * Math.PI / 2) ** 2;
-    const decay = Math.exp(-age / 0.3);
+    const attack = Math.sin(Math.min(age / 0.07, 1) * Math.PI / 2) ** 2;
+    const decay = Math.exp(-age / 0.32);
     const phase = 2 * Math.PI * note.frequency * age;
-    // A low, softly voiced tone, with no note sequence or bright bell partials.
+    // Two rounded, gently overlapping notes, without bright bell partials.
     sample += note.gain * attack * decay * Math.sin(phase);
   }
   const fade = Math.min(1, Math.max(0, (duration - time) / 0.15));
