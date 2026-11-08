@@ -202,8 +202,8 @@ export function IconPicker({
             key={roll}
             className={`randomizer-die${roll ? " is-rolling" : ""}`}
             src={gameDie}
-            width="32"
-            height="32"
+            width="21"
+            height="21"
             alt=""
             aria-hidden="true"
           />
