@@ -40,6 +40,9 @@ export function ProfileCard({
     <button
       className={`button launch-button ${running ? "stop" : "primary"}${layout === "row" ? " instance-card-play" : ""}`}
       aria-label={action}
+      data-install-required={
+        (!running && !profile.installedVersion) || undefined
+      }
       title={`${action} · ${profile.name}`}
       disabled={busy}
       onClick={() =>
@@ -53,7 +56,7 @@ export function ProfileCard({
       ) : (
         <Play size={layout === "row" ? 20 : 16} />
       )}
-      {action}
+      <span className="instance-card-launch-label">{action}</span>
     </button>
   );
   if (layout === "row") {
@@ -81,9 +84,10 @@ export function ProfileCard({
             </p>
             <span
               className={`instance-card-status ${running ? "is-running" : installing ? "is-installing" : profile.installedVersion ? "is-installed" : "is-pending"}`}
+              title={status}
             >
               <i aria-hidden="true" />
-              {status}
+              <span className="instance-card-status-label">{status}</span>
             </span>
           </div>
         </button>

@@ -1,8 +1,13 @@
 import { test, expect, type Page } from "@playwright/test";
 
-async function fixture(page: Page, language = "ru", sixProfiles = false) {
+async function fixture(
+  page: Page,
+  language = "ru",
+  sixProfiles = false,
+  needsInstall = false,
+) {
   await page.addInitScript(
-    ({ language, sixProfiles }) => {
+    ({ language, sixProfiles, needsInstall }) => {
       localStorage.setItem("aurum:language", language);
       const w = window as any;
       w.isTauri = true;
@@ -19,7 +24,7 @@ async function fixture(page: Page, language = "ru", sixProfiles = false) {
           minecraft: "1.21.1",
           loader: "vanilla",
           loaderVersion: null,
-          installedVersion: "1.21.1",
+          installedVersion: needsInstall ? null : "1.21.1",
           ramMb: null,
           jvmArgs: "",
           lastPlayed: index === 0 ? 999 : null,
@@ -90,10 +95,75 @@ async function fixture(page: Page, language = "ru", sixProfiles = false) {
         },
       };
     },
-    { language, sixProfiles },
+    { language, sixProfiles, needsInstall },
   );
   await page.goto("/");
   await openLibrary(page, language, sixProfiles ? 6 : 4);
+}
+
+for (const language of ["ru", "en"]) {
+  test(`pending instance action stays inside compact rows in ${language}`, async ({
+    page,
+  }) => {
+    await fixture(page, language, true, true);
+    for (const width of [960, 1280]) {
+      await page.setViewportSize({ width, height: 820 });
+      for (const theme of ["light", "dark"]) {
+        if (theme === "dark")
+          await page
+            .getByRole("button", {
+              name: language === "ru" ? "Переключить тему" : "Toggle theme",
+              exact: true,
+            })
+            .click();
+        const card = page.locator(".library .instance-card-row").first();
+        const action = card.getByRole("button", {
+          name: language === "ru" ? "Установить и играть" : "Install and play",
+          exact: true,
+        });
+        await expect(action).toBeVisible();
+        expect(
+          await action.evaluate((button) => {
+            const bounds = button.getBoundingClientRect();
+            const label = button.querySelector(".instance-card-launch-label")!;
+            const range = document.createRange();
+            range.selectNodeContents(label);
+            return [...range.getClientRects()].every(
+              (rect) =>
+                rect.left >= bounds.left &&
+                rect.right <= bounds.right &&
+                rect.top >= bounds.top &&
+                rect.bottom <= bounds.bottom,
+            );
+          }),
+        ).toBe(true);
+        const geometry = await card.evaluate((element) => {
+          const button = element
+            .querySelector(".instance-card-play")!
+            .getBoundingClientRect();
+          const menu = element
+            .querySelector(".profile-card-more")!
+            .getBoundingClientRect();
+          return {
+            separate: button.right <= menu.left,
+            height: element.getBoundingClientRect().height,
+          };
+        });
+        expect(geometry.separate).toBe(true);
+        expect(geometry.height).toBeLessThanOrEqual(108);
+        await card.screenshot({
+          path: `.test-data/screenshots/pending-instance-${language}-${theme}-${width}.png`,
+          animations: "disabled",
+        });
+      }
+      await page
+        .getByRole("button", {
+          name: language === "ru" ? "Переключить тему" : "Toggle theme",
+          exact: true,
+        })
+        .click();
+    }
+  });
 }
 
 async function openLibrary(page: Page, language = "ru", count = 4) {

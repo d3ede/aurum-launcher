@@ -95,6 +95,12 @@
   border-radius: 50%;
   background: var(--muted);
 }
+.instance-card-status-label {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .instance-card-status.is-installed i,
 .instance-card-status.is-running i {
   background: #82c879;
@@ -152,6 +158,23 @@
 }
 .instance-card-play .lucide-play {
   margin-inline-start: 2px;
+}
+.instance-card-row .instance-card-play[data-install-required] {
+  padding: 4px 6px;
+  white-space: normal;
+  line-height: 1.2;
+}
+.instance-card-row .instance-card-play[data-install-required] > svg {
+  display: none;
+}
+.instance-card-row .instance-card-launch-label {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.instance-card-footer:has([data-install-required]) {
+  flex-wrap: wrap;
 }
 @media (max-width: 1000px) {
   .instance-card.instance-card-row {
