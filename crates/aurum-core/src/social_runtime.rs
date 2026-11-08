@@ -78,6 +78,53 @@ impl Manifest {
         self.in_directory(&directory)
     }
 
+    /// Firewall rules bind to this path, so it must survive runtime revisions
+    /// and moves of an offline launcher installation. The revision cache remains
+    /// immutable; only a fully verified pair is activated here.
+    pub fn activate(&self, source: &Path, root: &Path) -> Result<PathBuf> {
+        let destination = root.join("client");
+        if let Some(worker) = self.in_directory(&destination)? {
+            return Ok(worker);
+        }
+        if self.in_directory(source)?.is_none() {
+            bail!("Social component executable checksum mismatch");
+        }
+        std::fs::create_dir_all(root)?;
+        let staging = Staging(root.join(format!("client.{}.part", uuid::Uuid::new_v4())));
+        std::fs::create_dir(&staging.0)?;
+        for file in &self.files {
+            std::fs::copy(source.join(&file.name), staging.0.join(&file.name))?;
+        }
+        if self.in_directory(&staging.0)?.is_none() {
+            bail!("Social component changed during activation");
+        }
+        let previous = root.join(format!("client.{}.old", uuid::Uuid::new_v4()));
+        let replacing = destination.exists();
+        if replacing {
+            let metadata = std::fs::symlink_metadata(&destination)?;
+            if !metadata.is_dir() || metadata.file_type().is_symlink() {
+                bail!("Invalid Social component directory");
+            }
+            std::fs::rename(&destination, &previous)
+                .context("Close Social before updating its component")?;
+        }
+        if let Err(error) = std::fs::rename(&staging.0, &destination) {
+            if replacing {
+                // Keep the previous installation if rollback itself fails.
+                let _ = std::fs::rename(&previous, &destination);
+            }
+            return Err(error.into());
+        }
+        if replacing {
+            // Remove only our executables; preserve any unrelated local files.
+            for file in &self.files {
+                let _ = std::fs::remove_file(previous.join(&file.name));
+            }
+            let _ = std::fs::remove_dir(previous);
+        }
+        Ok(destination.join(WORKER))
+    }
+
     pub fn in_directory(&self, directory: &Path) -> Result<Option<PathBuf>> {
         if self
             .files
@@ -393,6 +440,51 @@ mod tests {
         json["files"][0]["name"] = WORKER.into();
         json["files"][0]["bytes"] = (MAX_FILE + 1).into();
         assert!(Manifest::decode(&json.to_string()).is_err());
+    }
+
+    #[test]
+    fn activation_preserves_the_firewall_path_across_revisions_and_source_moves() {
+        let (mut manifest, _) = fixture();
+        let root = tempfile::tempdir().unwrap();
+        let source = root.path().join("offline-install");
+        let runtime = root.path().join("runtime");
+        std::fs::create_dir(&source).unwrap();
+        std::fs::write(source.join(WORKER), b"test worker").unwrap();
+        std::fs::write(source.join(FIREWALL), b"test firewall helper").unwrap();
+        let path = manifest.activate(&source, &runtime).unwrap();
+        assert_eq!(path, runtime.join("client").join(WORKER));
+        let moved = root.path().join("updated-offline-install");
+        std::fs::rename(&source, &moved).unwrap();
+        let updated = b"updated worker";
+        std::fs::write(moved.join(WORKER), updated).unwrap();
+        manifest.files[0].sha256 = hash(updated);
+        manifest.files[0].bytes = updated.len() as u64;
+        manifest.revision = "f".repeat(64);
+        assert_eq!(manifest.activate(&moved, &runtime).unwrap(), path);
+        assert_eq!(std::fs::read(&path).unwrap(), updated);
+        // Once activated, restarting does not require the original installer.
+        std::fs::remove_dir_all(moved).unwrap();
+        assert_eq!(manifest.activate(&source, &runtime).unwrap(), path);
+        assert_eq!(std::fs::read_dir(&runtime).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn activation_rejects_tampered_updates_and_preserves_the_previous_pair() {
+        let (mut manifest, _) = fixture();
+        let root = tempfile::tempdir().unwrap();
+        let source = root.path().join("source");
+        let runtime = root.path().join("runtime");
+        std::fs::create_dir(&source).unwrap();
+        std::fs::write(source.join(WORKER), b"test worker").unwrap();
+        std::fs::write(source.join(FIREWALL), b"test firewall helper").unwrap();
+        let path = manifest.activate(&source, &runtime).unwrap();
+        manifest.files[0].sha256 = hash(b"new worker");
+        manifest.files[0].bytes = 10;
+        std::fs::write(source.join(WORKER), b"tampered!").unwrap();
+        assert!(manifest.activate(&source, &runtime).is_err());
+        assert_eq!(std::fs::read(path).unwrap(), b"test worker");
+        assert_eq!(std::fs::read(runtime.join("client").join(FIREWALL)).unwrap(), b"test firewall helper");
+        assert_eq!(std::fs::read_dir(runtime).unwrap().count(), 1);
     }
 
     #[tokio::test]

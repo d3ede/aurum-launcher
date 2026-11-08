@@ -111,7 +111,15 @@ async function fixture(
           const { action, payload } = args;
           w.socialRequests.push({ action, payload });
           if (action === "snapshot") return structuredClone(state);
-          if (action === "social.snapshot") return structuredClone(social);
+          if (action === "social.snapshot") {
+            if (w.socialSnapshotWait) {
+              await new Promise<void>(
+                (resolve) => (w.finishSnapshot = resolve),
+              );
+              w.socialSnapshotWait = false;
+            }
+            return structuredClone(social);
+          }
           if (action === "social.takeLink") return null;
           if (action === "selectAccount") {
             state.selectedAccount = payload.id;
@@ -186,7 +194,7 @@ async function fixture(
             return null;
           }
           if (action === "social.firewallStatus")
-            return [{ present: true, scoped: true }];
+            return [{ present: true, scoped: !w.socialFirewallOutdated }];
           if (action === "social.enable") {
             social.enabled = true;
             social.status = "online";
@@ -1112,4 +1120,72 @@ test("an offline saved identity reconnects without new-account onboarding", asyn
   await expect(page.locator(".social-id-value")).toHaveText(
     "aur1" + "a".repeat(59),
   );
+});
+
+test("a saved identity repairs an outdated component and firewall without repeating P2P consent", async ({
+  page,
+}) => {
+  await fixture(page, true);
+  await page.evaluate(() => {
+    const w = window as any;
+    w.socialFirewallOutdated = true;
+    w.runtimeWait = true;
+    w.socialPatch({ enabled: false, status: "disabled" });
+  });
+  await page.getByRole("button", { name: "Reconnect", exact: true }).click();
+  await expect
+    .poll(() => page.evaluate(() => !!(window as any).finishRuntime))
+    .toBe(true);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.evaluate(() => (window as any).finishRuntime());
+  await expect(
+    page.getByRole("combobox", { name: "Status", exact: true }),
+  ).toContainText("Online");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const requests = await page.evaluate(() => (window as any).socialRequests);
+  expect(
+    requests
+      .filter((r: any) =>
+        [
+          "social.installRuntime",
+          "social.configureFirewall",
+          "social.enable",
+        ].includes(r.action),
+      )
+      .map((r: any) => r.action),
+  ).toEqual([
+    "social.installRuntime",
+    "social.configureFirewall",
+    "social.enable",
+  ]);
+});
+
+test("an automatic component update never opens P2P onboarding while the saved identity is loading", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const w = window as any;
+    w.socialSnapshotWait = true;
+    w.finishRuntime = () => {
+      w.finishRuntime = null;
+    };
+  });
+  await fixture(page, true);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as any).socialRequests.filter(
+            (r: any) => r.action === "social.runtimeStatus",
+          ).length,
+      ),
+    )
+    .toBeGreaterThan(0);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.evaluate(() => (window as any).finishSnapshot());
+  await expect(
+    page.getByRole("combobox", { name: "Status", exact: true }),
+  ).toContainText("Online");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.evaluate(() => (window as any).finishRuntime());
 });

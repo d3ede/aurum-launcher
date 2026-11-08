@@ -20,20 +20,41 @@ pub fn receive(app: &tauri::AppHandle, args: &[String]) {
     let _ = tauri::Emitter::emit_to(app, "main", "social:link", ());
 }
 pub fn resume(app: &tauri::AppHandle, e: &Engine) {
-    if e.social.enabled_previously() {
-        if let Ok(path) = worker_path(app) {
-            if aurum_social::firewall::status(&path, false)
-                .is_ok_and(|rules| rules.iter().all(|r| r.present && r.scoped))
-            {
-                let name = e
-                    .social
-                    .snapshot()
-                    .map(|s| s.name)
-                    .unwrap_or_else(|_| "Player".into());
-                let _ = e.social.enable(path, name, true);
-            }
-        }
+    if !e.social.enabled_previously() {
+        return;
     }
+    let app = app.clone();
+    let e = e.clone();
+    // A saved opt-in authorizes resuming and updating the pinned component.
+    // Run Windows COM and any one-time legacy rule migration off the UI thread.
+    tauri::async_runtime::spawn(async move {
+        let result = async {
+            app.state::<crate::social_runtime::Runtime>()
+                .install(&app, &e.http)
+                .await
+                .map_err(err)?;
+            let path = worker_path(&app)?;
+            let social = e.social.clone();
+            tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+                // Explicit disable while preparing must not reconnect the user.
+                if !social.enabled_previously() {
+                    return Ok(());
+                }
+                aurum_social::firewall::request_configuration(&path).map_err(err)?;
+                if !social.enabled_previously() {
+                    return Ok(());
+                }
+                let name = social.snapshot().map_err(err)?.name;
+                social.enable(path, name, true).map_err(err)
+            })
+            .await
+            .map_err(err)?
+        }
+        .await;
+        if let Err(error) = result {
+            e.social.report_resume_error(&error);
+        }
+    });
 }
 use aurum_core::Engine;
 use serde_json::{json, Value};

@@ -26,6 +26,7 @@ pub fn cleanup(identifier: &str) -> anyhow::Result<()> {
 pub struct Runtime {
     root: PathBuf,
     manifest: Manifest,
+    activation: Mutex<()>,
     download: tokio::sync::Mutex<()>,
     cancel: AtomicBool,
     state: Mutex<Status>,
@@ -45,6 +46,7 @@ impl Runtime {
         Ok(Self {
             root: app.path().app_local_data_dir()?.join("social-runtime"),
             manifest: Manifest::decode(include_str!("../social-runtime/manifest.json"))?,
+            activation: Mutex::new(()),
             download: tokio::sync::Mutex::new(()),
             cancel: AtomicBool::new(false),
             state: Mutex::new(Status::default()),
@@ -52,8 +54,17 @@ impl Runtime {
     }
 
     pub fn worker(&self, app: &tauri::AppHandle) -> anyhow::Result<Option<PathBuf>> {
-        if let Some(worker) = self.manifest.installed(&self.root)? {
+        let _guard = self.activation
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Social component state unavailable"))?;
+        if let Some(worker) = self.manifest.in_directory(&self.root.join("client"))? {
             return Ok(Some(worker));
+        }
+        if let Some(worker) = self.manifest.installed(&self.root)? {
+            return self
+                .manifest
+                .activate(worker.parent().unwrap(), &self.root)
+                .map(Some);
         }
         #[cfg(debug_assertions)]
         {
@@ -70,8 +81,11 @@ impl Runtime {
             }
         }
         // Supports an integrity-checked offline QA package, and matching legacy installs.
-        self.manifest
-            .in_directory(&app.path().resource_dir()?.join("social"))
+        let source = app.path().resource_dir()?.join("social");
+        if self.manifest.in_directory(&source)?.is_some() {
+            return self.manifest.activate(&source, &self.root).map(Some);
+        }
+        Ok(None)
     }
 
     pub fn status(&self, app: &tauri::AppHandle) -> anyhow::Result<Status> {

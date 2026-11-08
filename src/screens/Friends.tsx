@@ -61,7 +61,7 @@ export function Friends() {
         const status = await rpc("social.runtimeStatus", {});
         if (!disposed) {
           setRuntime(status);
-          if (status.downloading) setDialog("enable");
+          if (status.downloading && s?.id === null) setDialog("enable");
         }
       } catch {
         /* Setup errors are surfaced by the explicit download action. */
@@ -73,11 +73,13 @@ export function Friends() {
       disposed = true;
       clearTimeout(timer);
     };
-  }, [preparing]);
+  }, [preparing, s?.id]);
   const [password, setPassword] = useState("");
   const [qr, setQr] = useState("");
   const [invite, setInvite] = useState<SocialPerson | null>(null);
-  const [screenshotFriend, setScreenshotFriend] = useState<SocialPerson | null>(null);
+  const [screenshotFriend, setScreenshotFriend] = useState<SocialPerson | null>(
+    null,
+  );
   const [verify, setVerify] = useState<SocialPerson | null>(null);
   const [confirm, setConfirm] = useState<{
     person: SocialPerson;
@@ -371,21 +373,27 @@ export function Friends() {
                         : "@social.off.short",
                   )}
                 </p>
+                {preparing && (
+                  <p role="status">{t("@social.runtime.downloading")}</p>
+                )}
+                {s.error && <p role="alert">{t(s.error)}</p>}
               </div>
               <button
                 className="button primary"
-                disabled={working}
+                disabled={working || preparing}
                 onClick={() => {
                   setName(s.name);
                   if (s.id && s.status !== "identity_missing") {
                     void act(async () => {
+                      await rpc("social.installRuntime", { accepted: true });
                       const rules = await rpc("social.firewallStatus", {});
                       if (
                         !rules.length ||
                         !rules.every((rule) => rule.present && rule.scoped)
                       ) {
-                        setDialog("enable");
-                        return;
+                        await rpc("social.configureFirewall", {
+                          accepted: true,
+                        });
                       }
                       await rpc("social.enable", {
                         name: s.name,

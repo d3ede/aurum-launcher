@@ -92,8 +92,6 @@ async fn rpc(
             app.restart()
         }
         "changeDataDirectory" => {
-            #[cfg(windows)]
-            e.social.shutdown().map_err(err)?;
             if !e.hosting_running().is_empty() {
                 return Err("Сначала остановите локальные серверы".into());
             }
@@ -123,6 +121,8 @@ async fn rpc(
                 .await
                 .map_err(err)?;
             let result: Result<(), anyhow::Error> = async {
+                #[cfg(windows)]
+                e.social.shutdown()?;
                 e.copy_data(&path, &task).await?;
                 let config = app.path().app_config_dir()?;
                 std::fs::create_dir_all(&config)?;
@@ -141,6 +141,8 @@ async fn rpc(
             }
             .await;
             e.finish(&task, &result).await;
+            #[cfg(windows)]
+            if result.is_err() { social::resume(&app, &e); }
             result.map_err(err)?;
             Ok(json!(path.to_string_lossy()))
         }

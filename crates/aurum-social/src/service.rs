@@ -217,6 +217,12 @@ impl Service {
             .as_deref()
             == Some("true")
     }
+    pub fn report_resume_error(&self, error: &str) {
+        if let Ok(mut live) = self.live.lock() {
+            live.error = Some(error.chars().take(300).collect());
+        }
+        signal(&self.notify);
+    }
     pub fn enable(&self, executable: PathBuf, name: String, accepted: bool) -> Result<()> {
         if !accepted {
             bail!("Explicit Social consent is required");
@@ -1610,6 +1616,30 @@ fn transport_key(address: &str) -> Result<[u8; 32]> {
 #[cfg(test)]
 mod recovery_tests {
     use super::*;
+    #[test]
+    fn shutdown_preserves_saved_opt_in_identity_and_contacts_but_disable_clears_opt_in() {
+        let dir = tempfile::tempdir().unwrap();
+        let service = Service::new(dir.path().to_owned());
+        let own = Identity::generate().unwrap();
+        own.save(&dir.path().join("identity.dpapi")).unwrap();
+        let peer = Identity::generate().unwrap().id();
+        let store = service.store().unwrap();
+        store.set("publicId", &own.id()).unwrap();
+        store.set("enabled", "true").unwrap();
+        store.set("name", "Saved player").unwrap();
+        store.request(&peer, "Friend").unwrap();
+        service.shutdown().unwrap();
+        drop(service);
+        let reopened = Service::new(dir.path().to_owned());
+        assert!(reopened.enabled_previously());
+        let snapshot = reopened.snapshot().unwrap();
+        assert_eq!(snapshot.id.as_deref(), Some(own.id().as_str()));
+        assert_eq!(snapshot.name, "Saved player");
+        assert_eq!(snapshot.people[0].id, peer);
+        reopened.disable().unwrap();
+        drop(reopened);
+        assert!(!Service::new(dir.path().to_owned()).enabled_previously());
+    }
     #[test]
     fn legacy_photo_ready_and_receipts_never_claim_user_approval() {
         let ready: PeerAction =

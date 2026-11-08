@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Social подключается после перезапуска и обновления без повторного согласия на P2P. Постоянный путь компонента сохраняет настройку брандмауэра.":
+    "Social reconnects after restarts and updates without asking for P2P consent again. A stable component path preserves the firewall setup.",
   "Ресурспаки и шейдеры: установка, обновление и управление файлами без остановки игры. Применяйте пак в настройках Minecraft.":
     "Resource packs and shaders: install, update and manage files while the game is running. Apply the pack in Minecraft settings.",
   "Скины и плащи открываются из профилей. Отдельный пункт меню убран.":
