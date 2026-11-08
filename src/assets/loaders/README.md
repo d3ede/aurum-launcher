@@ -33,10 +33,10 @@ PolyForm license; their respective owners retain their rights.
 The color selector uses the original images, except for the smooth Fabric
 roll and geometric Vanilla block. The instance icon editor offers
 monochrome adaptations for user-selected colors. `forge-mask.png` removes the
-original background using `scripts/loader-masks.ps1`. Fabric uses the opaque
-palette regions from `fabric.svg` in `src/components/FabricGlyph.tsx`: shadows
-mix the selected color with black and highlights mix it with white. Its fold,
-cloth texture and shaded rim remain visible independently of the tile background;
+original background using `scripts/loader-masks.ps1`. Fabric uses a simplified
+cloth silhouette with a rolled edge and folded rim in `src/components/FabricGlyph.tsx`.
+Opaque shadows mix the selected color with black and highlights mix it with white.
+The broad cloth surfaces remain visible independently of the tile background;
 brightness is not encoded as transparency. This textured rendering is shared by
 hosting and the instance icon editor. NeoForge uses its monochrome SVG mask.
 The Vanilla mask uses the original alpha channel. Colors and backgrounds
