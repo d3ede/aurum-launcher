@@ -28,8 +28,8 @@
 .modal.launcher-update-dialog {
   display: flex;
   flex-direction: column;
-  width: 560px;
-  padding: 32px 38px 26px;
+  width: 520px;
+  padding: 28px 32px 22px;
   border-color: var(--gold-border);
   border-radius: 20px;
   text-align: center;
@@ -81,7 +81,7 @@
 .launcher-update-dialog .modal-head {
   position: static;
   justify-content: center;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 .launcher-update-dialog .modal-head > div {
   width: 100%;
@@ -102,10 +102,10 @@
 }
 .launcher-update-release {
   order: -1;
-  width: 62px;
-  height: 62px;
+  width: 58px;
+  height: 58px;
   flex-shrink: 0;
-  margin: 0 auto 24px;
+  margin: 0 auto 20px;
   border-radius: 18px;
   box-shadow: 0 8px 26px var(--gold-soft);
 }
@@ -153,7 +153,7 @@
   letter-spacing: -1.5px;
 }
 .launcher-update-restart-note {
-  margin: 18px 0 0;
+  margin: 16px 0 0;
   font-size: 13px;
   color: var(--muted);
   line-height: 1.7;
@@ -174,7 +174,7 @@
 .launcher-update-dialog .modal-actions {
   flex-direction: column;
   gap: 6px;
-  margin-top: 24px;
+  margin-top: 22px;
   padding: 0;
   border: 0;
 }
