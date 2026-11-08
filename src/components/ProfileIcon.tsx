@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { t } from "../lib/i18n";
-import { Upload, RotateCcw, Dice5 } from "lucide-react";
+import { Upload, RotateCcw } from "lucide-react";
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
 import {
@@ -121,6 +121,7 @@ export function IconPicker({
   onChange: (value: IconValue) => void;
 }) {
   const { run, busy } = useApp();
+  const [roll, setRoll] = useState(0);
   const appearance =
     value.iconStyle ||
     defaultIconStyle(
@@ -191,11 +192,68 @@ export function IconPicker({
           title={t("Случайный значок")}
           aria-label={t("Случайный значок")}
           disabled={busy}
-          onClick={() =>
-            onChange({ ...value, icon: null, iconStyle: randomIconStyle() })
-          }
+          onClick={() => {
+            setRoll((count) => count + 1);
+            onChange({ ...value, icon: null, iconStyle: randomIconStyle() });
+          }}
         >
-          <Dice5 size={22} aria-hidden="true" />
+          <svg
+            key={roll}
+            className={`randomizer-die${roll ? " is-rolling" : ""}`}
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <g
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            >
+              <path d="m12 2.5 9 5v9l-9 5-9-5v-9Z" />
+              <path d="m3 7.5 9 5 9-5m-9 5v9" />
+            </g>
+            <g fill="currentColor">
+              <ellipse cx="12" cy="7.4" rx="1.3" ry=".8" />
+              <ellipse
+                cx="6"
+                cy="11.5"
+                rx="1"
+                ry="1.2"
+                transform="rotate(-25 6 11.5)"
+              />
+              <ellipse
+                cx="9"
+                cy="16.8"
+                rx="1"
+                ry="1.2"
+                transform="rotate(-25 9 16.8)"
+              />
+              <ellipse
+                cx="18"
+                cy="11.3"
+                rx="1"
+                ry="1.2"
+                transform="rotate(25 18 11.3)"
+              />
+              <ellipse
+                cx="16.5"
+                cy="14.4"
+                rx="1"
+                ry="1.2"
+                transform="rotate(25 16.5 14.4)"
+              />
+              <ellipse
+                cx="15"
+                cy="17.5"
+                rx="1"
+                ry="1.2"
+                transform="rotate(25 15 17.5)"
+              />
+            </g>
+          </svg>
         </button>
       </div>
       <div className="icon-editor-colors">
