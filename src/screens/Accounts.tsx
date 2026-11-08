@@ -34,14 +34,12 @@ export function Accounts() {
         <p>{t("Выберите аккаунт для игры и настройте скин.")}</p>
       </div>
       <div className="accounts-layout">
-        <section>
+        <section className="accounts-main">
           <div className="microsoft-account-card">
             <TerrainPattern />
-            <h3>{t("Ваш Minecraft начинается здесь")}</h3>
+            <h3>{t("Аккаунт Minecraft")}</h3>
             <p>
-              {t(
-                "Войдите с Microsoft — и ваши скины, серверы и миры будут под рукой. Всё остальное Aurum сделает сам.",
-              )}
+              {t("Войдите через Microsoft или добавьте локальный профиль.")}
             </p>
           </div>
           <div className="account-add">
@@ -99,11 +97,11 @@ export function Accounts() {
             <EmptyState
               icon={<UserRound size={30} />}
               title={t("Нет аккаунтов")}
-              text={t(
-                "Добавьте Microsoft-аккаунт или локальный профиль для допустимых офлайн-сценариев.",
-              )}
+              text={t("Добавьте Microsoft-аккаунт или локальный профиль.")}
             />
           )}
+        </section>
+        <section className="accounts-details">
           {account && (
             <div className="account-actions">
               <button
@@ -141,34 +139,31 @@ export function Accounts() {
             </div>
           </div>
         </section>
-        <section className="skin-panel accounts-wardrobe-link">
-          <div className="section-heading">
-            <div>
-              <h2>{t("Скины и плащи")}</h2>
-              <p>{t("Отдельная библиотека ваших образов")}</p>
-            </div>
-            <Shirt size={24} />
-          </div>
-          <p>
-            {t(
-              "Стандартные персонажи, сохранённые скины, анимации и настройки плащей — в разделе образов.",
-            )}
-          </p>
-          <button
-            className="button secondary full-width"
-            onClick={() => navigate("skins")}
-          >
+        <button
+          className="accounts-wardrobe-link"
+          aria-label={t("Открыть скины")}
+          onClick={() => navigate("skins")}
+        >
+          <TerrainPattern />
+          <span className="accounts-wardrobe-heading">
+            <strong>{t("Скины и плащи")}</strong>
+            <span className="accounts-wardrobe-icon">
+              <Shirt size={28} />
+            </span>
+          </span>
+          <span className="accounts-wardrobe-description">
+            {t("Выбор скина и плаща для аккаунта.")}
+          </span>
+          <span className="accounts-wardrobe-action">
             {t("Открыть скины")}
-            <ArrowRight size={16} />
-          </button>
-        </section>
+            <ArrowRight size={18} />
+          </span>
+        </button>
       </div>
       {offline && (
         <Modal
           title={t("Локальный профиль")}
-          subtitle={t(
-            "Для игры без Microsoft-авторизации в допустимых офлайн-сценариях.",
-          )}
+          subtitle={t("Для одиночной игры и серверов с офлайн-входом.")}
           onClose={() => setOffline(false)}
         >
           <form

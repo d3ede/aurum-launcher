@@ -1,8 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 
-async function fixture(page: Page, failed = false) {
+async function fixture(page: Page, failed = false, theme = "light") {
   await page.addInitScript(
-    ({ failed }) => {
+    ({ failed, theme }) => {
       localStorage.setItem("aurum:language", "ru");
       const browser = window as any;
       browser.isTauri = true;
@@ -41,7 +41,7 @@ async function fixture(page: Page, failed = false) {
         curseforgeConfigured: false,
         settings: {
           language: "ru",
-          theme: "light",
+          theme,
           javaPath: "",
           ramMb: 4096,
           jvmArgs: "",
@@ -70,6 +70,10 @@ async function fixture(page: Page, failed = false) {
           const { action, payload } = args;
           if (action === "snapshot") return structuredClone(state);
           if (action === "search") return { projects: [], total: 0 };
+          if (action === "skinLibrary")
+            return { skins: [], capes: [], selections: {} };
+          if (action === "accountAppearance" || action === "accountSkinPreview")
+            return { texture, model: "steve", capes: [] };
           if (action === "accountAvatar") {
             browser.avatarRequests.push(payload.id);
             if (failed) throw new Error("offline");
@@ -87,7 +91,7 @@ async function fixture(page: Page, failed = false) {
         },
       };
     },
-    { failed },
+    { failed, theme },
   );
   await page.goto("/");
   await expect(
@@ -118,6 +122,95 @@ async function pixel(page: Page, selector: string, left: number, top: number) {
     );
 }
 
+for (const theme of ["light", "garnet"]) {
+  test(`skin access stays in Accounts with a taller animated card in ${theme}`, async ({
+    page,
+  }) => {
+    await fixture(page, false, theme);
+    const nav = page.getByRole("navigation");
+    await expect(
+      nav.getByRole("button", { name: "Скины и плащи", exact: true }),
+    ).toHaveCount(0);
+    await nav.getByRole("button", { name: "Профили", exact: true }).click();
+    const card = page.getByRole("button", {
+      name: "Открыть скины",
+      exact: true,
+    });
+    await expect(card).toContainText("Выбор скина и плаща для аккаунта.");
+    await expect(
+      page.getByText("Отдельная библиотека ваших образов"),
+    ).toHaveCount(0);
+    await expect(page.getByText("Ваш Minecraft начинается здесь")).toHaveCount(
+      0,
+    );
+    for (const width of [1280, 960]) {
+      await page.setViewportSize({ width, height: width === 960 ? 680 : 820 });
+      await page.mouse.move(0, 0);
+      const bounds = (await card.boundingBox())!;
+      const hero = (await page
+        .locator(".microsoft-account-card")
+        .boundingBox())!;
+      const accounts = (await page.locator(".account-list").boundingBox())!;
+      expect(Math.abs(bounds.y - hero.y)).toBeLessThanOrEqual(1);
+      expect(bounds.height).toBeGreaterThanOrEqual(294);
+      expect(bounds.y + bounds.height).toBeGreaterThanOrEqual(
+        accounts.y + accounts.height - 1,
+      );
+      expect(
+        await page
+          .locator(".content-scroll")
+          .evaluate((el) => el.scrollWidth <= el.clientWidth),
+      ).toBe(true);
+      const pattern = card.locator(".terrain-pattern");
+      await expect(pattern).toHaveCSS("opacity", "0");
+      await card.hover();
+      await expect(pattern).toHaveCSS("opacity", "0.18");
+      await expect(pattern).toHaveCSS("clip-path", "inset(0px)");
+      await page.screenshot({
+        path: `.test-data/screenshots/accounts-skin-access-${theme}-${width}.png`,
+      });
+    }
+    await card.click();
+    await expect(
+      page.getByRole("heading", { name: "Скины и плащи", exact: true }),
+    ).toBeVisible();
+    await expect(
+      nav.getByRole("button", { name: "Профили", exact: true }),
+    ).toHaveAttribute("aria-current", "page");
+    await expect(
+      nav.getByRole("button", { name: "Скины и плащи", exact: true }),
+    ).toHaveCount(0);
+    await nav.getByRole("button", { name: "Профили", exact: true }).click();
+    await expect(card).toBeVisible();
+  });
+}
+
+test("skin access supports keyboard activation and reduced motion", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await fixture(page);
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: "Профили", exact: true })
+    .click();
+  const card = page.getByRole("button", { name: "Открыть скины", exact: true });
+  await card.focus();
+  expect(
+    await card.locator(".terrain-pattern").evaluate((el) =>
+      Math.max(
+        ...getComputedStyle(el)
+          .transitionDuration.split(",")
+          .map((value) => parseFloat(value)),
+      ),
+    ),
+  ).toBeLessThanOrEqual(0.001);
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByRole("heading", { name: "Скины и плащи", exact: true }),
+  ).toBeVisible();
+});
+
 test("skin heads share requests, compose the hat layer and refresh across account changes", async ({
   page,
 }) => {
@@ -137,9 +230,7 @@ test("skin heads share requests, compose the hat layer and refresh across accoun
   expect(await pixel(page, ".home-account-avatar canvas", 1, 1)).toEqual([
     32, 112, 224, 255,
   ]);
-  await page
-    .getByRole("button", { name: "Профили", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Профили", exact: true }).click();
   await expect(
     page.locator(".account-avatar canvas[data-head-ready=true]"),
   ).toHaveCount(2);

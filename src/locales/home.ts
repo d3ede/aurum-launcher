@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Скины и плащи открываются из профилей. Отдельный пункт меню убран.":
+    "Skins and capes open from Accounts. The separate sidebar item has been removed.",
   "Скриншоты, скины и хранилище": "Screenshots, skins and storage",
   "Библиотека скриншотов и отправка друзьям":
     "Screenshot library and friend sharing",

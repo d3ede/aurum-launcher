@@ -3,6 +3,15 @@ import { readFileSync } from "node:fs";
 const steve = Array.from(readFileSync("src/assets/skins/wide-steve.png"));
 const ari = Array.from(readFileSync("src/assets/skins/slim-ari.png"));
 const zuri = Array.from(readFileSync("src/assets/skins/slim-zuri.png"));
+async function openSkins(page: Page) {
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: "Профили", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Открыть скины", exact: true })
+    .click();
+}
 async function fixture(
   page: Page,
   kind: "offline" | "microsoft" = "offline",
@@ -288,9 +297,7 @@ async function fixture(
     { steve, ari, zuri, kind, theme, importMode, slowAppearance },
   );
   await page.goto("/");
-  await page
-    .getByRole("button", { name: "Скины и плащи", exact: true })
-    .click();
+  await openSkins(page);
   await expect(
     page.getByRole("heading", { name: "Скины и плащи", exact: true }),
   ).toBeVisible();
@@ -373,9 +380,7 @@ test("skin browser renders models, previews and saves without applying to Micros
     page.getByRole("button", { name: "Выбрать скин Knight" }),
   ).toBeVisible();
   await page.reload();
-  await page
-    .getByRole("button", { name: "Скины и плащи", exact: true })
-    .click();
+  await openSkins(page);
   await expect(
     page.getByRole("button", { name: "Выбрать скин Knight" }),
   ).toBeVisible();
@@ -444,9 +449,7 @@ test("skin browser separates missing names and IDs and saves a custom name", asy
     page.getByRole("button", { name: "Выбрать скин Синий рыцарь" }),
   ).toBeVisible();
   await page.reload();
-  await page
-    .getByRole("button", { name: "Скины и плащи", exact: true })
-    .click();
+  await openSkins(page);
   await expect(
     page.getByRole("button", { name: "Выбрать скин Синий рыцарь" }),
   ).toBeVisible();
@@ -786,9 +789,7 @@ test("one click imports Modrinth skins, preserves selection and survives restart
     path: ".test-data/screenshots/skins-modrinth-dark.png",
   });
   await page.reload();
-  await page
-    .getByRole("button", { name: "Скины и плащи", exact: true })
-    .click();
+  await openSkins(page);
   await expect(imported).toBeVisible();
 });
 
@@ -1013,9 +1014,7 @@ test("multiple saved PNG skins, model and cape persist, apply switches and delet
     .getByRole("button", { name: "Сохранить скин", exact: true })
     .click();
   await page.reload();
-  await page
-    .getByRole("button", { name: "Скины и плащи", exact: true })
-    .click();
+  await openSkins(page);
   await expect(
     page.getByRole("button", { name: "Выбрать скин Мой образ", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
@@ -1124,9 +1123,7 @@ test("cold wardrobe waits for appearance; warm navigation remembers the preview"
   await page.evaluate(() => {
     (window as any).holdAppearance = true;
   });
-  await page
-    .getByRole("button", { name: "Скины и плащи", exact: true })
-    .click();
+  await openSkins(page);
   await expect(page.locator(".wardrobe-layout")).toBeVisible();
   await expect(zuri).toHaveAttribute("aria-pressed", "true");
 });
@@ -1171,9 +1168,7 @@ test("cached native texture is visible before the full cape response", async ({
     "true",
   );
   await page.getByRole("button", { name: "Главная", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Скины и плащи", exact: true })
-    .click();
+  await openSkins(page);
   await expect(page.locator(".wardrobe-layout")).toBeVisible();
   await page.evaluate(() => (window as any).showAppearance());
 });

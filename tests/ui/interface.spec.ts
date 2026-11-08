@@ -177,8 +177,9 @@ test("styled menus support keyboard, dismissal and nested dialogs", async ({
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await page.setViewportSize({ width: 1280, height: 820 });
+  await page.getByRole("button", { name: "Профили", exact: true }).click();
   await page
-    .getByRole("button", { name: "Скины и плащи", exact: true })
+    .getByRole("button", { name: "Открыть скины", exact: true })
     .click();
   await page.locator('.skin-stage canvas[data-ready="true"]').waitFor();
   await page.getByRole("button", { name: "Сбросить ракурс" }).click();

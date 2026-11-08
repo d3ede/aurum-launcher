@@ -1,4 +1,6 @@
 export const skinEnglish: Record<string, string> = {
+  "Выбор скина и плаща для аккаунта.":
+    "Choose a skin and cape for your account.",
   "Без названия": "Untitled",
   "Введите название скина": "Enter a skin name",
   "Название слишком длинное. Сократите его.":

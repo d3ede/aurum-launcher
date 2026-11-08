@@ -1,5 +1,12 @@
 // Kept separate from generated language packs while the sign-in UI evolves.
 export const microsoftEnglish: Record<string, string> = {
+  "Аккаунт Minecraft": "Minecraft account",
+  "Войдите через Microsoft или добавьте локальный профиль.":
+    "Sign in with Microsoft or add an offline account.",
+  "Добавьте Microsoft-аккаунт или локальный профиль.":
+    "Add a Microsoft account or an offline account.",
+  "Для одиночной игры и серверов с офлайн-входом.":
+    "For singleplayer and servers that allow offline accounts.",
   "Вы в игре": "You're ready to play",
   "Не удалось войти": "Couldn't sign in",
   "Вход отменён": "Sign-in cancelled",

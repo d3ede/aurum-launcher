@@ -5,7 +5,6 @@ import {
   Layers3,
   Compass,
   UserRound,
-  Shirt,
   Settings2,
   Search,
   Moon,
@@ -64,7 +63,6 @@ const navigation = [
   ["catalog", Compass],
   ["screenshots", Images],
   ["accounts", UserRound],
-  ["skins", Shirt],
   ["friends", Users],
   ["hosting", Server],
   ["settings", Settings2],
@@ -266,8 +264,12 @@ function Shell({
           {navigation.map(([id, Icon]) => (
             <button
               key={id}
-              className={`nav-item ${route === id ? "active" : ""}`}
-              aria-current={route === id ? "page" : undefined}
+              className={`nav-item ${route === id || (id === "accounts" && route === "skins") ? "active" : ""}`}
+              aria-current={
+                route === id || (id === "accounts" && route === "skins")
+                  ? "page"
+                  : undefined
+              }
               aria-label={ru.routes[id]}
               onClick={() => nav(id)}
             >
