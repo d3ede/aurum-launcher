@@ -13,10 +13,9 @@ PolyForm license; their respective owners retain their rights.
 - Forge: Minecraft Forge's anvil mark, [minecraftforge.net](https://minecraftforge.net/).
 - NeoForge: the project mark by Ridanisaurus, under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
   [NeoForged artwork](https://github.com/neoforged/.github/tree/main/art). The editable
-  `neoforge-mask.svg` traces the original fox's palette regions from
-  `neoforge.png`, with smoothed pixel corners and no gray backing plate.
-  Its upright ears, wide cheeks, eyes and muzzle retain their original positions;
-  palette brightness becomes opacity so the mark remains tintable.
+  `neoforge-mask.svg` uses the original fox silhouette from `neoforge.png`,
+  with smoothed pixel corners and no gray backing plate. Ears, eyes and nose
+  are transparent cutouts in a solid, tintable mark; palette shading is omitted.
   Attribution and the adaptation are recorded here; see `NEOFORGE-LICENSE`.
 - Quilt: QuiltMC's project mark, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/),
   [QuiltMC/art](https://github.com/QuiltMC/art/tree/master/brand/svg).
@@ -34,11 +33,10 @@ PolyForm license; their respective owners retain their rights.
 The color selector uses the original images, except for the smooth Fabric
 roll and geometric Vanilla block. The instance icon editor offers
 monochrome adaptations for user-selected colors. `forge-mask.png` removes the
-original background using `scripts/loader-masks.ps1`; `fabric-mask.svg` traces
-the original `fabric.png` silhouette and palette regions with smoothed pixel
-corners. The original fold, diagonal orientation and shading are retained;
-palette brightness becomes opacity. Both traced SVG masks are used in hosting
-and the instance icon editor, and replace the former hand-drawn outline symbols.
+original background using `scripts/loader-masks.ps1`; `fabric-mask.svg` uses
+the original `fabric.png` silhouette with smoothed pixel corners and a transparent
+fold detail. Its fill is fully opaque, with no palette texture or tonal layers.
+Both monochrome SVG masks are used in hosting and the instance icon editor.
 The Vanilla mask uses the original alpha channel. Colors and backgrounds
 chosen for an instance are user customization, not replacement official logos.
 
