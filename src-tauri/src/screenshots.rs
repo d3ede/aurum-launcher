@@ -56,6 +56,25 @@ pub async fn rpc(
                 Ok(json!([]))
             }
         }
+        "screenshots.decide" => {
+            #[cfg(windows)]
+            {
+                let batch: String = param(payload, "batch")?;
+                let accept: bool = param(payload, "accept")?;
+                let social = e.social.clone();
+                tauri::async_runtime::spawn_blocking(move || {
+                    social.decide_screenshots(&batch, accept)
+                })
+                .await
+                .map_err(err)?
+                .map_err(err)?;
+                Ok(Value::Null)
+            }
+            #[cfg(not(windows))]
+            {
+                Err("Social screenshots require Windows".into())
+            }
+        }
         "screenshots.cancel" | "screenshots.retry" | "screenshots.removeReceived" => {
             #[cfg(windows)]
             {

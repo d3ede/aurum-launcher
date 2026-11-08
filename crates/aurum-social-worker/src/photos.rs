@@ -309,6 +309,7 @@ mod tests {
                 &from,
                 &to,
                 vec![NewPhoto {
+                    source_id: None,
                     name: "fixture.png".into(),
                     profile_name: "Fixture".into(),
                     width: 128,
@@ -320,6 +321,7 @@ mod tests {
             .remove(0);
         let offer = sender.entry(&id).unwrap().unwrap().offer;
         receiver.receive_offer(offer.clone(), &to, &from).unwrap();
+        receiver.decide_batch(&offer.batch, &to, true).unwrap();
         let cipher = std::fs::read(sender.path(&id).unwrap()).unwrap();
         let a = endpoint().await;
         let b = endpoint().await;

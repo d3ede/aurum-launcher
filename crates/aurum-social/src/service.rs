@@ -579,8 +579,17 @@ enum Body {
 #[serde(tag = "type", rename_all = "camelCase", deny_unknown_fields)]
 enum PeerAction {
     PhotoOffer { offer: crate::photos::Offer },
-    PhotoReady { id: String },
-    PhotoReceipt { id: String },
+    PhotoReady {
+        id: String,
+        #[serde(default)]
+        approved: bool,
+    },
+    PhotoDeclined { id: String },
+    PhotoReceipt {
+        id: String,
+        #[serde(default)]
+        approved: bool,
+    },
     PhotoRejected { id: String, reason: String },
     Request {
         name: String,
@@ -1546,7 +1555,7 @@ impl Actor {
                     bail!("World actions require an accepted friend");
                 }
                 match other {
-                    action @ (PeerAction::PhotoOffer{..}|PeerAction::PhotoReady{..}|PeerAction::PhotoReceipt{..}|PeerAction::PhotoRejected{..}) => self.photo_action(id, peer, action)?,
+                    action @ (PeerAction::PhotoOffer{..}|PeerAction::PhotoReady{..}|PeerAction::PhotoDeclined{..}|PeerAction::PhotoReceipt{..}|PeerAction::PhotoRejected{..}) => self.photo_action(id, peer, action)?,
                     action => self.world_action(id, peer, action)?,
                 }
             }
@@ -1601,6 +1610,19 @@ fn transport_key(address: &str) -> Result<[u8; 32]> {
 #[cfg(test)]
 mod recovery_tests {
     use super::*;
+    #[test]
+    fn legacy_photo_ready_and_receipts_never_claim_user_approval() {
+        let ready: PeerAction =
+            serde_json::from_str(r#"{"type":"photoReady","id":"fixture"}"#).unwrap();
+        assert!(matches!(ready, PeerAction::PhotoReady { approved: false, .. }));
+        let receipt: PeerAction =
+            serde_json::from_str(r#"{"type":"photoReceipt","id":"fixture"}"#).unwrap();
+        assert!(matches!(receipt, PeerAction::PhotoReceipt { approved: false, .. }));
+        let approved: PeerAction = serde_json::from_str(
+            r#"{"type":"photoReady","id":"fixture","approved":true}"#,
+        ).unwrap();
+        assert!(matches!(approved, PeerAction::PhotoReady { approved: true, .. }));
+    }
     #[test]
     fn missing_or_replaced_key_never_creates_a_new_identity_for_saved_contacts() {
         let dir = tempfile::tempdir().unwrap();

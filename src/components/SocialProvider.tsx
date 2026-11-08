@@ -22,7 +22,9 @@ interface SocialContextValue {
   act: (job: () => Promise<unknown>) => Promise<boolean>;
   working: boolean;
   requestDisable: () => void;
-  chime: (kind: "sent" | "received") => void;
+  chime: (
+    kind: "sent" | "received" | "photo" | "photoAccepted" | "photoDeclined",
+  ) => void;
 }
 const Context = createContext<SocialContextValue | null>(null);
 export function useSocial() {
@@ -46,11 +48,24 @@ export function SocialProvider({ children }: { children: ReactNode }) {
   const [link, setLink] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
   const chime = useCallback(
-    (kind: "sent" | "received") => {
+    (
+      kind: "sent" | "received" | "photo" | "photoAccepted" | "photoDeclined",
+    ) => {
       if (snapshot?.privacy.notifications === false) return;
       const context = audio.current;
       if (context?.state !== "running") return;
-      const notes = kind === "sent" ? [523.25, 783.99] : [659.25, 880];
+      const simple = kind.startsWith("photo");
+      const notes = simple
+        ? [
+            kind === "photoAccepted"
+              ? 784
+              : kind === "photoDeclined"
+                ? 392
+                : 659.25,
+          ]
+        : kind === "sent"
+          ? [523.25, 783.99]
+          : [659.25, 880];
       for (const [i, frequency] of notes.entries()) {
         const note = context.createOscillator(),
           gain = context.createGain();
@@ -60,10 +75,16 @@ export function SocialProvider({ children }: { children: ReactNode }) {
         gain.connect(context.destination);
         const start = context.currentTime + i * 0.14;
         gain.gain.setValueAtTime(0, start);
-        gain.gain.linearRampToValueAtTime(0.065, start + 0.025);
-        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+        gain.gain.linearRampToValueAtTime(
+          simple ? 0.045 : 0.065,
+          start + 0.025,
+        );
+        gain.gain.exponentialRampToValueAtTime(
+          0.001,
+          start + (simple ? 0.18 : 0.35),
+        );
         note.start(start);
-        note.stop(start + 0.36);
+        note.stop(start + (simple ? 0.2 : 0.36));
         note.onended = () => {
           note.disconnect();
           gain.disconnect();

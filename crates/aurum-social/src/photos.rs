@@ -17,13 +17,14 @@ pub const MAX_STORAGE: u64 = 1024 * 1024 * 1024;
 pub const CHUNK: usize = 8192;
 
 pub struct NewPhoto {
+    pub source_id: Option<String>,
     pub name: String,
     pub profile_name: String,
     pub width: u32,
     pub height: u32,
     pub bytes: Vec<u8>,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Offer {
     pub version: u8,
@@ -46,6 +47,10 @@ pub struct Offer {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Entry {
+    #[serde(default)]
+    pub source_id: Option<String>,
+    #[serde(default)]
+    pub decision: Option<bool>,
     pub offer: Offer,
     pub direction: String,
     pub status: String,
@@ -56,6 +61,9 @@ pub struct Entry {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Summary {
+    pub source_id: Option<String>,
+    pub decision: Option<bool>,
+    pub count: usize,
     pub id: String,
     pub batch: String,
     pub peer: String,
@@ -72,10 +80,16 @@ pub struct Summary {
 }
 impl Entry {
     fn stored(&self) -> bool {
-        !matches!(self.status.as_str(), "delivered" | "cancelled" | "deleted")
+        !matches!(
+            self.status.as_str(),
+            "delivered" | "cancelled" | "deleted" | "rejected"
+        )
     }
     pub fn summary(&self) -> Summary {
         Summary {
+            source_id: self.source_id.clone(),
+            decision: self.decision,
+            count: self.offer.count,
             id: self.offer.id.clone(),
             batch: self.offer.batch.clone(),
             peer: if self.direction == "outgoing" {
@@ -142,7 +156,7 @@ fn label(value: &str, limit: usize) -> bool {
 }
 impl Offer {
     pub fn validate(&self, sender: &str, recipient: &str) -> Result<()> {
-        if self.version != 1
+        if self.version != 2
             || !valid_id(&self.id)
             || !valid_id(&self.batch)
             || !(1..=10).contains(&self.count)
@@ -298,7 +312,7 @@ impl Store {
             .context("Screenshot transfer no longer exists")?;
         if matches!(
             entry.status.as_str(),
-            "cancelled" | "delivered" | "received" | "deleted"
+            "cancelled" | "delivered" | "received" | "deleted" | "rejected"
         ) {
             return Ok(());
         }
@@ -306,7 +320,10 @@ impl Store {
         entry.transferred = transferred;
         entry.error = error.map(|e| e.chars().take(180).collect());
         let disposable = entry.direction == "outgoing"
-            && matches!(entry.status.as_str(), "delivered" | "cancelled");
+            && matches!(
+                entry.status.as_str(),
+                "delivered" | "cancelled" | "rejected"
+            );
         self.save(&book)?;
         if disposable {
             let _ = std::fs::remove_file(self.path(id)?);
@@ -333,7 +350,7 @@ impl Store {
                 bail!("Screenshot batch exceeds its size limit");
             }
             let mut offer = Offer {
-                version: 1,
+                version: 2,
                 id: new_id()?,
                 batch: batch.clone(),
                 count,
@@ -357,6 +374,8 @@ impl Store {
             offer.sha256 = hash(&bytes);
             prepared.push((
                 Entry {
+                    source_id: image.source_id,
+                    decision: None,
                     offer,
                     direction: "outgoing".into(),
                     status: "queued".into(),
@@ -413,10 +432,7 @@ impl Store {
         let mut book = self.load()?;
         book.compact();
         if let Some(existing) = book.entries.iter().find(|e| e.offer.id == offer.id) {
-            if existing.offer.sender != friend
-                || existing.offer.sha256 != offer.sha256
-                || existing.direction != "incoming"
-            {
+            if existing.offer != offer || existing.direction != "incoming" {
                 bail!("Conflicting screenshot ID");
             }
             return Ok(matches!(existing.status.as_str(), "received" | "deleted"));
@@ -431,16 +447,25 @@ impl Store {
             })
             .collect();
         if same_batch.len() >= offer.count
+            || same_batch.iter().any(|e| e.offer.count != offer.count)
             || same_batch.iter().map(|e| e.offer.bytes).sum::<u64>() + offer.bytes > MAX_BATCH + 160
             || book.bytes() + offer.bytes > MAX_STORAGE
             || book.entries.iter().filter(|entry| entry.stored()).count() >= 2000
         {
             bail!("Screenshot storage or batch limit exceeded");
         }
+        let decision = same_batch.iter().find_map(|e| e.decision);
         book.entries.push(Entry {
+            source_id: None,
+            decision,
             offer,
             direction: "incoming".into(),
-            status: "receiving".into(),
+            status: match decision {
+                Some(true) => "accepted",
+                Some(false) => "rejected",
+                None => "requested",
+            }
+            .into(),
             created_at: identity::now() * 1000,
             transferred: 0,
             error: None,
@@ -450,6 +475,12 @@ impl Store {
     }
     pub fn commit_received(&self, id: &str) -> Result<()> {
         let entry = self.entry(id)?.context("Unknown incoming screenshot")?;
+        if entry.direction != "incoming"
+            || entry.decision != Some(true)
+            || !matches!(entry.status.as_str(), "accepted" | "receiving")
+        {
+            bail!("Screenshot request has not been accepted");
+        }
         // Verify AEAD as well as the transfer hash before exposing a received image.
         let bytes = std::fs::read(self.partial(id)?)?;
         entry.offer.decrypt(bytes)?;
@@ -473,6 +504,8 @@ impl Store {
             .map_err(|_| anyhow::anyhow!("Screenshot store unavailable"))?;
         let mut book = self.load()?;
         for entry in &mut book.entries {
+            // v2 adds mandatory consent; the encrypted content format is unchanged.
+            entry.offer.version = 2;
             if entry.direction == "outgoing"
                 && matches!(entry.status.as_str(), "connecting" | "sending")
             {
@@ -481,10 +514,70 @@ impl Store {
             }
             if entry.direction == "incoming" && entry.status != "received" {
                 let _ = std::fs::remove_file(self.partial(&entry.offer.id)?);
+                if matches!(entry.status.as_str(), "receiving" | "accepted") {
+                    entry.status = if entry.decision == Some(true) {
+                        "accepted"
+                    } else {
+                        "requested"
+                    }
+                    .into();
+                }
             }
         }
         if !book.entries.is_empty() {
             self.save(&book)?;
+        }
+        Ok(())
+    }
+    pub fn decide_batch(&self, batch: &str, own: &str, accept: bool) -> Result<()> {
+        let _guard = self
+            .lock
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Screenshot store unavailable"))?;
+        let mut book = self.load()?;
+        let entries: Vec<_> = book
+            .entries
+            .iter_mut()
+            .filter(|e| {
+                e.direction == "incoming" && e.offer.recipient == own && e.offer.batch == batch
+            })
+            .collect();
+        if entries.is_empty()
+            || entries
+                .iter()
+                .any(|e| e.status != "requested" || e.decision.is_some())
+        {
+            bail!("Screenshot request is no longer pending");
+        }
+        for entry in entries {
+            entry.decision = Some(accept);
+            entry.status = if accept { "accepted" } else { "rejected" }.into();
+        }
+        self.save(&book)
+    }
+    pub fn record_answer(&self, id: &str, accepted: bool) -> Result<()> {
+        let _guard = self
+            .lock
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Screenshot store unavailable"))?;
+        let mut book = self.load()?;
+        let entry = book
+            .entries
+            .iter_mut()
+            .find(|e| e.offer.id == id && e.direction == "outgoing")
+            .context("Unknown outgoing screenshot")?;
+        if matches!(
+            entry.status.as_str(),
+            "cancelled" | "rejected" | "delivered"
+        ) {
+            return Ok(());
+        }
+        entry.decision = Some(accepted);
+        entry.status = if accepted { "connecting" } else { "rejected" }.into();
+        entry.error = None;
+        self.save(&book)?;
+        if !accepted {
+            let _ = std::fs::remove_file(self.path(id)?);
         }
         Ok(())
     }
@@ -546,6 +639,7 @@ mod tests {
     }
     fn photo() -> NewPhoto {
         NewPhoto {
+            source_id: Some("local-fixture".into()),
             name: "2026-11-07.png".into(),
             profile_name: "Vanilla".into(),
             width: 32,
@@ -575,6 +669,8 @@ mod tests {
         assert_eq!(reopened.entries().unwrap()[0].status, "queued");
         let receiver = Store::new(root.path().join("b"), lock);
         assert!(!receiver.receive_offer(offer.clone(), &to, &from).unwrap());
+        assert!(receiver.commit_received(&ids[0]).is_err());
+        receiver.decide_batch(&offer.batch, &to, true).unwrap();
         std::fs::write(receiver.partial(&ids[0]).unwrap(), &cipher).unwrap();
         receiver.commit_received(&ids[0]).unwrap();
         assert_eq!(
@@ -589,6 +685,79 @@ mod tests {
         store.update(&ids[0], "delivered", 0, None).unwrap();
         assert!(!store.path(&ids[0]).unwrap().exists());
         assert_eq!(store.load().unwrap().bytes(), 0);
+    }
+    #[test]
+    fn batch_consent_survives_restart_and_covers_later_offers() {
+        let from = identity::Identity::generate().unwrap().id();
+        let to = identity::Identity::generate().unwrap().id();
+        let other = identity::Identity::generate().unwrap().id();
+        let root = root();
+        let lock = Arc::new(Mutex::new(()));
+        let sender = Store::new(root.path().join("sender"), lock.clone());
+        let receiver = Store::new(root.path().join("receiver"), lock.clone());
+        let ids = sender.enqueue(&from, &to, vec![photo(), photo()]).unwrap();
+        let first = sender.entry(&ids[0]).unwrap().unwrap().offer;
+        let second = sender.entry(&ids[1]).unwrap().unwrap().offer;
+        receiver.receive_offer(first.clone(), &to, &from).unwrap();
+        assert_eq!(
+            receiver.entry(&ids[0]).unwrap().unwrap().status,
+            "requested"
+        );
+        let cipher = std::fs::read(sender.path(&ids[0]).unwrap()).unwrap();
+        std::fs::write(receiver.partial(&ids[0]).unwrap(), cipher).unwrap();
+        assert!(receiver.commit_received(&ids[0]).is_err());
+        assert!(!receiver.path(&ids[0]).unwrap().exists());
+        assert!(receiver.decide_batch(&first.batch, &other, true).is_err());
+        receiver.decide_batch(&first.batch, &to, false).unwrap();
+        let receiver = Store::new(root.path().join("receiver"), lock);
+        receiver.reset_interrupted().unwrap();
+        receiver.receive_offer(second, &to, &from).unwrap();
+        assert!(receiver
+            .entries()
+            .unwrap()
+            .iter()
+            .all(|e| e.decision == Some(false) && e.status == "rejected"));
+        assert!(receiver.decide_batch(&first.batch, &to, true).is_err());
+        assert!(receiver.commit_received(&ids[0]).is_err());
+        sender.record_answer(&ids[0], false).unwrap();
+        assert!(!sender.path(&ids[0]).unwrap().exists());
+        sender.record_answer(&ids[0], true).unwrap();
+        assert_eq!(sender.entry(&ids[0]).unwrap().unwrap().status, "rejected");
+        assert!(sender.retry(&ids[0], &from).is_err());
+        let accepted = sender.enqueue(&from, &to, vec![photo(), photo()]).unwrap();
+        let first = sender.entry(&accepted[0]).unwrap().unwrap().offer;
+        receiver.receive_offer(first.clone(), &to, &from).unwrap();
+        receiver.decide_batch(&first.batch, &to, true).unwrap();
+        receiver.reset_interrupted().unwrap();
+        receiver
+            .receive_offer(
+                sender.entry(&accepted[1]).unwrap().unwrap().offer,
+                &to,
+                &from,
+            )
+            .unwrap();
+        assert!(receiver
+            .entries()
+            .unwrap()
+            .iter()
+            .filter(|e| e.offer.batch == first.batch)
+            .all(|e| e.decision == Some(true) && e.status == "accepted"));
+        let mut changed = first.clone();
+        changed.name = "replaced.png".into();
+        assert!(receiver.receive_offer(changed, &to, &from).is_err());
+        let mut legacy = first;
+        legacy.version = 1;
+        assert!(receiver.receive_offer(legacy, &to, &from).is_err());
+        assert_eq!(
+            sender
+                .entry(&accepted[0])
+                .unwrap()
+                .unwrap()
+                .summary()
+                .source_id
+                .as_deref(),
+            Some("local-fixture")
+        );
     }
     #[test]
     fn rejects_tampering_wrong_recipient_and_too_many_photos() {

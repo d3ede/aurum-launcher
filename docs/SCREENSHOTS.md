@@ -31,9 +31,25 @@ Sending creates encrypted local copies and commits the batch to a durable
 queue. It does not require the recipient to be online, or Social to already be
 running. The queue resumes when Social runs and an authenticated friend
 connection is available. Both clients must support screenshot sharing. Pending
-transfers can be cancelled, and rejected transfers can be retried from
+transfers can be cancelled, and failed transfers can be retried from
 Screenshots → Deliveries. Source screenshots can subsequently be renamed or
 removed without breaking an already queued batch.
+
+The next update adds mandatory recipient approval for each batch. A top-right
+card shows the friend's avatar, name and screenshot count, with Accept and
+Decline actions. Pending requests remain accessible in Screenshots even when
+notification sounds/popups are disabled. Nothing is streamed or added to From
+friends before acceptance. The decision survives restarts, also covering the
+remaining offers of the same batch; declined requests are never retried
+automatically. Both peers need this consent-capable update (offer version 2).
+Older offers are refused instead of bypassing the approval step. Existing
+received images remain accessible. The AES-GCM object format is unchanged.
+
+Short synthesized tones accompany new requests, replies and completed reception.
+The sender receives a separate acceptance or decline notification. The receiver
+sees Screenshots → From friends only after all images have been verified and
+saved. Deliveries show a clickable original thumbnail while its source remains
+available, a check for acceptance and a theme-aware cross for decline or failure.
 
 Files travel over a separate, bounded QUIC stream using the existing Iroh
 endpoint. The sandboxed worker receives no source or destination file paths.

@@ -11,6 +11,7 @@ pub(super) struct State {
     offered: HashMap<String, Instant>,
     connecting: HashMap<String, Instant>,
     retry: HashMap<String, Instant>,
+    answers: HashMap<String, bool>,
     last_tick: Instant,
 }
 struct Active {
@@ -33,6 +34,7 @@ impl State {
             offered: HashMap::new(),
             connecting: HashMap::new(),
             retry: HashMap::new(),
+            answers: HashMap::new(),
             last_tick: Instant::now() - Duration::from_secs(1),
         })
     }
@@ -81,6 +83,25 @@ impl Service {
             .context("No Social identity")?;
         self.photo_store().read_received(id, &own)
     }
+    pub fn decide_screenshots(&self, batch: &str, accept: bool) -> Result<()> {
+        let own = self
+            .store()?
+            .value("publicId")?
+            .context("No Social identity")?;
+        let entries = self.photo_store().entries()?;
+        let entry = entries
+            .iter()
+            .find(|e| {
+                e.direction == "incoming" && e.offer.batch == batch && e.offer.recipient == own
+            })
+            .context("Unknown screenshot request")?;
+        if accept && self.store()?.state(&entry.offer.sender)?.as_deref() != Some("friend") {
+            bail!("This identity is no longer a friend");
+        }
+        self.photo_store().decide_batch(batch, &own, accept)?;
+        signal(&self.notify);
+        Ok(())
+    }
     pub fn cancel_screenshot(&self, id: &str) -> Result<()> {
         let own = self
             .store()?
@@ -124,6 +145,51 @@ impl Actor {
         self.photos.last_tick = Instant::now();
         let mut entries = self.photos.store.entries()?;
         entries.sort_by_key(|entry| entry.created_at);
+        let known: std::collections::HashSet<_> =
+            entries.iter().map(|e| e.offer.id.as_str()).collect();
+        self.photos
+            .answers
+            .retain(|id, _| known.contains(id.as_str()));
+        let mut answered = 0;
+        for entry in entries.iter().filter(|e| {
+            e.direction == "incoming" && matches!(e.status.as_str(), "accepted" | "rejected")
+        }) {
+            let Some(accepted) = entry.decision else {
+                continue;
+            };
+            if self.photos.answers.get(&entry.offer.id) == Some(&accepted)
+                || entry.offer.recipient != self.identity.id()
+                || self.store.state(&entry.offer.sender)?.as_deref() != Some("friend")
+            {
+                continue;
+            }
+            let peer = identity::decode_id(&entry.offer.sender)?;
+            if !self
+                .sessions
+                .get(&peer)
+                .is_some_and(|s| s.ready && s.expires > Instant::now())
+            {
+                continue;
+            }
+            self.queue(
+                peer,
+                if accepted {
+                    PeerAction::PhotoReady {
+                        id: entry.offer.id.clone(),
+                        approved: true,
+                    }
+                } else {
+                    PeerAction::PhotoDeclined {
+                        id: entry.offer.id.clone(),
+                    }
+                },
+            )?;
+            self.photos.answers.insert(entry.offer.id.clone(), accepted);
+            answered += 1;
+            if answered >= 10 {
+                break;
+            }
+        }
         let close: Vec<_> = self
             .photos
             .active
@@ -166,7 +232,8 @@ impl Actor {
             self.photo_failed(&id, "Waiting for your friend to reconnect")?;
         }
         for entry in entries.into_iter().filter(|e| {
-            e.direction == "outgoing" && matches!(e.status.as_str(), "queued" | "connecting")
+            e.direction == "outgoing"
+                && matches!(e.status.as_str(), "queued" | "connecting" | "awaiting")
         }) {
             let id = &entry.offer.id;
             if self.store.state(&entry.offer.recipient)?.as_deref() != Some("friend")
@@ -211,7 +278,7 @@ impl Actor {
                 },
             )?;
             self.photos.offered.insert(id.clone(), Instant::now());
-            self.photos.store.update(id, "connecting", 0, None)?;
+            self.photos.store.update(id, "awaiting", 0, None)?;
         }
         Ok(())
     }
@@ -229,8 +296,27 @@ impl Actor {
                     .store
                     .receive_offer(offer, &self.identity.id(), friend)
                 {
-                    Ok(true) => self.queue(peer, PeerAction::PhotoReceipt { id })?,
-                    Ok(false) => self.queue(peer, PeerAction::PhotoReady { id })?,
+                    Ok(true) => {
+                        let approved = self
+                            .photos
+                            .store
+                            .entry(&id)?
+                            .is_some_and(|e| e.decision == Some(true));
+                        self.queue(peer, PeerAction::PhotoReceipt { id, approved })?;
+                    }
+                    Ok(false) => {
+                        if let Some(entry) = self.photos.store.entry(&id)? {
+                            match entry.decision {
+                                Some(true) => {
+                                    self.queue(peer, PeerAction::PhotoReady { id, approved: true })?
+                                }
+                                Some(false) => {
+                                    self.queue(peer, PeerAction::PhotoDeclined { id })?
+                                }
+                                None => (),
+                            }
+                        }
+                    }
                     Err(error) => {
                         if media::valid_id(&id) {
                             self.queue(
@@ -244,15 +330,25 @@ impl Actor {
                     }
                 }
             }
-            PeerAction::PhotoReady { id } => {
+            PeerAction::PhotoReady { id, approved } => {
+                if !approved {
+                    return Ok(());
+                }
                 let Some(entry) = self.photos.store.entry(&id)? else {
                     return Ok(());
                 };
                 if entry.direction != "outgoing"
                     || entry.offer.recipient != friend
-                    || !matches!(entry.status.as_str(), "queued" | "connecting")
+                    || !matches!(entry.status.as_str(), "queued" | "connecting" | "awaiting")
                     || self.photos.connecting.contains_key(&id)
                     || self.photos.active.values().any(|a| a.entry.offer.id == id)
+                {
+                    return Ok(());
+                }
+                self.photos.store.record_answer(&id, true)?;
+                if self.photos.active.values().filter(|a| !a.incoming).count()
+                    + self.photos.connecting.len()
+                    >= 2
                 {
                     return Ok(());
                 }
@@ -276,14 +372,28 @@ impl Actor {
                 })?;
                 self.photos.connecting.insert(id, Instant::now());
             }
-            PeerAction::PhotoReceipt { id } => {
+            PeerAction::PhotoReceipt { id, approved } => {
                 if self
                     .photos
                     .store
                     .entry(&id)?
                     .is_some_and(|e| e.direction == "outgoing" && e.offer.recipient == friend)
                 {
+                    if approved {
+                        self.photos.store.record_answer(&id, true)?;
+                    }
                     self.photos.store.update(&id, "delivered", 0, None)?;
+                    self.photos.connecting.remove(&id);
+                    self.photos.offered.remove(&id);
+                }
+            }
+            PeerAction::PhotoDeclined { id } => {
+                if self.photos.store.entry(&id)?.is_some_and(|e| {
+                    e.direction == "outgoing"
+                        && e.offer.recipient == friend
+                        && e.decision != Some(true)
+                }) {
+                    self.photos.store.record_answer(&id, false)?;
                     self.photos.connecting.remove(&id);
                     self.photos.offered.remove(&id);
                 }
@@ -384,10 +494,12 @@ impl Actor {
                     && if incoming {
                         entry.direction == "incoming"
                             && entry.offer.recipient == self.identity.id()
-                            && entry.status == "receiving"
+                            && entry.decision == Some(true)
+                            && matches!(entry.status.as_str(), "accepted" | "receiving")
                     } else {
                         entry.direction == "outgoing"
                             && entry.offer.sender == self.identity.id()
+                            && entry.decision == Some(true)
                             && matches!(entry.status.as_str(), "queued" | "connecting")
                     };
                 if !valid

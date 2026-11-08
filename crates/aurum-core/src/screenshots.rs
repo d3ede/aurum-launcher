@@ -281,6 +281,7 @@ impl Engine {
                 .clone();
             let (width, height) = dimensions(&bytes)?;
             images.push(aurum_social::photos::NewPhoto {
+                source_id: Some(id.clone()),
                 name,
                 profile_name,
                 width,

@@ -15,12 +15,19 @@ export interface ScreenshotLibrary {
   warnings: string[];
 }
 export interface ScreenshotTransfer {
+  sourceId?: string | null;
+  decision?: boolean | null;
+  count?: number;
   id: string;
   batch: string;
   peer: string;
   direction: "incoming" | "outgoing";
   status:
     | "queued"
+    | "requested"
+    | "accepted"
+    | "awaiting"
+    | "rejected"
     | "connecting"
     | "sending"
     | "delivered"

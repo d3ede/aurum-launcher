@@ -1,8 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 
-async function fixture(page: Page, theme = "dark") {
+async function fixture(page: Page, theme = "dark", notifications = true) {
   await page.addInitScript(
-    ({ theme }) => {
+    ({ theme, notifications }) => {
       localStorage.setItem("aurum:language", "en");
       const w = window as any;
       w.isTauri = true;
@@ -50,7 +50,7 @@ async function fixture(page: Page, theme = "dark") {
           shareActivity: false,
           publicRelays: true,
           invisible: false,
-          notifications: true,
+          notifications,
         },
         people: [
           {
@@ -80,6 +80,43 @@ async function fixture(page: Page, theme = "dark") {
       }));
       w.shotRequests = [];
       w.shotTransfers = [];
+      w.shotSounds = [];
+      w.AudioContext = class {
+        state = "running";
+        currentTime = 0;
+        destination = {};
+        resume() {
+          return Promise.resolve();
+        }
+        close() {
+          return Promise.resolve();
+        }
+        createOscillator() {
+          const note = {
+            type: "sine",
+            frequency: { value: 0 },
+            connect() {},
+            disconnect() {},
+            start() {
+              w.shotSounds.push(note.frequency.value);
+            },
+            stop() {},
+            onended: null,
+          };
+          return note;
+        }
+        createGain() {
+          return {
+            connect() {},
+            disconnect() {},
+            gain: {
+              setValueAtTime() {},
+              linearRampToValueAtTime() {},
+              exponentialRampToValueAtTime() {},
+            },
+          };
+        }
+      };
       const callbacks = new Map<number, Function>();
       const events = new Map<string, Function>();
       let next = 1;
@@ -134,12 +171,25 @@ async function fixture(page: Page, theme = "dark") {
           }
           if (action === "screenshots.transfers")
             return structuredClone(w.shotTransfers);
+          if (action === "screenshots.decide") {
+            for (const item of w.shotTransfers.filter(
+              (item: any) =>
+                item.batch === payload.batch && item.direction === "incoming",
+            )) {
+              item.decision = payload.accept;
+              item.status = payload.accept ? "accepted" : "rejected";
+            }
+            return null;
+          }
           if (action === "screenshots.send") {
             w.shotTransfers = payload.ids.map((id: string, i: number) => {
               const shot = w.shotItems.find((s: any) => s.id === id);
               return {
                 ...shot,
                 id: `delivery${i}`,
+                sourceId: id,
+                count: payload.ids.length,
+                decision: null,
                 batch: "batch1",
                 peer: payload.friend,
                 direction: "outgoing",
@@ -167,12 +217,295 @@ async function fixture(page: Page, theme = "dark") {
         },
       };
     },
-    { theme },
+    { theme, notifications },
   );
   await page.goto("/");
 }
 const nav = (page: Page, name: string) =>
   page.getByRole("navigation").getByRole("button", { name, exact: true });
+
+for (const theme of ["light", "dark"]) {
+  test(`screenshot batches require consent and confirm their saved location (${theme})`, async ({
+    page,
+  }) => {
+    await fixture(page, theme);
+    await nav(page, "Friends").click(); // Unlock the application's notification audio.
+    await page.evaluate(() => {
+      const w = window as any;
+      w.shotTransfers = w.shotItems.slice(0, 2).map((shot: any, i: number) => ({
+        ...shot,
+        id: `incoming${i}`,
+        batch: "consent-batch",
+        count: 2,
+        peer: `aur1${"b".repeat(59)}`,
+        direction: "incoming",
+        status: "requested",
+        decision: null,
+        transferred: 0,
+        error: null,
+      }));
+    });
+    const request = page.locator(".shot-notifications .shot-request-card");
+    await expect(request).toContainText("Alice");
+    await expect(request).toContainText("Would like to share 2 screenshots");
+    await expect(request.locator(".social-avatar")).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => (window as any).shotSounds.length))
+      .toBe(1);
+    expect(
+      await page.evaluate(() =>
+        (window as any).shotRequests.filter(
+          (r: any) => r.action === "screenshots.image",
+        ),
+      ),
+    ).toHaveLength(0);
+    await page.screenshot({
+      path: `.test-data/screenshots/screenshot-request-${theme}.png`,
+      animations: "disabled",
+    });
+    await request.getByRole("button", { name: "Accept", exact: true }).click();
+    await expect(request).toHaveCount(0);
+    await expect(
+      page.getByText("Screenshots saved", { exact: true }),
+    ).toHaveCount(0);
+    expect(
+      await page.evaluate(() =>
+        (window as any).shotRequests
+          .filter((r: any) => r.action === "screenshots.decide")
+          .map((r: any) => r.payload),
+      ),
+    ).toEqual([{ batch: "consent-batch", accept: true }]);
+    await page.evaluate(() => {
+      for (const shot of (window as any).shotTransfers)
+        shot.status = "received";
+    });
+    const saved = page
+      .locator(".shot-notice")
+      .filter({ hasText: "Screenshots saved" });
+    await expect(saved).toContainText("Screenshots → From friends");
+    await expect
+      .poll(() => page.evaluate(() => (window as any).shotSounds.length))
+      .toBe(2);
+    await saved
+      .getByRole("button", { name: "Open screenshots", exact: true })
+      .click();
+    await expect(page.locator(".screenshot-card")).toHaveCount(2);
+    await expect(page.locator(".shot-source-tabs .active")).toContainText(
+      "From friends",
+    );
+  });
+  test(`delivery replies and original previews (${theme})`, async ({
+    page,
+  }) => {
+    await fixture(page, theme);
+    await nav(page, "Screenshots").click();
+    await page.evaluate(() => {
+      const w = window as any;
+      w.shotTransfers = w.shotItems.slice(0, 3).map((shot: any, i: number) => ({
+        ...shot,
+        id: `outgoing${i}`,
+        sourceId: shot.id,
+        batch: `out-batch${i}`,
+        count: 1,
+        peer: `aur1${"b".repeat(59)}`,
+        direction: "outgoing",
+        status: "awaiting",
+        decision: null,
+        transferred: 0,
+        error: null,
+      }));
+    });
+    await page.getByRole("button", { name: "Deliveries", exact: true }).click();
+    await expect(page.locator(".shot-delivery-preview img")).toHaveCount(3);
+    await page.evaluate(() => {
+      const entries = (window as any).shotTransfers;
+      entries[0].status = "delivered";
+      entries[0].decision = true;
+      entries[1].status = "rejected";
+      entries[1].decision = false;
+      entries[2].status = "failed";
+      entries[2].error = "Offline";
+    });
+    await expect(
+      page.locator(".shot-notice").filter({ hasText: "Screenshots accepted" }),
+    ).toContainText("Alice");
+    await expect(
+      page
+        .locator(".shot-notice")
+        .filter({ hasText: "Screenshot request declined" }),
+    ).toContainText("Alice");
+    await expect(
+      page
+        .locator(".shot-notice")
+        .filter({ hasText: "Could not send screenshots" }),
+    ).toContainText("Alice");
+    await expect
+      .poll(() => page.evaluate(() => (window as any).shotSounds.length))
+      .toBe(3);
+    await expect(
+      page.locator(
+        ".shot-delivery.delivered .shot-delivery-icon .lucide-circle-check",
+      ),
+    ).toBeVisible();
+    await expect(
+      page.locator(".shot-delivery.rejected .shot-delivery-icon .lucide-x"),
+    ).toBeVisible();
+    await expect(
+      page.locator(".shot-delivery.failed .shot-delivery-icon .lucide-x"),
+    ).toBeVisible();
+    await page.screenshot({
+      path: `.test-data/screenshots/screenshot-replies-${theme}.png`,
+      animations: "disabled",
+    });
+    await page
+      .locator(".shot-delivery.delivered .shot-delivery-preview")
+      .click();
+    await expect(page.locator("[data-image-lightbox] img")).toBeVisible();
+    await page.keyboard.press("Escape");
+    // Polling and a UI remount must not replay the same reply sounds.
+    await nav(page, "Friends").click();
+    await nav(page, "Screenshots").click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as any).shotRequests.filter(
+              (r: any) => r.action === "screenshots.transfers",
+            ).length,
+        ),
+      )
+      .toBeGreaterThan(5);
+    expect(await page.evaluate(() => (window as any).shotSounds.length)).toBe(
+      3,
+    );
+  });
+}
+
+test("disabled notifications keep consent available in Screenshots", async ({
+  page,
+}) => {
+  await fixture(page, "dark", false);
+  await nav(page, "Friends").click();
+  await page.evaluate(() => {
+    const w = window as any;
+    w.shotTransfers = [
+      {
+        ...w.shotItems[0],
+        id: "quiet-request",
+        batch: "quiet-batch",
+        count: 1,
+        peer: `aur1${"b".repeat(59)}`,
+        direction: "incoming",
+        status: "requested",
+        decision: null,
+        transferred: 0,
+        error: null,
+      },
+    ];
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as any).shotRequests.filter(
+            (r: any) => r.action === "screenshots.transfers",
+          ).length,
+      ),
+    )
+    .toBeGreaterThan(2);
+  await expect(
+    page.locator(".shot-notifications .shot-request-card"),
+  ).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).shotSounds)).toHaveLength(0);
+  await nav(page, "Screenshots").click();
+  const request = page.locator(".shot-page-requests .shot-request-card");
+  await expect(request).toContainText("Alice");
+  await request.getByRole("button", { name: "Decline", exact: true }).click();
+  await expect(request).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).shotSounds)).toHaveLength(0);
+});
+
+test("reply notifications stay acknowledged after restarting the UI", async ({
+  page,
+}) => {
+  await fixture(page);
+  const receivedReply = () =>
+    page.evaluate(() => {
+      const w = window as any;
+      w.shotTransfers = [
+        {
+          ...w.shotItems[0],
+          id: "persisted-reply",
+          batch: "persisted-batch",
+          count: 1,
+          peer: `aur1${"b".repeat(59)}`,
+          direction: "outgoing",
+          status: "delivered",
+          decision: true,
+          transferred: 1024,
+          error: null,
+        },
+      ];
+    });
+  await nav(page, "Friends").click();
+  await receivedReply();
+  await expect(page.locator(".shot-notice")).toContainText(
+    "Screenshots accepted",
+  );
+  await page.reload();
+  await nav(page, "Friends").click();
+  await receivedReply();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as any).shotRequests.filter(
+            (r: any) => r.action === "screenshots.transfers",
+          ).length,
+      ),
+    )
+    .toBeGreaterThan(2);
+  await expect(page.locator(".shot-notice")).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).shotSounds)).toHaveLength(0);
+});
+
+test("declining a request never adds received images", async ({ page }) => {
+  await fixture(page);
+  await nav(page, "Screenshots").click();
+  await page.evaluate(() => {
+    const w = window as any;
+    w.shotTransfers = [
+      {
+        ...w.shotItems[0],
+        id: "decline-me",
+        batch: "declined",
+        count: 1,
+        peer: `aur1${"b".repeat(59)}`,
+        direction: "incoming",
+        status: "requested",
+        decision: null,
+        transferred: 0,
+        error: null,
+      },
+    ];
+  });
+  const request = page.locator(".shot-page-requests .shot-request-card");
+  await expect(request).toContainText("1 screenshot");
+  await request.getByRole("button", { name: "Decline", exact: true }).click();
+  await expect(request).toHaveCount(0);
+  await page.getByRole("button", { name: "From friends", exact: true }).click();
+  await expect(page.locator(".screenshot-card")).toHaveCount(0);
+  expect(
+    await page.evaluate(() =>
+      (window as any).shotRequests
+        .filter((r: any) => r.action === "screenshots.decide")
+        .map((r: any) => r.payload),
+    ),
+  ).toEqual([{ batch: "declined", accept: false }]);
+  expect(
+    await page.evaluate(() => (window as any).shotTransfers[0].status),
+  ).toBe("rejected");
+});
 
 test("global screenshot library sits below the catalog and filters, sorts and groups", async ({
   page,

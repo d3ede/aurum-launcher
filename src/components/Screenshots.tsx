@@ -12,7 +12,6 @@ import {
   Download,
   Clock3,
   CheckCircle2,
-  AlertCircle,
   Trash2,
 } from "lucide-react";
 import { native, rpc } from "../lib/api";
@@ -24,6 +23,8 @@ import { Modal, Loading, EmptyState, ErrorBox } from "./ui";
 import { Select } from "./Select";
 import { ImageLightbox } from "./ProjectMedia";
 import { useSocial } from "./SocialProvider";
+import { ScreenshotRequests } from "./ScreenshotRequests";
+export { ScreenshotNotifications } from "./ScreenshotRequests";
 import "../screens/screenshots.css";
 
 const thumbnails = new Map<string, string>();
@@ -567,6 +568,25 @@ export function ScreenshotDeliveries({
 }) {
   const { notify } = useApp();
   const { snapshot } = useSocial();
+  const [view, setView] = useState<string | null>(null);
+  const [local, setLocal] = useState<Screenshot[]>([]);
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      void rpc("screenshots.list", { profileId: null })
+        .then((library) => {
+          if (alive) setLocal(library.items);
+        })
+        .catch(() => {});
+    load();
+    window.addEventListener("focus", load);
+    const timer = setInterval(load, 15000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+      window.removeEventListener("focus", load);
+    };
+  }, []);
   const action = async (item: ScreenshotTransfer, retry = false) => {
     try {
       await rpc(retry ? "screenshots.retry" : "screenshots.cancel", {
@@ -594,17 +614,48 @@ export function ScreenshotDeliveries({
         const active = ["sending", "receiving", "connecting"].includes(
           item.status,
         );
+        const matches = local.filter(
+          (shot) =>
+            item.direction === "outgoing" &&
+            (item.sourceId
+              ? shot.id === item.sourceId
+              : shot.name === item.name &&
+                shot.profileName === item.profileName),
+        );
+        const original = matches.length === 1 ? matches[0] : null;
+        const preview =
+          original ||
+          (item.direction === "incoming" && item.status === "received"
+            ? {
+                ...item,
+                id: `received:${item.id}`,
+                profileId: "",
+                source: "received" as const,
+                from: item.peer,
+              }
+            : null);
         return (
           <article key={item.id} className={`shot-delivery ${item.status}`}>
             <span className="shot-delivery-icon">
-              {["received", "delivered"].includes(item.status) ? (
+              {["failed", "cancelled", "rejected"].includes(item.status) ? (
+                <X size={22} />
+              ) : item.decision === true ||
+                ["received", "delivered"].includes(item.status) ? (
                 <CheckCircle2 size={22} />
-              ) : item.status === "failed" ? (
-                <AlertCircle size={22} />
               ) : (
                 <Clock3 size={22} />
               )}
             </span>
+            {preview && (
+              <button
+                type="button"
+                className="shot-delivery-preview"
+                aria-label={`${t("@shots.preview")}: ${item.name}`}
+                onClick={() => setView(preview.id)}
+              >
+                <Thumbnail shot={preview} />
+              </button>
+            )}
             <div>
               <strong>{item.name}</strong>
               <small>
@@ -617,7 +668,10 @@ export function ScreenshotDeliveries({
                 )}
               </small>
               <span>
-                {t(`@shots.status.${item.status}`)} · {socialSize(item.bytes)}
+                {t(
+                  `@shots.status.${item.status === "delivered" && item.decision === true ? "approved" : item.status}`,
+                )}{" "}
+                · {socialSize(item.bytes)}
               </span>
               {item.error && item.status === "failed" && (
                 <small className="muted">{t("@shots.failed.hint")}</small>
@@ -631,9 +685,13 @@ export function ScreenshotDeliveries({
               )}
             </div>
             {item.direction === "outgoing" &&
-              ["queued", "connecting", "sending", "failed"].includes(
-                item.status,
-              ) && (
+              [
+                "queued",
+                "awaiting",
+                "connecting",
+                "sending",
+                "failed",
+              ].includes(item.status) && (
                 <button
                   type="button"
                   className="icon-button"
@@ -656,13 +714,37 @@ export function ScreenshotDeliveries({
           </article>
         );
       })}
+      {view && (
+        <ImageLightbox
+          images={[view]}
+          initialIndex={0}
+          resolveImage={(id) =>
+            rpc("screenshots.image", { id, thumbnail: false })
+          }
+          onClose={() => setView(null)}
+        />
+      )}
     </div>
   );
 }
 export function ScreenshotsPage() {
   const { snapshot } = useSocial();
   const { items, error, refresh } = useTransfers();
-  const [tab, setTab] = useState("local");
+  const [tab, setTab] = useState(() =>
+    sessionStorage.getItem("aurum:screenshot-tab") === "received"
+      ? "received"
+      : "local",
+  );
+  useEffect(() => {
+    sessionStorage.removeItem("aurum:screenshot-tab");
+    const open = () => {
+      setTab("received");
+      sessionStorage.removeItem("aurum:screenshot-tab");
+      void refresh();
+    };
+    window.addEventListener("aurum:screenshots-received", open);
+    return () => window.removeEventListener("aurum:screenshots-received", open);
+  }, [refresh]);
   const received = useMemo(
     () =>
       items
@@ -707,6 +789,9 @@ export function ScreenshotsPage() {
         ))}
       </div>
       {error && <ErrorBox error={error} />}
+      <div className="shot-page-requests">
+        <ScreenshotRequests items={items} refresh={refresh} />
+      </div>
       {tab === "local" ? (
         <ScreenshotLibrary key="local" />
       ) : tab === "received" ? (
@@ -722,44 +807,4 @@ export function ScreenshotsPage() {
       )}
     </section>
   );
-}
-
-export function ScreenshotNotifications() {
-  const { snapshot } = useSocial();
-  const { notify } = useApp();
-  const known = useRef<Set<string> | null>(null);
-  useEffect(() => {
-    if (
-      !native ||
-      !snapshot?.enabled ||
-      snapshot.privacy.notifications === false
-    )
-      return;
-    let disposed = false;
-    const poll = async () => {
-      try {
-        const incoming = (await rpc("screenshots.transfers", {})).filter(
-          (item) => item.direction === "incoming" && item.status === "received",
-        );
-        if (disposed) return;
-        const fresh = known.current
-          ? incoming.filter((item) => !known.current!.has(item.id))
-          : [];
-        known.current = new Set(incoming.map((item) => item.id));
-        if (fresh.length)
-          notify(`${t("@shots.received.notice")} · ${fresh.length}`);
-      } catch {
-        /* An unreadable store is shown in the library, without repeated background toasts. */
-      }
-    };
-    void poll();
-    const timer = setInterval(() => {
-      if (!document.hidden) void poll();
-    }, 5000);
-    return () => {
-      disposed = true;
-      clearInterval(timer);
-    };
-  }, [snapshot?.enabled, snapshot?.privacy.notifications, notify]);
-  return null;
 }

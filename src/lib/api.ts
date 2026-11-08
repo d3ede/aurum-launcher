@@ -52,6 +52,7 @@ interface Contract {
   "screenshots.image": [{ id: string; thumbnail: boolean }, string];
   "screenshots.send": [{ friend: string; ids: string[] }, string[]];
   "screenshots.transfers": [Empty, ScreenshotTransfer[]];
+  "screenshots.decide": [{ batch: string; accept: boolean }, void];
   "screenshots.cancel": [{ id: string }, void];
   "screenshots.retry": [{ id: string }, void];
   "screenshots.removeReceived": [{ id: string }, void];
