@@ -20,8 +20,9 @@ import type { ModrinthImportResult, ModrinthScan } from "../types";
 import { ErrorBox, Loading, Modal } from "./ui";
 import { ProfileIcon } from "./ProfileIcon";
 import { ImportCopyNotice } from "./ImportCopyNotice";
+import { GamePresetChoice } from "./GamePresetChoice";
 export function ModrinthImport({ onClose }: { onClose: () => void }) {
-  const { operation, busy, progress } = useApp();
+  const { operation, busy, progress, data } = useApp();
   const [scan, setScan] = useState<ModrinthScan | null>(null);
   const [directories, setDirectories] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -29,6 +30,10 @@ export function ModrinthImport({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [removeSource, setRemoveSource] = useState(false);
+  const [gameSettingsProfileId, setGameSettingsProfileId] = useState<string>();
+  const invalidPreset =
+    gameSettingsProfileId !== undefined &&
+    !data.gameSettingsProfiles?.some((p) => p.id === gameSettingsProfileId);
   const [error, setError] = useState("");
   const [result, setResult] = useState<ModrinthImportResult | null>(null);
   const [retry, setRetry] = useState(0);
@@ -89,7 +94,7 @@ export function ModrinthImport({ onClose }: { onClose: () => void }) {
       return next;
     });
   const submit = async () => {
-    if (importLock.current || !selected.size) return;
+    if (importLock.current || !selected.size || invalidPreset) return;
     importLock.current = true;
     setImporting(true);
     setResult(null);
@@ -98,6 +103,7 @@ export function ModrinthImport({ onClose }: { onClose: () => void }) {
       const response = await operation(async (operationId) => {
         try {
           return await rpc("importModrinth", {
+            ...(gameSettingsProfileId ? { gameSettingsProfileId } : {}),
             directories,
             selected: [...selected],
             operationId,
@@ -133,6 +139,11 @@ export function ModrinthImport({ onClose }: { onClose: () => void }) {
       }}
     >
       <div className="modrinth-import-body">
+        <GamePresetChoice
+          value={gameSettingsProfileId}
+          onChange={setGameSettingsProfileId}
+          disabled={busy}
+        />
         <div className="modrinth-transfer">
           <span className="transfer-symbol">
             <Layers3 size={22} />
@@ -397,7 +408,7 @@ export function ModrinthImport({ onClose }: { onClose: () => void }) {
             {(!result || selected.size > 0) && (
               <button
                 className="button primary"
-                disabled={busy || loading || !selected.size}
+                disabled={busy || loading || !selected.size || invalidPreset}
                 onClick={() => void submit()}
               >
                 <Download size={16} />

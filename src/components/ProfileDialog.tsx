@@ -26,6 +26,7 @@ import { LoaderLogo } from "./LoaderLogo";
 import { ImportCopyNotice } from "./ImportCopyNotice";
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
+import { GamePresetChoice } from "./GamePresetChoice";
 import { randomIconStyle } from "../lib/profile-icons";
 import { ru } from "../lib/i18n";
 import type { Kind, Loader, Profile } from "../types";
@@ -40,6 +41,7 @@ export function CreateProfile({
 }) {
   const { data, operation, busy, refresh, notify } = useApp();
   const [removeSource, setRemoveSource] = useState(false);
+  const [gameSettingsProfileId, setGameSettingsProfileId] = useState<string>();
   const [name, setName] = useState("");
   const [mc, setMc] = useState("");
   const [loader, setLoader] = useState<Loader>("vanilla");
@@ -119,6 +121,7 @@ export function CreateProfile({
       const result = await operation(
         (operationId) =>
           rpc("importFolder", {
+            ...(gameSettingsProfileId ? { gameSettingsProfileId } : {}),
             removeSource,
             name: name.trim() || `Minecraft ${mc}`,
             minecraft: mc,
@@ -138,6 +141,7 @@ export function CreateProfile({
     }
     await operation(async (operationId) => {
       const created = await rpc("createProfile", {
+        ...(!horizon && gameSettingsProfileId ? { gameSettingsProfileId } : {}),
         engine,
         name: name.trim() || `${horizon ? "Horizon" : "Minecraft"} ${mc}`,
         minecraft: mc,
@@ -151,7 +155,11 @@ export function CreateProfile({
       onClose();
       onCreated?.(created);
       await refresh().catch(() => {});
-      await rpc("install", { id: created.id, operationId });
+      await rpc("install", {
+        id: created.id,
+        operationId,
+        ...(!horizon && gameSettingsProfileId ? { gameSettingsProfileId } : {}),
+      });
     }, t("Minecraft установлен"));
   };
   return (
@@ -300,6 +308,13 @@ export function CreateProfile({
             )}
           </>
         )}
+        {!horizon && (
+          <GamePresetChoice
+            value={gameSettingsProfileId}
+            onChange={setGameSettingsProfileId}
+            disabled={busy}
+          />
+        )}
         {folderImport && (
           <ImportCopyNotice
             checked={removeSource}
@@ -347,6 +362,11 @@ export function CreateProfile({
               loaderLoading ||
               !mc ||
               (horizon && !owner) ||
+              (!horizon &&
+                gameSettingsProfileId !== undefined &&
+                !data.gameSettingsProfiles?.some(
+                  (p) => p.id === gameSettingsProfileId,
+                )) ||
               (loader !== "vanilla" && !lv)
             }
           >

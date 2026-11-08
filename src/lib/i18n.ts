@@ -19,6 +19,10 @@ import { updaterEnglish, updaterRussian } from "../locales/updater";
 import { catalogEnglish, catalogRussian } from "../locales/catalog";
 import { homeEnglish, homeRussian } from "../locales/home";
 import {
+  gameSettingsEnglish,
+  gameSettingsRussian,
+} from "../locales/game-settings";
+import {
   personalizationEnglish,
   personalizationRussian,
 } from "../locales/personalization";
@@ -43,6 +47,7 @@ import {
 } from "../locales/horizon-mods";
 type Dictionary = Record<string, string>;
 const english: Dictionary = {
+  ...gameSettingsEnglish,
   ...screenshotsEnglish,
   ...hostingModsEnglish,
   ...favoritesEnglish,
@@ -63,6 +68,7 @@ const english: Dictionary = {
   ...contentManagerEnglish,
 };
 const russian: Dictionary = {
+  ...gameSettingsRussian,
   ...screenshotsRussian,
   ...hostingModsRussian,
   ...favoritesRussian,

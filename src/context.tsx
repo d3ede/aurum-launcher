@@ -79,6 +79,9 @@ export function Provider({
     status: HorizonModStatus;
   } | null>(null);
   const lock = useRef(false);
+  const settingsNotice = useRef<{ message: string; error: boolean } | null>(
+    null,
+  );
   const activeOperation = useRef<{
     id: string;
     controller: AbortController;
@@ -145,6 +148,22 @@ export function Provider({
         if (live) setFatal(e.message);
       });
     events((event) => {
+      if (event.phase === "game-settings-partial") {
+        const message = t("@game.partial", {
+          applied: event.done,
+          skipped: event.total,
+        });
+        if (!settingsNotice.current?.error)
+          settingsNotice.current = { message, error: false };
+        if (!lock.current) notify(message);
+        return;
+      }
+      if (event.phase === "game-settings-warning") {
+        const message = t("@game.installWarning") + " " + t(event.message);
+        settingsNotice.current = { message, error: true };
+        if (!lock.current) notify(message, true);
+        return;
+      }
       if (event.phase === "hosting-close-blocked") {
         notify(event.message, true);
         return;
@@ -201,11 +220,18 @@ export function Provider({
         return;
       }
       lock.current = true;
+      settingsNotice.current = null;
       setBusy(true);
       try {
         const value = await action();
         await refresh();
-        if (success) notify(success);
+        if (settingsNotice.current) {
+          const notice = settingsNotice.current as {
+            message: string;
+            error: boolean;
+          };
+          notify(notice.message, notice.error);
+        } else if (success) notify(success);
         return value;
       } catch (e) {
         notify(e instanceof Error ? e.message : String(e), true);

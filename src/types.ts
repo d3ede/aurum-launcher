@@ -137,6 +137,7 @@ export interface Settings {
   showSnapshots: boolean;
 }
 export interface Snapshot {
+  gameSettingsProfiles?: import("./lib/game-settings").GameSettingsPreset[];
   profiles: Profile[];
   accounts: Account[];
   selectedAccount: string | null;

@@ -4,6 +4,7 @@ pub mod identity;
 pub mod catalog;
 pub mod content;
 pub mod content_metadata;
+pub mod game_settings;
 mod directories;
 pub mod horizon;
 pub mod horizon_mods;

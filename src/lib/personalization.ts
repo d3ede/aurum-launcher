@@ -39,7 +39,8 @@ export interface Personalization {
   home: HomePreferences;
   appearance: AppearancePreferences;
 }
-export type SettingsTab = "general" | "home" | "appearance" | "storage";
+export type SettingsTab =
+  "general" | "home" | "appearance" | "storage" | "game";
 export const homeDefaults: HomePreferences = {
   order: ["launch", "servers", "profiles", "discover"],
   launch: "last-profile",

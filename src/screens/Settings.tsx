@@ -1,4 +1,5 @@
 import { StorageSettings } from "./Storage";
+import { GameSettings } from "./GameSettings";
 import { t, formatDecimal } from "../lib/i18n";
 import { LanguagePicker } from "../components/LanguagePicker";
 import { LauncherUpdateSettings } from "../components/LauncherUpdate";
@@ -12,6 +13,7 @@ import {
   Cpu,
   HardDrive,
   Save,
+  Gamepad2,
 } from "lucide-react";
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
@@ -26,6 +28,7 @@ import {
 export function Settings() {
   const { settingsTab, openSettings } = useApp();
   useLayoutEffect(scrollSettingsToTop, [settingsTab]);
+  if (settingsTab === "game") return <GameSettings />;
   if (settingsTab === "storage") return <StorageSettings />;
   if (settingsTab === "appearance") return <AppearanceSettings />;
   return (
@@ -67,6 +70,21 @@ function GeneralSettings() {
         <LanguagePicker onChange={(language) => set("language", language)} />
         <LauncherUpdateSettings />
         <div className="settings-destinations" aria-label={t("Персонализация")}>
+          <button
+            type="button"
+            className="settings-destination"
+            aria-label={t("@game.title")}
+            onClick={() => openSettings("game")}
+          >
+            <span className="settings-destination-icon">
+              <Gamepad2 size={25} />
+            </span>
+            <span>
+              <b>{t("@game.title")}</b>
+              <small>{t("@game.destination")}</small>
+            </span>
+            <ArrowRight size={19} />
+          </button>
           <button
             type="button"
             className="settings-destination"

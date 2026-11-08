@@ -236,6 +236,13 @@ async fn rpc(
                 .map(|icon| json!(icon))
         }
         "createProfile" => {
+            let game_settings = match payload["gameSettingsProfileId"].as_str() {
+                Some(id) => Some(e.game_settings_preset(id).await.map_err(err)?),
+                None => None,
+            };
+            if game_settings.is_some() && payload["engine"] == "horizon" {
+                return Err("Профили настроек поддерживают Minecraft Java".into());
+            }
             let icon_style = serde_json::from_value::<Option<aurum_core::model::ProfileIconStyle>>(
                 payload.get("iconStyle").cloned().unwrap_or(Value::Null),
             )
@@ -267,6 +274,24 @@ async fn rpc(
                 e.update_profile(profile.clone()).await.map_err(err)?;
             }
             Ok(json!(profile))
+        }
+        "gameSettings.save" => Ok(json!(e.save_game_settings(param(&payload, "preset")?).await.map_err(err)?)),
+        "gameSettings.capture" => Ok(json!(e.capture_game_settings(
+            &param::<String>(&payload,"profileId")?, param(&payload,"name")?, payload["replaceId"].as_str()
+        ).await.map_err(err)?)),
+        "gameSettings.delete" => {
+            e.delete_game_settings(&param::<String>(&payload,"id")?).await.map_err(err)?;
+            Ok(Value::Null)
+        }
+        "gameSettings.apply" => {
+            let _guard=e.busy.try_lock().map_err(|_| "Дождитесь завершения текущей операции".to_string())?;
+            let preset=e.game_settings_preset(&param::<String>(&payload,"presetId")?).await.map_err(err)?;
+            Ok(json!(e.apply_game_settings(&param::<String>(&payload,"profileId")?,&preset,None).await.map_err(err)?))
+        }
+        "gameSettings.restore" => {
+            let _guard=e.busy.try_lock().map_err(|_| "Дождитесь завершения текущей операции".to_string())?;
+            e.restore_game_settings(&param::<String>(&payload,"profileId")?).await.map_err(err)?;
+            Ok(Value::Null)
         }
         "updateProfile" => {
             e.update_profile(param(&payload, "profile")?)
@@ -612,6 +637,10 @@ async fn rpc(
                 .busy
                 .try_lock()
                 .map_err(|_| "Дождитесь завершения текущей операции".to_string())?;
+            let game_settings = match payload["gameSettingsProfileId"].as_str() {
+                Some(id) if ["install", "importPack", "downloadPack", "importFolder", "importModrinth"].contains(&action.as_str()) => Some(e.game_settings_preset(id).await.map_err(err)?),
+                _ => None,
+            };
             let task = e
                 .task(
                     param(&payload, "operationId")?,
@@ -620,7 +649,7 @@ async fn rpc(
                 .await
                 .map_err(err)?;
             let result: Result<Value, anyhow::Error> = async {
-                match action.as_str() {
+                let installed: Result<Value, anyhow::Error> = match action.as_str() {
                     "importModrinth" => {
                         let extra: Vec<std::path::PathBuf> =
                             param(&payload, "directories").map_err(anyhow::Error::msg)?;
@@ -768,7 +797,25 @@ async fn rpc(
                         }
                     }
                     _ => unreachable!(),
+                };
+                let value = installed?;
+                if let Some(ref preset)=game_settings {
+                    let ids: Vec<&str> = if action=="importModrinth" {
+                        value["imported"].as_array().into_iter().flatten().filter_map(|p|p["id"].as_str()).collect()
+                    } else if action=="importFolder" {value["id"].as_str().into_iter().collect()}
+                    else if action=="install" {payload["id"].as_str().into_iter().collect()}
+                    else {value.as_str().into_iter().collect()};
+                    for id in ids {
+                        // The instance is already installed. A settings error must
+                        // never turn success into a retry that duplicates a modpack.
+                        match e.apply_game_settings(id,preset,Some(&task.id)).await {
+                            Ok(report) if !report.skipped.is_empty()=>task.progress("game-settings-partial", "Часть настроек недоступна в этой версии Minecraft",report.applied as u64,report.skipped.len() as u64),
+                            Ok(_)=>{},
+                            Err(error)=>task.progress("game-settings-warning",format!("{error:#}"),0,0),
+                        }
+                    }
                 }
+                Ok(value)
             }
             .await;
             e.finish(

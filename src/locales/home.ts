@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "До пяти профилей настроек Minecraft: импорт из сборок, редакторы и выбор профиля при установке.":
+    "Up to five Minecraft settings profiles: import from instances, edit preferences and choose a profile when installing.",
   "Social подключается после перезапуска и обновления без повторного согласия на P2P. Постоянный путь компонента сохраняет настройку брандмауэра.":
     "Social reconnects after restarts and updates without asking for P2P consent again. A stable component path preserves the firewall setup.",
   "Ресурспаки и шейдеры: установка, обновление и управление файлами без остановки игры. Применяйте пак в настройках Minecraft.":

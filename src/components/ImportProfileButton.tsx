@@ -5,6 +5,8 @@ import { rpc } from "../lib/api";
 import { t } from "../lib/i18n";
 import { ModrinthImport } from "./ModrinthImport";
 import { ModrinthLogo } from "./ModrinthLogo";
+import { GamePresetChoice } from "./GamePresetChoice";
+import { Modal } from "./ui";
 
 export function ImportProfileButton({
   onFolderImport,
@@ -14,6 +16,18 @@ export function ImportProfileButton({
   const { operation, busy } = useApp();
   const [open, setOpen] = useState(false);
   const [modrinth, setModrinth] = useState(false);
+  const [archive, setArchive] = useState(false);
+  const [gameSettingsProfileId, setGameSettingsProfileId] = useState<string>();
+  const { data } = useApp();
+  const importArchive = () =>
+    void operation(
+      (id) =>
+        rpc("importPack", {
+          operationId: id,
+          ...(gameSettingsProfileId ? { gameSettingsProfileId } : {}),
+        }),
+      t("Сборка импортирована"),
+    );
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const id = useId();
@@ -74,10 +88,8 @@ export function ImportProfileButton({
               type="button"
               onClick={() => {
                 setOpen(false);
-                void operation(
-                  (id) => rpc("importPack", { operationId: id }),
-                  t("Сборка импортирована"),
-                );
+                if (data.gameSettingsProfiles?.length) setArchive(true);
+                else importArchive();
               }}
             >
               <Download size={18} />
@@ -103,6 +115,44 @@ export function ImportProfileButton({
         )}
       </div>
       {modrinth && <ModrinthImport onClose={() => setModrinth(false)} />}
+      {archive && (
+        <Modal
+          title={t("Из .mrpack / ZIP")}
+          onClose={() => setArchive(false)}
+          closeDisabled={busy}
+        >
+          <GamePresetChoice
+            value={gameSettingsProfileId}
+            onChange={setGameSettingsProfileId}
+            disabled={busy}
+          />
+          <div className="modal-actions">
+            <button
+              className="button secondary"
+              disabled={busy}
+              onClick={() => setArchive(false)}
+            >
+              {t("Отмена")}
+            </button>
+            <button
+              className="button primary"
+              disabled={
+                busy ||
+                (gameSettingsProfileId !== undefined &&
+                  !data.gameSettingsProfiles?.some(
+                    (p) => p.id === gameSettingsProfileId,
+                  ))
+              }
+              onClick={() => {
+                setArchive(false);
+                importArchive();
+              }}
+            >
+              {t("@game.chooseArchive")}
+            </button>
+          </div>
+        </Modal>
+      )}
     </>
   );
 }

@@ -171,6 +171,8 @@ fn legacy_language() -> String {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Database {
+    #[serde(default)]
+    pub game_settings_profiles: Vec<crate::game_settings::GameSettingsPreset>,
     pub profiles: Vec<Profile>,
     #[serde(default)]
     pub instance_directories: std::collections::HashMap<String, String>,

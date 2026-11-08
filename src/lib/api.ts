@@ -48,6 +48,20 @@ export const native = isTauri();
 type Empty = Record<string, never>;
 import type { ScreenshotLibrary, ScreenshotTransfer } from "./screenshots";
 interface Contract {
+  "gameSettings.save": [
+    { preset: import("./game-settings").GameSettingsPreset },
+    import("./game-settings").GameSettingsPreset,
+  ];
+  "gameSettings.capture": [
+    { profileId: string; name: string; replaceId?: string },
+    import("./game-settings").GameSettingsPreset,
+  ];
+  "gameSettings.delete": [{ id: string }, void];
+  "gameSettings.apply": [
+    { profileId: string; presetId: string },
+    { applied: number; skipped: string[] },
+  ];
+  "gameSettings.restore": [{ profileId: string }, void];
   "screenshots.list": [{ profileId: string | null }, ScreenshotLibrary];
   "screenshots.image": [{ id: string; thumbnail: boolean }, string];
   "screenshots.send": [{ friend: string; ids: string[] }, string[]];
@@ -251,6 +265,7 @@ interface Contract {
   chooseModrinthDirectory: [Empty, string | null];
   importModrinth: [
     {
+      gameSettingsProfileId?: string;
       directories: string[];
       selected: string[];
       removeSource?: boolean;
@@ -274,6 +289,7 @@ interface Contract {
   ];
   createProfile: [
     {
+      gameSettingsProfileId?: string;
       engine?: "java" | "horizon";
       name: string;
       minecraft: string;
@@ -418,6 +434,7 @@ interface Contract {
   ];
   install: [
     {
+      gameSettingsProfileId?: string;
       id: string;
       operationId: string;
     },
@@ -443,12 +460,14 @@ interface Contract {
   ];
   importPack: [
     {
+      gameSettingsProfileId?: string;
       operationId: string;
     },
     string | null,
   ];
   downloadPack: [
     {
+      gameSettingsProfileId?: string;
       source: string;
       projectId: string;
       versionId: string;
@@ -459,6 +478,7 @@ interface Contract {
   ];
   importFolder: [
     {
+      gameSettingsProfileId?: string;
       removeSource?: boolean;
       name: string;
       minecraft: string;
@@ -546,7 +566,8 @@ export const defaultSettings: Settings = {
 const savedTheme = (() => {
   if (typeof localStorage === "undefined") return null;
   const legacyKey = "auren:theme"; // One-time upgrade of the previous browser key.
-  const theme = localStorage.getItem("aurum:theme") || localStorage.getItem(legacyKey);
+  const theme =
+    localStorage.getItem("aurum:theme") || localStorage.getItem(legacyKey);
   if (theme) localStorage.setItem("aurum:theme", theme);
   localStorage.removeItem(legacyKey);
   return theme;

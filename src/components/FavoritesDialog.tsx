@@ -28,6 +28,7 @@ import {
 } from "./PlatformPackOptions";
 import { ProjectIcon } from "../screens/Catalog";
 import { NativeModNotice } from "./NativeModNotice";
+import { GamePresetChoice } from "./GamePresetChoice";
 import { contentReloadHint, reloadableContent } from "../lib/content-runtime";
 
 type Plan = {
@@ -86,6 +87,7 @@ export function FavoritesDialog({
     data.dataDir,
   );
   const [pendingRemoval, setPendingRemoval] = useState<string[] | null>(null);
+  const [gameSettingsProfileId, setGameSettingsProfileId] = useState<string>();
   const [profileId, setProfileId] = useState(
     initialProfileId ||
       data.profiles.find((p) => p.engine !== "horizon")?.id ||
@@ -226,7 +228,12 @@ export function FavoritesDialog({
         (matchesEngine(item.project, profile) &&
           (!data.running.includes(profileId) ||
             reloadableContent(item.project.kind)))) &&
-      (!packSource(item.project.source) || configuration(item)?.ready)
+      (!packSource(item.project.source) || configuration(item)?.ready) &&
+      (item.project.kind !== "modpack" ||
+        gameSettingsProfileId === undefined ||
+        !!data.gameSettingsProfiles?.some(
+          (p) => p.id === gameSettingsProfileId,
+        ))
     );
   };
   const checking = items.some((item) => {
@@ -276,6 +283,7 @@ export function FavoritesDialog({
             if (signal.aborted) throw new Error(t("Операция отменена"));
             if (project.kind === "modpack") {
               const id = await rpc("downloadPack", {
+                ...(gameSettingsProfileId ? { gameSettingsProfileId } : {}),
                 source: project.source,
                 projectId: project.id,
                 versionId: version.id,
@@ -391,6 +399,13 @@ export function FavoritesDialog({
           )}
           {items.some((item) => item.project.source === "horizon") && (
             <NativeModNotice />
+          )}
+          {items.some((item) => item.project.kind === "modpack") && (
+            <GamePresetChoice
+              value={gameSettingsProfileId}
+              onChange={setGameSettingsProfileId}
+              disabled={blocked}
+            />
           )}
           <div className="favorites-selection">
             <label className="checkbox-label">

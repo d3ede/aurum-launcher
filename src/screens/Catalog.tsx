@@ -25,6 +25,7 @@ import { Modal, Loading, ErrorBox, EmptyState, Field } from "../components/ui";
 import { NativeModNotice } from "../components/NativeModNotice";
 import { Select } from "../components/Select";
 import { FavoriteButton } from "../components/FavoriteButton";
+import { GamePresetChoice } from "../components/GamePresetChoice";
 import { contentReloadHint, reloadableContent } from "../lib/content-runtime";
 import {
   catalogSources,
@@ -69,6 +70,7 @@ export function ProjectDialog({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [versionId, setVersionId] = useState("");
+  const [gameSettingsProfileId, setGameSettingsProfileId] = useState<string>();
   const [packConfig, setPackConfig] = useState<PackConfiguration | null>(null);
   const configurationKey = `${project.source}:${project.id}:${versionId}`;
   const platformReady =
@@ -136,11 +138,20 @@ export function ProjectDialog({
     (project.kind === "modpack" ||
       (profile && compatible(selected, profile, project.kind)));
   const install = async () => {
-    if (!selected || runtimeBlocked || busy) return;
+    if (
+      !selected ||
+      runtimeBlocked ||
+      busy ||
+      (project.kind === "modpack" &&
+        gameSettingsProfileId !== undefined &&
+        !data.gameSettingsProfiles?.some((p) => p.id === gameSettingsProfileId))
+    )
+      return;
     const ok = await operation(
       async (operationId) => {
         if (project.kind === "modpack")
           await rpc("downloadPack", {
+            ...(gameSettingsProfileId ? { gameSettingsProfileId } : {}),
             source: project.source,
             projectId: project.id,
             versionId,
@@ -264,10 +275,25 @@ export function ProjectDialog({
                   />
                 </Field>
               </div>
+              {project.kind === "modpack" && (
+                <GamePresetChoice
+                  value={gameSettingsProfileId}
+                  onChange={setGameSettingsProfileId}
+                  disabled={busy}
+                />
+              )}
               <button
                 className="button primary"
                 disabled={
-                  busy || runtimeBlocked || !canInstall || !platformReady
+                  busy ||
+                  runtimeBlocked ||
+                  !canInstall ||
+                  !platformReady ||
+                  (project.kind === "modpack" &&
+                    gameSettingsProfileId !== undefined &&
+                    !data.gameSettingsProfiles?.some(
+                      (p) => p.id === gameSettingsProfileId,
+                    ))
                 }
                 onClick={() => void install()}
               >
