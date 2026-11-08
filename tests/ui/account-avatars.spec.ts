@@ -1,8 +1,13 @@
 import { test, expect, type Page } from "@playwright/test";
 
-async function fixture(page: Page, failed = false, theme = "light") {
+async function fixture(
+  page: Page,
+  failed = false,
+  theme = "light",
+  accountCount = 2,
+) {
   await page.addInitScript(
-    ({ failed, theme }) => {
+    ({ failed, theme, accountCount }) => {
       localStorage.setItem("aurum:language", "ru");
       const browser = window as any;
       browser.isTauri = true;
@@ -34,7 +39,7 @@ async function fixture(page: Page, failed = false, theme = "light") {
             skinModel: "alex",
             hasSkin: false,
           },
-        ],
+        ].slice(0, accountCount),
         selectedAccount: "microsoft-test",
         running: [],
         dataDir: "D:/Aurum-test",
@@ -91,7 +96,7 @@ async function fixture(page: Page, failed = false, theme = "light") {
         },
       };
     },
-    { failed, theme },
+    { failed, theme, accountCount },
   );
   await page.goto("/");
   await expect(
@@ -126,17 +131,24 @@ for (const theme of ["light", "garnet"]) {
   test(`skin access stays in Accounts with a taller animated card in ${theme}`, async ({
     page,
   }) => {
-    await fixture(page, false, theme);
+    await fixture(page, false, theme, theme === "light" ? 1 : 2);
     const nav = page.getByRole("navigation");
     await expect(
       nav.getByRole("button", { name: "Скины и плащи", exact: true }),
     ).toHaveCount(0);
     await nav.getByRole("button", { name: "Профили", exact: true }).click();
-    const card = page.getByRole("button", {
+    const card = page.getByRole("region", {
+      name: "Скины и плащи",
+      exact: true,
+    });
+    const open = card.getByRole("button", {
       name: "Открыть скины",
       exact: true,
     });
-    await expect(card).toContainText("Выбор скина и плаща для аккаунта.");
+    await expect(card.getByRole("listitem")).toHaveCount(3);
+    await expect(card).toContainText("Загрузка PNG и библиотека");
+    await expect(card).toContainText("Поиск по названию и нику");
+    await expect(card).toContainText("Плащи и 3D-просмотр");
     await expect(
       page.getByText("Отдельная библиотека ваших образов"),
     ).toHaveCount(0);
@@ -161,16 +173,46 @@ for (const theme of ["light", "garnet"]) {
           .locator(".content-scroll")
           .evaluate((el) => el.scrollWidth <= el.clientWidth),
       ).toBe(true);
-      const pattern = card.locator(".terrain-pattern");
+      const pattern = open.locator(".wardrobe-button-pattern");
       await expect(pattern).toHaveCSS("opacity", "0");
-      await card.hover();
-      await expect(pattern).toHaveCSS("opacity", "0.18");
-      await expect(pattern).toHaveCSS("clip-path", "inset(0px)");
+      await card.getByRole("heading").hover();
+      await expect(pattern).toHaveCSS("opacity", "0");
+      await expect(card.locator(":scope > .terrain-pattern")).toHaveCount(0);
+      await open.hover();
+      await expect(pattern).toHaveCSS("opacity", "1");
+      const trace = pattern.locator(".wardrobe-button-trace").first();
+      await expect
+        .poll(async () => {
+          const offset = await trace.evaluate((el) =>
+            parseFloat(getComputedStyle(el).strokeDashoffset),
+          );
+          return offset > 0 && offset < 1;
+        })
+        .toBe(true);
+      if (width === 1280)
+        await page.screenshot({
+          path: `.test-data/screenshots/accounts-skin-button-drawing-${theme}.png`,
+        });
+      await expect
+        .poll(() =>
+          trace.evaluate((el) =>
+            parseFloat(getComputedStyle(el).strokeDashoffset),
+          ),
+        )
+        .toBe(0);
+      const buttonBounds = (await open.boundingBox())!;
+      const patternBounds = (await pattern.boundingBox())!;
+      expect(
+        Math.abs(patternBounds.width - buttonBounds.width),
+      ).toBeLessThanOrEqual(2);
+      expect(
+        Math.abs(patternBounds.height - buttonBounds.height),
+      ).toBeLessThanOrEqual(2);
       await page.screenshot({
         path: `.test-data/screenshots/accounts-skin-access-${theme}-${width}.png`,
       });
     }
-    await card.click();
+    await open.click();
     await expect(
       page.getByRole("heading", { name: "Скины и плащи", exact: true }),
     ).toBeVisible();
@@ -194,10 +236,10 @@ test("skin access supports keyboard activation and reduced motion", async ({
     .getByRole("navigation")
     .getByRole("button", { name: "Профили", exact: true })
     .click();
-  const card = page.getByRole("button", { name: "Открыть скины", exact: true });
-  await card.focus();
+  const open = page.getByRole("button", { name: "Открыть скины", exact: true });
+  await open.focus();
   expect(
-    await card.locator(".terrain-pattern").evaluate((el) =>
+    await open.locator(".wardrobe-button-pattern").evaluate((el) =>
       Math.max(
         ...getComputedStyle(el)
           .transitionDuration.split(",")
@@ -205,6 +247,10 @@ test("skin access supports keyboard activation and reduced motion", async ({
       ),
     ),
   ).toBeLessThanOrEqual(0.001);
+  await expect(open.locator(".wardrobe-button-glow").first()).toHaveCSS(
+    "animation-name",
+    "none",
+  );
   await page.keyboard.press("Enter");
   await expect(
     page.getByRole("heading", { name: "Скины и плащи", exact: true }),

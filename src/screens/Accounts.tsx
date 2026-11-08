@@ -1,5 +1,5 @@
 import { t } from "../lib/i18n";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import {
   UserRound,
   Plus,
@@ -8,12 +8,40 @@ import {
   Shirt,
   Monitor,
   ArrowRight,
+  ImagePlus,
+  Search,
+  Flag,
 } from "lucide-react";
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
 import { EmptyState, Field, Modal } from "../components/ui";
 import { TerrainPattern } from "../components/TerrainPattern";
 import { AccountAvatar } from "../components/AccountAvatar";
+
+function WardrobeButtonPattern() {
+  return (
+    <svg
+      className="wardrobe-button-pattern"
+      viewBox="0 0 360 64"
+      preserveAspectRatio="xMidYMid slice"
+      aria-hidden="true"
+    >
+      {Array.from({ length: 7 }, (_, index) => {
+        const curve = `M ${142 + index * 15} -12 C ${111 + index * 14} 18, ${205 + index * 12} 20, ${206 + index * 15} 36 S ${285 + index * 12} 70, 380 ${30 + index * 6}`;
+        return (
+          <g
+            key={index}
+            style={{ "--trace-delay": `${index * 45}ms` } as CSSProperties}
+          >
+            <path className="wardrobe-button-trace" pathLength={1} d={curve} />
+            <path className="wardrobe-button-glow" pathLength={1} d={curve} />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 export function Accounts() {
   const { data, run, startMicrosoftLogin, busy, navigate } = useApp();
   const [offline, setOffline] = useState(false);
@@ -139,26 +167,39 @@ export function Accounts() {
             </div>
           </div>
         </section>
-        <button
+        <section
           className="accounts-wardrobe-link"
-          aria-label={t("Открыть скины")}
-          onClick={() => navigate("skins")}
+          aria-labelledby="accounts-wardrobe-title"
         >
-          <TerrainPattern />
-          <span className="accounts-wardrobe-heading">
-            <strong>{t("Скины и плащи")}</strong>
+          <div className="accounts-wardrobe-heading">
+            <h2 id="accounts-wardrobe-title">{t("Скины и плащи")}</h2>
             <span className="accounts-wardrobe-icon">
               <Shirt size={28} />
             </span>
-          </span>
-          <span className="accounts-wardrobe-description">
-            {t("Выбор скина и плаща для аккаунта.")}
-          </span>
-          <span className="accounts-wardrobe-action">
-            {t("Открыть скины")}
+          </div>
+          <ul className="accounts-wardrobe-features">
+            <li>
+              <ImagePlus size={17} aria-hidden="true" />
+              <span>{t("Загрузка PNG и библиотека")}</span>
+            </li>
+            <li>
+              <Search size={17} aria-hidden="true" />
+              <span>{t("Поиск по названию и нику")}</span>
+            </li>
+            <li>
+              <Flag size={17} aria-hidden="true" />
+              <span>{t("Плащи и 3D-просмотр")}</span>
+            </li>
+          </ul>
+          <button
+            className="accounts-wardrobe-action"
+            onClick={() => navigate("skins")}
+          >
+            <WardrobeButtonPattern />
+            <span>{t("Открыть скины")}</span>
             <ArrowRight size={18} />
-          </span>
-        </button>
+          </button>
+        </section>
       </div>
       {offline && (
         <Modal

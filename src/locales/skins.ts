@@ -1,4 +1,7 @@
 export const skinEnglish: Record<string, string> = {
+  "Загрузка PNG и библиотека": "PNG uploads and saved skins",
+  "Поиск по названию и нику": "Search by skin or player name",
+  "Плащи и 3D-просмотр": "Capes and 3D preview",
   "Выбор скина и плаща для аккаунта.":
     "Choose a skin and cape for your account.",
   "Без названия": "Untitled",
