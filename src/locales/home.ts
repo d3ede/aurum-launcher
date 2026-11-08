@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Новая версия лаунчера предлагается в диалоге: можно обновиться с перезапуском или отложить установку.":
+    "New launcher versions appear in a dialog: update and restart, or postpone installation.",
   "Каталог: переход к любой странице, общее число страниц и листание без сброса прокрутки; крупные изображения и цельные плитки проектов.":
     "Catalog: jump to any page, see the total page count and browse without losing your scroll position; larger images and cohesive project tiles.",
   "Установка из каталога: одна кнопка в шапке проекта, выбор сборки и версии — в отдельном окне.":

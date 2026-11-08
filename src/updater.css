@@ -1,23 +1,6 @@
-.launcher-update-banner {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 28px;
-  border-bottom: 1px solid var(--gold-border);
-  background: var(--gold-soft);
-  flex-shrink: 0;
-}
-.launcher-update-copy {
-  flex: 1;
-  min-width: 0;
-}
-.launcher-update-banner p,
 .launcher-updates p {
   color: var(--secondary);
   margin: 5px 0 0;
-}
-.launcher-update-banner .button {
-  flex-shrink: 0;
 }
 .launcher-updates > .button-row {
   margin-top: 16px;
@@ -38,17 +21,88 @@
   color: var(--secondary);
   font-variant-numeric: tabular-nums;
 }
-.launcher-update-banner .update-error,
+.launcher-update-dialog .update-error,
 .launcher-updates .update-error {
   color: var(--danger);
 }
-@media (max-width: 1000px) {
-  .launcher-update-banner {
-    gap: 10px;
-    padding: 12px 20px;
-    flex-wrap: wrap;
-  }
-  .launcher-update-copy {
-    flex-basis: 100%;
-  }
+.launcher-update-dialog {
+  width: 560px;
+}
+.launcher-update-release {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.launcher-update-symbol {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: 16px;
+  border: 1px solid var(--gold-border);
+  background: var(--gold-soft);
+  color: var(--accent-ink);
+}
+.launcher-update-release strong {
+  display: block;
+  font-size: 17px;
+}
+.launcher-update-release div > span {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.launcher-update-versions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--aside);
+}
+.launcher-update-versions > svg {
+  color: var(--muted);
+}
+.launcher-update-versions span {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+}
+.launcher-update-versions b {
+  display: block;
+  margin-top: 7px;
+  font-size: 23px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.launcher-update-versions > div:last-child b {
+  color: var(--accent-ink);
+}
+.launcher-update-restart-note {
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.launcher-update-blocked {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 9px;
+  background: var(--gold-soft);
+  color: var(--secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.launcher-update-dialog .update-progress {
+  margin-top: 16px;
+  max-width: none;
+}
+.launcher-update-dialog .modal-actions {
+  flex-wrap: wrap;
 }

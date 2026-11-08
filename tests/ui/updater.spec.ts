@@ -2,14 +2,20 @@ import { test, expect, type Page } from "@playwright/test";
 
 async function fixture(
   page: Page,
-  options: { running?: boolean; theme?: string } = {},
+  options: {
+    running?: boolean;
+    theme?: string;
+    language?: string;
+    home?: boolean;
+  } = {},
 ) {
   await page.addInitScript(
-    ({ running, theme }) => {
-      localStorage.setItem("aurum:language", "en");
+    ({ running, theme, language }) => {
+      localStorage.setItem("aurum:language", language);
       const w = window as any;
       w.isTauri = true;
       w.updateMode = "available";
+      w.availableVersion = "0.7.1";
       w.updateRequests = [];
       w.failDownload = false;
       w.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
@@ -37,8 +43,8 @@ async function fixture(
               if (w.updateMode === "current") return null;
               return {
                 rid: 101,
-                currentVersion: "0.3.9",
-                version: "0.3.10",
+                currentVersion: "0.7.0",
+                version: w.availableVersion,
                 rawJson: {},
                 body: "Update fixture",
               };
@@ -71,7 +77,7 @@ async function fixture(
                 dataDir: "D:/Aurum-updater-test",
                 curseforgeConfigured: false,
                 settings: {
-                  language: "en",
+                  language,
                   theme,
                   javaPath: "",
                   ramMb: 4096,
@@ -87,10 +93,15 @@ async function fixture(
         },
       };
     },
-    { running: options.running ?? false, theme: options.theme ?? "light" },
+    {
+      running: options.running ?? false,
+      theme: options.theme ?? "light",
+      language: options.language ?? "en",
+    },
   );
   await page.goto("/");
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  if (!options.home)
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
 }
 
 test("checks, postpones, and downloads before restarting", async ({ page }) => {
@@ -106,8 +117,15 @@ test("checks, postpones, and downloads before restarting", async ({ page }) => {
     (window as any).holdUpdateCheck = false;
     (window as any).releaseUpdateCheck();
   });
-  const banner = page.getByRole("region", { name: "Launcher updates" });
-  await expect(banner).toContainText("Aurum 0.3.10 is available");
+  const banner = page.getByRole("dialog", { name: "Update available" });
+  await expect(banner).toContainText("Aurum 0.7.1 is available");
+  expect(
+    await page.evaluate(() =>
+      (window as any).updateRequests.some((r: any) =>
+        r.command.endsWith("download"),
+      ),
+    ),
+  ).toBe(false);
   await banner.getByRole("button", { name: "Later" }).click();
   await expect(banner).toHaveCount(0);
   await page.getByRole("button", { name: "Update and restart" }).click();
@@ -135,14 +153,12 @@ test("a failed or tampered download never reaches installation and can be retrie
     (window as any).failDownload = true;
   });
   await page.getByRole("button", { name: "Check for updates" }).click();
+  const dialog = page.getByRole("dialog", { name: "Update available" });
   await expect(
-    page.getByRole("button", { name: "Update and restart" }).first(),
+    dialog.getByRole("button", { name: "Update and restart" }),
   ).toBeEnabled();
-  await page
-    .getByRole("button", { name: "Update and restart" })
-    .first()
-    .click();
-  await expect(page.getByRole("alert").first()).toContainText(
+  await dialog.getByRole("button", { name: "Update and restart" }).click();
+  await expect(dialog.getByRole("alert")).toContainText(
     "Couldn't download or verify",
   );
   expect(
@@ -155,22 +171,19 @@ test("a failed or tampered download never reaches installation and can be retrie
   await page.evaluate(() => {
     (window as any).failDownload = false;
   });
-  await page
-    .getByRole("button", { name: "Update and restart" })
-    .first()
-    .click();
+  await dialog.getByRole("button", { name: "Update and restart" }).click();
   await expect(
-    page.getByText("Restarting Aurum…", { exact: true }).first(),
+    dialog.getByText("Restarting Aurum…", { exact: true }),
   ).toBeVisible();
 });
 
-test("running games block installation and the banner fits both themes at minimum size", async ({
+test("running games block installation and the dialog fits both themes at minimum size", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 960, height: 680 });
   await fixture(page, { running: true, theme: "dark" });
   await page.getByRole("button", { name: "Check for updates" }).click();
-  const banner = page.getByRole("region", { name: "Launcher updates" });
+  const banner = page.getByRole("dialog", { name: "Update available" });
   await expect(banner).toBeVisible();
   await expect(
     banner.getByRole("button", { name: "Update and restart" }),
@@ -185,7 +198,7 @@ test("running games block installation and the banner fits both themes at minimu
     path: ".test-data/screenshots/updater-dark.png",
     animations: "disabled",
   });
-  await page.getByRole("button", { name: "Toggle theme" }).click();
+  await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth > innerWidth,
@@ -219,3 +232,76 @@ test("check failures allow retry, and an up-to-date result offers no installatio
     page.getByRole("button", { name: "Update and restart" }),
   ).toHaveCount(0);
 });
+
+test("postponing or closing dismisses only that version for this session", async ({
+  page,
+}) => {
+  await fixture(page);
+  const dialog = page.getByRole("dialog", { name: "Update available" });
+  const check = page.getByRole("button", { name: "Check for updates" });
+  await check.click();
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await check.click();
+  await expect(check).toBeEnabled();
+  await expect(dialog).toHaveCount(0);
+  await page.evaluate(() => ((window as any).availableVersion = "0.7.2"));
+  await check.click();
+  await expect(dialog).toContainText("Aurum 0.7.2 is available");
+  await dialog.getByRole("button", { name: "Later" }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(
+    await page.evaluate(() =>
+      (window as any).updateRequests.some((r: any) =>
+        r.command.endsWith("download"),
+      ),
+    ),
+  ).toBe(false);
+});
+
+for (const theme of ["dark", "light"]) {
+  test(`production startup automatically offers the update on home (${theme})`, async ({
+    page,
+  }) => {
+    const html = await (await page.request.get("/")).text();
+    test.skip(
+      html.includes("/@vite/client"),
+      "Background checks only run in production builds",
+    );
+    await page.clock.install();
+    await fixture(page, { home: true, language: "ru", theme });
+    const dialog = page.getByRole("dialog", { name: "Доступно обновление" });
+    await expect(dialog).toHaveCount(0);
+    await page.clock.runFor(10200);
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText("0.7.0");
+    await expect(dialog).toContainText("0.7.1");
+    await expect(
+      dialog.getByRole("button", { name: "Обновить и перезапустить" }),
+    ).toBeEnabled();
+    expect(
+      await page.evaluate(() =>
+        (window as any).updateRequests.map((r: any) => r.command),
+      ),
+    ).toEqual(["plugin:updater|check"]);
+    await page.screenshot({
+      path: `.test-data/screenshots/update-dialog-home-${theme}.png`,
+      animations: "disabled",
+    });
+    await page.setViewportSize({ width: 960, height: 680 });
+    const bounds = (await dialog.boundingBox())!;
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.y).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(960);
+    expect(bounds.y + bounds.height).toBeLessThanOrEqual(680);
+    await dialog.getByRole("button", { name: "Позже", exact: true }).click();
+    await page.clock.fastForward(6 * 60 * 60 * 1000);
+    await page.clock.runFor(200);
+    await expect(dialog).toHaveCount(0);
+    await page.evaluate(() => ((window as any).availableVersion = "0.7.2"));
+    await page.clock.fastForward(6 * 60 * 60 * 1000);
+    await page.clock.runFor(200);
+    await expect(dialog).toContainText("0.7.2");
+  });
+}

@@ -1,8 +1,9 @@
-import { Download, RefreshCw, X } from "lucide-react";
+import { ArrowRight, Download, RefreshCw } from "lucide-react";
 import { native } from "../lib/api";
 import { formatDecimal, t, useLocale } from "../lib/i18n";
 import { APP_VERSION } from "../lib/version";
 import { useUpdater } from "../updater";
+import { Modal } from "./ui";
 import "../updater.css";
 
 function UpdateStatus() {
@@ -125,39 +126,64 @@ export function LauncherUpdateSettings() {
   );
 }
 
-export function LauncherUpdateBanner() {
+export function LauncherUpdateDialog() {
   const update = useUpdater();
   useLocale();
   if (!native || !update.version || update.dismissed) return null;
   const working =
     update.stage === "downloading" || update.stage === "installing";
   return (
-    <section
-      className="launcher-update-banner"
-      aria-label={t("Обновления лаунчера")}
+    <Modal
+      title={t("Доступно обновление")}
+      subtitle={t("Установить новую версию Aurum?")}
+      className="launcher-update-dialog"
+      onClose={update.dismiss}
+      closeDisabled={working}
     >
-      <div className="launcher-update-copy">
-        <strong>
-          {t("Доступен Aurum {{version}}", { version: update.version })}
-        </strong>
-        {working || update.error ? (
-          <UpdateStatus />
-        ) : (
-          update.blocked && (
-            <p>{t("Завершите игру и текущие действия перед обновлением.")}</p>
-          )
-        )}
+      <div className="launcher-update-release">
+        <span className="launcher-update-symbol" aria-hidden="true">
+          <RefreshCw size={26} />
+        </span>
+        <div>
+          <strong>Aurum Launcher</strong>
+          <span>
+            {t("Доступен Aurum {{version}}", { version: update.version })}
+          </span>
+        </div>
       </div>
-      <InstallButton />
-      <button
-        type="button"
-        className="icon-button"
-        aria-label={t("Позже")}
-        disabled={working}
-        onClick={update.dismiss}
-      >
-        <X size={17} />
-      </button>
-    </section>
+      <div className="launcher-update-versions">
+        <div>
+          <span>{t("Текущая версия")}</span>
+          <b>{APP_VERSION}</b>
+        </div>
+        <ArrowRight size={20} aria-hidden="true" />
+        <div>
+          <span>{t("Новая версия")}</span>
+          <b>{update.version}</b>
+        </div>
+      </div>
+      <p className="launcher-update-restart-note">
+        {t("После установки Aurum перезапустится.")}
+      </p>
+      {(working || update.error || update.stage === "checking") && (
+        <UpdateStatus />
+      )}
+      {update.blocked && !working && (
+        <p className="launcher-update-blocked" role="status">
+          {t("Завершите игру и текущие действия перед обновлением.")}
+        </p>
+      )}
+      <div className="modal-actions">
+        <button
+          type="button"
+          className="button secondary"
+          disabled={working}
+          onClick={update.dismiss}
+        >
+          {t("Позже")}
+        </button>
+        <InstallButton />
+      </div>
+    </Modal>
   );
 }

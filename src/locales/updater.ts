@@ -1,4 +1,9 @@
 export const updaterEnglish: Record<string, string> = {
+  "Доступно обновление": "Update available",
+  "Установить новую версию Aurum?": "Install the new version of Aurum?",
+  "Новая версия": "New version",
+  "После установки Aurum перезапустится.":
+    "Aurum will restart after installation.",
   "Обновления лаунчера": "Launcher updates",
   "Aurum проверяет новые версии при запуске и каждые 6 часов.":
     "Aurum checks for new versions on startup and every 6 hours.",

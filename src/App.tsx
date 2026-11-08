@@ -44,7 +44,7 @@ const Hosting = lazy(() =>
 );
 import { Settings } from "./screens/Settings";
 import { UpdateProvider } from "./updater";
-import { LauncherUpdateBanner } from "./components/LauncherUpdate";
+import { LauncherUpdateDialog } from "./components/LauncherUpdate";
 import { APP_VERSION } from "./lib/version";
 import { SidebarPattern } from "./components/TerrainPattern";
 import { AccountAvatar } from "./components/AccountAvatar";
@@ -296,7 +296,7 @@ function Shell({
         </div>
       </aside>
       <div className="main-shell">
-        <LauncherUpdateBanner />
+        <LauncherUpdateDialog />
         <div className="content-scroll">
           <main
             className={`page-content${route === "home" && !profile ? " home-page" : ""}`}
