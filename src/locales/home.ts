@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Модпаки: ручная замена файлов с подтверждением, обновлённое окно загрузок и восстановление обложек CurseForge.":
+    "Modpacks: confirmed manual file replacements, an updated downloads dialog and CurseForge artwork recovery.",
   "До пяти профилей настроек Minecraft: импорт из сборок, редакторы и выбор профиля при установке.":
     "Up to five Minecraft settings profiles: import from instances, edit preferences and choose a profile when installing.",
   "Social подключается после перезапуска и обновления без повторного согласия на P2P. Постоянный путь компонента сохраняет настройку брандмауэра.":

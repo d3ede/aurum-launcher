@@ -1,0 +1,133 @@
+.pack-manual-modal {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.pack-manual-modal > .modal-head,
+.pack-manual-modal > .modal-actions {
+  flex-shrink: 0;
+}
+.pack-manual-modal > .modal-head p {
+  overflow-wrap: anywhere;
+}
+.pack-manual-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px;
+}
+.pack-manual-modal .pack-manual-list {
+  padding: 0;
+  max-height: none;
+  overflow: visible;
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+.pack-manual-modal .pack-missing-file {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  align-items: center;
+  background: var(--surface);
+}
+.pack-manual-modal .pack-manual-actions {
+  flex: 0 0 210px;
+  flex-direction: column;
+  align-items: stretch;
+  flex-wrap: nowrap;
+}
+.pack-manual-modal .pack-manual-actions .button {
+  width: 100%;
+  white-space: normal;
+  line-height: 1.35;
+  min-height: 36px;
+}
+.pack-manual-modal .pack-manual-actions svg {
+  flex-shrink: 0;
+}
+.pack-manual-modal > .modal-actions > .button:first-child {
+  margin-inline-end: auto;
+}
+.pack-manual-complete {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  padding: 32px 24px 38px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.pack-manual-complete > span {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--gold-border);
+  border-radius: 50%;
+  background: var(--gold-soft);
+  color: var(--accent-ink);
+}
+.pack-manual-complete h3 {
+  font-size: 18px;
+  line-height: 1.5;
+  margin: 0;
+  color: var(--text);
+}
+.pack-manual-complete p {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--secondary);
+  margin: 0;
+  max-width: 440px;
+}
+.pack-replacement-warning {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--gold-border);
+  border-radius: 10px;
+  background: var(--gold-soft);
+  color: var(--accent-ink);
+}
+.pack-replacement-warning svg {
+  flex-shrink: 0;
+}
+.pack-replacement-warning p {
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+.pack-replacement-info {
+  margin: 20px 0;
+  display: grid;
+  gap: 8px;
+}
+.pack-replacement-info dt {
+  font-size: 12px;
+  color: var(--secondary);
+}
+.pack-replacement-info dd {
+  margin: 0 0 9px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.pack-replacement-modal .modal-actions {
+  flex-wrap: wrap;
+}
+@media (max-width: 720px) {
+  .pack-manual-modal .pack-missing-file {
+    align-items: stretch;
+  }
+  .pack-manual-modal .pack-manual-actions {
+    flex-basis: auto;
+  }
+  .pack-manual-modal > .modal-actions {
+    flex-wrap: wrap;
+  }
+  .pack-manual-complete {
+    padding: 26px 16px;
+  }
+}

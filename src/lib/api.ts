@@ -211,8 +211,22 @@ interface Contract {
   ];
   choosePackFile: [Empty, string | null];
   importPackManualFile: [
-    { id: string; path: string; removeImported: boolean },
-    boolean,
+    {
+      id: string;
+      path: string;
+      removeImported: boolean;
+      sourcePath?: string;
+      confirmedSha256?: string;
+    },
+    (
+      | boolean
+      | {
+          sourcePath: string;
+          fileName: string;
+          sha256: string;
+          destination: string;
+        }
+    ),
   ];
   scanPackDownloads: [{ id: string; removeImported: boolean }, number];
   skinLibrary: [Empty, SkinLibrary];
@@ -308,6 +322,7 @@ interface Contract {
     void,
   ];
   chooseProfileIcon: [Empty, string | null];
+  repairPackIcon: [{ id: string }, boolean];
   catalogCategories: [
     {
       source: string;
@@ -467,6 +482,7 @@ interface Contract {
   ];
   downloadPack: [
     {
+      iconUrl?: string;
       gameSettingsProfileId?: string;
       source: string;
       projectId: string;

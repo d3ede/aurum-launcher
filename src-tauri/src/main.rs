@@ -235,6 +235,7 @@ async fn rpc(
                 .transpose()
                 .map(|icon| json!(icon))
         }
+        "repairPackIcon" => Ok(json!(e.repair_pack_icon(&param::<String>(&payload,"id")?).await.map_err(err)?)),
         "createProfile" => {
             let game_settings = match payload["gameSettingsProfileId"].as_str() {
                 Some(id) => Some(e.game_settings_preset(id).await.map_err(err)?),
@@ -480,17 +481,21 @@ async fn rpc(
         "importPackManualFile" => {
             let id = param::<String>(&payload, "id")?;
             let file_path = param::<String>(&payload, "path")?;
-            if let Some(path) =
-                choose_file(&app, "Downloaded modpack file", &["jar", "zip", "litemod"]).await?
+            let selected=if let (Some(path),Some(_))=(payload["sourcePath"].as_str(),payload["confirmedSha256"].as_str()) {Some(std::path::PathBuf::from(path))}else{choose_file(&app, "Downloaded modpack file", &[]).await?};
+            if let Some(path) = selected
             {
-                e.import_pack_manual_file_with_cleanup(
+                let result=e.import_pack_manual_file_confirmed(
                     &id,
                     &file_path,
                     &path,
                     payload["removeImported"].as_bool().unwrap_or(true),
+                    payload["confirmedSha256"].as_str(),
                 )
-                .await
-                .map_err(err)?;
+                .await;
+                if let Err(error)=result {
+                    if let Some(candidate)=error.downcast_ref::<aurum_core::packs::ManualFileMismatch>() {return Ok(json!(candidate));}
+                    return Err(err(error));
+                }
                 return Ok(json!(true));
             }
             Ok(json!(false))
@@ -759,10 +764,11 @@ async fn rpc(
                         ))
                     }
                     "downloadPack" => Ok(json!(
-                        e.download_pack(
+                        e.download_pack_with_icon_hint(
                             payload["source"].as_str().unwrap_or(""),
                             payload["projectId"].as_str().unwrap_or(""),
                             payload["versionId"].as_str().unwrap_or(""),
+                            payload["iconUrl"].as_str(),
                             &task
                         )
                         .await?

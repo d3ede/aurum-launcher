@@ -26,6 +26,7 @@ pub mod modrinth_skins;
 pub mod net;
 pub mod pack_catalog;
 pub mod packs;
+mod pack_artwork;
 pub mod platform_packs;
 mod processes;
 mod secret_store;

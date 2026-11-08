@@ -3,6 +3,21 @@ use anyhow::{bail, Context, Result};
 use serde_json::Value;
 use std::{io::Read, path::Path};
 
+#[derive(Clone, Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManualFileMismatch {
+    pub source_path: String,
+    pub file_name: String,
+    pub sha256: String,
+    pub destination: String,
+}
+impl std::fmt::Display for ManualFileMismatch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f,"Выбран другой файл. Скачайте указанную версию мода")
+    }
+}
+impl std::error::Error for ManualFileMismatch {}
+
 fn bundled_pack_icon(zip: &mut zip::ZipArchive<std::fs::File>) -> Option<String> {
     for name in [
         "icon.png",
@@ -236,8 +251,9 @@ impl Engine {
     }
 
     pub async fn import_pack(&self, path: &Path, task: &Task) -> Result<String> {
-        self.import_pack_with(path, task, |path| async move { self.cf(&path).await })
-            .await
+        let id=self.import_pack_with(path, task, |path| async move { self.cf(&path).await }).await?;
+        let _=self.repair_pack_icon(&id).await;
+        Ok(id)
     }
 
     async fn import_pack_with<F, Fut>(&self, path: &Path, task: &Task, cf: F) -> Result<String>
@@ -499,6 +515,17 @@ impl Engine {
         source: &Path,
         remove_source: bool,
     ) -> Result<()> {
+        self.import_pack_manual_file_confirmed(id,file_path,source,remove_source,None).await
+    }
+
+    pub async fn import_pack_manual_file_confirmed(
+        &self,
+        id: &str,
+        file_path: &str,
+        source: &Path,
+        remove_source: bool,
+        confirmed_sha256: Option<&str>,
+    ) -> Result<()> {
         let _guard = self
             .busy
             .try_lock()
@@ -519,17 +546,31 @@ impl Engine {
         let result: Result<()> = async {
             let temp = stage.join("manual-file");
             tokio::fs::copy(source, &temp).await?;
-            if !crate::net::verify(&temp, Some(manual_hash(missing))).await? {
-                bail!("Выбран другой файл. Скачайте указанную версию мода")
+            let mismatch=!crate::net::verify(&temp, Some(manual_hash(missing))).await?;
+            let actual_sha256=if mismatch||confirmed_sha256.is_some() {Some(crate::net::file_hash(&temp,"sha256").await?)}else{None};
+            if let Some(hash)=confirmed_sha256 {
+                if actual_sha256.as_deref()!=Some(hash) {bail!("Выбранный файл изменился. Выберите его заново")}
             }
             let mut destination = missing.path.clone();
             if let Some(name) = missing
                 .path
                 .strip_prefix("mods/")
-                .filter(|name| name.ends_with(".zip") && missing.sha256.is_none())
+                .filter(|name| (name.ends_with(".zip") && missing.sha256.is_none()) || mismatch)
             {
                 if let Some(folder) = archive_content_folder(&temp) {
-                    destination = format!("{folder}/{name}");
+                    let name=Path::new(name).with_extension("zip");
+                    destination = format!("{folder}/{}",name.to_string_lossy());
+                }
+            }
+            if mismatch {
+                // Manual replacement accepts a different archive, never a browser
+                // error page. Automatic discovery still requires the manifest hash.
+                if ["jar","zip","litemod"].contains(&Path::new(file_path).extension().and_then(|e|e.to_str()).unwrap_or("")) {
+                    let archive=zip::ZipArchive::new(std::fs::File::open(&temp)?).context("Выберите читаемый JAR или ZIP, а не страницу загрузки")?;
+                    if archive.is_empty() {bail!("Выбранный архив пуст")}
+                }
+                if confirmed_sha256.is_none() {
+                    return Err(ManualFileMismatch {source_path:source.to_string_lossy().into_owned(),file_name:source.file_name().unwrap_or_default().to_string_lossy().into_owned(),sha256:actual_sha256.clone().unwrap(),destination}.into());
                 }
             }
             let dest = crate::safe_join(&self.instance(id)?, &destination)?;
@@ -551,7 +592,8 @@ impl Engine {
                 // a file selected from the instance itself or a changed source.
                 match tokio::fs::canonicalize(source).await {
                     Ok(original) if original != tokio::fs::canonicalize(&dest).await? => {
-                        if !crate::net::verify(source, Some(manual_hash(missing))).await? {
+                        let cleanup_hash=confirmed_sha256.map(|hash|("sha256",hash)).unwrap_or_else(||manual_hash(missing));
+                        if !crate::net::verify(source, Some(cleanup_hash)).await? {
                             bail!("Файл установлен, но оригинал изменился и сохранён");
                         }
                         tokio::fs::remove_file(source).await.context(
@@ -678,6 +720,16 @@ impl Engine {
         version: &str,
         task: &Task,
     ) -> Result<String> {
+        self.download_pack_with_icon_hint(source,project,version,None,task).await
+    }
+    pub async fn download_pack_with_icon_hint(
+        &self,
+        source:&str,
+        project:&str,
+        version:&str,
+        icon_hint:Option<&str>,
+        task:&Task,
+    )->Result<String> {
         crate::store::validate_version(project)?;
         crate::store::validate_version(version)?;
         if crate::pack_catalog::is_pack_source(source) {
@@ -734,29 +786,7 @@ impl Engine {
             .await?;
         let _archive = crate::temporary::Temporary::file(&path);
         // Archive manifests do not contain the project's catalog artwork.
-        let metadata = tokio::time::timeout(std::time::Duration::from_secs(5), async {
-            if source == "modrinth" {
-                self.json(&format!("{}/project/{project}", crate::catalog::MODRINTH))
-                    .await
-            } else {
-                self.cf(&format!("/mods/{project}")).await
-            }
-        })
-        .await;
-        let icon_url = metadata.ok().and_then(Result::ok).and_then(|raw| {
-            if source == "modrinth" {
-                raw["icon_url"].as_str()
-            } else {
-                raw["data"]["logo"]["thumbnailUrl"]
-                    .as_str()
-                    .or_else(|| raw["data"]["logo"]["url"].as_str())
-            }
-            .map(str::to_owned)
-        });
-        let icon = match icon_url {
-            Some(url) => self.download_pack_icon(&url).await,
-            None => None,
-        };
+        let icon = self.catalog_pack_icon(source,project,icon_hint).await;
         task.check()?;
         self.import_pack_with_icon(
             &path,
@@ -1705,6 +1735,42 @@ mod tests {
             .manual_downloads = profile.manual_downloads.clone();
         crate::store::persist(&engine.root, &db).await.unwrap();
         profile
+    }
+
+    #[tokio::test]
+    async fn manual_replacement_requires_confirmation_and_pins_the_selected_bytes() {
+        let (dir,_)=fixture();
+        let engine=Engine::new(dir.path().join("data"),|_|{}).await.unwrap();
+        let profile=missing_resource(&engine,"Manual alternative").await;
+        let source=dir.path().join("Any browser filename (2).zip");
+        let mut archive=zip::ZipWriter::new(std::fs::File::create(&source).unwrap());
+        archive.start_file("pack.mcmeta",zip::write::SimpleFileOptions::default()).unwrap();
+        archive.write_all(b"{\"pack\":{\"pack_format\":34,\"description\":\"alternative\"}}").unwrap();archive.finish().unwrap();
+        let bytes=std::fs::read(&source).unwrap();
+        let path=&profile.manual_downloads[0].path;
+        let error=engine.import_pack_manual_file_with_cleanup(&profile.id,path,&source,true).await.unwrap_err();
+        let candidate=error.downcast_ref::<ManualFileMismatch>().unwrap();
+        assert_eq!(candidate.file_name,"Any browser filename (2).zip");
+        assert!(source.exists());assert_eq!(engine.profile(&profile.id).await.unwrap().manual_downloads.len(),1);
+        assert!(!engine.instance(&profile.id).unwrap().join(path).exists());
+        std::fs::write(&source,b"changed while the dialog was open").unwrap();
+        assert!(engine.import_pack_manual_file_confirmed(&profile.id,path,&source,true,Some(&candidate.sha256)).await.is_err());
+        assert_eq!(engine.profile(&profile.id).await.unwrap().manual_downloads.len(),1);
+        std::fs::write(&source,&bytes).unwrap();
+        engine.import_pack_manual_file_confirmed(&profile.id,path,&source,true,Some(&candidate.sha256)).await.unwrap();
+        assert_eq!(std::fs::read(engine.instance(&profile.id).unwrap().join(path)).unwrap(),bytes);
+        assert!(!source.exists());assert!(engine.profile(&profile.id).await.unwrap().manual_downloads.is_empty());
+    }
+
+    #[tokio::test]
+    async fn manual_replacement_rejects_a_download_error_page() {
+        let (dir,_)=fixture();
+        let engine=Engine::new(dir.path().join("data"),|_|{}).await.unwrap();
+        let profile=missing_resource(&engine,"Bad download").await;
+        let source=dir.path().join("download.zip");std::fs::write(&source,b"<html>Download failed</html>").unwrap();
+        let error=engine.import_pack_manual_file_with_cleanup(&profile.id,&profile.manual_downloads[0].path,&source,true).await.unwrap_err();
+        assert!(error.downcast_ref::<ManualFileMismatch>().is_none());assert!(source.exists());
+        assert_eq!(engine.profile(&profile.id).await.unwrap().manual_downloads.len(),1);
     }
 
     #[tokio::test]

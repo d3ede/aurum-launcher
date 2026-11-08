@@ -25,7 +25,7 @@ import { HorizonMods } from "./HorizonMods";
 import { LoaderLogo } from "./LoaderLogo";
 import { ImportCopyNotice } from "./ImportCopyNotice";
 import { useApp } from "../context";
-import { rpc } from "../lib/api";
+import { native, rpc } from "../lib/api";
 import { GamePresetChoice } from "./GamePresetChoice";
 import { randomIconStyle } from "../lib/profile-icons";
 import { ru } from "../lib/i18n";
@@ -389,8 +389,17 @@ export function ProfileDialog({
   onFindProjects: (profile: Profile, kind: Kind) => void;
   onClose: () => void;
 }) {
-  const { data, busy, run, operation, play, navigate, progress, notify } =
-    useApp();
+  const {
+    data,
+    busy,
+    run,
+    operation,
+    play,
+    navigate,
+    progress,
+    notify,
+    refresh,
+  } = useApp();
   const profile = data.profiles.find((p) => p.id === initial.id) || initial;
   const horizon = profile.engine === "horizon";
   const [draft, setDraft] = useState(profile);
@@ -407,6 +416,32 @@ export function ProfileDialog({
     !profile.installedVersion &&
     !["complete", "error"].includes(progress.phase);
   const { logs } = useApp();
+  useEffect(() => {
+    if (!native || horizon || profile.icon || profile.iconStyle || installing)
+      return;
+    let live = true;
+    void rpc("repairPackIcon", { id: profile.id })
+      .then((changed) => {
+        if (live && changed) return refresh();
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [
+    profile.id,
+    profile.icon,
+    profile.iconStyle,
+    horizon,
+    installing,
+    refresh,
+  ]);
+  useEffect(() => {
+    if (profile.icon)
+      setDraft((old) =>
+        old.icon || old.iconStyle ? old : { ...old, icon: profile.icon },
+      );
+  }, [profile.icon]);
   useEffect(() => {
     if (tab !== "logs") return;
     let live = true;

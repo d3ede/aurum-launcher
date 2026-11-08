@@ -283,6 +283,7 @@ export function FavoritesDialog({
             if (signal.aborted) throw new Error(t("Операция отменена"));
             if (project.kind === "modpack") {
               const id = await rpc("downloadPack", {
+                ...(project.icon ? { iconUrl: project.icon } : {}),
                 ...(gameSettingsProfileId ? { gameSettingsProfileId } : {}),
                 source: project.source,
                 projectId: project.id,

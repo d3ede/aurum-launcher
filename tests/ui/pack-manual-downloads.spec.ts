@@ -54,6 +54,11 @@ async function fixture(
           }
           if (action === "search") return { projects: [], total: 0 };
           if (action === "recentServers") return [];
+          if(action==="repairPackIcon") {
+            if(!w.repairArtwork)return false;
+            state.profiles.find((p:any)=>p.id===payload.id).icon="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aOioAAAAASUVORK5CYII=";
+            return true;
+          }
           if (action === "importPack") {
             state.profiles.push({
               id: "manual-pack",
@@ -89,7 +94,13 @@ async function fixture(
           if (action === "importPackManualFile") {
             if (w.manualOutcome === "cancel") return false;
             if (w.manualOutcome === "wrong")
-              throw "Выбран другой файл. Скачайте указанную версию мода";
+              if (!payload.confirmedSha256)
+                return {
+                  sourcePath: "D:/Downloads/Other name.zip",
+                  fileName: "Other name.zip",
+                  sha256: "a".repeat(64),
+                  destination: payload.path,
+                };
             state.profiles[0].manualDownloads =
               state.profiles[0].manualDownloads.filter(
                 (f: any) => f.path !== payload.path,
@@ -129,12 +140,7 @@ for (const [language, theme] of [
     page,
   }) => {
     await fixture(page, language, theme);
-    const dialog = page.getByRole("dialog", {
-      name:
-        language === "ru"
-          ? "Нужна ручная установка"
-          : "Manual installation needed",
-    });
+    const dialog = page.locator(".pack-manual-modal");
     await expect(dialog).toBeVisible();
     await expect(
       dialog.getByRole("button", {
@@ -223,11 +229,19 @@ for (const [language, theme] of [
   });
 }
 
+test("opening an existing pack refreshes a recovered catalog icon",async({page})=>{
+  await fixture(page,"ru","dark",true);
+  await page.evaluate(()=>(window as any).repairArtwork=true);
+  await page.getByRole("button",{name:"Мои сборки",exact:true}).click();
+  await page.getByRole("button",{name:"Открыть Imported pack",exact:true}).click();
+  await expect(page.locator(".instance-heading .profile-icon img")).toHaveAttribute("src",/^data:image\/png;base64,/);
+});
+
 test("cancelled picker and wrong versions retain the missing list", async ({
   page,
 }) => {
   await fixture(page);
-  const dialog = page.getByRole("dialog", { name: "Нужна ручная установка" });
+  const dialog = page.locator(".pack-manual-modal");
   await page.evaluate(() => {
     (window as any).manualOutcome = "cancel";
   });
@@ -250,19 +264,43 @@ test("cancelled picker and wrong versions retain the missing list", async ({
     .locator("button")
     .nth(1)
     .click();
-  await expect(
-    page.getByText("Выбран другой файл. Скачайте указанную версию мода", {
-      exact: true,
-    }),
-  ).toBeVisible();
+  const replacement = page.getByRole("dialog", {
+    name: "Использовать другой файл?",
+    exact: true,
+  });
+  await expect(replacement).toContainText("Other name.zip");
   await expect(dialog.locator(".pack-missing-file")).toHaveCount(2);
+  await replacement
+    .getByRole("button", { name: "Отмена", exact: true })
+    .click();
+  await expect(dialog.locator(".pack-missing-file")).toHaveCount(2);
+  await dialog
+    .locator(".pack-manual-actions")
+    .first()
+    .getByRole("button", { name: "Выбрать скачанный файл", exact: true })
+    .click();
+  await replacement
+    .getByRole("button", { name: "Использовать этот файл", exact: true })
+    .click();
+  await expect(dialog.locator(".pack-missing-file")).toHaveCount(1);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as any).requests
+          .filter((r: any) => r.action === "importPackManualFile")
+          .at(-1).payload,
+    ),
+  ).toMatchObject({
+    sourcePath: "D:/Downloads/Other name.zip",
+    confirmedSha256: "a".repeat(64),
+  });
 });
 
 test("downloads move by default and copying can be selected", async ({
   page,
 }) => {
   await fixture(page);
-  const dialog = page.getByRole("dialog", { name: "Нужна ручная установка" });
+  const dialog = page.locator(".pack-manual-modal");
   const cleanup = dialog.getByRole("checkbox");
   await expect(cleanup).toBeChecked();
   await page.evaluate(() => {
@@ -275,6 +313,15 @@ test("downloads move by default and copying can be selected", async ({
     (window as any).autoDownloadPath = "mods/failed-2.0.jar";
   });
   await expect(dialog).toContainText("Все недостающие файлы установлены");
+  await expect(dialog.locator(".pack-manual-complete")).toBeVisible();
+  await expect(dialog.locator(".dialog-note")).toHaveCount(0);
+  await expect(
+    dialog.getByRole("button", { name: "Закрыть", exact: true }),
+  ).toBeInViewport();
+  await dialog.screenshot({
+    path: ".test-data/screenshots/manual-files-complete.png",
+    animations: "disabled",
+  });
   await expect
     .poll(() =>
       page.evaluate(

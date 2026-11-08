@@ -151,6 +151,7 @@ export function ProjectDialog({
       async (operationId) => {
         if (project.kind === "modpack")
           await rpc("downloadPack", {
+            ...(project.icon ? { iconUrl: project.icon } : {}),
             ...(gameSettingsProfileId ? { gameSettingsProfileId } : {}),
             source: project.source,
             projectId: project.id,
