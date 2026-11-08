@@ -142,33 +142,23 @@ export function LauncherUpdateDialog() {
       onClose={update.dismiss}
       closeDisabled={working}
     >
+      <div className="launcher-update-wash" aria-hidden="true" />
       <div className="launcher-update-art" aria-hidden="true">
         <HomePattern />
       </div>
-      <div className="launcher-update-release">
-        <span className="launcher-update-symbol" aria-hidden="true">
-          <img src={aurumLogo} alt="" />
-          <span>
-            <RefreshCw size={12} />
-          </span>
-        </span>
-        <div>
-          <strong>Aurum Launcher</strong>
-          <span>
-            {t("Доступен Aurum {{version}}", { version: update.version })}
-          </span>
-        </div>
+      <div className="launcher-update-release" aria-hidden="true">
+        <img src={aurumLogo} alt="" />
       </div>
       <div className="launcher-update-versions">
-        <div>
-          <span>{t("Текущая версия")}</span>
-          <b>{APP_VERSION}</b>
-        </div>
+        <span className="launcher-update-current">
+          <span className="sr-only">{t("Текущая версия")}: </span>
+          {APP_VERSION}
+        </span>
         <ArrowRight size={20} aria-hidden="true" />
-        <div>
-          <span>{t("Новая версия")}</span>
-          <b>{update.version}</b>
-        </div>
+        <strong className="launcher-update-next">
+          <span className="sr-only">{t("Новая версия")}: </span>
+          {update.version}
+        </strong>
       </div>
       <p className="launcher-update-restart-note">
         {t("После установки Aurum перезапустится.")}
@@ -182,6 +172,7 @@ export function LauncherUpdateDialog() {
         </p>
       )}
       <div className="modal-actions">
+        <InstallButton />
         <button
           type="button"
           className="button secondary"
@@ -190,7 +181,6 @@ export function LauncherUpdateDialog() {
         >
           {t("Позже")}
         </button>
-        <InstallButton />
       </div>
     </Modal>
   );

@@ -26,159 +26,137 @@
   color: var(--danger);
 }
 .modal.launcher-update-dialog {
+  display: flex;
+  flex-direction: column;
   width: 560px;
-  padding: 30px;
+  padding: 32px 38px 26px;
   border-color: var(--gold-border);
   border-radius: 20px;
+  text-align: center;
   isolation: isolate;
 }
-.launcher-update-dialog > :not(.launcher-update-art) {
+.launcher-update-dialog
+  > :not(.launcher-update-art):not(.launcher-update-wash):not(.modal-head) {
   position: relative;
   z-index: 1;
 }
+.launcher-update-wash,
 .launcher-update-art {
   position: absolute;
-  inset: 0 0 auto;
-  height: 270px;
-  overflow: hidden;
-  border-radius: 19px 19px 0 0;
   pointer-events: none;
+  overflow: hidden;
+}
+.launcher-update-wash {
+  inset: 0 0 auto;
+  height: 240px;
+  border-radius: 19px 19px 0 0;
   background: linear-gradient(155deg, var(--gold-soft), transparent 75%);
-  mask-image: linear-gradient(#000 48%, transparent 100%);
+  mask-image: linear-gradient(#000, transparent);
+}
+.launcher-update-art {
+  inset: auto 0 0;
+  height: 175px;
+  border-radius: 0 0 19px 19px;
+  mask-image: linear-gradient(transparent, #000);
 }
 .launcher-update-art .home-pattern {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  opacity: 0.7;
-  mask-image: linear-gradient(90deg, transparent 30%, #000 80%);
+  transform: rotate(180deg);
+  opacity: 0.65;
 }
 .launcher-update-art .home-pattern path {
   fill: none;
   stroke: var(--gold);
   stroke-width: 1.2;
   vector-effect: non-scaling-stroke;
-  opacity: 0.65;
+  opacity: 0.6;
 }
 .launcher-update-art .home-pattern rect {
   fill: var(--gold);
-  opacity: 0.45;
-  transform: translate(-65px, 48px);
+  opacity: 0.35;
 }
 .launcher-update-dialog .modal-head {
-  margin-bottom: 30px;
+  position: static;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+.launcher-update-dialog .modal-head > div {
+  width: 100%;
 }
 .launcher-update-dialog .modal-head h2 {
-  font-size: 25px;
+  font-size: 26px;
   line-height: 1.2;
   letter-spacing: -0.8px;
 }
 .launcher-update-dialog .modal-head p {
-  max-width: 340px;
+  margin: 10px auto 0;
 }
 .launcher-update-dialog .modal-head .icon-button {
-  flex-shrink: 0;
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  margin: 0;
 }
 .launcher-update-release {
-  display: flex;
-  align-items: center;
-  gap: 17px;
-  margin-bottom: 28px;
-}
-.launcher-update-symbol {
-  position: relative;
-  display: block;
-  width: 66px;
-  height: 66px;
+  order: -1;
+  width: 62px;
+  height: 62px;
   flex-shrink: 0;
-  border-radius: 19px;
+  margin: 0 auto 24px;
+  border-radius: 18px;
   box-shadow: 0 8px 26px var(--gold-soft);
 }
-.launcher-update-symbol > img {
+.launcher-update-release > img {
   display: block;
   width: 100%;
   height: 100%;
   border-radius: inherit;
 }
-.launcher-update-symbol > span {
-  position: absolute;
-  right: -4px;
-  bottom: -4px;
-  display: grid;
-  place-items: center;
-  width: 25px;
-  height: 25px;
-  border: 3px solid var(--bg);
-  border-radius: 50%;
-  background: var(--gold);
-  color: #382f1b;
-}
-.launcher-update-release strong {
-  display: block;
-  font-size: 19px;
-  letter-spacing: -0.35px;
-}
-.launcher-update-release div > span {
-  display: block;
-  margin-top: 5px;
-  color: var(--muted);
-  font-size: 14px;
+.launcher-update-versions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  margin: 8px 0 4px;
   overflow-wrap: anywhere;
 }
-.launcher-update-versions {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: 20px;
-  padding: 21px 22px;
-  border: 1px solid var(--gold-border);
-  border-radius: 14px;
-  background: var(--surface);
+.launcher-update-versions .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.launcher-update-current {
+  min-width: 0;
+  font-size: 24px;
+  color: var(--muted);
+  line-height: 1.2;
 }
 .launcher-update-versions > svg {
-  box-sizing: content-box;
-  padding: 9px;
-  border-radius: 50%;
-  background: var(--gold-soft);
+  flex-shrink: 0;
   color: var(--accent-ink);
 }
-.launcher-update-versions span {
-  display: block;
-  font-size: 13px;
-  color: var(--muted);
-}
-.launcher-update-versions b {
-  display: block;
-  margin-top: 9px;
-  font-size: 28px;
+.launcher-update-next {
+  min-width: 0;
+  font-size: 42px;
   font-weight: 650;
-  letter-spacing: -0.8px;
-  line-height: 1.2;
-  overflow-wrap: anywhere;
-}
-.launcher-update-versions > div:first-child b {
-  color: var(--muted);
-  font-weight: 500;
-}
-.launcher-update-versions > div:last-child span::before {
-  content: "";
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-right: 7px;
-  margin-bottom: 1px;
-  border-radius: 50%;
-  background: var(--gold);
-}
-.launcher-update-versions > div:last-child b {
   color: var(--accent-ink);
+  line-height: 1.2;
+  letter-spacing: -1.5px;
 }
 .launcher-update-restart-note {
-  margin-top: 16px;
-  font-size: 14px;
+  margin: 18px 0 0;
+  font-size: 13px;
   color: var(--muted);
-  line-height: 1.6;
+  line-height: 1.7;
 }
 .launcher-update-blocked {
   margin-top: 16px;
@@ -190,18 +168,30 @@
   line-height: 1.6;
 }
 .launcher-update-dialog .update-progress {
-  margin-top: 16px;
-  max-width: none;
+  margin: 16px auto 0;
+  max-width: 340px;
 }
 .launcher-update-dialog .modal-actions {
-  flex-wrap: wrap;
-  margin-top: 26px;
-  padding-top: 22px;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 24px;
+  padding: 0;
+  border: 0;
 }
 .launcher-update-dialog .modal-actions .button {
   min-height: 44px;
   border-radius: 10px;
 }
+.launcher-update-dialog .modal-actions .primary {
+  width: min(100%, 340px);
+}
 .launcher-update-dialog .modal-actions .secondary {
   min-width: 86px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+.launcher-update-dialog .modal-actions .secondary:hover {
+  color: var(--text);
+  background: var(--gold-soft);
 }

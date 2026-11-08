@@ -118,7 +118,7 @@ test("checks, postpones, and downloads before restarting", async ({ page }) => {
     (window as any).releaseUpdateCheck();
   });
   const banner = page.getByRole("dialog", { name: "Update available" });
-  await expect(banner).toContainText("Aurum 0.7.1 is available");
+  await expect(banner.locator(".launcher-update-next")).toContainText("0.7.1");
   expect(
     await page.evaluate(() =>
       (window as any).updateRequests.some((r: any) =>
@@ -248,7 +248,7 @@ test("postponing or closing dismisses only that version for this session", async
   await expect(dialog).toHaveCount(0);
   await page.evaluate(() => ((window as any).availableVersion = "0.7.2"));
   await check.click();
-  await expect(dialog).toContainText("Aurum 0.7.2 is available");
+  await expect(dialog.locator(".launcher-update-next")).toContainText("0.7.2");
   await dialog.getByRole("button", { name: "Later" }).click();
   await expect(dialog).toHaveCount(0);
   expect(
