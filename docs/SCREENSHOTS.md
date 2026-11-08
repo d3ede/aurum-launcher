@@ -20,9 +20,10 @@ The viewer follows the current library's filtering, sorting and grouping order,
 including screenshots beyond the first thumbnail page. Use the keyboard's left
 and right arrows or the plain side chevrons to browse. Clicking outside the
 actual image closes the viewer. Right-click an image to zoom at that point;
-hold Ctrl and scroll for continuous zoom. Drag an enlarged image with the left
-mouse button to pan. A temporary percentage appears while zooming. The toolbar
-zoom-out button or Ctrl+0 restores the fitted view.
+scroll for continuous zoom from ×1.0 to ×50.0. Left-clicking does not change zoom.
+Drag an enlarged image with the left mouse button to pan. A temporary multiplier
+appears while zooming. The toolbar zoom-out button or Ctrl+0 restores the fitted
+view.
 
 ## Delivery
 

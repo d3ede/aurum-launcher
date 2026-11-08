@@ -64,7 +64,7 @@
   transition: none;
 }
 .image-lightbox button.lightbox-picture:not(:disabled) {
-  cursor: zoom-in;
+  cursor: default;
 }
 .image-lightbox button.lightbox-picture.zoomed:not(:disabled) {
   cursor: grab;
@@ -155,12 +155,13 @@
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 4;
-  padding: 8px 13px;
+  padding: 0;
   color: #fffd;
-  background: #090d14a8;
+  background: none;
   border: 0;
-  border-radius: 9px;
-  font-size: 13px;
+  font-size: 24px;
+  font-weight: 700;
+  text-shadow: 0 1px 8px #0009;
   font-variant-numeric: tabular-nums;
   pointer-events: none;
   animation: lightbox-reveal 0.12s ease-out;

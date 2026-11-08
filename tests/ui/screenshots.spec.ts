@@ -465,7 +465,7 @@ test("viewer dismisses clicks in letterboxing instead of treating it as the imag
   await expect(viewer).toHaveCount(0);
 });
 
-test("right click anchors zoom, Ctrl wheel stays free, and grabbed images pan", async ({
+test("wheel zoom caps at fifty, shows multipliers and leaves left click for panning", async ({
   page,
 }) => {
   await fixture(page);
@@ -477,8 +477,24 @@ test("right click anchors zoom, Ctrl wheel stays free, and grabbed images pan", 
   await expect
     .poll(async () => (await picture.boundingBox())!.width)
     .toBeGreaterThan(1000);
+  await expect(picture).toHaveCSS("cursor", "default");
+  await picture.click({ position: { x: 300, y: 250 } });
+  await expect(viewer).toHaveAttribute("data-scale", "1");
   await picture.click({ button: "right", position: { x: 300, y: 250 } });
   await expect(viewer).toHaveAttribute("data-scale", "2");
+  await expect(viewer.locator(".lightbox-scale")).toHaveText("×2.0");
+  await expect(viewer.locator(".lightbox-scale")).toHaveCSS(
+    "background-color",
+    "rgba(0, 0, 0, 0)",
+  );
+  await expect(viewer.locator(".lightbox-scale")).toHaveCSS(
+    "font-weight",
+    "700",
+  );
+  await expect(viewer.locator(".lightbox-scale")).toHaveCSS(
+    "font-size",
+    "24px",
+  );
   const x = () =>
     picture.evaluate(
       (element) => new DOMMatrix(getComputedStyle(element).transform).m41,
@@ -487,9 +503,7 @@ test("right click anchors zoom, Ctrl wheel stays free, and grabbed images pan", 
   const stage = (await viewer.locator(".lightbox-stage").boundingBox())!;
   await page.mouse.move(stage.x + stage.width / 2, stage.y + stage.height / 2);
   const browserScale = await page.evaluate(() => window.visualViewport!.scale);
-  await page.keyboard.down("Control");
   await page.mouse.wheel(0, -1200);
-  await page.keyboard.up("Control");
   await expect
     .poll(async () => Number(await viewer.getAttribute("data-scale")))
     .toBeGreaterThan(10);
@@ -497,6 +511,15 @@ test("right click anchors zoom, Ctrl wheel stays free, and grabbed images pan", 
     browserScale,
   );
   await expect(viewer.locator(".lightbox-scale")).toBeVisible();
+  await page.mouse.wheel(0, -10000);
+  await expect(viewer).toHaveAttribute("data-scale", "50");
+  await expect(viewer.locator(".lightbox-scale")).toHaveText("×50.0");
+  await page.mouse.wheel(0, -10000);
+  await expect(viewer).toHaveAttribute("data-scale", "50");
+  await page.screenshot({
+    path: ".test-data/screenshots/viewer-multiplier.png",
+    animations: "disabled",
+  });
   await expect(picture).toHaveCSS("cursor", "grab");
   const before = await x();
   await page.mouse.down();

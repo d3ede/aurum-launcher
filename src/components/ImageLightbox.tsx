@@ -92,11 +92,10 @@ export function ImageLightbox({
           ? clientY - bounds.top - bounds.height / 2
           : 0;
       setView((current) => {
-        // A generous numerical ceiling keeps transforms finite without limiting inspection to a few zoom steps.
         const next = Math.max(
           1,
           Math.min(
-            1_000_000,
+            50,
             typeof scale === "function" ? scale(current.scale) : scale,
           ),
         );
@@ -169,7 +168,6 @@ export function ImageLightbox({
   useEffect(() => {
     const element = root.current!;
     const wheel = (event: WheelEvent) => {
-      if (!event.ctrlKey) return;
       event.preventDefault();
       event.stopPropagation();
       const delta =
@@ -303,7 +301,7 @@ export function ImageLightbox({
               type="button"
               data-lightbox-picture
               className={`lightbox-image lightbox-picture ${view.scale > 1 ? "zoomed" : ""} ${dragging ? "dragging" : ""}`}
-              aria-label={t("Увеличить изображение")}
+              aria-label={t("Просмотр изображения")}
               style={{
                 width,
                 height,
@@ -312,9 +310,6 @@ export function ImageLightbox({
               onContextMenu={(event) => {
                 event.preventDefault();
                 zoomAt(view.scale > 1 ? 1 : 2, event.clientX, event.clientY);
-              }}
-              onClick={() => {
-                if (view.scale === 1) zoomAt(2);
               }}
               onPointerDown={(event) => {
                 if (event.button !== 0 || view.scale <= 1) return;
@@ -405,7 +400,7 @@ export function ImageLightbox({
       )}
       {showScale && (
         <output className="lightbox-scale" aria-live="polite">
-          {Math.round(view.scale * 100).toLocaleString()}%
+          ×{view.scale.toFixed(1)}
         </output>
       )}
     </div>,
