@@ -99,7 +99,15 @@ async function fixture(
           if (action === "installContent" || action === "manageContent") {
             await new Promise<void>((resolve, reject) => {
               w.finishCatalogAction = (fail: boolean | string = false) =>
-                fail ? reject(new Error(typeof fail === "string" ? fail : "Fixture action failed")) : resolve();
+                fail
+                  ? reject(
+                      new Error(
+                        typeof fail === "string"
+                          ? fail
+                          : "Fixture action failed",
+                      ),
+                    )
+                  : resolve();
             });
             const profile = profiles.find((p) => p.id === payload.id)!;
             if (action === "installContent")
@@ -988,7 +996,10 @@ test("catalog installs, animates and removes only from the selected instance", a
   const button = second.locator(".catalog-install-button");
   // An unbound install opens the existing instance/version chooser.
   await button.click();
-  const dialog = page.getByRole("dialog", { name: "Установить проект", exact: true });
+  const dialog = page.getByRole("dialog", {
+    name: "Установить проект",
+    exact: true,
+  });
   await expect(
     dialog.getByRole("combobox", { name: "Установить в сборку" }),
   ).toBeVisible();
@@ -1100,16 +1111,27 @@ test("failed catalog actions restore controls, including installed state after f
   }
 });
 
-test("dependency errors identify the addon and missing mod and remain readable in both themes", async ({ page }) => {
+test("dependency errors identify the addon and missing mod and remain readable in both themes", async ({
+  page,
+}) => {
   await fixture(page, "ru", true);
   await bindRadiance(page);
-  await page.setViewportSize({width: 960, height: 720});
-  const message = "Не удалось установить «Immersive Weathering + Nature's Delight: Bark Stripping»: нужна зависимость «Farmer's Delight Refabricated», но в Modrinth нет версии для Minecraft 1.20.1 / Forge.\nВыберите другую версию аддона или проверьте требования зависимости: https://modrinth.com/project/7vxePowz";
+  await page.setViewportSize({ width: 960, height: 720 });
+  const message =
+    "Не удалось установить «Immersive Weathering + Nature's Delight: Bark Stripping»: нужна зависимость «Farmer's Delight Refabricated», но в Modrinth нет версии для Minecraft 1.20.1 / Forge.\nВыберите другую версию аддона или проверьте требования зависимости: https://modrinth.com/project/7vxePowz";
   for (const theme of ["light", "dark"]) {
-    if (theme === "dark") await page.getByRole("button", {name: "Переключить тему"}).click();
+    if (theme === "dark")
+      await page.getByRole("button", { name: "Переключить тему" }).click();
     await page.locator(".catalog-install-button").nth(1).click();
-    await expect.poll(() => page.evaluate(() => typeof (window as any).finishCatalogAction)).toBe("function");
-    await page.evaluate((text) => (window as any).finishCatalogAction(text), message);
+    await expect
+      .poll(() =>
+        page.evaluate(() => typeof (window as any).finishCatalogAction),
+      )
+      .toBe("function");
+    await page.evaluate(
+      (text) => (window as any).finishCatalogAction(text),
+      message,
+    );
     const toast = page.getByRole("alert");
     await expect(toast).toContainText("Farmer's Delight Refabricated");
     await expect(toast).toContainText("Bark Stripping");
@@ -1122,9 +1144,14 @@ test("dependency errors identify the addon and missing mod and remain readable i
     expect(bounds.x).toBeGreaterThanOrEqual(0);
     expect(bounds.x + bounds.width).toBeLessThanOrEqual(960);
     expect(bounds.y).toBeGreaterThanOrEqual(0);
-    expect(await text.evaluate(e => e.scrollWidth <= e.clientWidth)).toBe(true);
-    await toast.screenshot({path:`.test-data/dependency-error-${theme}.png`, animations:"disabled"});
-    await toast.getByRole("button",{name:"Закрыть уведомление"}).click();
+    expect(await text.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(
+      true,
+    );
+    await toast.screenshot({
+      path: `.test-data/dependency-error-${theme}.png`,
+      animations: "disabled",
+    });
+    await toast.getByRole("button", { name: "Закрыть уведомление" }).click();
     await expect(toast).toHaveCount(0);
   }
 });
@@ -1298,7 +1325,7 @@ test("all sources shows origin badges, keeps project origins and handles partial
     page.getByRole("combobox", { name: "Категория проекта", exact: true }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "Далее", exact: true }),
+    page.getByRole("button", { name: "Следующая страница", exact: true }),
   ).toBeDisabled();
   await page.locator(".catalog-result").nth(1).locator(".catalog-card").click();
   await expect

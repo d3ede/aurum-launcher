@@ -1,4 +1,11 @@
 export const homeEnglish: Record<string, string> = {
+  "Каталог, настройки и удобство игры":
+    "Catalog, settings and game convenience",
+  "Каталог и установка": "Catalog and installation",
+  "Профили настроек и хранилище": "Settings profiles and storage",
+  "Скриншоты и профили": "Screenshots and accounts",
+  "Подключение Social": "Social connections",
+  "Обновления и готовность игры": "Updates and game readiness",
   "Главное меню Minecraft готово": "Minecraft's main menu is ready",
   "Minecraft подаёт мягкий звуковой сигнал, когда главное меню готово к игре.":
     "A soft Minecraft readiness chime plays after the main menu finishes loading.",
