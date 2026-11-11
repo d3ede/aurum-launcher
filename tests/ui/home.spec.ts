@@ -152,14 +152,14 @@ test("home has account and factual release panels, working actions and both them
     page.getByRole("heading", { name: "Недавние сборки" }),
   ).toHaveCount(0);
   await expect(page.locator(".home-account-card")).toContainText("CozyPlayer");
-  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.7.3");
+  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.7.4");
   await expect(
     page.locator(".home-news-version:not(.home-news-upcoming)"),
   ).toHaveCount(3);
   await expect(page.locator(".home-news-card")).toContainText(
-    "Каталог и установка",
+    "Поведение и настройки",
   );
-  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.6.7");
+  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.7.0");
   await expect(page.locator(".home-news-card")).not.toContainText(
     "Aurum 0.4.2",
   );
@@ -195,20 +195,20 @@ test("home has account and factual release panels, working actions and both them
     .getByRole("button", { name: "Все изменения", exact: true })
     .click();
   const notes = page.getByRole("dialog", { name: "История версий" });
-  await expect(notes.locator(".release-section")).toHaveCount(20);
+  await expect(notes.locator(".release-section")).toHaveCount(21);
   await expect(notes.locator(".release-section[open]")).toHaveCount(1);
   await expect(notes.locator(".release-section[open]")).toContainText(
-    "Aurum 0.7.3",
+    "Aurum 0.7.4",
   );
   await expect(notes.locator(".release-section[open]")).toContainText(
-    "Каталог и установка",
+    "Поведение и настройки",
   );
   await expect(notes).not.toContainText("В этой сборке:");
   await expect(notes.locator(".home-news-unreleased")).toHaveCount(0);
   await expect(notes).not.toContainText("В разработке: персонализация");
   await expect(notes).not.toContainText("В следующем обновлении:");
   await expect(notes).not.toContainText("Подготовлено исправление:");
-  await expect(notes.locator(".release-section[open] li")).toHaveCount(17);
+  await expect(notes.locator(".release-section[open] li")).toHaveCount(10);
   await expect(notes).toContainText("Две светлые палитры");
   await notes.locator("summary").filter({ hasText: "Aurum 0.4.3" }).click();
   await expect(
@@ -218,11 +218,11 @@ test("home has account and factual release panels, working actions and both them
   await page.keyboard.press("Escape");
   await expect(notes).toHaveCount(0);
   await page
-    .getByRole("button", { name: "Подробнее о версии 0.6.7", exact: true })
+    .getByRole("button", { name: "Подробнее о версии 0.7.0", exact: true })
     .click();
   await expect(notes.locator(".release-section[open]")).toHaveCount(1);
   await expect(notes.locator(".release-section[open]")).toContainText(
-    "Aurum 0.6.7",
+    "Aurum 0.7.0",
   );
   await page.keyboard.press("Escape");
   await page
@@ -302,7 +302,7 @@ test("home adapts to minimum window size and translates the new panels", async (
   await expect(
     page.getByRole("heading", { name: "What's new", exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.7.3");
+  await expect(page.locator(".home-news-card")).toContainText("Aurum 0.7.4");
   await expect(
     page.locator(".home-news-version:not(.home-news-upcoming)"),
   ).toHaveCount(3);
@@ -310,7 +310,7 @@ test("home adapts to minimum window size and translates the new panels", async (
     "Catalog and installation",
   );
   await expect(page.locator(".home-news-card")).toContainText(
-    "Favorites, hosting and downloads",
+    "Screenshot library and friend sharing",
   );
   await page.setViewportSize({ width: 960, height: 680 });
   expect(
@@ -335,7 +335,7 @@ test("home adapts to minimum window size and translates the new panels", async (
   const notes = page.getByRole("dialog", { name: "Version history" });
   await expect(notes.locator(".release-section[open]")).toHaveCount(1);
   await expect(notes.locator(".release-section[open]")).toContainText(
-    "Catalog and installation",
+    "Behavior and settings",
   );
   await expect(notes).not.toContainText("In this build:");
   await notes.screenshot({

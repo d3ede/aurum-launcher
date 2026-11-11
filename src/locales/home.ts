@@ -1,4 +1,16 @@
 export const homeEnglish: Record<string, string> = {
+  "Настройки и исправления интерфейса": "Settings and interface fixes",
+  "Поведение и настройки": "Behavior and settings",
+  "Интерфейс и скриншоты": "Interface and screenshots",
+  "Недавние серверы и Social": "Recent servers and Social",
+  "Оба звука включены по умолчанию; сворачивание, возврат окна, подтверждение закрытия, запоминание страницы и отключение анимаций — выключены.":
+    "Both sounds are on by default; minimizing, restoring, close confirmation, remembering the page and disabling animations are off.",
+  "Автосохранение сохраняет правки при переходе между страницами и не сбрасывает тему или переключатели. Недопустимое разрешение не заменяет сохранённое значение.":
+    "Autosave keeps edits across page changes without resetting themes or switches. Invalid dimensions leave the saved value intact.",
+  "Мягкая круговая заливка кнопки установки следует за курсором и раскрывается за 1,6 секунды.":
+    "The install button's soft circular hover follows the cursor and expands over 1.6 seconds.",
+  "Отключение анимаций останавливает переходы интерфейса и движение персонажа в 3D-превью.":
+    "Disabling animations stops interface transitions and character motion in 3D previews.",
   "Общие настройки применяются автоматически, без кнопки сохранения.":
     "General settings apply automatically, without a Save button.",
   "Настройки поведения: звуки, окно, подтверждение выхода, последняя страница и отключение анимаций.":

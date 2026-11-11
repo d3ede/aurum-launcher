@@ -55,7 +55,7 @@ verification. Social is optional and disabled until you enable it. Read the
 | **Recent servers** | A weekly server history with status checks, matching-instance launches and Windows desktop shortcuts. See [recent servers](docs/recent-servers.md). |
 | **Interface** | 41 languages, language search, RTL support, light and dark themes, and settings for memory, Java, and game data. |
 
-**New in 0.7.3:** reusable Minecraft settings profiles, smoother catalog navigation and installation, screenshot copy/save actions, improved Social reconnects and an update dialog. [Release notes](docs/releases/v0.7.3.md).
+**New in 0.7.4:** automatic settings saving, separate sound controls, optional window actions and animation controls, responsive settings, clearer hosting buttons and refreshed recent-server icons. [Release notes](docs/releases/v0.7.4.md).
 
 Version [0.6.1](docs/releases/v0.6.1.md) added automatic retries after CurseForge rate limits, preserving progress and cancellation.
 
