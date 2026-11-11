@@ -1017,7 +1017,21 @@ test("catalog installs, animates and removes only from the selected instance", a
     };
   });
   expect(Math.abs(parseFloat(hover.origin) - 5)).toBeLessThanOrEqual(2);
-  expect(hover.duration).toContain("0.48s");
+  expect(hover.duration).toContain("1.6s");
+  await button.evaluate((element) => {
+    for (const animation of element.getAnimations({ subtree: true })) {
+      animation.pause();
+      animation.currentTime = 350;
+    }
+  });
+  await button.screenshot({
+    path: ".test-data/screenshots/install-hover-soft-circle.png",
+    animations: "allow",
+  });
+  await button.evaluate((element) => {
+    for (const animation of element.getAnimations({ subtree: true }))
+      animation.play();
+  });
   await expect
     .poll(() =>
       button.evaluate(

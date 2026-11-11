@@ -190,6 +190,7 @@ export function ProjectDialog({
     <button
       className="button primary project-install-action"
       onPointerEnter={beginButtonHover}
+      onPointerMove={beginButtonHover}
       disabled={
         confirm ? installDisabled : busy || loading || !!error || runtimeBlocked
       }

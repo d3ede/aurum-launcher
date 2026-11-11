@@ -45,6 +45,7 @@ export function CatalogInstallButton({
       }
       onClick={onClick}
       onPointerEnter={state === "available" ? beginButtonHover : undefined}
+      onPointerMove={state === "available" ? beginButtonHover : undefined}
     >
       <span className="catalog-action-label" aria-hidden="true">
         {working ? (
