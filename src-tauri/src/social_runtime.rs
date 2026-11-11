@@ -9,6 +9,12 @@ use std::{
 };
 use tauri::Manager;
 
+#[cfg(aurum_offline_social)]
+const BUNDLED_SOCIAL: &[&[u8]] = &[
+    include_bytes!("../social-runtime/aurum-social-worker.exe.gz"),
+    include_bytes!("../social-runtime/aurum-social-firewall.exe.gz"),
+];
+
 pub fn cleanup(identifier: &str) -> anyhow::Result<()> {
     // Installer QA uses a separate identity and must not touch production rules.
     if identifier == "app.aurum.launcher" {
@@ -54,7 +60,8 @@ impl Runtime {
     }
 
     pub fn worker(&self, app: &tauri::AppHandle) -> anyhow::Result<Option<PathBuf>> {
-        let _guard = self.activation
+        let _guard = self
+            .activation
             .lock()
             .map_err(|_| anyhow::anyhow!("Social component state unavailable"))?;
         if let Some(worker) = self.manifest.in_directory(&self.root.join("client"))? {
@@ -66,25 +73,19 @@ impl Runtime {
                 .activate(worker.parent().unwrap(), &self.root)
                 .map(Some);
         }
-        #[cfg(debug_assertions)]
-        {
-            let directory = std::env::current_exe()?.parent().map(PathBuf::from);
-            if let Some(directory) = directory {
-                let worker = directory.join(aurum_core::social_runtime::WORKER);
-                if worker.is_file()
-                    && directory
-                        .join(aurum_core::social_runtime::FIREWALL)
-                        .is_file()
-                {
-                    return Ok(Some(worker));
-                }
-            }
-        }
         // Supports an integrity-checked offline QA package, and matching legacy installs.
         let source = app.path().resource_dir()?.join("social");
         if self.manifest.in_directory(&source)?.is_some() {
             return self.manifest.activate(&source, &self.root).map(Some);
         }
+        #[cfg(aurum_offline_social)]
+        {
+            let worker = self.manifest.install_bundled(&self.root, BUNDLED_SOCIAL)?;
+            self.manifest
+                .activate(worker.parent().unwrap(), &self.root)
+                .map(Some)
+        }
+        #[cfg(not(aurum_offline_social))]
         Ok(None)
     }
 
@@ -136,5 +137,35 @@ impl Runtime {
             .await;
         update(false, 0, 0);
         result.map(|_| ())
+    }
+}
+
+#[cfg(all(test, aurum_offline_social))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn standalone_build_contains_the_exact_pinned_social_runtime() {
+        let manifest = Manifest::decode(include_str!("../social-runtime/manifest.json")).unwrap();
+        let test_root =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.test-data/social-runtime");
+        std::fs::create_dir_all(&test_root).unwrap();
+        let root = tempfile::tempdir_in(test_root).unwrap();
+        let worker = manifest
+            .install_bundled(root.path(), BUNDLED_SOCIAL)
+            .unwrap();
+        let active = manifest
+            .activate(worker.parent().unwrap(), root.path())
+            .unwrap();
+        assert_eq!(
+            active,
+            root.path()
+                .join("client")
+                .join(aurum_core::social_runtime::WORKER)
+        );
+        assert!(manifest
+            .in_directory(active.parent().unwrap())
+            .unwrap()
+            .is_some());
     }
 }

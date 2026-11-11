@@ -1,4 +1,13 @@
 export const socialEnglish: Record<string, string> = {
+  "Social component download size mismatch":
+    "The Social download does not match this Aurum build. Update Aurum or reinstall the offline build.",
+  "Social component exceeds its pinned download size":
+    "The Social download does not match this Aurum build. Update Aurum or reinstall the offline build.",
+  "Social component download checksum mismatch":
+    "The Social download failed its integrity check. Retry or reinstall the offline build.",
+  "Social component executable checksum mismatch":
+    "The Social component failed its integrity check. Reinstall Aurum.",
+  "Social component download cancelled": "Social download cancelled.",
   "@social.profile.running": "{{name}} · Running",
   "@social.join.running": "Join in Minecraft",
   "@social.reuse.hint":
@@ -217,6 +226,15 @@ export const socialEnglish: Record<string, string> = {
   "@social.network": "Configure network",
 };
 export const socialRussian: Record<string, string> = {
+  "Social component download size mismatch":
+    "Файл Social не подходит к этой сборке. Обновите Aurum или установите сборку с Social внутри.",
+  "Social component exceeds its pinned download size":
+    "Файл Social не подходит к этой сборке. Обновите Aurum или установите сборку с Social внутри.",
+  "Social component download checksum mismatch":
+    "Файл Social не прошёл проверку целостности. Повторите загрузку или установите сборку с Social внутри.",
+  "Social component executable checksum mismatch":
+    "Компонент Social не прошёл проверку целостности. Переустановите Aurum.",
+  "Social component download cancelled": "Загрузка Social отменена.",
   "@social.profile.running": "{{name}} · Запущена",
   "@social.join.running": "Войти в Minecraft",
   "@social.reuse.hint":

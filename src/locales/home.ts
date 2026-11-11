@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Локальные сборки подключают Social без скачивания отдельного компонента; ошибки загрузки объясняют, как восстановить подключение.":
+    "Local builds enable Social without a separate download; download errors explain how to restore the connection.",
   "Недавние серверы обновляют названия и иконки из Minecraft без повторного подключения.":
     "Recent servers refresh names and icons from Minecraft without another connection.",
   "Настройки используют ширину окна; при разворачивании исчезает внешняя рамка. Кнопки хостинга сохраняют контраст во всех темах.":

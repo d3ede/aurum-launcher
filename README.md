@@ -151,6 +151,8 @@ npm run tauri build -- --no-bundle
 
 Local binary: `target/release/aurum.exe`. Signed installers are built by the GitHub release workflow and appear under `target/release/bundle/nsis/*-setup.exe`. A local installer/update build requires the signing key; see [release publishing](docs/UPDATES.md). The release application embeds its interface and does not need a Vite server. When distributing the executable without an installer, keep `WebView2Loader.dll` alongside it if that file is present in the output folder.
 
+Local builds also embed their compressed Social executables and verify them against the embedded manifest before installation. Copying the launcher EXE alone therefore preserves Social availability without downloading mismatched files from a published release. Builds made by the release workflow use its version-pinned Social downloads instead.
+
 The public Microsoft Client ID is stored in `config/microsoft-client-id.txt`. For your own application, follow the [Microsoft setup guide](docs/MICROSOFT-LOGIN.md). Passwords, tokens, and client secrets are not stored in the source tree.
 
 <details>

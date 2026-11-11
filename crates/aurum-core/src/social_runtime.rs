@@ -137,6 +137,30 @@ impl Manifest {
         }
     }
 
+    /// Install the exact compressed sidecars embedded in an offline build.
+    /// Use the same integrity checks and atomic publication as network installs.
+    pub fn install_bundled(&self, root: &Path, components: &[&[u8]]) -> Result<PathBuf> {
+        if components.len() != self.files.len() {
+            bail!("Incomplete bundled Social component");
+        }
+        if let Some(worker) = self.installed(root)? {
+            return Ok(worker);
+        }
+        std::fs::create_dir_all(root)?;
+        let staging =
+            Staging(root.join(format!("{}.{}.part", self.revision, uuid::Uuid::new_v4())));
+        std::fs::create_dir(&staging.0)?;
+        for (file, compressed) in self.files.iter().zip(components) {
+            unpack(
+                compressed,
+                &staging.0.join(&file.name),
+                file,
+                &AtomicBool::new(false),
+            )?;
+        }
+        self.finish_install(root, &staging)
+    }
+
     pub async fn install(
         &self,
         client: &reqwest::Client,
@@ -227,6 +251,12 @@ impl Manifest {
             done += file.download_bytes;
         }
         check(cancel)?;
+        let worker = self.finish_install(root, &staging)?;
+        progress(total, total);
+        Ok(worker)
+    }
+
+    fn finish_install(&self, root: &Path, staging: &Staging) -> Result<PathBuf> {
         let destination = self.directory(root);
         if destination.exists() {
             // Only our content-addressed runtime directory is ever replaced.
@@ -248,7 +278,6 @@ impl Manifest {
                 let _ = std::fs::remove_dir(entry.path());
             }
         }
-        progress(total, total);
         Ok(destination.join(WORKER))
     }
 }
@@ -483,7 +512,10 @@ mod tests {
         std::fs::write(source.join(WORKER), b"tampered!").unwrap();
         assert!(manifest.activate(&source, &runtime).is_err());
         assert_eq!(std::fs::read(path).unwrap(), b"test worker");
-        assert_eq!(std::fs::read(runtime.join("client").join(FIREWALL)).unwrap(), b"test firewall helper");
+        assert_eq!(
+            std::fs::read(runtime.join("client").join(FIREWALL)).unwrap(),
+            b"test firewall helper"
+        );
         assert_eq!(std::fs::read_dir(runtime).unwrap().count(), 1);
     }
 
@@ -557,6 +589,42 @@ mod tests {
             .unwrap();
         assert_eq!(std::fs::read(&path).unwrap(), b"test worker");
         assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn bundled_runtime_installs_without_network_and_repairs_corruption() {
+        let (manifest, compressed) = fixture();
+        let components: Vec<_> = compressed.iter().map(Vec::as_slice).collect();
+        let root = tempfile::tempdir().unwrap();
+        let worker = manifest.install_bundled(root.path(), &components).unwrap();
+        assert_eq!(std::fs::read(&worker).unwrap(), b"test worker");
+        std::fs::write(&worker, b"corrupt").unwrap();
+        assert_eq!(
+            manifest.install_bundled(root.path(), &components).unwrap(),
+            worker
+        );
+        assert!(manifest.installed(root.path()).unwrap().is_some());
+        assert_eq!(std::fs::read_dir(root.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn bundled_runtime_rejects_incomplete_or_tampered_pairs_without_partial_installation() {
+        let (manifest, compressed) = fixture();
+        let root = tempfile::tempdir().unwrap();
+        assert!(manifest
+            .install_bundled(root.path(), &[&compressed[0]])
+            .is_err());
+        for index in 0..compressed.len() {
+            let mut tampered = compressed.clone();
+            tampered[index][12] ^= 1;
+            let components: Vec<_> = tampered.iter().map(Vec::as_slice).collect();
+            let error = manifest
+                .install_bundled(root.path(), &components)
+                .unwrap_err();
+            assert!(error.to_string().contains("checksum mismatch"));
+            assert!(manifest.installed(root.path()).unwrap().is_none());
+            assert_eq!(std::fs::read_dir(root.path()).unwrap().count(), 0);
+        }
     }
 
     #[tokio::test]

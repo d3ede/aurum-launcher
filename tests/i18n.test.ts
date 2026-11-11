@@ -20,6 +20,13 @@ afterEach(async () => {
   await setLanguagePreference("ru");
 });
 describe("offline language packs", () => {
+  it("explains Social download integrity failures and recovery in Russian", async () => {
+    await setLanguagePreference("ru");
+    expect(tMessage("Social component download size mismatch")).toContain("Обновите Aurum");
+    expect(tMessage("Social component download checksum mismatch")).toContain("Повторите загрузку");
+    await setLanguagePreference("en");
+    expect(tMessage("Social component download size mismatch")).toContain("Update Aurum");
+  });
   it("translates dependency diagnostics while preserving names, loader and recovery link", async () => {
     const message = "Не удалось установить «Bark Stripping»: нужна зависимость «Farmer's Delight Refabricated», но в Modrinth нет версии для Minecraft 1.20.1 / Forge.\nВыберите другую версию аддона или проверьте требования зависимости: https://modrinth.com/project/7vxePowz";
     await setLanguagePreference("en");
