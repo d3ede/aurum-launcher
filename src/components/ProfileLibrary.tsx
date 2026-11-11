@@ -10,6 +10,7 @@ import { createPortal } from "react-dom";
 import { GripVertical } from "lucide-react";
 import type { Profile } from "../types";
 import { t } from "../lib/i18n";
+import { reducedMotion } from "../lib/motion";
 import { moveProfile, type ProfileOrder } from "../lib/profile-order";
 import { ProfileCard } from "./ProfileCard";
 import "./ProfileLibrary.css";
@@ -77,7 +78,7 @@ export function ProfileLibrary({
         if (
           previous &&
           rearranging &&
-          !matchMedia("(prefers-reduced-motion: reduce)").matches &&
+          !reducedMotion() &&
           (previous.left !== bounds.left || previous.top !== bounds.top)
         ) {
           element.animate(
@@ -154,7 +155,7 @@ export function ProfileLibrary({
     if (
       ghost &&
       bounds &&
-      !matchMedia("(prefers-reduced-motion: reduce)").matches
+      !reducedMotion()
     ) {
       animation = ghost.animate(
         [

@@ -1,4 +1,17 @@
 export const personalizationEnglish: Record<string, string> = {
+  "Поведение лаунчера": "Launcher behavior",
+  "Сохраняется автоматически": "Saved automatically",
+  "Звук готовности игры": "Game readiness sound",
+  "Звук уведомлений лаунчера": "Launcher notification sounds",
+  "Сворачивать при запуске игры": "Minimize when the game starts",
+  "Возвращать после выхода из игры": "Restore after the game exits",
+  "Спрашивать перед закрытием": "Confirm before closing",
+  "Запоминать последнюю страницу": "Remember the last page",
+  "Выключить все анимации": "Disable all animations",
+  "Закрыть Aurum?": "Close Aurum?",
+  "Вы уверены, что хотите закрыть лаунчер?":
+    "Are you sure you want to close the launcher?",
+  "Закрыть лаунчер": "Close launcher",
   "Мятный фарфор": "Mint Porcelain",
   "Песчаный берег": "Sandy Shore",
   "Светлые темы": "Light themes",

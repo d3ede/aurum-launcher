@@ -18,6 +18,7 @@ import {
 } from "three";
 import { Move, RotateCcw } from "lucide-react";
 import { t } from "../lib/i18n";
+import { useAnimationsDisabled } from "../lib/motion";
 import steve from "../assets/skins/wide-steve.png";
 import alex from "../assets/skins/slim-alex.png";
 export type SkinMotion =
@@ -50,6 +51,7 @@ export function SkinPreview({
   callbacks.current = { onReady, onError };
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
+  const animationsOff = useAnimationsDisabled();
   const reset = () => {
     const v = viewer.current;
     if (!v) return;
@@ -224,8 +226,9 @@ export function SkinPreview({
     crouch.runOnce = true;
     crouch.showProgress = true;
     crouch.speed = 0.5;
+    v.controls.enableDamping = !animationsOff;
     v.animation =
-      motion === "still"
+      animationsOff || motion === "still"
         ? null
         : motion === "walk"
           ? new WalkingAnimation()
@@ -238,7 +241,7 @@ export function SkinPreview({
                 : motion === "hit"
                   ? new HitAnimation()
                   : new IdleAnimation();
-  }, [motion]);
+  }, [motion, animationsOff]);
   return (
     <div className={`skin-preview appearance-preview ${className}`}>
       <div className="skin-stage appearance-stage" ref={stage}>

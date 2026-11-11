@@ -136,8 +136,35 @@ pub struct Account {
     pub has_skin: bool,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct LauncherPreferences {
+    pub game_ready_sound: bool,
+    pub notification_sound: bool,
+    pub minimize_on_launch: bool,
+    pub restore_on_exit: bool,
+    pub confirm_before_close: bool,
+    pub remember_last_page: bool,
+    pub disable_animations: bool,
+}
+impl Default for LauncherPreferences {
+    fn default() -> Self {
+        Self {
+            game_ready_sound: true,
+            notification_sound: true,
+            minimize_on_launch: false,
+            restore_on_exit: false,
+            confirm_before_close: false,
+            remember_last_page: false,
+            disable_animations: false,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
+    #[serde(default)]
+    pub launcher: LauncherPreferences,
     #[serde(default)]
     pub personalization: Option<serde_json::Value>,
     #[serde(default = "legacy_language")]
@@ -153,6 +180,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            launcher: LauncherPreferences::default(),
             personalization: None,
             language: "system".into(),
             theme: "light".into(),

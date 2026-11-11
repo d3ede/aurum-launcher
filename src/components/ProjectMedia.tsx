@@ -5,6 +5,7 @@ import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { t } from "../lib/i18n";
+import { reducedMotion } from "../lib/motion";
 
 export function safeImageUrl(src: string | undefined) {
   if (!src) return null;
@@ -127,7 +128,7 @@ export function ProjectGallery({
     activeThumb.current?.scrollIntoView({
       block: "nearest",
       inline: "nearest",
-      behavior: "smooth",
+      behavior: reducedMotion() ? "instant" : "smooth",
     });
   }, [current]);
   if (!images.length)

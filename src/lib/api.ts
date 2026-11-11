@@ -340,6 +340,7 @@ interface Contract {
     },
     void,
   ];
+  confirmLauncherClose: [Empty, void];
   saveSettings: [
     {
       settings: Settings;

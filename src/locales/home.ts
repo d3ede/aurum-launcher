@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Настройки поведения: звуки, окно, подтверждение выхода, последняя страница и отключение анимаций.":
+    "Behavior settings: sounds, window actions, close confirmation, the last page and disabling animations.",
   "Локальные сборки подключают Social без скачивания отдельного компонента; ошибки загрузки объясняют, как восстановить подключение.":
     "Local builds enable Social without a separate download; download errors explain how to restore the connection.",
   "Недавние серверы обновляют названия и иконки из Minecraft без повторного подключения.":

@@ -7,6 +7,11 @@ export class GameReadySound {
   private buffer: Promise<AudioBuffer> | null = null;
   private sessions = new Set<string>();
   private disposed = false;
+  private enabled = true;
+
+  setEnabled(enabled: boolean) {
+    this.enabled = enabled;
+  }
 
   async unlock() {
     if (this.disposed) return;
@@ -40,10 +45,17 @@ export class GameReadySound {
     this.sessions.add(event.id);
     const context = this.context;
     // Never queue a surprise sound to play when a later click unlocks audio.
-    if (!context || context.state !== "running" || !this.buffer) return;
+    if (
+      !this.enabled ||
+      !context ||
+      context.state !== "running" ||
+      !this.buffer
+    )
+      return;
     void this.buffer
       .then((buffer) => {
-        if (this.disposed || context.state !== "running") return;
+        if (this.disposed || !this.enabled || context.state !== "running")
+          return;
         const source = context.createBufferSource();
         source.buffer = buffer;
         source.connect(context.destination);

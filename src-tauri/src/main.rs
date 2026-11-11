@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod hosting;
+mod close_confirmation;
 mod screenshots;
 #[cfg(windows)]
 mod social;
@@ -310,6 +311,15 @@ async fn rpc(
             e.save_settings(param(&payload, "settings")?)
                 .await
                 .map_err(err)?;
+            Ok(Value::Null)
+        }
+        "confirmLauncherClose" => {
+            let confirmation = app.state::<close_confirmation::CloseConfirmation>();
+            confirmation.approve();
+            if let Err(error) = webview.close() {
+                confirmation.take();
+                return Err(err(error));
+            }
             Ok(Value::Null)
         }
         "addOffline" => Ok(json!(e
@@ -969,6 +979,7 @@ fn main() {
             }
             if !isolated_data { uninstall::register(&engine.root, &app.config().identifier)?; }
             app.manage(Relocation(std::sync::atomic::AtomicBool::new(false)));
+            app.manage(close_confirmation::CloseConfirmation::default());
             // Creation-time centering uses the requested client size. Center again
             // after Windows has applied the actual resize frame, then show once.
             if let Some(window) = app.get_webview_window("main") {
@@ -977,6 +988,7 @@ fn main() {
                 let closing = app.handle().clone();
                 window.on_window_event(move |event| {
                     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        let confirmed = closing.state::<close_confirmation::CloseConfirmation>().take();
                         #[cfg(windows)]
                         if closing.state::<Engine>().social.has_active_tunnels(){api.prevent_close();let _=closing.emit_to("main","social:closeRequested",());return;}
                         if !closing.state::<Engine>().hosting_running().is_empty() {
@@ -993,6 +1005,9 @@ fn main() {
                                     total: 0,
                                 },
                             );
+                        } else if !confirmed && tauri::async_runtime::block_on(closing.state::<Engine>().db.lock()).settings.launcher.confirm_before_close {
+                            api.prevent_close();
+                            let _ = closing.emit_to("main", "aurum:close-requested", ());
                         } else {
                             #[cfg(windows)]
                             let _=closing.state::<Engine>().social.shutdown();

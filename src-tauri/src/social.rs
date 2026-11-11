@@ -103,10 +103,13 @@ pub async fn rpc(
                 .await
                 .map_err(err)?
                 .map_err(err)?;
-            app.get_webview_window("main")
-                .ok_or("Missing main window")?
-                .close()
-                .map_err(err)?;
+            let window = app.get_webview_window("main").ok_or("Missing main window")?;
+            let confirmation = app.state::<crate::close_confirmation::CloseConfirmation>();
+            confirmation.approve();
+            if let Err(error) = window.close() {
+                confirmation.take();
+                return Err(err(error));
+            }
             Ok(Value::Null)
         }
         "social.snapshot" => tauri::async_runtime::spawn_blocking(move || {

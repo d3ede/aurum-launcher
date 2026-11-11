@@ -25,6 +25,37 @@ fn task() -> Task {
 }
 
 #[tokio::test]
+async fn launcher_preferences_upgrade_defaults_and_survive_reopening() {
+    let mut legacy = serde_json::to_value(Settings::default()).unwrap();
+    legacy.as_object_mut().unwrap().remove("launcher");
+    let settings: Settings = serde_json::from_value(legacy).unwrap();
+    assert!(settings.launcher.game_ready_sound);
+    assert!(settings.launcher.notification_sound);
+    assert!(!settings.launcher.minimize_on_launch);
+    assert!(!settings.launcher.restore_on_exit);
+    assert!(!settings.launcher.confirm_before_close);
+    assert!(!settings.launcher.remember_last_page);
+    assert!(!settings.launcher.disable_animations);
+    let partial: LauncherPreferences = serde_json::from_value(json!({"disableAnimations": true})).unwrap();
+    assert!(partial.game_ready_sound && partial.notification_sound && partial.disable_animations);
+    let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.test-data");
+    std::fs::create_dir_all(&base).unwrap();
+    let directory = tempfile::Builder::new().prefix("launcher-preferences-").tempdir_in(base).unwrap();
+    let engine = Engine::new(directory.path().into(), |_| {}).await.unwrap();
+    let mut updated = settings;
+    updated.launcher.game_ready_sound = false;
+    updated.launcher.notification_sound = false;
+    updated.launcher.minimize_on_launch = true;
+    updated.launcher.restore_on_exit = true;
+    updated.launcher.confirm_before_close = true;
+    updated.launcher.remember_last_page = true;
+    updated.launcher.disable_animations = true;
+    engine.save_settings(updated.clone()).await.unwrap();
+    let restored = Engine::new(directory.path().into(), |_| {}).await.unwrap();
+    assert_eq!(serde_json::to_value(restored.snapshot().await.database.settings.launcher).unwrap(), serde_json::to_value(updated.launcher).unwrap());
+}
+
+#[tokio::test]
 async fn personalization_preserves_legacy_settings_and_survives_restart() {
     let mut legacy = serde_json::to_value(Settings::default()).unwrap();
     legacy.as_object_mut().unwrap().remove("personalization");

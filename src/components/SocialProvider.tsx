@@ -11,6 +11,7 @@ import { listen } from "@tauri-apps/api/event";
 import { native, rpc } from "../lib/api";
 import { getLocale, t } from "../lib/i18n";
 import { useApp } from "../context";
+import { launcherPreferences } from "../lib/launcher-preferences";
 import type { SocialSnapshot, SocialPerson } from "../lib/social";
 import { Modal } from "./ui";
 import { SocialInviteQueue } from "./SocialInvitations";
@@ -33,7 +34,8 @@ export function useSocial() {
   return value;
 }
 export function SocialProvider({ children }: { children: ReactNode }) {
-  const { notify } = useApp();
+  const { notify, data } = useApp();
+  const soundEnabled = launcherPreferences(data.settings).notificationSound;
   const [snapshot, setSnapshot] = useState<SocialSnapshot | null>(null);
   const [working, setWorking] = useState(false);
   const pending = useRef(0);
@@ -51,7 +53,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     (
       kind: "sent" | "received" | "photo" | "photoAccepted" | "photoDeclined",
     ) => {
-      if (snapshot?.privacy.notifications === false) return;
+      if (!soundEnabled || snapshot?.privacy.notifications === false) return;
       const context = audio.current;
       if (context?.state !== "running") return;
       const simple = kind.startsWith("photo");
@@ -91,7 +93,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
         };
       }
     },
-    [snapshot?.privacy.notifications],
+    [snapshot?.privacy.notifications, soundEnabled],
   );
   useEffect(() => {
     const unlock = () => {
@@ -137,17 +139,17 @@ export function SocialProvider({ children }: { children: ReactNode }) {
         alerted.current.delete(alerted.current.values().next().value!);
       alerted.current.add(arrival.key);
       if (snapshot.privacy.notifications === false) continue;
-      notify(`${t(arrival.title)} · ${arrival.name}`);
+      notify(`${t(arrival.title)} · ${arrival.name}`, false, true);
       const context = audio.current;
       void rpc("social.notify", {
         kind: arrival.kind,
         id: arrival.id,
         russian: getLocale().startsWith("ru"),
-        silent: context?.state === "running",
+        silent: !soundEnabled || context?.state === "running",
       }).catch(() => {});
       chime("received");
     }
-  }, [snapshot, notify, chime]);
+  }, [snapshot, notify, chime, soundEnabled]);
   useEffect(() => {
     if (!native) return;
     let disposed = false;

@@ -40,6 +40,26 @@ const ready = (id = "launch-one") => ({
 });
 
 describe("Minecraft readiness audio", () => {
+  it("mutes immediately and never replays a muted session when reenabled", async () => {
+    const sound = new GameReadySound();
+    await sound.unlock();
+    sound.setEnabled(false);
+    sound.handle(ready());
+    await Promise.resolve();
+    expect(start).not.toHaveBeenCalled();
+    sound.setEnabled(true);
+    sound.handle(ready());
+    expect(start).not.toHaveBeenCalled();
+    sound.handle(ready("new-session"));
+    sound.setEnabled(false);
+    await Promise.resolve();
+    expect(start).not.toHaveBeenCalled();
+    sound.setEnabled(true);
+    sound.handle(ready("another-session"));
+    await Promise.resolve();
+    expect(start).toHaveBeenCalledTimes(1);
+    sound.dispose();
+  });
   it("ignores process start and loading logs, and plays once per JVM session", async () => {
     const sound = new GameReadySound();
     await sound.unlock();

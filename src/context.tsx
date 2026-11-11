@@ -5,6 +5,7 @@ import {
   useState,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   type ReactNode,
 } from "react";
@@ -15,6 +16,16 @@ import { Modal } from "./components/ui";
 import { NativeModNotice } from "./components/NativeModNotice";
 import type { HorizonModStatus } from "./lib/horizon-mods";
 import { GameReadySound } from "./lib/game-ready-sound";
+import { NotificationSound } from "./lib/notification-sound";
+import {
+  launcherPreferences,
+  lastPageKey,
+  parseLastPage,
+} from "./lib/launcher-preferences";
+import { applyMotion } from "./lib/motion";
+import { LauncherWindowBehavior } from "./lib/launcher-window-behavior";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
 export interface MicrosoftLoginState {
   id: string;
   status: "active" | "cancelling" | "success" | "error" | "cancelled";
@@ -25,7 +36,7 @@ export interface MicrosoftLoginState {
 interface AppState {
   settingsTab: SettingsTab;
   openSettings: (tab: SettingsTab) => void;
-  saveSettings: (settings: Settings) => Promise<boolean>;
+  saveSettings: (settings: Settings, quiet?: boolean) => Promise<boolean>;
   microsoftLogin: MicrosoftLoginState | null;
   startMicrosoftLogin: () => Promise<void>;
   closeMicrosoftLogin: () => Promise<void>;
@@ -47,7 +58,7 @@ interface AppState {
   route: Route;
   navigate: (route: Route) => void;
   create: () => void;
-  notify: (message: string, error?: boolean) => void;
+  notify: (message: string, error?: boolean, silent?: boolean) => void;
 }
 const Context = createContext<AppState | null>(null);
 export const useApp = () => {
@@ -68,6 +79,36 @@ export function Provider({
   const [fatal, setFatal] = useState("");
   const [route, navigate] = useState<Route>("home");
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("general");
+  const launcher = launcherPreferences(data.settings);
+  const launcherRef = useRef(launcher);
+  launcherRef.current = launcher;
+  const [navigationReady, setNavigationReady] = useState(false);
+  useEffect(() => {
+    if (!loaded || navigationReady) return;
+    if (launcher.rememberLastPage) {
+      try {
+        const saved = parseLastPage(localStorage.getItem(lastPageKey));
+        navigate(saved.route);
+        setSettingsTab(saved.settingsTab);
+      } catch {
+        /* Keep Home when browser storage is unavailable. */
+      }
+    }
+    setNavigationReady(true);
+  }, [loaded, navigationReady, launcher.rememberLastPage]);
+  useEffect(() => {
+    if (!navigationReady) return;
+    try {
+      if (launcher.rememberLastPage)
+        localStorage.setItem(
+          lastPageKey,
+          JSON.stringify({ route, settingsTab }),
+        );
+      else localStorage.removeItem(lastPageKey);
+    } catch {
+      /* Navigation remains available without persistent storage. */
+    }
+  }, [navigationReady, launcher.rememberLastPage, route, settingsTab]);
   const openSettings = (tab: SettingsTab) => {
     setSettingsTab(tab);
     navigate("settings");
@@ -99,23 +140,68 @@ export function Provider({
     message: string;
     error: boolean;
   } | null>(null);
+  const [closeRequested, setCloseRequested] = useState(false);
   const gameReadySound = useRef<GameReadySound | null>(null);
+  const notificationSound = useRef<NotificationSound | null>(null);
+  const windowBehavior = useRef<LauncherWindowBehavior | null>(null);
+  if (native && !windowBehavior.current)
+    windowBehavior.current = new LauncherWindowBehavior(
+      getCurrentWindow(),
+      () => launcherRef.current,
+    );
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (loaded && !seeded.current) {
+      seeded.current = true;
+      windowBehavior.current?.seed(data.running);
+    }
+  }, [loaded, data.running]);
+  useLayoutEffect(() => {
+    applyMotion(launcher.disableAnimations);
+    gameReadySound.current?.setEnabled(launcher.gameReadySound);
+  }, [launcher.disableAnimations, launcher.gameReadySound]);
+  useEffect(() => {
+    if (!native) return;
+    let live = true;
+    let cleanup: (() => void) | undefined;
+    void listen("aurum:close-requested", () => setCloseRequested(true)).then(
+      (unlisten) => {
+        if (live) cleanup = unlisten;
+        else unlisten();
+      },
+    );
+    return () => {
+      live = false;
+      cleanup?.();
+    };
+  }, []);
   useEffect(() => {
     const sound = new GameReadySound();
+    const notifications = new NotificationSound();
+    sound.setEnabled(launcherRef.current.gameReadySound);
     gameReadySound.current = sound;
-    const unlock = () => void sound.unlock();
-    document.addEventListener("pointerdown", unlock, { once: true });
-    document.addEventListener("keydown", unlock, { once: true });
+    notificationSound.current = notifications;
+    const unlock = () => {
+      if (launcherRef.current.gameReadySound) void sound.unlock();
+      if (launcherRef.current.notificationSound) notifications.unlock();
+    };
+    document.addEventListener("pointerdown", unlock);
+    document.addEventListener("keydown", unlock);
     return () => {
       document.removeEventListener("pointerdown", unlock);
       document.removeEventListener("keydown", unlock);
       sound.dispose();
+      notifications.dispose();
       gameReadySound.current = null;
+      notificationSound.current = null;
     };
   }, []);
   const notify = useCallback(
-    (message: string, error = false) =>
-      setToast({ message: tMessage(message), error }),
+    (message: string, error = false, silent = false) => {
+      setToast({ message: tMessage(message), error });
+      if (!silent && launcherRef.current.notificationSound)
+        notificationSound.current?.play();
+    },
     [],
   );
   useEffect(() => {
@@ -163,6 +249,9 @@ export function Provider({
         if (live) setFatal(e.message);
       });
     events((event) => {
+      void windowBehavior.current
+        ?.handle(event)
+        .catch((error) => notify(String(error), true));
       if (event.phase === "game-ready") {
         gameReadySound.current?.handle(event);
         setLogs((old) => [
@@ -307,16 +396,19 @@ export function Provider({
     },
     [notify],
   );
-  const saveSettings = async (settings: Settings) => {
-    const saved = await run(async () => {
-      if (native) await rpc("saveSettings", { settings });
-      else {
-        localStorage.setItem("aurum:settings", JSON.stringify(settings));
-        localStorage.setItem("aurum:theme", settings.theme);
-        setData((old) => ({ ...old, settings }));
-      }
-      return true;
-    }, t("Настройки сохранены"));
+  const saveSettings = async (settings: Settings, quiet = false) => {
+    const saved = await run(
+      async () => {
+        if (native) await rpc("saveSettings", { settings });
+        else {
+          localStorage.setItem("aurum:settings", JSON.stringify(settings));
+          localStorage.setItem("aurum:theme", settings.theme);
+          setData((old) => ({ ...old, settings }));
+        }
+        return true;
+      },
+      quiet ? undefined : t("Настройки сохранены"),
+    );
     return saved === true;
   };
   const startMicrosoftLogin = useCallback(async () => {
@@ -502,6 +594,32 @@ export function Provider({
       }}
     >
       {children}
+      {closeRequested && (
+        <Modal
+          title={t("Закрыть Aurum?")}
+          onClose={() => setCloseRequested(false)}
+        >
+          <p>{t("Вы уверены, что хотите закрыть лаунчер?")}</p>
+          <div className="modal-actions">
+            <button
+              className="button secondary"
+              onClick={() => setCloseRequested(false)}
+            >
+              {t("Отмена")}
+            </button>
+            <button
+              className="button primary"
+              onClick={() => {
+                void rpc("confirmLauncherClose", {})
+                  .then(() => setCloseRequested(false))
+                  .catch((error) => notify(String(error), true));
+              }}
+            >
+              {t("Закрыть лаунчер")}
+            </button>
+          </div>
+        </Modal>
+      )}
       {nativePrompt && (
         <Modal
           title={t("Моды ещё не скомпилированы")}
