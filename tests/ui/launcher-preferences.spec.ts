@@ -112,6 +112,12 @@ async function fixture(
         if (action === "snapshot") return structuredClone(state);
         if (action === "saveSettings") {
           if (w.failPreferenceSave) throw new Error("Settings write failed");
+          if (w.holdPreferenceSave) {
+            w.holdPreferenceSave = false;
+            await new Promise<void>((resolve) => {
+              w.releasePreferenceSave = resolve;
+            });
+          }
           state.settings = structuredClone(payload.settings);
           localStorage.setItem(
             "test:launcher-settings",
@@ -188,9 +194,12 @@ for (const theme of ["light", "dark"]) {
       "transition-duration",
       "0.2s, 0.2s",
     );
-    await page
-      .getByRole("button", { name: "Сохранить настройки", exact: true })
-      .click();
+    await expect(
+      page.getByRole("button", { name: "Сохранить настройки", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByText("Сохраняется автоматически", { exact: true }),
+    ).toHaveCount(0);
     await page.reload();
     await settings(page);
     await expect(
@@ -297,12 +306,10 @@ test("window actions, separate sounds, close confirmation and remembered routes 
     .getByRole("button", { name: "Закрыть лаунчер", exact: true })
     .click();
   await expect(confirmation).toHaveCount(0);
-  const saves = () =>
-    page.getByRole("button", { name: "Сохранить настройки", exact: true });
-  await saves().click();
-  await expect(
-    page.getByRole("status").filter({ hasText: "Настройки сохранены" }),
-  ).toBeVisible();
+  await page.evaluate(() =>
+    (window as any).emitGame("crashed", "notice-one", "unknown"),
+  );
+  await expect(page.getByRole("alert")).toContainText("Fixture game event");
   expect(
     await page.evaluate(() => (window as any).notificationSounds),
   ).toBeGreaterThan(0);
@@ -313,10 +320,10 @@ test("window actions, separate sounds, close confirmation and remembered routes 
   await notifications.uncheck();
   await expect(notifications).toBeEnabled();
   const played = await page.evaluate(() => (window as any).notificationSounds);
-  await saves().click();
-  await expect(
-    page.getByRole("status").filter({ hasText: "Настройки сохранены" }),
-  ).toBeVisible();
+  await page.evaluate(() =>
+    (window as any).emitGame("crashed", "notice-two", "unknown"),
+  );
+  await expect(page.getByRole("alert")).toContainText("Fixture game event");
   expect(await page.evaluate(() => (window as any).notificationSounds)).toBe(
     played,
   );
@@ -336,6 +343,84 @@ test("window actions, separate sounds, close confirmation and remembered routes 
   await expect(
     page.getByRole("heading", { name: "Главная", exact: true }),
   ).toBeVisible();
+});
+
+test("memory and launch fields save automatically, survive navigation and preserve switches", async ({
+  page,
+}) => {
+  await fixture(page);
+  await settings(page);
+  const width = page.getByRole("spinbutton", {
+    name: "Ширина окна игры",
+    exact: true,
+  });
+  const height = page.getByRole("spinbutton", {
+    name: "Высота окна игры",
+    exact: true,
+  });
+  await page.evaluate(() => {
+    (window as any).holdPreferenceSave = true;
+  });
+  await width.fill("1920");
+  const minimize = page.getByRole("switch", {
+    name: "Сворачивать при запуске игры",
+    exact: true,
+  });
+  await minimize.check();
+  await expect
+    .poll(() =>
+      page.evaluate(() => typeof (window as any).releasePreferenceSave),
+    )
+    .toBe("function");
+  await height.fill("1080");
+  await page.evaluate(() => (window as any).releasePreferenceSave());
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        JSON.parse(localStorage.getItem("test:launcher-settings") || "null"),
+      ),
+    )
+    .toMatchObject({
+      resolutionWidth: 1920,
+      resolutionHeight: 1080,
+      launcher: { minimizeOnLaunch: true },
+    });
+  const args = page.getByRole("textbox", {
+    name: "Дополнительные JVM-аргументы",
+    exact: true,
+  });
+  await args.fill("-Dexample=autosaved");
+  await page.getByRole("button", { name: "Мои сборки", exact: true }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          JSON.parse(localStorage.getItem("test:launcher-settings") || "null")
+            ?.jvmArgs,
+      ),
+    )
+    .toBe("-Dexample=autosaved");
+  await page.reload();
+  await settings(page);
+  await expect(width).toHaveValue("1920");
+  await expect(height).toHaveValue("1080");
+  await expect(args).toHaveValue("-Dexample=autosaved");
+  await expect(minimize).toBeChecked();
+  await width.fill("");
+  await height.focus();
+  await expect(width).toHaveValue("");
+  expect(
+    await page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem("test:launcher-settings") || "null")
+          .resolutionWidth,
+    ),
+  ).toBe(1920);
+  await page
+    .locator(".settings-form")
+    .screenshot({
+      path: ".test-data/screenshots/general-settings-autosave.png",
+    });
 });
 
 test("disabling animations applies to new screens and can be reversed with keyboard", async ({

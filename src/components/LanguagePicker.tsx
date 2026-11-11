@@ -10,7 +10,6 @@ import {
   setLanguagePreference,
   getLanguageName,
 } from "../lib/i18n";
-import { native, rpc } from "../lib/api";
 
 const languageIcons = import.meta.glob<string>("../assets/languages/*.svg", {
   eager: true,
@@ -30,12 +29,8 @@ function LanguageIcon({ code }: { code: string }) {
   );
 }
 
-export function LanguagePicker({
-  onChange,
-}: {
-  onChange: (language: string) => void;
-}) {
-  const { data, run, busy, notify } = useApp();
+export function LanguagePicker() {
+  const { data, saveSettings, busy, notify } = useApp();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [changing, setChanging] = useState(false);
@@ -69,19 +64,11 @@ export function LanguagePicker({
     setChanging(true);
     try {
       await setLanguagePreference(language);
-      if (native) {
-        const ok = await run(async () => {
-          await rpc("saveSettings", {
-            settings: { ...data.settings, language },
-          });
-          return true;
-        });
-        if (!ok) {
-          await setLanguagePreference(previous);
-          return;
-        }
+      const ok = await saveSettings({ ...data.settings, language }, true);
+      if (!ok) {
+        await setLanguagePreference(previous);
+        return;
       }
-      onChange(language);
       setOpen(false);
       setQuery("");
       notify(t("Язык сохранён"));

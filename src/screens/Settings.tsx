@@ -13,13 +13,11 @@ import {
   Trash2,
   Cpu,
   HardDrive,
-  Save,
   Gamepad2,
 } from "lucide-react";
 import { useApp } from "../context";
 import { rpc } from "../lib/api";
 import { Field } from "../components/ui";
-import type { Settings as SettingsType } from "../types";
 import { HomeSettings, AppearanceSettings } from "./Personalization";
 import {
   SettingsPageHeading,
@@ -50,26 +48,32 @@ export function Settings() {
   );
 }
 function GeneralSettings() {
-  const { data, run, busy, saveSettings, openSettings } = useApp();
-  const [draft, setDraft] = useState(data.settings);
-  const set = <K extends keyof SettingsType>(k: K, v: SettingsType[K]) =>
-    setDraft((old) => ({ ...old, [k]: v }));
+  const { data, run, busy, updateSettings, flushSettings, openSettings } =
+    useApp();
+  const [draft, setDraft] = useState(() => ({
+    ramMb: data.settings.ramMb,
+    resolutionWidth: String(data.settings.resolutionWidth),
+    resolutionHeight: String(data.settings.resolutionHeight),
+    jvmArgs: data.settings.jvmArgs,
+  }));
+  const setResolution = (
+    key: "resolutionWidth" | "resolutionHeight",
+    input: HTMLInputElement,
+  ) => {
+    setDraft((old) => ({ ...old, [key]: input.value }));
+    if (input.validity.valid && Number.isInteger(input.valueAsNumber))
+      updateSettings({ [key]: input.valueAsNumber });
+  };
   return (
     <>
-      <form
+      <div
         className="settings-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void saveSettings({
-            ...data.settings,
-            ...draft,
-            personalization: data.settings.personalization,
-            theme: data.settings.theme,
-            launcher: data.settings.launcher,
-          });
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+            flushSettings();
         }}
       >
-        <LanguagePicker onChange={(language) => set("language", language)} />
+        <LanguagePicker />
         <LauncherUpdateSettings />
         <div className="settings-destinations" aria-label={t("Персонализация")}>
           <button
@@ -153,7 +157,12 @@ function GeneralSettings() {
               max="16384"
               step="512"
               value={draft.ramMb}
-              onChange={(e) => set("ramMb", Number(e.target.value))}
+              onChange={(event) => {
+                const ramMb = Number(event.target.value);
+                setDraft((old) => ({ ...old, ramMb }));
+                updateSettings({ ramMb });
+              }}
+              onPointerUp={flushSettings}
             />
             <div className="range-labels">
               <span>{t("1 ГБ")}</span>
@@ -169,7 +178,9 @@ function GeneralSettings() {
                 min="320"
                 max="7680"
                 value={draft.resolutionWidth}
-                onChange={(e) => set("resolutionWidth", Number(e.target.value))}
+                onChange={(event) =>
+                  setResolution("resolutionWidth", event.currentTarget)
+                }
               />
             </Field>
             <Field label={t("Высота окна игры")}>
@@ -179,8 +190,8 @@ function GeneralSettings() {
                 min="240"
                 max="4320"
                 value={draft.resolutionHeight}
-                onChange={(e) =>
-                  set("resolutionHeight", Number(e.target.value))
+                onChange={(event) =>
+                  setResolution("resolutionHeight", event.currentTarget)
                 }
               />
             </Field>
@@ -188,18 +199,16 @@ function GeneralSettings() {
           <Field label={t("Дополнительные JVM-аргументы")}>
             <input
               value={draft.jvmArgs}
-              onChange={(e) => set("jvmArgs", e.target.value)}
+              onChange={(event) => {
+                const jvmArgs = event.target.value;
+                setDraft((old) => ({ ...old, jvmArgs }));
+                updateSettings({ jvmArgs });
+              }}
               placeholder="-XX:+UseG1GC"
             />
           </Field>
         </section>
-        <div className="settings-save">
-          <button className="button primary" disabled={busy}>
-            <Save size={16} />
-            {t(" Сохранить настройки")}
-          </button>
-        </div>
-      </form>
+      </div>
       <p className="page-footnote">
         Aurum {APP_VERSION} · PolyForm Noncommercial 1.0.0
       </p>

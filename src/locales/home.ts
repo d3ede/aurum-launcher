@@ -1,4 +1,6 @@
 export const homeEnglish: Record<string, string> = {
+  "Общие настройки применяются автоматически, без кнопки сохранения.":
+    "General settings apply automatically, without a Save button.",
   "Настройки поведения: звуки, окно, подтверждение выхода, последняя страница и отключение анимаций.":
     "Behavior settings: sounds, window actions, close confirmation, the last page and disabling animations.",
   "Локальные сборки подключают Social без скачивания отдельного компонента; ошибки загрузки объясняют, как восстановить подключение.":

@@ -64,11 +64,6 @@ body {
   font-size: 14px;
   font-weight: 650;
 }
-.launcher-preferences-heading small {
-  margin-inline-start: auto;
-  color: var(--muted);
-  font-size: 11px;
-}
 .launcher-preferences-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -85,6 +80,8 @@ body {
   cursor: pointer;
 }
 .launcher-preference > svg {
+  display: block;
+  transform: translateY(-1px);
   color: var(--secondary);
   flex-shrink: 0;
 }

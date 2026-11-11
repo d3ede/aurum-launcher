@@ -666,18 +666,10 @@ test("appearance fits minimum size, translates and discards unsaved editor chang
   expect(
     await page.locator(".settings-page > .settings-uninstall").count(),
   ).toBe(1);
-  const saveBounds = await page
-    .getByRole("button", { name: "Save settings", exact: true })
-    .boundingBox();
-  const uninstallBounds = await uninstall.boundingBox();
-  expect(
-    Math.abs(
-      saveBounds!.x +
-        saveBounds!.width -
-        uninstallBounds!.x -
-        uninstallBounds!.width,
-    ),
-  ).toBeLessThanOrEqual(1);
+  await expect(
+    page.getByRole("button", { name: "Save settings", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.locator(".settings-form .uninstall-button")).toHaveCount(0);
   await page.locator(".settings-uninstall").scrollIntoViewIfNeeded();
   await page.screenshot({
     path: ".test-data/screenshots/settings-uninstall.png",

@@ -47,7 +47,6 @@ export function LauncherPreferencesSettings() {
       <div className="launcher-preferences-heading">
         <Settings2 size={19} aria-hidden="true" />
         <h2 id="launcher-preferences-title">{t("Поведение лаунчера")}</h2>
-        <small>{t("Сохраняется автоматически")}</small>
       </div>
       <div className="launcher-preferences-grid">
         {controls.map(([key, label, Icon]) => (

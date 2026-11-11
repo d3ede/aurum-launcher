@@ -26,6 +26,7 @@ import { applyMotion } from "./lib/motion";
 import { LauncherWindowBehavior } from "./lib/launcher-window-behavior";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
+import { SettingsAutosave } from "./lib/settings-autosave";
 export interface MicrosoftLoginState {
   id: string;
   status: "active" | "cancelling" | "success" | "error" | "cancelled";
@@ -37,6 +38,8 @@ interface AppState {
   settingsTab: SettingsTab;
   openSettings: (tab: SettingsTab) => void;
   saveSettings: (settings: Settings, quiet?: boolean) => Promise<boolean>;
+  updateSettings: (patch: Partial<Settings>, delay?: number) => void;
+  flushSettings: () => void;
   microsoftLogin: MicrosoftLoginState | null;
   startMicrosoftLogin: () => Promise<void>;
   closeMicrosoftLogin: () => Promise<void>;
@@ -75,6 +78,8 @@ export function Provider({
 }) {
   useLocale();
   const [data, setData] = useState<Snapshot>(browserSnapshot);
+  const latestSettings = useRef(data.settings);
+  latestSettings.current = data.settings;
   const [loaded, setLoaded] = useState(!native);
   const [fatal, setFatal] = useState("");
   const [route, navigate] = useState<Route>("home");
@@ -211,7 +216,11 @@ export function Provider({
       );
   }, [data.settings.language, loaded, notify]);
   const refresh = useCallback(async () => {
-    if (native) setData(await rpc("snapshot", {}));
+    if (native) {
+      const snapshot = await rpc("snapshot", {});
+      latestSettings.current = snapshot.settings;
+      setData(snapshot);
+    }
   }, []);
   useEffect(() => {
     if (!native || (!data.running.length && !data.hostingRunning?.length))
@@ -403,6 +412,7 @@ export function Provider({
         else {
           localStorage.setItem("aurum:settings", JSON.stringify(settings));
           localStorage.setItem("aurum:theme", settings.theme);
+          latestSettings.current = settings;
           setData((old) => ({ ...old, settings }));
         }
         return true;
@@ -411,6 +421,30 @@ export function Provider({
     );
     return saved === true;
   };
+  const saveLatest = useRef(saveSettings);
+  saveLatest.current = saveSettings;
+  const autosave = useRef<SettingsAutosave | null>(null);
+  if (!autosave.current)
+    autosave.current = new SettingsAutosave(
+      () => latestSettings.current,
+      () => !lock.current,
+      (settings) => saveLatest.current(settings, true),
+    );
+  const updateSettings = useCallback(
+    (patch: Partial<Settings>, delay?: number) =>
+      autosave.current?.update(patch, delay),
+    [],
+  );
+  const flushSettings = useCallback(() => {
+    void autosave.current?.flush();
+  }, []);
+  useEffect(() => {
+    autosave.current?.start();
+    return () => autosave.current?.stop();
+  }, []);
+  useEffect(() => {
+    if (!busy) autosave.current?.resume();
+  }, [busy]);
   const startMicrosoftLogin = useCallback(async () => {
     if (lock.current) {
       notify(t("Дождитесь завершения текущего действия"));
@@ -575,6 +609,8 @@ export function Provider({
         settingsTab,
         openSettings,
         saveSettings,
+        updateSettings,
+        flushSettings,
         microsoftLogin,
         startMicrosoftLogin,
         closeMicrosoftLogin,
