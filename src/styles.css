@@ -556,7 +556,7 @@ kbd {
 }
 .button.primary {
   background: var(--gold);
-  color: #382f1b;
+  color: var(--on-accent);
   border-color: var(--gold);
   box-shadow: 0 3px 5px #9970130d;
 }

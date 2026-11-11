@@ -748,6 +748,9 @@ test("paging preloads nearby screenshots and keeps the picture visible during a 
   await expect(image).toBeVisible();
   const original = await image.getAttribute("src");
   await page.keyboard.press("ArrowRight");
+  await expect(
+    viewer.locator(".lightbox-toolbar button").last(),
+  ).not.toBeFocused();
   await expect(image).toHaveAttribute("src", original!);
   await expect(viewer.locator(".lightbox-message")).toHaveCount(0);
   await expect(viewer.locator(".lightbox-toolbar")).toContainText(
@@ -783,6 +786,10 @@ test("paging preloads nearby screenshots and keeps the picture visible during a 
   await expect(
     viewer.getByText("Loading screenshot…", { exact: true }),
   ).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  const search = page.locator(".shot-search input");
+  await search.click();
+  await expect(search).toHaveCSS("outline-style", "none");
 });
 
 test("viewer uses all screenshots, keyboard paging and unobtrusive side arrows", async ({

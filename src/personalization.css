@@ -34,7 +34,15 @@ body {
 }
 .settings-page {
   width: 100%;
-  max-width: 1000px;
+  min-width: 0;
+  max-width: none;
+}
+.page-content:has(.settings-page) {
+  max-width: none;
+}
+.settings-page.storage-page,
+.settings-page.game-settings-page {
+  max-width: none;
 }
 .settings-page .settings-form {
   max-width: none;

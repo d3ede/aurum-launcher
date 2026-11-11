@@ -662,11 +662,6 @@
   height: 17px;
   flex-shrink: 0;
 }
-.hosting-toolbar > .primary {
-  background: var(--gold-soft);
-  border-color: var(--gold-border);
-  color: var(--accent-ink);
-}
 .hosting-split-button {
   display: flex;
   align-items: stretch;

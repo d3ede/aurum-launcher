@@ -1,5 +1,6 @@
 import { Check, LoaderCircle, Plus, Trash2 } from "lucide-react";
 import { t } from "../lib/i18n";
+import { beginButtonHover } from "../lib/button-hover";
 
 export type CatalogActionState =
   "available" | "installed" | "installing" | "removing";
@@ -43,6 +44,7 @@ export function CatalogInstallButton({
           : `${label} · ${title}`
       }
       onClick={onClick}
+      onPointerEnter={state === "available" ? beginButtonHover : undefined}
     >
       <span className="catalog-action-label" aria-hidden="true">
         {working ? (

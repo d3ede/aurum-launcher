@@ -15,10 +15,14 @@ export function WindowControls({
     let live = true;
     let cleanup: (() => void) | undefined;
     const update = () =>
-      void window
-        .isMaximized()
-        .then((v) => {
-          if (live) setMaximized(v);
+      void Promise.all([window.isMaximized(), window.isFullscreen()])
+        .then(([isMaximized, isFullscreen]) => {
+          if (live) {
+            setMaximized(isMaximized);
+            document.documentElement.dataset.windowExpanded = String(
+              isMaximized || isFullscreen,
+            );
+          }
         })
         .catch((e) => onError(String(e)));
     update();
@@ -29,6 +33,7 @@ export function WindowControls({
     return () => {
       live = false;
       cleanup?.();
+      delete document.documentElement.dataset.windowExpanded;
     };
   }, [onError]);
   const action = (name: "minimize" | "toggleMaximize" | "close") => {

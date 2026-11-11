@@ -70,7 +70,6 @@ export function ImageLightbox({
   } | null>(null);
   const root = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
-  const closeButton = useRef<HTMLButtonElement>(null);
   const cache = useRef(new Map<string, CachedPicture>());
   const pending = useRef(new Map<string, Promise<CachedPicture>>());
   const requestedIndex = useRef(index);
@@ -90,7 +89,7 @@ export function ImageLightbox({
   const displayedIndex = Math.max(0, images.indexOf(content.id));
   const dismissMenu = () => {
     setMenu(null);
-    closeButton.current?.focus();
+    root.current?.focus({ preventScroll: true });
   };
   const runAction = async (action: (id: string) => Promise<unknown>) => {
     if (busy) return;
@@ -337,7 +336,7 @@ export function ImageLightbox({
   latest.current = { onClose, change, zoomAt, menu, dismissMenu };
   useEffect(() => {
     const focused = document.activeElement as HTMLElement | null;
-    closeButton.current?.focus();
+    root.current?.focus({ preventScroll: true });
     const keys = (event: KeyboardEvent) => {
       if (latest.current.menu) {
         if (event.key === "Escape" || event.key === "Tab") {
@@ -390,7 +389,11 @@ export function ImageLightbox({
         ];
         const first = buttons[0],
           last = buttons.at(-1);
-        if (event.shiftKey && document.activeElement === first) {
+        if (
+          event.shiftKey &&
+          (document.activeElement === first ||
+            document.activeElement === root.current)
+        ) {
           event.preventDefault();
           last?.focus();
         } else if (!event.shiftKey && document.activeElement === last) {
@@ -415,6 +418,7 @@ export function ImageLightbox({
       role="dialog"
       aria-modal="true"
       aria-label={t("Просмотр изображения")}
+      tabIndex={-1}
       data-image-lightbox
       data-scale={view.scale}
       onPointerDown={(event) => {
@@ -470,7 +474,6 @@ export function ImageLightbox({
             {view.scale > 1 ? <ZoomOut /> : <ZoomIn />}
           </button>
           <button
-            ref={closeButton}
             type="button"
             data-lightbox-control
             aria-label={t("Закрыть изображение")}

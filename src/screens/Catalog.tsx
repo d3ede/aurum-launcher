@@ -1,4 +1,5 @@
 import { t } from "../lib/i18n";
+import { beginButtonHover } from "../lib/button-hover";
 import { useEffect, useState } from "react";
 import { Download, Compass, ExternalLink, LoaderCircle } from "lucide-react";
 import {
@@ -188,6 +189,7 @@ export function ProjectDialog({
   const installButton = (confirm = false) => (
     <button
       className="button primary project-install-action"
+      onPointerEnter={beginButtonHover}
       disabled={
         confirm ? installDisabled : busy || loading || !!error || runtimeBlocked
       }

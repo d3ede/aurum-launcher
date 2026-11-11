@@ -1006,6 +1006,25 @@ test("catalog installs, animates and removes only from the selected instance", a
   await page.keyboard.press("Escape");
   await bindRadiance(page);
   await expect(button).toHaveClass(/is-available/);
+  await button.scrollIntoViewIfNeeded();
+  await page.mouse.move(0, 0);
+  await button.hover({ position: { x: 5, y: 21 } });
+  const hover = await button.evaluate((element) => {
+    const style = getComputedStyle(element, "::after");
+    return {
+      origin: element.style.getPropertyValue("--hover-x"),
+      duration: style.transitionDuration,
+    };
+  });
+  expect(Math.abs(parseFloat(hover.origin) - 5)).toBeLessThanOrEqual(2);
+  expect(hover.duration).toContain("0.48s");
+  await expect
+    .poll(() =>
+      button.evaluate(
+        (element) => getComputedStyle(element, "::after").opacity,
+      ),
+    )
+    .toBe("1");
   await button.click();
   await expect(button).toHaveAttribute("aria-busy", "true");
   await expect(button).toContainText("Установка…");

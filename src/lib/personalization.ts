@@ -279,6 +279,7 @@ const tokenNames = [
   "surface-translucent",
   "input-soft",
   "gold",
+  "on-accent",
   "gold-hover",
   "gold-soft",
   "gold-border",
@@ -307,6 +308,15 @@ export function applyAppearance(settings: Settings) {
   tokenNames.forEach((key) => root.style.removeProperty(`--${key}`));
   if (theme) {
     const c = theme.colors;
+    const channels = [1, 3, 5].map((index) => {
+      const value = parseInt(c.accent.slice(index, index + 2), 16) / 255;
+      return value <= 0.04045
+        ? value / 12.92
+        : ((value + 0.055) / 1.055) ** 2.4;
+    });
+    const luminance =
+      channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+    const onAccent = luminance > 0.179 ? "#000000" : "#ffffff";
     const values: Record<string, string> = {
       bg: c.bg,
       surface: c.surface,
@@ -319,7 +329,8 @@ export function applyAppearance(settings: Settings) {
       "surface-translucent": `${c.surface}cc`,
       "input-soft": c.bg,
       gold: c.accent,
-      "gold-hover": c.accent,
+      "on-accent": onAccent,
+      "gold-hover": `color-mix(in srgb, ${c.accent} 76%, ${onAccent === "#000000" ? "#ffffff" : "#000000"})`,
       "gold-soft": `color-mix(in srgb, ${c.accent} 14%, ${c.surface})`,
       "gold-border": `color-mix(in srgb, ${c.accent} 35%, ${c.border})`,
       "accent-ink": c.accentInk,

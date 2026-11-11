@@ -1,4 +1,10 @@
 export const homeEnglish: Record<string, string> = {
+  "Недавние серверы обновляют названия и иконки из Minecraft без повторного подключения.":
+    "Recent servers refresh names and icons from Minecraft without another connection.",
+  "Настройки используют ширину окна; при разворачивании исчезает внешняя рамка. Кнопки хостинга сохраняют контраст во всех темах.":
+    "Settings use the window width, and the outer frame disappears when maximized. Hosting buttons stay readable across themes.",
+  "Кнопка установки плавно меняет цвет от точки наведения. В скриншотах убраны лишняя обводка поиска и подсветка закрытия при перелистывании.":
+    "Install buttons reveal their hover color from the pointer position. Screenshots no longer show a duplicate search outline or highlight Close when paging.",
   "Каталог, настройки и удобство игры":
     "Catalog, settings and game convenience",
   "Каталог и установка": "Catalog and installation",

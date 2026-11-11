@@ -207,7 +207,11 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: color 200ms ease, border-color 200ms ease, background 200ms ease;
+  transition:
+    color 200ms ease,
+    border-color 200ms ease,
+    background 200ms ease,
+    transform 200ms ease;
 }
 .catalog-install-button:hover:not(:disabled) {
   background: color-mix(in srgb, var(--catalog-action) 9%, transparent);
@@ -220,11 +224,45 @@
   --catalog-action: var(--accent-ink);
   border-color: var(--gold);
   background: var(--gold);
-  color: #382f1b;
+  color: var(--on-accent);
 }
-.catalog-install-button.is-available:hover:not(:disabled) {
+.project-install-action {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.catalog-install-button.is-available::after,
+.project-install-action::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   background: var(--gold-hover);
+  clip-path: circle(0px at var(--hover-x, 50%) var(--hover-y, 50%));
+  opacity: 0;
+  transition:
+    clip-path 480ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    opacity 220ms ease;
+  pointer-events: none;
+}
+.catalog-install-button.is-available:hover:not(:disabled),
+.button.primary.project-install-action:hover:not(:disabled) {
+  background: var(--gold);
   border-color: var(--gold-hover);
+  transform: translateY(-1px);
+}
+.catalog-install-button.is-available:is(:hover, :focus-visible):not(
+    :disabled
+  )::after,
+.project-install-action:is(:hover, :focus-visible):not(:disabled)::after {
+  clip-path: circle(
+    var(--hover-radius, 180px) at var(--hover-x, 50%) var(--hover-y, 50%)
+  );
+  opacity: 1;
+}
+.catalog-install-button.is-available:active:not(:disabled),
+.button.primary.project-install-action:active:not(:disabled) {
+  transform: translateY(0);
 }
 .catalog-action-label,
 .catalog-action-remove {
@@ -234,7 +272,9 @@
   align-items: center;
   gap: 7px;
   white-space: nowrap;
-  transition: opacity 180ms ease, transform 220ms ease;
+  transition:
+    opacity 180ms ease,
+    transform 220ms ease;
 }
 .catalog-action-remove {
   opacity: 0;
@@ -245,11 +285,13 @@
   border-color: var(--danger);
   background: var(--danger-soft);
 }
-.catalog-install-button.is-installed:is(:hover, :focus-visible):not(:disabled) .catalog-action-label {
+.catalog-install-button.is-installed:is(:hover, :focus-visible):not(:disabled)
+  .catalog-action-label {
   opacity: 0;
   transform: translateY(-9px);
 }
-.catalog-install-button.is-installed:is(:hover, :focus-visible):not(:disabled) .catalog-action-remove {
+.catalog-install-button.is-installed:is(:hover, :focus-visible):not(:disabled)
+  .catalog-action-remove {
   opacity: 1;
   transform: translateY(0);
 }
@@ -271,7 +313,12 @@
   position: absolute;
   z-index: -1;
   inset: 0;
-  background: linear-gradient(100deg, transparent 15%, currentColor 50%, transparent 85%);
+  background: linear-gradient(
+    100deg,
+    transparent 15%,
+    currentColor 50%,
+    transparent 85%
+  );
   opacity: 0.13;
   animation: catalog-action-sheen 1.6s ease-in-out infinite;
 }
@@ -282,15 +329,27 @@
   animation: catalog-action-confirm 240ms ease-out;
 }
 @keyframes catalog-action-sheen {
-  from { transform: translateX(-110%); }
-  to { transform: translateX(110%); }
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(110%);
+  }
 }
 @keyframes catalog-action-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 @keyframes catalog-action-confirm {
-  from { opacity: 0; transform: scale(0.6); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 .catalog-result-grid {
   display: grid;
@@ -637,9 +696,16 @@ button.project-media-open:not(:disabled) {
 }
 @media (prefers-reduced-motion: reduce) {
   .catalog-install-button,
+  .catalog-install-button::after,
+  .project-install-action,
+  .project-install-action::after,
   .catalog-action-label,
   .catalog-action-remove {
     transition: none;
+  }
+  .catalog-install-button.is-available:hover:not(:disabled),
+  .button.primary.project-install-action:hover:not(:disabled) {
+    transform: none;
   }
   .catalog-install-button::before,
   .catalog-action-spinner,

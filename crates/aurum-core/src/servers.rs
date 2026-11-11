@@ -179,7 +179,11 @@ async fn save_history(root: &Path, history: &History) -> Result<()> {
     file.write_all(&serde_json::to_vec(history)?).await?;
     file.sync_all().await?;
     drop(file);
-    tokio::fs::rename(temporary, crate::layout::app_path(root, "recent-servers.json")).await?;
+    tokio::fs::rename(
+        temporary,
+        crate::layout::app_path(root, "recent-servers.json"),
+    )
+    .await?;
     Ok(())
 }
 
@@ -375,13 +379,40 @@ fn log_visits(
         .collect()
 }
 
+struct Discovery {
+    visits: Vec<RecentServer>,
+    scanned: HashMap<PathBuf, (u64, SystemTime)>,
+    history: History,
+    changed: bool,
+}
+
 fn discover(
     profiles: Vec<(String, PathBuf)>,
     mut scanned: HashMap<PathBuf, (u64, SystemTime)>,
-) -> (Vec<RecentServer>, HashMap<PathBuf, (u64, SystemTime)>) {
+    mut history: History,
+) -> Discovery {
     let mut found = Vec::new();
+    let mut changed = false;
     for (profile, instance) in profiles {
         let saved = saved_servers(&instance);
+        // servers.dat can change without another visit or a reachable server.
+        // Refresh imported metadata even when all log files are already scanned.
+        for server in history
+            .servers
+            .iter_mut()
+            .filter(|server| server.profile_id == profile)
+        {
+            if let Some((name, image)) = saved.get(&server.address) {
+                if !name.is_empty() && server.name != *name {
+                    server.name.clone_from(name);
+                    changed = true;
+                }
+                if server.icon != *image {
+                    server.icon.clone_from(image);
+                    changed = true;
+                }
+            }
+        }
         let mut paths = vec![instance.join("logs/latest.log")];
         for directory in [instance.join("logs"), instance.join(".aurum/quickplay")] {
             if let Ok(entries) = std::fs::read_dir(directory) {
@@ -464,7 +495,12 @@ fn discover(
             }
         }
     }
-    (found, scanned)
+    Discovery {
+        visits: found,
+        scanned,
+        history,
+        changed,
+    }
 }
 
 impl Engine {
@@ -482,12 +518,15 @@ impl Engine {
             })
             .collect::<Vec<_>>();
         let _guard = self.servers.history.lock().await;
-        let mut history = read_history(&self.root).await?;
+        let history = read_history(&self.root).await?;
         let scanned = self.servers.scanned.lock().await.clone();
         let sources = profiles.clone();
-        let (visits, scanned) =
-            tokio::task::spawn_blocking(move || discover(sources, scanned)).await?;
-        let mut changed = false;
+        let Discovery {
+            visits,
+            scanned,
+            mut history,
+            mut changed,
+        } = tokio::task::spawn_blocking(move || discover(sources, scanned, history)).await?;
         for server in visits {
             changed |= remember(&mut history, server);
         }
@@ -921,6 +960,39 @@ mod tests {
             .as_ref()
             .unwrap()
             .starts_with("data:image/png;base64,"));
+        let mut changed_servers = servers;
+        changed_servers.servers[0].insert("name".into(), "Updated name".into());
+        let mut updated_png = std::io::Cursor::new(Vec::new());
+        image::DynamicImage::ImageRgba8(image::RgbaImage::from_pixel(
+            64,
+            64,
+            image::Rgba([255, 0, 0, 255]),
+        ))
+        .write_to(&mut updated_png, image::ImageFormat::Png)
+        .unwrap();
+        let updated_icon =
+            base64::engine::general_purpose::STANDARD.encode(updated_png.into_inner());
+        changed_servers.servers[0].insert("icon".into(), updated_icon.clone());
+        std::fs::write(
+            instance.join("servers.dat"),
+            fastnbt::to_bytes(&changed_servers).unwrap(),
+        )
+        .unwrap();
+        let refreshed = engine.recent_servers().await.unwrap();
+        assert_eq!(refreshed[0].last_played, history[0].last_played);
+        assert_eq!(refreshed[0].name, "Updated name");
+        assert_eq!(refreshed[0].icon, icon(&updated_icon));
+        assert_eq!(
+            read_history(root.path()).await.unwrap().servers[0].icon,
+            refreshed[0].icon
+        );
+        changed_servers.servers[0].remove("icon");
+        std::fs::write(
+            instance.join("servers.dat"),
+            fastnbt::to_bytes(&changed_servers).unwrap(),
+        )
+        .unwrap();
+        assert!(engine.recent_servers().await.unwrap()[0].icon.is_none());
         engine.remove_recent_server(&history[0].id).await.unwrap();
         drop(engine);
         let reopened = Engine::new(root.path().into(), |_| {}).await.unwrap();

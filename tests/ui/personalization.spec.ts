@@ -704,6 +704,14 @@ test("settings destinations occupy separate rows and the page never scrolls outs
     .boundingBox();
   expect(appearanceRow!.y - home!.y - home!.height).toBeGreaterThanOrEqual(14);
   expect(appearanceRow!.width).toBe(home!.width);
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  const content = (await page.locator(".page-content").boundingBox())!;
+  const settings = (await page.locator(".settings-page").boundingBox())!;
+  expect(settings.width).toBeGreaterThan(1500);
+  expect(
+    content.x + content.width - settings.x - settings.width,
+  ).toBeLessThanOrEqual(30);
+  await page.setViewportSize({ width: 1280, height: 820 });
   await page
     .getByRole("button", { name: "Главная страница", exact: true })
     .click();

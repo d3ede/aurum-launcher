@@ -10,7 +10,8 @@
   --border: #e9e5d9;
   --border-strong: #d5d0bf;
   --gold: #edc76c;
-  --gold-hover: #e9bc53;
+  --on-accent: #1b1d21;
+  --gold-hover: color-mix(in srgb, var(--gold) 76%, #fff);
   --gold-soft: #f6edcc;
   --gold-border: #ecdfb1;
   --accent-ink: #8f7436;
@@ -42,7 +43,7 @@
   --border: #323931;
   --border-strong: #495246;
   --gold: #d7b65f;
-  --gold-hover: #e5c875;
+  --gold-hover: color-mix(in srgb, var(--gold) 76%, #fff);
   --gold-soft: #3d3929;
   --gold-border: #55503a;
   --accent-ink: #d9c080;

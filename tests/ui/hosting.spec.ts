@@ -1,9 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
+import { builtInThemes } from "../../src/lib/personalization";
 
 async function fixture(
   page: Page,
   options: {
     theme?: string;
+    palette?: string;
     language?: string;
     external?: boolean;
     empty?: boolean;
@@ -100,6 +102,9 @@ async function fixture(
       settings: {
         language: options.language || "ru",
         theme: options.theme || "dark",
+        personalization: {
+          appearance: { themeId: options.palette || options.theme || "dark" },
+        },
         javaPath: "",
         ramMb: 4096,
         jvmArgs: "",
@@ -319,6 +324,49 @@ async function fixture(
     .click();
   await expect(page.locator(".hosting-page")).toBeVisible();
 }
+
+test("hosting primary actions retain text contrast in every palette", async ({
+  page,
+}) => {
+  test.slow();
+  for (const palette of [
+    "light",
+    "dark",
+    ...builtInThemes.map((theme) => theme.id),
+  ]) {
+    await fixture(page, { palette });
+    const button = page.locator(".hosting-toolbar > .primary");
+    await expect(button).toBeEnabled();
+    const contrast = await button.evaluate((element) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 1;
+      const context = canvas.getContext("2d")!;
+      const luminance = (color: string) => {
+        context.clearRect(0, 0, 1, 1);
+        context.fillStyle = color;
+        context.fillRect(0, 0, 1, 1);
+        const channels = [...context.getImageData(0, 0, 1, 1).data]
+          .slice(0, 3)
+          .map((channel) => {
+            const value = channel / 255;
+            return value <= 0.04045
+              ? value / 12.92
+              : ((value + 0.055) / 1.055) ** 2.4;
+          });
+        return (
+          channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722
+        );
+      };
+      const style = getComputedStyle(element);
+      const values = [
+        luminance(style.color),
+        luminance(style.backgroundColor),
+      ].sort((a, b) => b - a);
+      return (values[0] + 0.05) / (values[1] + 0.05);
+    });
+    expect(contrast, palette).toBeGreaterThanOrEqual(4.5);
+  }
+});
 
 test("hosting matches the dark layout, console filtering, history and player confirmation", async ({
   page,
